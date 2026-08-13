@@ -28,7 +28,18 @@ export async function GET(req: NextRequest) {
     const info = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null);
     const zonderCacheOptie = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.status).catch(() => 0);
     const metNoStore = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).then((r) => r.status).catch(() => 0);
-    return NextResponse.json({ ok: true, tokenLengte: token.length, scope: info?.scope || info?.error || null, verlooptOverSec: info?.expires_in || null, zonderCacheOptie, metNoStore });
+    // Tweede munt plus metadata van de koppelingsrij (géén geheime waarden).
+    const token2 = await getGoogleAccessToken();
+    const info2 = token2 ? await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token2)}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null) : null;
+    const { sql } = await import("../../../../lib/db");
+    const { rows } = await sql`SELECT provider, account, updated_at, length(refresh_token) AS rt_lengte, left(refresh_token, 4) AS rt_soort FROM oauth_tokens WHERE provider LIKE 'google%' ORDER BY provider`;
+    return NextResponse.json({
+      ok: true,
+      munt1: { lengte: token.length, soort: token.slice(0, 5), scope: info?.scope || info?.error || null, verlooptOverSec: info?.expires_in || null },
+      munt2: token2 ? { lengte: token2.length, soort: token2.slice(0, 5), zelfde: token2 === token, scope: info2?.scope || info2?.error || null } : null,
+      zonderCacheOptie, metNoStore,
+      rijen: rows.map((r) => ({ provider: r.provider, account: r.account, bijgewerkt: r.updated_at, rtLengte: Number(r.rt_lengte), rtSoort: r.rt_soort })),
+    });
   }
 
   const urls = (req.nextUrl.searchParams.get("urls") || "").split(",").filter(Boolean);
