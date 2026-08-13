@@ -4406,24 +4406,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .focus-nav-link:hover { text-decoration: underline; }
 @media (max-width: 700px) { .nv-kolommen { grid-template-columns: 1fr; } }
 
-/* Zoekwoorden & links: het vrije tekstveld links, de snelle links rechts. */
-.focus-2col { display: grid; grid-template-columns: 2fr 1fr; gap: var(--s-4); align-items: start; }
-.focus-linkcol { min-width: 0; border-left: 1px solid var(--border); padding-left: var(--s-4); }
-.focus-linkcol-kop { font-weight: 700; font-size: var(--fs-sm); color: var(--dark); margin-bottom: var(--s-2); }
-.focus-linkcol-leeg { margin-bottom: var(--s-2); }
-.focus-linkrij { display: flex; align-items: center; gap: var(--s-1); margin-bottom: var(--s-2); }
-.focus-linkveld { flex: 1 1 auto; min-width: 0; }
-/* Een opgeslagen link staat er net zo bij als in het tekstveld links: gewoon
-   oranje en klikbaar, geen invulvak met een lange URL erin. */
-.focus-linkclean { flex: 1 1 auto; min-width: 0; color: var(--orange); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-sm); }
-.focus-linkclean:hover { text-decoration: underline; }
-.focus-linkclean-leeg { flex: 1 1 auto; cursor: pointer; font-size: var(--fs-sm); }
-.focus-linkdrop {
-  border: 1px dashed var(--border); border-radius: var(--r-md); padding: var(--s-3);
-  font-size: var(--fs-xs); color: var(--gray); text-align: center; cursor: text; margin-bottom: var(--s-2);
-}
-.focus-linkdrop-boven { border-color: var(--orange); background: var(--orange-light); color: var(--orange-dark); }
-@media (max-width: 900px) { .focus-2col { grid-template-columns: 1fr; } .focus-linkcol { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: var(--s-3); } }
+/* Zoekwoorden & links: het vrije tekstveld over de volle breedte van de
+   uitklapper; geen titel meer in de kop (die staat al op de uitklapper
+   eromheen), alleen de twee navigatielinks rechts uitgelijnd. */
+.focus-head-links-only { justify-content: flex-end; }
 
 /* ── Opruimlijst als werkbare tabel ───────────────────────────────────────────
    De lijst staat bovenaan en het verhaal eronder: een lijst werk je af, proza

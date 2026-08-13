@@ -368,7 +368,6 @@ const KNOPCONVENTIE_ERFENIS = new Set<string>([
   "app/admin/client/[slug]/ChatBestanden.tsx", "app/admin/client/[slug]/ChatPanel.tsx",
   "app/admin/client/[slug]/ClientCockpit.tsx", "app/admin/client/[slug]/Concurrenten.tsx",
   "app/admin/client/[slug]/DeelKnoppen.tsx", "app/admin/client/[slug]/DevDoorzetten.tsx",
-  "app/admin/client/[slug]/FocusBlock.tsx",
   "app/admin/client/[slug]/ImportAnalysis.tsx",
   "app/admin/client/[slug]/InvoiceAlert.tsx", "app/admin/client/[slug]/Kennisbank.tsx",
   "app/admin/client/[slug]/KlussenChip.tsx", "app/admin/client/[slug]/KpiPanel.tsx",

@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
-import type { FocusLink } from "../../../../lib/focus";
 
 /**
  * Eén vrij opmaakbaar tekstveld per klant, met knoppenbalk en automatisch opslaan.
@@ -26,14 +25,6 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const laatsteHtmlRef = useRef("");
 
-  // De rechterkolom met snelle links (alleen bij "focus"): een eigen lijstje in
-  // dezelfde database-rij, apart van het vrije tekstveld ernaast.
-  const [links, setLinks] = useState<FocusLink[]>([]);
-  // Welke link je aan het bewerken bent (twee invulvelden); alle andere links
-  // staan als schone, klikbare regel, net als in het tekstveld links.
-  const [bewerkIdx, setBewerkIdx] = useState<number | null>(null);
-  const linksSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Laad de opgeslagen inhoud.
   useEffect(() => {
     let off = false;
@@ -42,78 +33,10 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
       .then((d) => {
         if (off) return;
         setInitialHtml(d.ok ? (d.focus?.[veld] || "") : "");
-        if (soort === "focus") setLinks(d.ok && Array.isArray(d.focus?.links) ? d.focus.links : []);
       })
       .catch(() => { if (!off) setInitialHtml(""); });
     return () => { off = true; };
-  }, [slug, veld, soort]);
-
-  function bewaarLinks(volgende: FocusLink[]) {
-    setLinks(volgende);
-    if (linksSaveTimer.current) clearTimeout(linksSaveTimer.current);
-    linksSaveTimer.current = setTimeout(() => {
-      void fetch("/api/admin/focus", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, links: volgende }),
-      });
-    }, 700);
-  }
-  function linkWijzig(i: number, patch: Partial<FocusLink>) {
-    bewaarLinks(links.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
-  }
-  function linkVerwijder(i: number) {
-    bewaarLinks(links.filter((_, idx) => idx !== i));
-    setBewerkIdx(null);
-  }
-  function linkHandmatigToevoegen() {
-    setBewerkIdx(links.length);
-    bewaarLinks([...links, { label: "", url: "" }]);
-  }
-
-  // Een link die je uit het tekstveld links (of van een andere pagina)
-  // hierheen sleept of plakt, wordt automatisch een schone link: geen
-  // handmatig knippen en plakken van een lange, soms gecodeerde URL nodig.
-  // text/html eerst (heeft de naam van de link), anders de kale URL met de
-  // domeinnaam als naam.
-  function linkUitTransfer(dt: DataTransfer | null): FocusLink | null {
-    if (!dt) return null;
-    const html = dt.getData("text/html");
-    if (html) {
-      const m = /<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/i.exec(html);
-      if (m) {
-        const url = m[1].trim();
-        const label = m[2].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-        if (url) return { label: label.slice(0, 120), url: url.slice(0, 500) };
-      }
-    }
-    const raw = (dt.getData("text/uri-list") || dt.getData("text/plain") || "")
-      .split("\n").map((s) => s.trim()).find((s) => s && !s.startsWith("#"));
-    if (raw && /^https?:\/\//i.test(raw)) {
-      let label = raw;
-      try { const u = new URL(raw); label = u.hostname.replace(/^www\./, "") + (u.pathname !== "/" ? u.pathname : ""); } catch { /* url zelf blijft dan het label */ }
-      return { label: label.slice(0, 120), url: raw.slice(0, 500) };
-    }
-    return null;
-  }
-  const [slepenBoven, setSlepenBoven] = useState(false);
-  function linkDrop(e: React.DragEvent) {
-    e.preventDefault();
-    setSlepenBoven(false);
-    const l = linkUitTransfer(e.dataTransfer);
-    if (l) bewaarLinks([...links, l]);
-  }
-  function linkPlak(e: React.ClipboardEvent) {
-    const l = linkUitTransfer(e.clipboardData);
-    if (l) { e.preventDefault(); bewaarLinks([...links, l]); }
-  }
-  function hrefVan(url: string): string {
-    return /^https?:\/\//i.test(url) ? url : `https://${url}`;
-  }
-  function korteUrl(url: string): string {
-    try { const u = new URL(hrefVan(url)); return u.hostname.replace(/^www\./, "") + (u.pathname !== "/" ? u.pathname : ""); }
-    catch { return url; }
-  }
+  }, [slug, veld]);
 
   function triggerSave(html: string) {
     laatsteHtmlRef.current = html;
@@ -172,76 +95,21 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
     );
   }
 
-  const linkenBlok = (
-    <div className="focus-linkcol">
-      <div className="focus-linkcol-kop">Snelle links</div>
-      {links.length === 0 && <div className="muted focus-linkcol-leeg">Nog geen links; sleep of plak er een vanuit het veld hiernaast.</div>}
-      {links.map((l, i) => (
-        <div className="focus-linkrij" key={i}>
-          {bewerkIdx === i ? (
-            <>
-              <input
-                className="wp-docdrop-input focus-linkveld"
-                placeholder="naam"
-                value={l.label}
-                autoFocus
-                onChange={(e) => linkWijzig(i, { label: e.target.value })}
-                onKeyDown={(e) => { if (e.key === "Enter") setBewerkIdx(null); }}
-              />
-              <input
-                className="wp-docdrop-input focus-linkveld"
-                placeholder="https://..."
-                value={l.url}
-                onChange={(e) => linkWijzig(i, { url: e.target.value })}
-                onKeyDown={(e) => { if (e.key === "Enter") setBewerkIdx(null); }}
-              />
-              <button type="button" className="wp-icon" title="Klaar" onClick={() => setBewerkIdx(null)}>&#10003;</button>
-            </>
-          ) : (
-            <>
-              {l.url.trim()
-                ? <a className="focus-linkclean" href={hrefVan(l.url)} target="_blank" rel="noreferrer" title={l.url}>{l.label.trim() || korteUrl(l.url)}</a>
-                : <span className="muted focus-linkclean-leeg" onClick={() => setBewerkIdx(i)}>(nog geen link, klik om in te vullen)</span>}
-              <button type="button" className="wp-icon" title="Naam of link aanpassen" onClick={() => setBewerkIdx(i)}>&#9998;</button>
-            </>
-          )}
-          <button type="button" className="wp-icon wp-del" title="Link verwijderen" onClick={() => linkVerwijder(i)}>×</button>
-        </div>
-      ))}
-      <div
-        className={"focus-linkdrop" + (slepenBoven ? " focus-linkdrop-boven" : "")}
-        tabIndex={0}
-        onDragOver={(e) => { e.preventDefault(); setSlepenBoven(true); }}
-        onDragLeave={() => setSlepenBoven(false)}
-        onDrop={linkDrop}
-        onPaste={linkPlak}
-      >
-        Sleep hier een link uit het veld hiernaast, of klik en plak (Cmd/Ctrl+V)
-      </div>
-      <button type="button" className="ghost-btn small" onClick={linkHandmatigToevoegen}>+ handmatig</button>
-    </div>
-  );
-
-  // In de rechterkolom van de stand van zaken: gewoon altijd open (zoals in de
-  // Pingwin-wereld); de toggle is alleen voor het losse blok (standalone).
+  // Geen rechterkolom met snelle links meer en geen dubbele titel (die staat
+  // al op de kop van de uitklapper eromheen): het veld gebruikt de volle
+  // breedte van de uitklapper. Alleen bij "focus" blijven de twee navigatielinks
+  // staan; "Top Prio's" heeft die niet.
   const inhoud = (
     <div className="sov-tasks">
-      <div className="sov-tasks-head focus-head">
-        <span>{titel || "Zoekwoorden & links"}</span>
-        {soort === "focus" && <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>}
-        {soort === "focus" && <a className="focus-nav-link" href={`/admin/client/${slug}/sitemap`} target="_blank" rel="noreferrer" title="De sitemap vers opgehaald en naast de echte site gelegd: is hij bereikbaar, welke live pagina's missen erin, en welke regels kloppen niet meer">Sitemap-check &rarr;</a>}
-      </div>
+      {soort === "focus" && (
+        <div className="sov-tasks-head focus-head focus-head-links-only">
+          <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>
+          <a className="focus-nav-link" href={`/admin/client/${slug}/sitemap`} target="_blank" rel="noreferrer" title="De sitemap vers opgehaald en naast de echte site gelegd: is hij bereikbaar, welke live pagina's missen erin, en welke regels kloppen niet meer">Sitemap-check &rarr;</a>
+        </div>
+      )}
       {veldBlok}
     </div>
   );
 
-  // Alleen het blok "Zoekwoorden & links" krijgt de rechterkolom met snelle
-  // links; "Top Prio's" gebruikt hetzelfde component maar blijft één kolom.
-  if (soort !== "focus") return inhoud;
-  return (
-    <div className="focus-2col">
-      {inhoud}
-      {linkenBlok}
-    </div>
-  );
+  return inhoud;
 }
