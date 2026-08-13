@@ -330,7 +330,7 @@ export function bijlageOverlap(bestandsnaam: string, pad: string): number {
   return n;
 }
 
-function scoreMail(
+export function scoreMail(
   mail: { subject: string | null; bodyHtml: string | null; preview: string | null; fromAddress: string | null },
   pad: string,
   docLinks: string[],
@@ -419,6 +419,15 @@ function stripHtml(html: string): string {
 // gewoon gelden: de zeef mag het koppelen nooit blokkeren.
 type Oordeel = { hoort: boolean; kern: string };
 
+// De echte message-id is een lang, willekeurig ogend Graph-kenmerk. Kreeg het
+// model die als "id" terug te geven, dan gebeurde het dat hij bij een lange
+// lijst kandidaten het antwoord van de ene mail aan het id van een andere
+// koppelde: de tekst klopte, maar hoorde bij een heel andere mail dan waar hij
+// aan vastgeplakt werd. Zo kon een mail over een heel ander onderwerp toch als
+// "hard bewijs" op een pagina belanden, met een kern-zin die wél ergens anders
+// vandaan kwam. Daarom krijgt het model een kort volgnummer per kandidaat, en
+// wordt dat pas hierna teruggezet naar het echte id: een volgnummer is voor een
+// taalmodel veel moeilijker te verwisselen dan twee lange, gelijkende strings.
 async function beoordeelMails(
   slug: string,
   pad: string,
@@ -428,6 +437,7 @@ async function beoordeelMails(
 ): Promise<Map<string, Oordeel>> {
   const uit = new Map<string, Oordeel>();
   if (!kandidaten.length || !anthropicConfigured()) return uit;
+  const volgnummerNaarId = kandidaten.map((k) => k.id);
 
   // De zusterpagina's zijn de sleutel. Zonder die lijst kon het model alleen zien
   // "gaat dit over /lensimplantatie/edof-lenzen/?" en dan lijkt een mail over de
@@ -452,10 +462,10 @@ Beoordeel per mail:
 - Gaat een mail over MEERDERE pagina's en is deze pagina daar één van, dan is "hoort" gewoon true. Een mail mag bij meer dan één pagina horen.
 - "kern": in één korte zin wat er in deze mail gebeurde, in gewone taal, vanuit het bureau gezien. Bijvoorbeeld "Amit stuurde de aangepaste teksten terug als pdf" of "jij stelde de nieuwe opzet voor met een apart doel per pagina". Geen datum erin, die staat er al voor. Maximaal 14 woorden.
 
-Antwoord met UITSLUITEND geldige JSON: een array met per mail {"id": "<exact het meegegeven id>", "hoort": true/false, "kern": "<zin>"}. Geef voor ELKE meegegeven mail een regel terug. Geen tekst eromheen.`;
+Antwoord met UITSLUITEND geldige JSON: een array met per mail {"nr": <het volgnummer hierboven>, "hoort": true/false, "kern": "<zin>"}. Geef voor ELKE meegegeven mail, op zijn EIGEN volgnummer, een regel terug. Verwissel nooit twee mails: het oordeel en de kern-zin bij nummer 3 gaan uitsluitend over de mail die hierboven als "--- mail 3" staat. Geen tekst eromheen.`;
 
-  const lijst = kandidaten.map((k) => [
-    `--- id: ${k.id}`,
+  const lijst = kandidaten.map((k, i) => [
+    `--- mail ${i + 1}`,
     `datum: ${k.datum}`,
     `van: ${k.fromName || "onbekend"}`,
     `onderwerp: ${k.subject || "(geen)"}`,
@@ -468,10 +478,11 @@ Antwoord met UITSLUITEND geldige JSON: een array met per mail {"id": "<exact het
     const schoon = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const van = schoon.indexOf("["), tot = schoon.lastIndexOf("]");
     if (van === -1 || tot <= van) return uit;
-    const rijen = JSON.parse(schoon.slice(van, tot + 1)) as { id?: string; hoort?: boolean; kern?: string }[];
+    const rijen = JSON.parse(schoon.slice(van, tot + 1)) as { nr?: number; hoort?: boolean; kern?: string }[];
     for (const r of Array.isArray(rijen) ? rijen : []) {
-      const id = String(r.id || "").trim();
-      if (!id) continue;
+      const nr = Number(r.nr);
+      if (!Number.isFinite(nr) || nr < 1 || nr > volgnummerNaarId.length) continue;
+      const id = volgnummerNaarId[nr - 1];
       uit.set(id, { hoort: r.hoort !== false, kern: String(r.kern || "").replace(/\s+/g, " ").trim().slice(0, 160) });
     }
   } catch {

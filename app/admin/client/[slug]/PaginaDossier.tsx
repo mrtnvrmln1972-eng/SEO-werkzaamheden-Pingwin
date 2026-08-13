@@ -95,7 +95,9 @@ export default function PaginaDossier({ slug, url, compact = false, zonderStand 
   async function haalMailKeuze() {
     setMailKeuze(null);
     try {
-      const d = await fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
+      // De url gaat mee, zodat de lijst gesorteerd wordt op wat er echt bij DEZE
+      // pagina past, in plaats van gewoon de laatste vijftien mails van de klant.
+      const d = await fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((r) => r.json());
       setMailKeuze(d?.ok ? ((d.emails || []) as MailKeus[]) : []);
     } catch { setMailKeuze([]); }
   }
