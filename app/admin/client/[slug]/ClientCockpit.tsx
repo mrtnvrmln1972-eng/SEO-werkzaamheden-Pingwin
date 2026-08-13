@@ -40,7 +40,6 @@ const FundamentPanel = dynamic(() => import("./FundamentPanel"), { ssr: false, l
 import ChatPanel from "./ChatPanel";
 import OverviewChat from "./OverviewChat";
 import Planning from "./Planning";
-import ZijPaneel from "./ZijPaneel";
 import KlantTabs, { type Tab } from "./KlantTabs";
 import FocusBlock from "./FocusBlock";
 import ShareLinkBar from "./ShareLinkBar";
@@ -166,6 +165,10 @@ export default function ClientCockpit({
   const [showMailsBox, setShowMailsBox] = useState(false);
   // Laatste mails los en groot in beeld, in plaats van in de smalle kolom.
   const [mailsFloating, setMailsFloating] = useState(false);
+  // Zoekwoorden & links stond als los tabje aan de rechterrand (op elk tabblad
+  // bereikbaar); dat gaf twee plekken voor hetzelfde blok. Nu één plek: een
+  // toggle onder Laatste mails, zelfde vormgeving, standaard dicht.
+  const [showZoekwoordenBox, setShowZoekwoordenBox] = useState(false);
 
   // Afzender-filter als klein popovertje in de Laatste mails-kop.
   const [showAfzenders, setShowAfzenders] = useState(false);
@@ -460,11 +463,6 @@ export default function ClientCockpit({
 
         <InvoiceAlert slug={client.slug} clientName={client.name} />
         <SelectionActions slug={client.slug} clientName={client.name} />
-        {/* Zoekwoorden & links als inschuifbaar zijpaneel: altijd binnen handbereik
-            via het tabje aan de rechterrand, op elk tabblad van de cockpit. */}
-        <ZijPaneel label="Zoekwoorden & links">
-          <FocusBlock slug={client.slug} />
-        </ZijPaneel>
 
         {tab === "lead" && (
           <LeadTab slug={client.slug} naam={client.name} domain={client.domain || ""} />
@@ -731,6 +729,18 @@ export default function ClientCockpit({
               );
             })()}
             </>)}
+
+            {/* Zoekwoorden & links: zelfde vormgeving en inhoud als voorheen in het
+                losse zijpaneel-tabje, nu als toggle direct onder Laatste mails. */}
+            <div className="cockpit-card strategy-card">
+              <button type="button" className="strategy-head" onClick={() => setShowZoekwoordenBox((v) => !v)}>
+                <span className="strategy-caret">{showZoekwoordenBox ? "▾" : "▸"}</span>
+                <span className="strategy-title">Zoekwoorden & links</span>
+              </button>
+              <div className="strategy-body" style={{ display: showZoekwoordenBox ? undefined : "none" }}>
+                <FocusBlock slug={client.slug} />
+              </div>
+            </div>
 
             </div>
             </div>
