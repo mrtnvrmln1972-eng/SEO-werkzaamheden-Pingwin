@@ -207,7 +207,7 @@ async function gscQuery(token: string, siteUrl: string, body: Record<string, unk
 // Niet-geverifieerde properties (permissionLevel "siteUnverifiedUser") staan wél in
 // de lijst maar geven geen data terug, dus die slaan we over: anders kiest hij een
 // lege domein-property terwijl er een werkende url-prefix naast staat.
-async function gscPickSite(token: string, domain: string): Promise<string | null> {
+export async function gscPickSite(token: string, domain: string): Promise<string | null> {
   const res = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) return null;
   const j = await res.json();

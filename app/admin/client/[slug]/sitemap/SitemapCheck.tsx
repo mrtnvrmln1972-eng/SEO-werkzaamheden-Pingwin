@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Paneel, Blok, Signaal, Signalen, Pad, Tabel, Leeg, Tekst } from "../../../../_ui/Uitkomst";
 import { useKlus } from "../useKlus";
 import type { SitemapCheckUitkomst } from "../../../../../lib/sitemap-check";
+import type { GooglebotInspectie } from "../../../../../lib/googlebot-check";
 
 export default function SitemapCheck({ slug, clientName, domain }: { slug: string; clientName: string; domain: string }) {
   const [data, setData] = useState<SitemapCheckUitkomst | null>(null);
@@ -38,6 +39,29 @@ export default function SitemapCheck({ slug, clientName, domain }: { slug: strin
       if (d?.ok) { inlezen.zetBezig(); await inlezen.ververs(); }
       else setFout(d?.error || "Inlezen starten lukte niet.");
     } catch { setFout("Inlezen starten lukte niet."); }
+  }
+
+  // ── Wat ziet Googlebot? URL-inspectie op een dwarsdoorsnede van pagina's ──
+  const [gb, setGb] = useState<GooglebotInspectie[] | null>(null);
+  const [gbBezig, setGbBezig] = useState(false);
+  const [gbFout, setGbFout] = useState("");
+  async function vraagGoogle() {
+    if (!data || gbBezig) return;
+    setGbBezig(true); setGbFout("");
+    // Dwarsdoorsnede: de voorpagina, de drukste en twee stille missende
+    // pagina's, en één verouderde sitemap-regel. Acht is het maximum per klik.
+    const sample = [...new Set([
+      `https://${domain.replace(/^www\./, "")}/`,
+      ...data.missend.slice(0, 3).map((m) => m.url),
+      ...data.missend.filter((m) => m.gscImpressions === 0).slice(0, 3).map((m) => m.url),
+      ...data.fouteRegels.slice(0, 1).map((f) => f.url),
+    ])].slice(0, 8);
+    try {
+      const d = await fetch(`/api/admin/googlebot-check?slug=${encodeURIComponent(slug)}&urls=${encodeURIComponent(sample.join(","))}`).then((r) => r.json());
+      if (d?.ok) setGb(d.resultaten as GooglebotInspectie[]);
+      else setGbFout(d?.error || "De inspectie lukte niet; probeer het nog een keer.");
+    } catch { setGbFout("De inspectie lukte niet; probeer het nog een keer."); }
+    finally { setGbBezig(false); }
   }
 
   const datum = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "onbekend");
@@ -131,6 +155,36 @@ export default function SitemapCheck({ slug, clientName, domain }: { slug: strin
                     </>}
               </Blok>
             )}
+
+            <Blok titel="Wat ziet Googlebot?" meta="rechtstreeks uit Search Console, per pagina">
+              <Tekst klein>{"Dit vraagt het aan Google zelf (URL-inspectie): wanneer kwam Googlebot voor het laatst langs, lukte het ophalen toen, en staat de pagina in de index. Zo zie je of een blokkade op de site ook Google raakt. Het totaaloverzicht van crawlfouten voor de hele site staat alleen in Search Console zelf, onder Instellingen en dan Crawlstatistieken."}</Tekst>
+              {gbFout && <Signaal soort="let-op">{gbFout}</Signaal>}
+              {!gb && (
+                <div className="uk-knoppen uk-knoppen-onder">
+                  <button type="button" className="btn btn-ghost btn-klein" disabled={gbBezig || !data.gevonden} onClick={() => void vraagGoogle()}>{gbBezig ? "Google vragen… (halve minuut)" : "Vraag het aan Google"}</button>
+                </div>
+              )}
+              {gb && (
+                <>
+                  {gb.some((r) => r.geblokkeerd)
+                    ? <Signaal soort="let-op">{`Googlebot liep bij ${gb.filter((r) => r.geblokkeerd).length} van de ${gb.length} gecontroleerde pagina's tegen een blokkade aan; de blokkade raakt dus ook Google.`}</Signaal>
+                    : <Signaal soort="goed">{`Bij de ${gb.length} gecontroleerde pagina's zag Googlebot geen blokkade; de eerdere 429 raakt dus vooral meettools, niet Google zelf.`}</Signaal>}
+                  <Tabel kolommen={["Pagina", "Laatst gecrawld", "Ophalen", "In de index"]}>
+                    {gb.map((r) => (
+                      <tr key={r.url}>
+                        <td><Pad pad={r.url} domein={domain} /></td>
+                        <td>{r.gelukt ? datum(r.laatstGecrawld) : ""}</td>
+                        <td>{r.gelukt ? r.ophalen : (r.fout || "inspectie mislukt")}</td>
+                        <td>{r.gelukt ? r.index : ""}</td>
+                      </tr>
+                    ))}
+                  </Tabel>
+                  <div className="uk-knoppen uk-knoppen-onder">
+                    <button type="button" className="btn btn-quiet btn-klein" disabled={gbBezig} onClick={() => void vraagGoogle()}>{gbBezig ? "Google vragen…" : "Opnieuw vragen"}</button>
+                  </div>
+                </>
+              )}
+            </Blok>
 
             {data.gevonden && data.onbekendAantal > 0 && (
               <Blok titel={`In de sitemap, maar nog niet gescand (${getal(data.onbekendAantal)})`}>

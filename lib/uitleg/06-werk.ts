@@ -153,7 +153,10 @@ export const HOOFDSTUK: Hoofdstuk = {
         "paginalijst): die haalt de sitemap van de klant vers op en laat drie dingen zien: of de sitemap zelf " +
         "bereikbaar is en of robots.txt ernaar verwijst, welke live pagina's erin missen (met hun vertoningen, " +
         "belangrijkste bovenaan), en welke regels erin naar een omgeleide of verdwenen pagina wijzen. Daarmee " +
-        "is \"de sitemap is niet actueel\" geen vermoeden meer maar een lijst die je aan de sitebeheerder geeft.",
+        "is \"de sitemap is niet actueel\" geen vermoeden meer maar een lijst die je aan de sitebeheerder geeft. " +
+        "Het blok **Wat ziet Googlebot?** vraagt het bovendien aan Google zelf (URL-inspectie via Search " +
+        "Console): laatste crawl, of het ophalen lukte en of de pagina in de index staat, zodat je weet of een " +
+        "blokkade op de site ook Google raakt of alleen meettools.",
     },
     {
       titel: "De werklijst voor de sitebouwer",
