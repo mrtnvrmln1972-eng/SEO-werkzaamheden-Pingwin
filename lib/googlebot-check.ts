@@ -75,7 +75,11 @@ async function inspecteer(token: string, siteUrl: string, url: string): Promise<
     });
     if (!res.ok) {
       const j = await res.json().catch(() => null);
-      return { ...leeg, fout: j?.error?.message || `Search Console gaf antwoord ${res.status}.` };
+      // Het www-authenticate-detail maakt het verschil tussen "token ongeldig"
+      // en "recht ontbreekt" zichtbaar; zonder dat blijft een 401 gissen.
+      const auth = res.headers.get("www-authenticate") || "";
+      const basis = j?.error?.message || `Search Console gaf antwoord ${res.status}.`;
+      return { ...leeg, fout: `${basis} [status ${res.status}${auth ? `; ${auth.slice(0, 200)}` : ""}]` };
     }
     const j = await res.json();
     const r = j?.inspectionResult?.indexStatusResult || {};
@@ -98,13 +102,18 @@ async function inspecteer(token: string, siteUrl: string, url: string): Promise<
 }
 
 /** Inspecteert een handjevol pagina's van deze klant bij Google zelf. */
-export async function googlebotCheck(slug: string, urls: string[]): Promise<{ ok: true; site: string; resultaten: GooglebotInspectie[] } | { ok: false; error: string }> {
+export async function googlebotCheck(slug: string, urls: string[]): Promise<{ ok: true; site: string; kanarie?: number; resultaten: GooglebotInspectie[] } | { ok: false; error: string }> {
   const client = await getClientBySlug(slug);
   if (!client?.domain) return { ok: false, error: "Deze klant heeft nog geen domein ingesteld." };
   const token = await getGoogleAccessToken();
   if (!token) return { ok: false, error: "Search Console is niet gekoppeld; koppel Google op het beheerscherm." };
   const site = await gscPickSite(token, client.domain);
   if (!site) return { ok: false, error: `Het gekoppelde Google-account ziet geen Search Console-property voor ${client.domain}.` };
+
+  // Kanarie: hetzelfde token tegen de gewone Search Console-lijst. Werkt die
+  // wél terwijl de inspectie 401 geeft, dan ligt het niet aan het token maar
+  // aan de inspectie-API zelf (recht of API-activatie).
+  const kanarie = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).then((r) => r.status).catch(() => 0);
 
   const schoon = [...new Set(urls.map((u) => u.trim()).filter(Boolean))].slice(0, 8);
   // Drie tegelijk: snel genoeg voor een handjevol, netjes voor de API.
@@ -114,5 +123,5 @@ export async function googlebotCheck(slug: string, urls: string[]): Promise<{ ok
     while (i < schoon.length) { const n = i++; uit[n] = await inspecteer(token!, site!, schoon[n]); }
   }
   await Promise.all(Array.from({ length: Math.min(3, schoon.length) }, werker));
-  return { ok: true, site, resultaten: uit };
+  return { ok: true, site, kanarie, resultaten: uit };
 }
