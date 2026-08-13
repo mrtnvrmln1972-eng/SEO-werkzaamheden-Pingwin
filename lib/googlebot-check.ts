@@ -102,18 +102,23 @@ async function inspecteer(token: string, siteUrl: string, url: string): Promise<
 }
 
 /** Inspecteert een handjevol pagina's van deze klant bij Google zelf. */
-export async function googlebotCheck(slug: string, urls: string[]): Promise<{ ok: true; site: string; kanarie?: number; resultaten: GooglebotInspectie[] } | { ok: false; error: string }> {
+export async function googlebotCheck(slug: string, urls: string[]): Promise<{ ok: true; site: string; resultaten: GooglebotInspectie[] } | { ok: false; error: string }> {
   const client = await getClientBySlug(slug);
   if (!client?.domain) return { ok: false, error: "Deze klant heeft nog geen domein ingesteld." };
-  const token = await getGoogleAccessToken();
-  if (!token) return { ok: false, error: "Search Console is niet gekoppeld; koppel Google op het beheerscherm." };
+  // Vers gemunte tokens blijken bij Google soms een paar tellen onbruikbaar
+  // (zelfde koppeling, munt 1 afgekeurd, munt 2 goedgekeurd; gemeten op
+  // 13-08-2026). Daarom munten we tot drie keer en testen we het token eerst
+  // op de goedkope sites-lijst voordat de inspecties ermee gaan draaien.
+  let token: string | null = null;
+  for (let poging = 0; poging < 3 && !token; poging++) {
+    const t = await getGoogleAccessToken();
+    if (!t) return { ok: false, error: "Search Console is niet gekoppeld; koppel Google op het beheerscherm." };
+    const status = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${t}` }, cache: "no-store" }).then((r) => r.status).catch(() => 0);
+    if (status === 200) token = t;
+  }
+  if (!token) return { ok: false, error: "De Google-koppeling gaf drie keer achter elkaar een token dat Google zelf afkeurt; probeer het over een minuut opnieuw." };
   const site = await gscPickSite(token, client.domain);
   if (!site) return { ok: false, error: `Het gekoppelde Google-account ziet geen Search Console-property voor ${client.domain}.` };
-
-  // Kanarie: hetzelfde token tegen de gewone Search Console-lijst. Werkt die
-  // wél terwijl de inspectie 401 geeft, dan ligt het niet aan het token maar
-  // aan de inspectie-API zelf (recht of API-activatie).
-  const kanarie = await fetch("https://www.googleapis.com/webmasters/v3/sites", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).then((r) => r.status).catch(() => 0);
 
   const schoon = [...new Set(urls.map((u) => u.trim()).filter(Boolean))].slice(0, 8);
   // Drie tegelijk: snel genoeg voor een handjevol, netjes voor de API.
@@ -123,5 +128,5 @@ export async function googlebotCheck(slug: string, urls: string[]): Promise<{ ok
     while (i < schoon.length) { const n = i++; uit[n] = await inspecteer(token!, site!, schoon[n]); }
   }
   await Promise.all(Array.from({ length: Math.min(3, schoon.length) }, werker));
-  return { ok: true, site, kanarie, resultaten: uit };
+  return { ok: true, site, resultaten: uit };
 }
