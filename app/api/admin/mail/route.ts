@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
-import { msStatus, msSearchClientEmails, msReplyHtml, msSendMail, msListAttachments } from "../../../../lib/ms-graph";
+import { msStatus, msSearchClientEmails, msSearchMail, msReplyHtml, msSendMail, msListAttachments, type LiveEmail } from "../../../../lib/ms-graph";
 import { getVerborgenMails, verbergMail } from "../../../../lib/snapshots";
 import { zoektermenVoorPagina, scoreMail } from "../../../../lib/page-emails";
+import { isRuisMail } from "../../../../lib/mail-tekst";
 import { getStepLinks } from "../../../../lib/page-doc-run";
 
 export const runtime = "nodejs";
@@ -46,22 +47,25 @@ export async function GET(req: NextRequest) {
   const query = (client.email || client.domain || "").trim();
   if (!query) return NextResponse.json({ ok: true, connected: true, emails: [] });
 
-  const emails = await msSearchClientEmails(query, status.account || "", 15);
-  if (emails === null) return NextResponse.json({ ok: false, error: "Ophalen mislukt. Mogelijk opnieuw koppelen." }, { status: 502 });
   // Wat Maarten hier heeft weggegooid, blijft weg (de mail zelf blijft in de mailbox staan).
   const weg = new Set(await getVerborgenMails(slug));
-  const overgebleven = emails.filter((e) => !weg.has(e.id));
-
-  // Deze lijst diende alleen als "laatste 15 mails van de klant", los van welke
-  // pagina er open staat. Klik je op een kaart om zelf een mail te koppelen, dan
-  // stond de meest recente mail bovenaan, ook al ging die over iets heel anders
-  // (een planningsoverleg, een andere pagina). Is er een pagina meegegeven, sorteer
-  // dan op wat er echt bij die pagina past: dezelfde puntentelling die de automaat
-  // ook gebruikt, alleen sorterend in plaats van wegfilterend, dus er verdwijnt
-  // nooit een mail die je zelf zoekt.
   const gevraagdeUrl = req.nextUrl.searchParams.get("url") || "";
-  if (!gevraagdeUrl) return NextResponse.json({ ok: true, connected: true, emails: overgebleven });
 
+  if (!gevraagdeUrl) {
+    const emails = await msSearchClientEmails(query, status.account || "", 15);
+    if (emails === null) return NextResponse.json({ ok: false, error: "Ophalen mislukt. Mogelijk opnieuw koppelen." }, { status: 502 });
+    return NextResponse.json({ ok: true, connected: true, emails: emails.filter((e) => !weg.has(e.id) && !isRuisMail(e)) });
+  }
+
+  // Is er een pagina meegegeven, dan is "de laatste vijftien mails van de klant"
+  // niet genoeg: precies de mail die bij deze pagina hoort staat daar vaak
+  // helemaal niet in (die kan met een andere contactpersoon gaan, of weken
+  // geleden zijn). Daarom dezelfde ronde-aanpak als de automatische koppeling
+  // (zoekMailsVoorPagina): niet alleen op de klant zoeken, maar ook op de
+  // kernwoorden van de pagina zelf, en de kandidaten daarna scoren op relevantie
+  // in plaats van gewoon op datum sorteren. Automatische meldingen (Ahrefs,
+  // Search Console e.d.) horen hier nooit tussen: dat is geen correspondentie
+  // over een pagina.
   const klantDomein = (client.domain || "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
   let pad = "";
   try { pad = new URL(gevraagdeUrl).pathname.replace(/\/+$/, ""); } catch { pad = ""; }
@@ -70,9 +74,29 @@ export async function GET(req: NextRequest) {
     getStepLinks(slug, gevraagdeUrl).catch(() => ({ analyse: "", blauwdruk: "", copy: "" } as Record<string, string>)),
   ]);
   const docLinks = Object.values(stepLinks).filter(Boolean);
-  const gerangschikt = overgebleven
+
+  const kandidaten = new Map<string, LiveEmail>();
+  const rondes = [
+    `"${query}"`,
+    ...termen.slice(0, 3).map((t) => `"${query}" AND "${t.term}"`),
+    ...termen.slice(0, 2).map((t) => `"${t.term}"`),
+  ];
+  for (const q of rondes) {
+    const res = await msSearchMail(q, status.account || "", 25, query).catch(() => null);
+    for (const m of res || []) if (!kandidaten.has(m.id)) kandidaten.set(m.id, m);
+  }
+  if (!kandidaten.size) {
+    // Alle ronden mislukten (bijv. Graph tijdelijk onbereikbaar): terugval op de
+    // gewone klantzoekopdracht, beter een ongesorteerde lijst dan een lege.
+    const val = await msSearchClientEmails(query, status.account || "", 15).catch(() => null);
+    for (const m of val || []) if (!kandidaten.has(m.id)) kandidaten.set(m.id, m);
+  }
+
+  const gerangschikt = [...kandidaten.values()]
+    .filter((e) => !weg.has(e.id) && !isRuisMail(e))
     .map((e) => ({ e, s: scoreMail(e, pad, docLinks, termen, klantDomein) }))
     .sort((a, b) => b.s.score - a.s.score || (new Date(b.e.receivedAt || 0).getTime() - new Date(a.e.receivedAt || 0).getTime()))
+    .slice(0, 25)
     .map(({ e, s }) => ({ ...e, relevantie: s.score }));
   return NextResponse.json({ ok: true, connected: true, emails: gerangschikt });
 }
