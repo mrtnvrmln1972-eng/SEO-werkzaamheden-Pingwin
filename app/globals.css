@@ -3484,14 +3484,19 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 body.zp-sleept { user-select: none; cursor: grabbing; }
 .zp-inhoud .sov-tasks { border: none; padding: 0; background: transparent; }
 
-/* Taken-tab: twee kolommen. Links (2/3) bird's eye + weekplanning, rechts (1/3)
-   stand van zaken, zoekwoorden & links en laatste mails onder elkaar. */
-.tk-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
+/* Taken-tab: twee kolommen, allebei even breed (50/50). Links de Overview
+   (bird's eye + weekplanning), rechts Bespreeklijsten, Zoekwoorden & links en
+   Laatste mails onder elkaar. */
+.tk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
 .tk-links, .tk-rechts { min-width: 0; }
 .tk-rechts .cockpit-card { margin-top: 14px; }
 /* Razorsharp: beide kolommen beginnen op exact dezelfde hoogte. */
 .tk-links > .cockpit-card:first-child, .tk-rechts > .cockpit-card:first-child { margin-top: 0; }
 @media (max-width: 1150px) { .tk-grid { grid-template-columns: 1fr; } }
+/* Het geheel boxed i.p.v. tot de volle breedte van .container: op een breed
+   scherm blijft er zo aan weerszijden wat lucht over, in plaats van dat de
+   twee kolommen tot de randen uitrekken. */
+.tk-boxed { max-width: 1320px; margin: 0 auto; }
 
 /* Weekplanning-bord: taken over weekkolommen, huidige week gemarkeerd, slepen. */
 .wp-wrap, .wp-empty { margin-top: 14px; }
