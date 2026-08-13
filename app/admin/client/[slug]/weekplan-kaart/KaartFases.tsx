@@ -134,7 +134,17 @@ export default function KaartFases({
       const d = await fetch("/api/admin/page-cluster-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url }) }).then((r) => r.json());
       if (!d?.ok) setFoutje(d?.error || "Starten mislukt.");
       else if (!d.saved) setFoutje(d.message || "Geen concreet advies voor gelieerde pagina's gevonden.");
-      else { setMelding(`Advies op ${d.saved} gelieerde ${d.saved === 1 ? "pagina" : "pagina's"} klaargezet.`); refreshBoard(); }
+      else {
+        setMelding(`Advies op ${d.saved} gelieerde ${d.saved === 1 ? "pagina" : "pagina's"} klaargezet.`);
+        // Direct op klaar zetten via hetzelfde pad als het vinkje: de afgeleide
+        // telling (hoeveel page_cluster_advice-rijen deze pagina als bron hebben)
+        // bleek soms achter te lopen op wat er al wel is opgeslagen, waardoor de
+        // knop na een geslaagde run gewoon "Start" bleef tonen en je zonder
+        // waarschuwing dezelfde run nog een keer kon starten. Handmatig wint
+        // altijd van de afgeleide stand, dus dit is meteen zichtbaar en ververst
+        // het bord ook (zetFase doet dat zelf).
+        await zetFase("gelieerde", true);
+      }
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
   }
 
@@ -160,12 +170,21 @@ export default function KaartFases({
   }
 
   function faseStand(key: FaseKey): { label: string; cls: string } {
+    const isDocStap = key === "analyse" || key === "blauwdruk" || key === "copy";
     // Een lopende run wint van "Klaar": bij een herrun moet je zíen dat hij draait.
-    if ((key === "analyse" || key === "blauwdruk" || key === "copy") && runActive) {
+    if (isDocStap && runActive) {
       const st = run?.steps?.[key] || "";
       if (st === "running") return { label: "Bezig…", cls: "wp-fase-bezig" };
       if (st === "pending") return { label: "Wacht", cls: "wp-fase-bezig" };
       if (st === "error") return { label: "Fout", cls: "wp-fase-fout" };
+    }
+    // De run is intussen gestopt (fout of timeout): zonder dit viel de rij terug
+    // op "✕", precies hetzelfde beeld als vóór het klikken op Start. Je zag dan
+    // geen fout, alleen dat de knop weer "Start" zei; de reden stond wel in de
+    // database maar nergens in beeld. Alleen de stap die echt vastliep krijgt de
+    // rode chip, en een nieuwere geslaagde run (page[key] alsnog waar) wint.
+    if (isDocStap && run && run.status === "error" && run.steps?.[key] === "error" && !(page && page[key])) {
+      return { label: "Fout", cls: "wp-fase-fout" };
     }
     if (key === "structured" && schemaRunning) return { label: "Bezig…", cls: "wp-fase-bezig" };
     if (page && page[key]) return { label: "✓", cls: "wp-fase-klaar" };
@@ -331,6 +350,11 @@ export default function KaartFases({
           );
         })}
         {verifyMsg && <div className={verifyMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{verifyMsg.tekst}</div>}
+        {/* De achtergrond-run (analyse/blauwdruk/copy) stopte met een fout: die
+            fout stond alleen in de database, nergens in beeld, dus leek het of er
+            gewoon niets gebeurd was. Verdwijnt vanzelf zodra je die stap opnieuw
+            start (de run-state wordt dan lokaal meteen vervangen). */}
+        {run && run.status === "error" && run.error && <div className="wp-fase-fouttekst">Vastgelopen: {run.error}</div>}
         {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
         {melding && <div className="wp-fase-melding">{melding}</div>}
       </div>

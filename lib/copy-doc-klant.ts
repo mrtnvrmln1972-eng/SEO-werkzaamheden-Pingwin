@@ -4,90 +4,33 @@ import { getGscForPage } from "./google";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { metaVerdictText } from "./meta-rules";
 import { perfectioneerMeta } from "./meta-machine";
-import { metaRegels, metaVerificatie, webtekstSecties } from "./copy-briefing";
+import { webtekstSecties } from "./copy-briefing";
 import { metaUitCopydoc, type CopydocMeta } from "./copydoc-meta";
 import { buildPingwinDoc, type DocSpec, type DocSection, type DocBlock } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
 
 // ═══════════════════════════════════════════════════════════
-// HET NIEUWE COPY-KLANTDOCUMENT
+// HET COPY-KLANTDOCUMENT
 // ═══════════════════════════════════════════════════════════
-// Vaste opbouw, zodat de klant bij elke oplevering begrijpt wat eraan
-// voorafging, zonder technische informatie:
-// 1. "Hoe deze nieuwe tekst tot stand kwam" (vaste uitleg in vier stappen)
-// 2. "Over deze pagina" (maatwerk: zoekintentie, huidige ranking, waarom belangrijk)
-// 3. De paginatitel en omschrijving zoals Google ze toont
-// 4. De volledige nieuwe copy met H1/H2/H3-labels
-//
-// De uitleg in 2 en 3 wordt hier verser opgebouwd uit de echte cijfers. Het
-// opgeslagen copy-document bevat diezelfde uitleg ook (het is één document dat
-// zowel briefing als copy is), en die oude versie valt er hier dus uit; alleen
-// de webteksten blijven over. Zie webtekstSecties in lib/copy-briefing.ts.
+// Bewust sober (besluit 13-08-2026, na feedback dat de volle huisstijl met
+// omslagfoto, stappenkaarten, KPI-pillen en callouts er te "gelikt AI" uitzag
+// voor een document dat een klant gewoon moet nálezen). Vaste opbouw:
+// 1. Kopregel (logo + oranje streep, uit buildPingwinDoc) en een sobere titel,
+//    geen omslagfoto, geen nummer-bolletjes (stijl: "werkdocument").
+// 2. Eén korte, droge uitleg (1-2 alinea's): strategie → analyse → blauwdruk →
+//    copy, hoe dat tot deze tekst leidde.
+// 3. De metatitel en -omschrijving, gewoon als tekst (de pixel-correctielus
+//    blijft wel draaien, alleen het uitgebreide verificatie-tabelletje niet).
+// 4. De volledige nieuwe copy met H1/H2/H3-labels, zonder verdere opmaak.
 // ═══════════════════════════════════════════════════════════
 
-// De vaste uitleg (door Maarten goedgekeurde tekst).
+// De vaste, droge uitleg (goedgekeurd 13-08-2026; vervangt de vier stappenkaarten).
 export const COPY_UITLEG_SECTIE: DocSection = {
-  heading: "Hoe deze nieuwe tekst tot stand kwam",
   blocks: [
-    { type: "step", nr: 1, title: "We beginnen bij de strategie", text: "Voordat er één woord geschreven wordt, kijken we wat deze pagina moet doen. Wat zoekt iemand die deze zoekterm intypt: **informatie, een prijs, of een bedrijf om te bellen?** Die zoekintentie bepaalt de hele opzet van de pagina. We beoordelen ook of dit onderwerp een eigen pagina verdient, of juist beter samenvalt met een bestaande pagina; dat verschilt per situatie en voorkomt dat pagina's elkaar in de weg zitten." },
-    { type: "step", nr: 2, title: "Dan analyseren we de huidige pagina", text: "**Wat er al staat, is waardevol:** Google kent deze pagina en heeft er een beeld van. Daarom behouden we zoveel mogelijk van de bestaande inhoud, zolang die aan de kwaliteitseisen voldoet. Zo blijft de pagina stabiel in de zoekresultaten en bouwen we verder op wat al werkt, in plaats van opnieuw te beginnen." },
-    { type: "step", nr: 3, title: "Daarna maken we de blauwdruk", text: "We analyseren de tien pagina's die nu bovenaan staan in Google voor deze zoekterm: welke onderwerpen behandelen ze, welke vragen beantwoorden ze, wat verwacht een bezoeker dus minimaal? Alles wat relevant is nemen we op. En we voegen **bewust onderwerpen toe die de top tien nog niet behandelt**: dat is voor Google de reden om onze pagina toe te voegen en hoog te zetten. Een pagina die alleen nadoet wat er al staat, voegt niets toe; een pagina die completer is wel." },
-    { type: "step", nr: 4, title: "Tot slot schrijven we de tekst", text: "Op basis van al het bovenstaande, en in de tone of voice van jullie merk: we analyseren hoe jullie schrijven en praten, zodat de nieuwe tekst **klinkt als jullie** en niet als een tekstfabriek. Het resultaat is de pagina hieronder: klaar om te plaatsen." },
+    { type: "paragraph", text: "Deze tekst komt in vier stappen tot stand. Eerst bepalen we de strategie: welke zoekintentie deze pagina bedient en welk zoekwoord daarbij hoort. Daarna analyseren we de huidige pagina, zodat we behouden wat al werkt in plaats van opnieuw te beginnen. Vervolgens maken we de blauwdruk op basis van de tien pagina's die nu bovenaan Google staan voor deze zoekterm: welke onderwerpen zij behandelen en wat wij toevoegen om vollediger te zijn. Tot slot schrijven we de tekst, in de toon van jullie eigen merk." },
+    { type: "paragraph", text: "Lees de tekst hieronder na en pas aan waar jij het beter weet. Stuur je correcties terug, dan verwerken wij de tekst SEO-geoptimaliseerd op de site." },
   ],
 };
-
-// Vaste opening: wat we van de klant vragen (door Maarten vastgesteld).
-export const COPY_INTRO_SECTIE: DocSection = {
-  heading: "Lees na, pas aan en stuur terug",
-  blocks: [{ type: "highlight", text: "Op basis van de SEO-analyse, de blauwdruk en de top 10-analyse hebben we deze copy ontwikkeld die voldoet aan de perfecte invulling voor deze pagina. Uiteraard heb jij veel meer verstand van jouw vak en je bedrijf dan wij, dus vragen we je wel om deze teksten goed door te nemen en aan te passen waar nodig. Als je deze teksten (al dan niet aangepast) terugstuurt, dan zullen wij ze op de juiste, SEO-geoptimaliseerde manier in de website verwerken." }],
-};
-
-// Drie maatwerk-secties in één AI-aanroep: waar de teksten over gaan, welke
-// zoekwoorden erin verwerkt zijn (met per zoekwoord de reden) en wat dit voor
-// de vindbaarheid betekent. Gevoed met de echte Search Console-cijfers.
-export async function maatwerkSecties(slug: string, url: string, copyTekst: string, analyseTekst: string): Promise<DocSection[]> {
-  const client = await getClientBySlug(slug);
-  const gsc = client?.domain ? await getGscForPage(client.domain, url, 90).catch(() => []) : [];
-  const data = gsc.slice(0, 12).map((k) => `"${k.keyword}": positie ${Math.round(k.position * 10) / 10}, ${k.clicks} klikken, ${k.impressions} vertoningen`).join("\n") || "Nog geen meetbare posities (bijvoorbeeld een nieuwe pagina).";
-  const sys = `Je bent SEO-strateeg bij bureau Pingwin en schrijft de uitleg voor de klant in een copy-briefing. Schrijf in gewone taal, persoonlijk, zonder jargon en zonder emoji.
-Geef UITSLUITEND geldige JSON met exact deze velden:
-{"waarover":"3 tot 5 zinnen: waar de nieuwe teksten over gaan. Noem de groei in omvang als je die kunt afleiden (van korte introductie naar volwaardige dienstenpagina), de toon en de positionering van dit bedrijf.",
- "zoekwoorden":[{"kw":"zoekwoord","reden":"één korte zin waarom dit zoekwoord erin zit; noem bij het hoofdzoekwoord de echte positie als die er is"}],
- "vindbaarheid":"één of twee zinnen die de kern samenvatten: waar de pagina nu staat en wat er verandert.",
- "vindbaarheidPunten":["3 tot 5 losse punten, elk één korte regel. Eerst wat er misging, dan wat de nieuwe tekst oplost. Gebruik de echte cijfers."],
- "kpi":[{"label":"korte naam van de meetwaarde","waarde":"het getal","verschil":"eventueel de vorige waarde, anders leeg","status":"goed of actie of neutraal"}]}
-Regels: noem ALLE zoekwoorden die daadwerkelijk in de nieuwe tekst verwerkt zijn (minimaal 4, maximaal 14), het hoofdzoekwoord eerst; staat er in het bronstuk al een zoekwoordenlijst, neem die dan volledig over. Verzin geen cijfers, gebruik alleen wat in de data staat.
-Voor "kpi": 2 tot 4 regels, uitsluitend uit de meegegeven Search Console-cijfers (positie, klikken, vertoningen van het hoofdzoekwoord). Zijn er geen cijfers, geef dan een lege lijst.
-Status: "actie" als het slecht staat, "goed" als het goed staat of duidelijk verbetert, anders "neutraal".`;
-  const user = `Pagina: ${url}\nBedrijf: ${client?.name || ""}\n\nHUIDIGE POSITIES (Search Console, 90 dagen):\n${data}\n\nDE NIEUWE TEKST:\n${copyTekst.slice(0, 9000)}\n\n${analyseTekst ? `UIT DE ANALYSE VAN DE HUIDIGE PAGINA:\n${analyseTekst.slice(0, 3000)}` : ""}`;
-  try {
-    const raw = await callClaude(sys, [{ role: "user", content: user }], 2600, { slug, action: "copy-doc-maatwerk" });
-    const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
-    const p = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as {
-      waarover?: string; zoekwoorden?: { kw: string; reden: string }[]; vindbaarheid?: string;
-      vindbaarheidPunten?: string[]; kpi?: { label?: string; waarde?: string; verschil?: string; status?: string }[];
-    };
-    const uit: DocSection[] = [];
-    if (p.waarover) uit.push({ heading: "Waar de nieuwe teksten over gaan", blocks: [{ type: "paragraph", text: p.waarover }] });
-    const kws = (p.zoekwoorden || []).filter((k) => k?.kw).slice(0, 14);
-    if (kws.length) uit.push({ heading: "Welke zoekwoorden erin verwerkt zijn", blocks: [{ type: "table", headers: ["Zoekwoord", "Waarom dit erin zit"], rows: kws.map((k) => [k.kw, k.reden || ""]) }] });
-    // De stand in cijfers, dan de kern in één zin, dan de punten los. Een lap tekst
-    // met getallen erdoorheen leest niemand; dit wel.
-    const kpi = (p.kpi || []).filter((k) => k?.label && k?.waarde).slice(0, 4).map((k) => ({
-      label: String(k.label), waarde: String(k.waarde), verschil: k.verschil ? String(k.verschil) : "",
-      status: (["goed", "actie", "neutraal"].includes(String(k.status)) ? k.status : "neutraal") as "goed" | "actie" | "neutraal",
-    }));
-    const punten = (p.vindbaarheidPunten || []).filter(Boolean).map(String).slice(0, 6);
-    if (p.vindbaarheid || kpi.length || punten.length) {
-      const blocks: DocBlock[] = [];
-      if (kpi.length) blocks.push({ type: "kpi", rows: kpi });
-      if (p.vindbaarheid) blocks.push({ type: "paragraph", text: p.vindbaarheid });
-      if (punten.length) blocks.push({ type: "bullets", items: punten });
-      uit.push({ heading: "Wat dit voor jullie vindbaarheid betekent", blocks });
-    }
-    return uit;
-  } catch { return []; }
-}
 
 /**
  * Het primaire zoekwoord van deze pagina: eerst wat er in het plan gekozen is
@@ -193,19 +136,14 @@ export async function metaSectie(slug: string, url: string, copyTekst: string, k
     metaMelding += ` Let op: het primaire zoekwoord van deze pagina is een zin van ${woordenInKeyword} woorden ("${keyword}"). Zolang dat zo staat, kunnen de zoekwoord-criteria niet slagen, hoe goed de tekst ook is; kies een echt zoekwoord in het plan van deze pagina.`;
   }
 
-  // De verificatie erbij: elk criterium waaraan getoetst is, met de meting. Alleen
-  // als álles klopt; een kruisje in een oplevering is een oordeel over eigen werk.
-  const verificatie = metaVerificatie(titel, omschrijving, { keyword, h1: h1 || undefined });
+  // Sober: alleen de tekst zelf, met de tekenlengte erachter. De pixel-motor
+  // (perfectioneerMeta hierboven) heeft de tekst intussen al gecorrigeerd zodat
+  // hij past; een verificatietabel met vinkjes daarnaast voegde alleen
+  // opsmuk toe, geen informatie die de klant nog nodig heeft.
   const blocks: DocBlock[] = [
-    { type: "table", headers: ["Element", "Tekst", "Lengte"], rows: metaRegels(titel, omschrijving) },
-    { type: "paragraph", text: "Dit is wat iemand in Google ziet voordat hij klikt. Google meet die twee regels niet in tekens maar in pixels: een W is breed, een i smal. Onze motor meet de exacte breedte in het lettertype van de zoekresultaten en schrijft net zo lang bij of in tot de tekst het venster van Google precies vult. Zo wordt er niets afgekapt en blijft er geen ruimte onbenut waarin een concurrent wél zijn argument kwijt kan." },
+    { type: "paragraph", text: `Metatitel: ${titel} (${titel.length} tekens)` },
+    { type: "paragraph", text: `Metaomschrijving: ${omschrijving} (${omschrijving.length} tekens)` },
   ];
-  if (verificatie.allesGoed) {
-    blocks.push({ type: "subheading", text: "Getoetst aan onze volledige criterialijst" });
-    blocks.push({ type: "paragraph", text: "Beide teksten zijn stuk voor stuk langs onze eigen eisen gelegd. Dit is de uitslag, met de gemeten waarde erachter." });
-    // Smalle eerste kolom, brede middenkolom: het criterium is de tekst die telt.
-    blocks.push({ type: "table", headers: ["Onderdeel", "Criterium", "Gemeten"], rows: verificatie.regels, cols: [1500, 4900, 2600] });
-  }
 
   return {
     sectie: { heading: "De paginatitel en omschrijving in Google", blocks },
@@ -260,32 +198,22 @@ export async function buildCopyKlantSpec(slug: string, url: string): Promise<{ o
   if (!copy.trim()) return { ok: false, error: "Voor deze pagina is nog geen copy gegenereerd; draai eerst de copy-stap." };
   const pad = (() => { try { return new URL(url).pathname; } catch { return url; } })();
   const keyword = await primairZoekwoord(slug, url, client.domain || "");
-  const [maatwerk, meta] = await Promise.all([
-    maatwerkSecties(slug, url, copy, outputs["analyse"] || ""),
-    metaSectie(slug, url, copy, keyword, client.name),
-  ]);
+  const meta = await metaSectie(slug, url, copy, keyword, client.name);
   // Heeft de correctielus de meta bijgeschaafd, dan gaat die tekst ook terug de
   // opgeslagen copy in: één tekst voor het document, de site en de CTR-machine.
   if (meta?.nieuweCopy) await savePageDocOutput(slug, url, "copy", meta.nieuweCopy).catch(() => { /* terugschrijven is aanvulling */ });
-  // Alleen de daadwerkelijke webteksten uit het opgeslagen document. De uitleg
-  // die daar ook in staat, bouwt dit document hierboven verser op; twee keer
-  // dezelfde uitleg naast elkaar leest niemand.
   const copySecties = webtekstSecties(copyNaarSecties(copy));
   const spec: DocSpec = {
     klant: client.name,
-    rapporttype: "Copy-briefing",
+    rapporttype: "Copy",
     titel: `Nieuwe teksten voor ${pad}`,
-    ondertitel: "Uitleg voor de klant plus de volledige webteksten om na te lezen en te corrigeren.",
-    meta: { Pagina: pad, Datum: new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) },
-    // Sfeerbeeld van de pagina zelf op de omslag, en het slotcitaat uit de huisstijl.
-    sfeerbeeldUrl: url,
-    slotcitaat: "Lees de teksten na en pas ze aan waar jij het beter weet. Daarna zetten wij ze SEO-geoptimaliseerd op de site.",
+    // Sober werkdocument: geen omslagfoto, geen nummer-bolletjes. Zie de uitleg
+    // bovenaan dit bestand (besluit 13-08-2026).
+    stijl: "werkdocument",
     sections: [
-      COPY_INTRO_SECTIE,
       COPY_UITLEG_SECTIE,
-      ...maatwerk,
       ...(meta ? [meta.sectie] : []),
-      { heading: "De volledige webteksten (lees na en corrigeer)", blocks: [{ type: "paragraph", text: "Hieronder de volledige teksten voor de pagina. Lees ze door, pas aan waar nodig en geef je correcties terug aan Pingwin. Bij elke kop staat de aanduiding (H1, H2, H3), zodat de sitebouwer precies weet welk kopniveau hij moet gebruiken." }] },
+      { heading: "De volledige tekst", blocks: [] },
       ...copySecties,
     ],
   };
