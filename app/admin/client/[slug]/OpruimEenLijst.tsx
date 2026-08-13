@@ -125,7 +125,16 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
 }) {
   const [d, setD] = useState<Data | null>(null);
   const [bezig, setBezig] = useState(true);
-  const [filter, setFilter] = useState<Uitkomst | "alles">("alles");
+  const [filter, setFilter] = useState<Uitkomst | "alles" | "chat">("alles");
+
+  // Diepe link: ?besluit=chat opent de lijst meteen gefilterd op de besluiten
+  // die vanuit een chat zijn geland. Zonder zo'n ingang zijn vijf regels tussen
+  // honderdzeventig andere onvindbaar, en "zoek maar even" is geen oplevering.
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("besluit") === "chat") setFilter("chat");
+    } catch { /* geen query, geen filter */ }
+  }, []);
   const [groep, setGroep] = useState<"uitkomst" | "groep">("uitkomst");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [uitleg, setUitleg] = useState<Record<string, boolean>>({});
@@ -491,7 +500,10 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
   if (bezig) return <div className="muted opr-str-laden">De werklijst wordt samengesteld…</div>;
   if (!d || !d.regels.length) return null;
 
-  const rijen = filter === "alles" ? d.regels : d.regels.filter((r) => r.uitkomst === filter);
+  const rijen = filter === "alles" ? d.regels
+    : filter === "chat" ? d.regels.filter((r) => r.herkomst.includes("chat"))
+    : d.regels.filter((r) => r.uitkomst === filter);
+  const chatTeller = d.regels.filter((r) => r.herkomst.includes("chat")).length;
 
   // ── Hoever zijn we? ──
   // De kaarten telden alleen werk: "38 opruimen", ook als er al dertig van live
@@ -577,6 +589,12 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
             {k === "alles" ? `alles (${d.tellingen.totaal})` : `${LABEL[k]} (${d.tellingen[k]})`}
           </button>
         ))}
+        {chatTeller > 0 && (
+          <button type="button" className={"ghost-btn small" + (filter === "chat" ? " actief" : "")} onClick={() => setFilter("chat")}
+            title="Alleen de besluiten die vanuit een chat-analyse op deze lijst zijn gezet.">
+            besluit uit chat ({chatTeller})
+          </button>
+        )}
         <span style={{ marginLeft: "var(--s-4)" }}>
           <button type="button" className={"ghost-btn small" + (groep === "uitkomst" ? " actief" : "")} onClick={() => setGroep("uitkomst")}>
             per besluit
@@ -619,7 +637,7 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
           je open wat je gaat doen. Is er maar één groep (je hebt gefilterd), dan
           staat hij open: dan is die groep juist waar je voor kwam. */}
       {volgorde.map(([naam, lijst]) => (
-        <details key={naam} className="opr-onderwerp" open={volgorde.length === 1}>
+        <details key={naam} className="opr-onderwerp" open={volgorde.length === 1 || filter !== "alles"}>
           <summary className="opr-onderwerp-kop">
             <span className="opr-onderwerp-titel">{naam}</span>
             <span className="opr-chip">{lijst.length} pagina&rsquo;s</span>
