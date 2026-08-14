@@ -870,6 +870,10 @@ tbody td:last-child { text-align: center; }
   flex-wrap: wrap; gap: var(--s-2);
   padding: var(--s-3) var(--s-4); margin-bottom: var(--s-3);
   box-shadow: var(--shadow-md);
+  /* Niet meer uitrekken tot de volle (brede) paginabreedte: de kop is nu een
+     compacte balk die precies om zijn eigen inhoud (titel + knoppen) past,
+     in plaats van een brede kaart met veel lege ruimte rechts. */
+  width: fit-content; max-width: 100%;
 }
 /* Neemt de resterende ruimte in, zodat de titel en de weergave-knoppen links
    blijven staan en "Naar deze week" er als enige naar de rechterkant duwt,
