@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { logActiviteit } from "./activiteit";
 
 // ═══════════════════════════════════════════════════════════
 // DATA-BRUG: snapshots per klant lezen en inladen
@@ -247,6 +248,18 @@ export async function ingestEmails(slug: string, emails: EmailSnapshot[]): Promi
         received_at = EXCLUDED.received_at, preview = EXCLUDED.preview, web_link = EXCLUDED.web_link,
         superhuman_link = EXCLUDED.superhuman_link, body_html = EXCLUDED.body_html, direction = EXCLUDED.direction, ingested_at = now()`;
     n++;
+    // Een verstuurde mail is vaak echt werk (een analyse, een contentplan). Die
+    // komt in het logboek, standaard intern; met de "delen"-knop zet je 'm klaar
+    // voor de klant. Idempotent op de mail-id, dus een hersync geeft geen dubbele regel.
+    if (e.direction === "out") {
+      const onderwerp = `Mail: ${e.subject || "(geen onderwerp)"}`;
+      await logActiviteit({
+        slug, soort: "mail", bron: "client_emails", bronId: e.id,
+        gebeurdeOp: e.receivedAt || undefined,
+        bewijs: e.superhumanLink || e.webLink || null,
+        intern: onderwerp, klant: onderwerp,
+      });
+    }
   }
   return n;
 }

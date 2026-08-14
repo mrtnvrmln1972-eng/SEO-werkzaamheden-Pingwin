@@ -104,6 +104,7 @@ export async function POST(req: NextRequest) {
   await logActiviteit({
     slug, soort: "gmb-profiel", bron: "gmb-doorvoeren", bronId: `${sleutel}:${key}:${Date.now()}`,
     intern: `Google-profiel: ${KAN[key]}`,
+    klant: `Google-profiel: ${KAN[key]}`,
     zichtbaar: false,
   });
 

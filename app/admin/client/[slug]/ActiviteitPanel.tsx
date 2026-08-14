@@ -24,7 +24,13 @@ const SOORT_LABEL: Record<string, string> = {
   analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", "copy-concept": "Copy als concept", "copy-live": "Copy live",
   meta: "Meta-teksten", alt: "Alt-teksten", "intern-link": "Interne links",
   structured: "Structured data", redirect: "Redirect", paginawijziging: "Paginawijziging",
+  "gmb-profiel": "Google-profiel", "gmb-review": "Google-review",
+  taak: "Taak", mail: "Mail",
 };
+
+// Boven dit aantal regels van dezelfde soort, op dezelfde dag, wordt de groep
+// standaard samengevouwen (bijvoorbeeld tientallen redirects op één dag).
+const GROEP_DREMPEL = 5;
 
 function maandVan(iso: string): string {
   const d = new Date(iso);
@@ -82,6 +88,40 @@ export default function ActiviteitPanel({ slug }: { slug: string }) {
 
   if (laden && !rijen) return <div className="cockpit-card"><div className="muted">Logboek laden…</div></div>;
 
+  function renderRij(r: Rij, metDatum = true) {
+    return (
+      <div key={r.id} className="act-rij">
+        {metDatum && <span className="act-datum">{dagVan(r.gebeurdeOp)}</span>}
+        <span className={"act-soort act-soort-" + r.soort}>{SOORT_LABEL[r.soort] || r.soort}</span>
+        <span className="act-tekst">{r.intern}</span>
+        {r.url && <a className="act-pad" href={r.url} target="_blank" rel="noreferrer">{padVan(r.url)}</a>}
+        {r.bewijs && <a className="act-pad" href={r.bewijs} target="_blank" rel="noreferrer">{r.soort === "mail" ? "mailthread" : "document"}</a>}
+        {r.wie !== "Pingwin" && <span className="wp-chip wp-chip-plan">{r.wie}</span>}
+        <span className="act-spacer" />
+        <button type="button" className={"act-deel" + (r.zichtbaar ? " aan" : "")}
+          title={r.zichtbaar ? "Staat klaar om met de klant te delen" : "Blijft intern"}
+          onClick={() => void wisselDelen(r)}>
+          {r.zichtbaar ? "delen" : "intern"}
+        </button>
+      </div>
+    );
+  }
+
+  // Per dag + soort groeperen: veel regels van hetzelfde type op één dag (bijv.
+  // tientallen redirects) worden anders onleesbaar. Volgorde blijft chronologisch,
+  // want de items van een dag staan door de sortering op gebeurdeOp al aaneen.
+  function groepeer(items: Rij[]): { dag: string; soort: string; items: Rij[] }[] {
+    const groepen: { dag: string; soort: string; items: Rij[] }[] = [];
+    const idx = new Map<string, number>();
+    for (const r of items) {
+      const dag = dagVan(r.gebeurdeOp);
+      const key = `${dag}|${r.soort}`;
+      if (idx.has(key)) groepen[idx.get(key)!].items.push(r);
+      else { idx.set(key, groepen.length); groepen.push({ dag, soort: r.soort, items: [r] }); }
+    }
+    return groepen;
+  }
+
   const maanden: { naam: string; items: Rij[] }[] = [];
   for (const r of rijen || []) {
     const naam = maandVan(r.gebeurdeOp);
@@ -118,22 +158,21 @@ export default function ActiviteitPanel({ slug }: { slug: string }) {
                 <span key={s} className="act-teller">{n}× {SOORT_LABEL[s] || s}</span>
               ))}
             </div>
-            {m.items.map((r) => (
-              <div key={r.id} className="act-rij">
-                <span className="act-datum">{dagVan(r.gebeurdeOp)}</span>
-                <span className={"act-soort act-soort-" + r.soort}>{SOORT_LABEL[r.soort] || r.soort}</span>
-                <span className="act-tekst">{r.intern}</span>
-                {r.url && <a className="act-pad" href={r.url} target="_blank" rel="noreferrer">{padVan(r.url)}</a>}
-                {r.bewijs && <a className="act-pad" href={r.bewijs} target="_blank" rel="noreferrer">document</a>}
-                {r.wie !== "Pingwin" && <span className="wp-chip wp-chip-plan">{r.wie}</span>}
-                <span className="act-spacer" />
-                <button type="button" className={"act-deel" + (r.zichtbaar ? " aan" : "")}
-                  title={r.zichtbaar ? "Staat klaar om met de klant te delen" : "Blijft intern"}
-                  onClick={() => void wisselDelen(r)}>
-                  {r.zichtbaar ? "delen" : "intern"}
-                </button>
-              </div>
-            ))}
+            {groepeer(m.items).map((g) => {
+              if (g.items.length > GROEP_DREMPEL) {
+                return (
+                  <details key={`${g.dag}|${g.soort}`} className="act-groep">
+                    <summary className="act-groep-kop">
+                      <span className="act-datum">{g.dag}</span>
+                      <span className={"act-soort act-soort-" + g.soort}>{SOORT_LABEL[g.soort] || g.soort}</span>
+                      <span className="act-groep-aantal">{g.items.length}×</span>
+                    </summary>
+                    {g.items.map((r) => renderRij(r, false))}
+                  </details>
+                );
+              }
+              return g.items.map((r) => renderRij(r));
+            })}
           </div>
         );
       })}

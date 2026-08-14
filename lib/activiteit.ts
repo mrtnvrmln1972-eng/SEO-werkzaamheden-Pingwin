@@ -19,7 +19,7 @@ import { sql, ensureSchema } from "./db";
 export type ActiviteitSoort =
   | "analyse" | "blauwdruk" | "copy" | "copy-live" | "copy-concept"
   | "meta" | "alt" | "intern-link" | "structured" | "redirect" | "paginawijziging"
-  | "gmb-profiel" | "gmb-review";
+  | "gmb-profiel" | "gmb-review" | "taak" | "mail";
 
 export type Uitvoerder = "Pingwin" | "Sitebouwer";
 
@@ -53,6 +53,8 @@ const KLANTTAAL: Record<ActiviteitSoort, string> = {
   paginawijziging: "Pagina aangepast op de site",
   "gmb-profiel": "Google-bedrijfsprofiel bijgewerkt, zodat u beter gevonden wordt op de kaart",
   "gmb-review": "Nieuwe review op Google",
+  taak: "Taak afgerond",
+  mail: "Mail verstuurd",
 };
 
 // Labels voor jouw eigen scherm.
@@ -61,6 +63,7 @@ export const SOORT_LABEL: Record<ActiviteitSoort, string> = {
   meta: "Meta-teksten", alt: "Alt-teksten", "intern-link": "Interne links",
   structured: "Structured data", redirect: "Redirect", paginawijziging: "Paginawijziging",
   "gmb-profiel": "Google-profiel", "gmb-review": "Google-review",
+  taak: "Taak", mail: "Mail",
 };
 
 // Wat je standaard met een klant zou delen. Een gedetecteerde paginawijziging is
@@ -74,6 +77,13 @@ const STANDAARD_ZICHTBAAR: Record<ActiviteitSoort, boolean> = {
   // Een profielwijziging is werk dat de klant mag zien. Een binnengekomen review
   // is een seintje voor ons, geen werk van ons: die blijft intern.
   "gmb-profiel": true, "gmb-review": false,
+  // Een taak volgt de eigen klant-zichtbaar-keuze die er al per taak is (wordt
+  // altijd expliciet meegegeven); deze waarde is alleen een achtervang.
+  taak: true,
+  // Elke uitgaande mail komt in het logboek, maar pas na een bewuste "delen"-klik
+  // ook bij de klant: net als bij een blauwdruk weten we pas achteraf of een mail
+  // de moeite waard is om te laten zien.
+  mail: false,
 };
 
 let tableReady: Promise<void> | null = null;
@@ -135,7 +145,7 @@ export async function logActiviteit(input: LogInput): Promise<void> {
     await ensureTable();
     const p = pad(input.url);
     const intern = input.intern || `${SOORT_LABEL[input.soort]}${p ? ` voor ${p}` : ""}`;
-    const klant = input.klant || KLANTTAAL[input.soort];
+    const klant = input.klant || `${KLANTTAAL[input.soort]}${p ? ` (${p})` : ""}`;
     const wanneer = input.gebeurdeOp ? new Date(input.gebeurdeOp) : new Date();
     if (Number.isNaN(wanneer.getTime())) return;
     await sql`

@@ -184,6 +184,50 @@ export function diffSummary(diff: ContentDiff): string {
   return parts.length ? parts.join(", ") : "geen relevante wijzigingen";
 }
 
+function kort(s: string, n = 70): string {
+  const t = (s || "").trim();
+  return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+}
+
+/**
+ * Begrijpelijke zin voor het "Wat we doen"-logboek: waar de diff het toelaat
+ * (titel, meta-beschrijving, hoofdkop) laat dit de echte nieuwe tekst zien in
+ * plaats van alleen te melden dát er iets veranderde. `fallback` (meestal de
+ * bestaande change_summary) wordt gebruikt als de diff leeg is, bijvoorbeeld
+ * bij een wijziging die uit WordPress-revisies is afgeleid zonder volledige diff.
+ */
+export function diffKlantTekst(diff: ContentDiff, fallback?: string): string {
+  const delen: string[] = [];
+  if (diff.meta_title) delen.push(`paginatitel aangepast naar "${kort(diff.meta_title.after)}"`);
+  if (diff.meta_description) delen.push(`zoekresultaat-tekst aangepast naar "${kort(diff.meta_description.after)}"`);
+  if (diff.h1) delen.push(`hoofdkop aangepast naar "${kort(diff.h1.after)}"`);
+  if (diff.h2s?.added.length || diff.h2s?.removed.length) {
+    const n = (diff.h2s?.added.length || 0) + (diff.h2s?.removed.length || 0);
+    delen.push(`${n} tussenkop${n === 1 ? "" : "pen"} aangepast`);
+  }
+  if (diff.h3s?.added.length || diff.h3s?.removed.length) {
+    const n = (diff.h3s?.added.length || 0) + (diff.h3s?.removed.length || 0);
+    delen.push(`${n} subkop${n === 1 ? "" : "pen"} aangepast`);
+  }
+  if (diff.alt_tags?.added.length || diff.alt_tags?.removed.length || diff.alt_tags?.changed.length) {
+    const n = (diff.alt_tags?.added.length || 0) + (diff.alt_tags?.removed.length || 0) + (diff.alt_tags?.changed.length || 0);
+    delen.push(`${n} afbeelding${n === 1 ? "" : "en"} van een beschrijving voorzien`);
+  }
+  if (diff.internal_links?.added.length || diff.internal_links?.removed.length) {
+    delen.push("interne links aangepast");
+  }
+  if (diff.word_count) {
+    const d = diff.word_count.delta;
+    delen.push(`tekst ${d > 0 ? "uitgebreid" : "ingekort"} (${d > 0 ? "+" : ""}${d} woorden)`);
+  }
+  if (diff.schema_types?.added.length || diff.schema_types?.removed.length) {
+    delen.push("extra informatie voor Google toegevoegd");
+  }
+  if (!delen.length) return fallback || "Pagina aangepast";
+  const zin = delen.join(", ");
+  return zin.charAt(0).toUpperCase() + zin.slice(1);
+}
+
 /** Totaal aantal gewijzigde onderdelen (voor sortering/prioriteit). */
 export function diffScore(diff: ContentDiff): number {
   let score = 0;

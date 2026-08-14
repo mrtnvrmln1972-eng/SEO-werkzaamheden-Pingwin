@@ -12,6 +12,7 @@
 
 import { sql, ensureSchema } from "./db";
 import { logActiviteiten, type LogInput, type ActiviteitSoort } from "./activiteit";
+import { diffKlantTekst, type ContentDiff } from "./content-diff";
 
 const DOC_SOORT: Record<string, ActiviteitSoort> = {
   analyse: "analyse", blauwdruk: "blauwdruk", copy: "copy", structured: "structured",
@@ -115,16 +116,18 @@ export async function vulActiviteitUitBestaandeData(slug: string): Promise<VulRe
   // 7. Wijzigingen die op een live pagina zijn gedetecteerd. Standaard niet zichtbaar
   //    voor de klant: dit kan net zo goed een aanpassing van henzelf zijn.
   const changes = await stil(
-    sql`SELECT id, url, detected_at, change_summary FROM page_change_events
+    sql`SELECT id, url, detected_at, change_summary, diff FROM page_change_events
         WHERE client_slug = ${slug} ORDER BY detected_at DESC LIMIT 300`.then((r) => r.rows),
     [] as Record<string, unknown>[],
   );
   for (const c of changes) {
     const samenvatting = String(c.change_summary || "").trim();
+    const diff = (c.diff as ContentDiff) || {};
     rijen.push({
       slug, soort: "paginawijziging", bron: "page_change_events", bronId: Number(c.id),
       gebeurdeOp: c.detected_at as string, url: (c.url as string) || null,
       intern: samenvatting ? `Pagina aangepast: ${samenvatting.slice(0, 200)}` : "Pagina aangepast",
+      klant: diffKlantTekst(diff, samenvatting || "Pagina aangepast"),
     });
   }
 
@@ -138,6 +141,22 @@ export async function vulActiviteitUitBestaandeData(slug: string): Promise<VulRe
     rijen.push({
       slug, soort: "copy-live", bron: "page_copy_live", bronId: String(l.url),
       gebeurdeOp: l.checked_at as string, url: (l.url as string) || null,
+    });
+  }
+
+  // 9. Verstuurde mail met werk erin, ook van vóór deze uitbreiding.
+  const mails = await stil(
+    sql`SELECT id, subject, received_at, superhuman_link, web_link FROM client_emails
+        WHERE client_slug = ${slug} AND direction = 'out'`.then((r) => r.rows),
+    [] as Record<string, unknown>[],
+  );
+  for (const m of mails) {
+    const onderwerp = `Mail: ${(m.subject as string) || "(geen onderwerp)"}`;
+    rijen.push({
+      slug, soort: "mail", bron: "client_emails", bronId: String(m.id),
+      gebeurdeOp: (m.received_at as string) || undefined,
+      bewijs: (m.superhuman_link as string) || (m.web_link as string) || null,
+      intern: onderwerp, klant: onderwerp,
     });
   }
 

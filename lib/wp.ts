@@ -212,5 +212,6 @@ export async function savePageRedirect(slug: string, pageUrl: string, fromPath: 
   await logActiviteit({
     slug, soort: "redirect", bron: "page_redirects", bronId: `${pageUrl}|${fromPath}`,
     url: pageUrl, intern: `Redirect ${fromPath} → ${toPath}`,
+    klant: `Oud webadres ${fromPath} stuurt nu automatisch door naar ${toPath}`,
   });
 }

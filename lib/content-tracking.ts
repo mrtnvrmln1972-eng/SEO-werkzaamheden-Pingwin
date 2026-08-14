@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
-import { diffSnapshots, diffSummary, isDiffEmpty, type SnapshotForDiff, type ContentDiff } from "./content-diff";
+import { diffSnapshots, diffSummary, diffKlantTekst, isDiffEmpty, type SnapshotForDiff, type ContentDiff } from "./content-diff";
+import { logActiviteit } from "./activiteit";
 import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, fetchWordpressUsers, revisionDiffSummary, headingsFromHtml, type WpAuth, type WpRevision } from "./wordpress";
 
 // ═══════════════════════════════════════════════════════════
@@ -231,9 +232,14 @@ export async function captureAndDetect(slug: string, url: string): Promise<{ cha
   const diff: ContentDiff = diffSnapshots(toForDiff(previous), toForDiff(snap));
   if (isDiffEmpty(diff)) return { changed: false };
   const summary = diffSummary(diff);
-  await sql`
+  const { rows: evIns } = await sql`
     INSERT INTO page_change_events (client_slug, url, previous_snapshot_id, current_snapshot_id, diff, change_summary)
-    VALUES (${slug}, ${url}, ${Number(previous.id)}, ${currentId}, ${JSON.stringify(diff)}, ${summary})`;
+    VALUES (${slug}, ${url}, ${Number(previous.id)}, ${currentId}, ${JSON.stringify(diff)}, ${summary})
+    RETURNING id`;
+  await logActiviteit({
+    slug, soort: "paginawijziging", bron: "page_change_events", bronId: Number(evIns[0].id),
+    url, intern: `Pagina aangepast: ${summary}`, klant: diffKlantTekst(diff, summary),
+  });
   return { changed: true, summary };
 }
 
@@ -340,9 +346,14 @@ export async function addWordpressChanges(slug: string, domain: string): Promise
     const day = new Date(it.modified).toISOString().slice(0, 10);
     if (seen.has(`${key}|${day}`)) continue;
     const summary = `WordPress: pagina aangepast op ${new Date(it.modified).toLocaleDateString("nl-NL")}`;
-    await sql`
+    const { rows: evIns } = await sql`
       INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual, source)
-      VALUES (${slug}, ${it.url}, ${it.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')`;
+      VALUES (${slug}, ${it.url}, ${it.modified}, ${null}, ${"{}"}, ${summary}, true, 'wordpress')
+      RETURNING id`;
+    await logActiviteit({
+      slug, soort: "paginawijziging", bron: "page_change_events", bronId: Number(evIns[0].id),
+      gebeurdeOp: it.modified, url: it.url, intern: summary, klant: summary,
+    });
     added++; seen.add(`${key}|${day}`);
   }
   return { scanned, added, hasApi: true, newest };
@@ -468,9 +479,14 @@ export async function addWordpressRevisions(slug: string, domain: string, auth: 
       }
       const who = users.get(last.r.author)?.name || "";
       const summary = `WordPress${who ? ` (${who})` : ""}: ${what}${cl.length > 1 ? ` (${cl.length} bewerkingen gebundeld)` : ""}`;
-      await sql`
+      const { rows: evIns } = await sql`
         INSERT INTO page_change_events (client_slug, url, detected_at, current_snapshot_id, diff, change_summary, is_manual, source)
-        VALUES (${slug}, ${p.url}, ${last.r.modified}, ${null}, ${JSON.stringify(diff)}, ${summary}, true, 'wordpress')`;
+        VALUES (${slug}, ${p.url}, ${last.r.modified}, ${null}, ${JSON.stringify(diff)}, ${summary}, true, 'wordpress')
+        RETURNING id`;
+      await logActiviteit({
+        slug, soort: "paginawijziging", bron: "page_change_events", bronId: Number(evIns[0].id),
+        gebeurdeOp: last.r.modified, url: p.url, intern: summary, klant: diffKlantTekst(diff, summary),
+      });
       added++; seen.add(dedupKey);
     }
   }

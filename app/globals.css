@@ -4125,7 +4125,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .act-soort-copy, .act-soort-copy-live { color: #1e824c; background: #eaf6ef; }
 .act-soort-meta, .act-soort-alt { color: var(--link); background: #e7f1fa; }
 .act-soort-paginawijziging { color: var(--gray); background: var(--gray-light); }
+.act-soort-mail { color: var(--link); background: #e7f1fa; }
+.act-soort-taak { color: var(--orange-dark); background: var(--orange-light); }
 .act-tekst { color: var(--body-text); }
+/* Samengevouwen groep: veel regels van dezelfde soort op één dag (bijv. tientallen
+   redirects). Zelfde marker-patroon als .opr-onderwerp, eigen naamruimte omdat de
+   datastructuur anders is. */
+.act-groep { border-bottom: 1px solid var(--card-border); }
+.act-groep:last-child { border-bottom: none; }
+.act-groep-kop {
+  display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+  padding: var(--s-2) 0; cursor: pointer; list-style: none;
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+.act-groep-kop::-webkit-details-marker { display: none; }
+.act-groep-kop::before { content: "▸"; color: var(--orange); font-size: var(--fs-xs); line-height: var(--lh-xs); }
+.act-groep[open] > .act-groep-kop::before { content: "▾"; }
+.act-groep-aantal { color: var(--gray); font-size: var(--fs-xs); font-weight: 600; }
+.act-groep > .act-rij { padding-left: var(--s-6); }
 .act-pad { color: var(--link); text-decoration: none; font-size: var(--fs-xs); }
 .act-pad:hover { text-decoration: underline; }
 .act-spacer { flex: 1 1 auto; }

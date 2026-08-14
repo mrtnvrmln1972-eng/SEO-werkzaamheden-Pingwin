@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { logActiviteit } from "./activiteit";
 
 // ═══════════════════════════════════════════════════════════
 // WERKZAAMHEDEN PER KLANT (in het dashboard, niet in Google Sheets)
@@ -57,6 +58,26 @@ function dedupeTasks(tasks: TaskRow[]): TaskRow[] {
   }
   return out;
 }
+
+// Kale taaktekst zonder HTML, voor identiteit en logboek-teksten.
+function taakTekst(s: string): string {
+  return (s || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
+
+// Identiteit van een taak die stabiel blijft tussen twee saves, ook al krijgt
+// de rij bij elke save een nieuw database-id (replaceTasks bouwt de tabel elke
+// keer helemaal opnieuw op). Bewust GEEN status/uren/link/toelichting hierin,
+// want dat zijn precies de velden die veranderen zonder dat het een andere
+// taak wordt; anders is een statuswissel naar "Klaar" niet meer te herkennen.
+function taakIdentiteit(t: { categorie: string; taak: string; maand: string }): string {
+  return [
+    (t.categorie || "").trim().toLowerCase(),
+    taakTekst(t.taak).toLowerCase(),
+    (t.maand || "").trim().toLowerCase(),
+  ].join(String.fromCharCode(1));
+}
+
+const AFGEROND = new Set(["klaar", "verwerkt"]);
 
 // Ontdubbelt pagina-/pijplijn-taken: dezelfde ZICHTBARE titel op dezelfde pagina is
 // een duplicaat (bv. de analyse/blauwdruk/copy-taak die per doc-run opnieuw is
@@ -233,6 +254,18 @@ export async function hasTasks(slug: string): Promise<boolean> {
 // De volgorde in de array bepaalt sort_order (slepen/sorteren).
 export async function replaceTasks(slug: string, tasks: TaskRow[]): Promise<number> {
   await ensureSchema();
+  // Oude status per taak-identiteit vastleggen, vóór de herbouw hieronder: zo
+  // weten we straks welke taak nét naar "Klaar"/"Verwerkt" is gegaan, ook al
+  // krijgt elke rij bij deze save een nieuw database-id.
+  const { rows: oudeRijen } = await sql`
+    SELECT categorie, taak, maand, status FROM client_tasks WHERE client_slug = ${slug}
+    AND (step_kind IS NULL OR step_kind NOT LIKE 'weekplan%')`;
+  const oudeStatus = new Map<string, string>();
+  for (const r of oudeRijen) {
+    const id = taakIdentiteit({ categorie: (r.categorie as string) || "", taak: (r.taak as string) || "", maand: (r.maand as string) || "" });
+    oudeStatus.set(id, ((r.status as string) || "").trim().toLowerCase());
+  }
+
   await sql`DELETE FROM client_tasks WHERE client_slug = ${slug}
     AND (step_kind IS NULL OR step_kind NOT LIKE 'weekplan%')`;
   const clean = dedupeTasks(tasks);
@@ -249,6 +282,24 @@ export async function replaceTasks(slug: string, tasks: TaskRow[]): Promise<numb
               ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null},
               ${t.stepKind || null}, ${t.docLink || null}, ${t.clientDocLink || null}, now())`;
     n++;
+
+    // Nét afgerond (was nog niet Klaar/Verwerkt bij de vorige save) -> in het
+    // "Wat we doen"-logboek. Content-based bron_id, dus dit gebeurt maar één keer
+    // per taak, ook als hij daarna nog vaker bewaard wordt op dezelfde status.
+    const nieuweStatus = (t.status || "").trim().toLowerCase();
+    if (AFGEROND.has(nieuweStatus)) {
+      const identiteit = taakIdentiteit(t);
+      const wasAlAfgerond = oudeStatus.has(identiteit) && AFGEROND.has(oudeStatus.get(identiteit)!);
+      if (!wasAlAfgerond) {
+        const tekst = taakTekst(t.taak);
+        await logActiviteit({
+          slug, soort: "taak", bron: "client_tasks", bronId: identiteit,
+          url: t.pageUrl || null, zichtbaar: !!t.klantZichtbaar,
+          intern: `Taak afgerond: ${t.categorie ? `${t.categorie} – ` : ""}${tekst}`,
+          klant: tekst,
+        });
+      }
+    }
   }
   return n;
 }
