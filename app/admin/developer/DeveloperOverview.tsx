@@ -418,15 +418,10 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
               weekplanning was dit knopje allang voorbij gescrolld tegen de tijd dat
               je hem nodig had. */}
           {view === "week" && activeRows.length > 0 && (
-            <button type="button" className="btn btn-ghost btn-klein dev-kop-naar-week"
+            <button type="button" className="btn btn-quiet btn-klein dev-kop-naar-week"
               onClick={() => huidigeWeekRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })}>Naar deze week</button>
           )}
         </div>
-        {view === "list" && (
-          <p className="dev-intro">
-            Alle klanten bij elkaar: de taken die op status “Naar Dev” staan, plus de taken die je zelf aanmaakt. Sleep een taak binnen een klant om de prioriteit te bepalen, zet een uitvoerdatum, en open “Bewerk” om de opdracht, de opmerking en de documenten (ook een zip) bij te werken. Vink zelf “Afgerond” aan om een taak naar het archief van die klant te verplaatsen, los van het vinkje van de developer.
-          </p>
-        )}
         {loading && <p className="muted">Taken laden…</p>}
         {!loading && rows.length === 0 && (
           <p className="muted">

@@ -845,7 +845,6 @@ tbody td:last-child { text-align: center; }
 .prio-gepland .prio-titel { color: var(--muted); }
 
 /* Developer Overview */
-.dev-intro { font-size: 13px; color: var(--gray); margin: 0 0 16px; max-width: 720px; line-height: 1.5; }
 .dev-client-card { padding: 16px 18px; }
 .dev-client-card-head { font-weight: 700; font-size: 16px; color: var(--dark); border-bottom: 2px solid var(--orange); padding-bottom: 8px; margin-bottom: 10px; }
 .dev-client-count { font-weight: 500; font-size: 13px; color: var(--gray); }
@@ -875,11 +874,16 @@ tbody td:last-child { text-align: center; }
 .dev-kop-sticky {
   position: sticky; top: 80px; z-index: 30;
   background: var(--app-bg);
-  justify-content: space-between; flex-wrap: wrap; gap: var(--s-2);
+  flex-wrap: wrap; gap: var(--s-2);
   padding: var(--s-2) 0; margin-bottom: var(--s-3);
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
-.dev-kop-titel { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+/* Neemt de resterende ruimte in, zodat de titel en de weergave-knoppen links
+   blijven staan en "Naar deze week" er als enige naar de rechterkant duwt,
+   in plaats van dat justify-content:space-between de titel zelf naar het
+   midden trekt (dat gebeurde toen de ::before-balk van .section-title als
+   los flex-item meetelde). */
+.dev-kop-titel { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; flex: 1 1 auto; }
 .dev-kop-naar-week { flex-shrink: 0; }
 /* Weekplanning: één verticaal scrollende lijst van weken (elke week zelf
    horizontaal, maandag t/m zondag), met de "nog niet ingepland"-balk er als
