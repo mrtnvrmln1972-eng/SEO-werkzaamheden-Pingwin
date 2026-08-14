@@ -122,9 +122,18 @@ export default function MailUitKaart({
     };
     if (t.url) voegToe("pagina", "De pagina", t.url);
     for (const d of docs) voegToe(d.url, d.label, d.url);
+    // Zonder Drive-link (er was nog geen map gekozen toen het document werd
+    // gemaakt) valt de kaart terug op de interne documentweergave, want anders
+    // is er niets om aan te vinken terwijl de tekst wél bestaat. Meestal komt
+    // dit al binnen via `docs` hierboven; deze regels zijn het vangnet voor het
+    // geval dat niet zo is.
+    const interneLink = (kind: string) => t.url ? `/admin/client/${slug}/document?kind=${kind}&url=${encodeURIComponent(t.url)}` : "";
     if (page?.links.copy || t.copyUrl) voegToe("copy", "Copy-doc", page?.links.copy || t.copyUrl);
+    else if (page?.copy) voegToe("copy", "Copy-doc", interneLink("copy"));
     if (page?.links.blauwdruk) voegToe("blauwdruk", "Blauwdruk-doc", page.links.blauwdruk);
+    else if (page?.blauwdruk) voegToe("blauwdruk", "Blauwdruk-doc", interneLink("blauwdruk"));
     if (page?.links.analyse) voegToe("analyse", "Analyse-doc", page.links.analyse);
+    else if (page?.analyse) voegToe("analyse", "Analyse-doc", interneLink("analyse"));
     return uit;
   }
 

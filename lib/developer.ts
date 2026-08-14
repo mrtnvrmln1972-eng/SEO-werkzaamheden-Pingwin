@@ -167,6 +167,24 @@ export async function docsVoorPagina(slug: string, url: string): Promise<{ label
     voegToe("Copy", s.copy);
     voegToe("Blauwdruk", s.blauwdruk);
     voegToe("Analyse", s.analyse);
+    // Is een stap wel gegenereerd maar staat er geen Drive-link bij (er was toen
+    // geen map gekozen), dan blijft de tekst zonder deze terugval onvindbaar in
+    // dit venster: het document bestaat wél, maar niets om mee te sturen. De
+    // interne documentweergave heeft altijd een knop om alsnog een Word-bestand
+    // te downloaden, dus die link werkt ook als vangnet.
+    const alleKinden = [
+      { kind: "copy", label: "Copy" }, { kind: "blauwdruk", label: "Blauwdruk" }, { kind: "analyse", label: "Analyse" },
+    ] as const;
+    const ontbreekt = alleKinden.filter((k) => !s[k.kind]);
+    if (ontbreekt.length) {
+      const { getPageDocOutputs } = await import("./site-urls");
+      const outputs = await getPageDocOutputs(slug, url).catch(() => ({} as Record<string, string>));
+      for (const k of ontbreekt) {
+        if ((outputs[k.kind] || "").trim()) {
+          voegToe(k.label, `/admin/client/${slug}/document?kind=${k.kind}&url=${encodeURIComponent(url)}`);
+        }
+      }
+    }
   } catch { /* zonder pijplijn-documenten verder */ }
 
   try {

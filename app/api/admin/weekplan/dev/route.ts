@@ -4,7 +4,6 @@ import { guardSlug } from "../../../../../lib/admin-scope";
 import { getWeekplan, getWeekplanDev, setWeekplanNaarDev } from "../../../../../lib/weekplan";
 import { docsVoorPagina } from "../../../../../lib/developer";
 import { goedgekeurdeVersies } from "../../../../../lib/doc-versions";
-import { getStepLinks } from "../../../../../lib/page-doc-run";
 import { ALLE_PUNTEN, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { devSturing } from "../../../../../lib/developer";
 import { planOpvolging } from "../../../../../lib/mail-opvolg";
@@ -47,8 +46,10 @@ export async function GET(req: NextRequest) {
   // Is er een copy-document, dan hoort dat standaard aan te staan: dat is de
   // tekst die de sitebouwer meestal moet verwerken. Stond er niet bij, dan ging
   // een kaart naar de developer (of een mail aan hem) zonder de copy erbij, en
-  // moest hij die alsnog los opvragen.
-  const copyLink = kaart.url ? (await getStepLinks(slug, kaart.url).catch(() => null))?.copy || "" : "";
+  // moest hij die alsnog los opvragen. Gepakt uit `beschikbaar` (niet los
+  // opnieuw opgezocht): die lijst wijst ook naar de interne documentweergave
+  // als er nog geen Drive-link is, en dan moet precies díe link aanstaan.
+  const copyLink = beschikbaar.find((d) => d.label === "Copy")?.url || "";
 
   return NextResponse.json({
     ok: true,
