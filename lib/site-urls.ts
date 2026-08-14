@@ -383,6 +383,13 @@ export async function savePagePlan(slug: string, url: string, plan: string): Pro
     INSERT INTO page_plans (client_slug, url, plan, updated_at)
     VALUES (${slug}, ${url}, ${plan || null}, now())
     ON CONFLICT (client_slug, url) DO UPDATE SET plan = ${plan || null}, updated_at = now()`;
+  // De nieuwe strategie is leidend: al het advies dat DEZE pagina eerder aan andere
+  // pagina's heeft doorgegeven ("half plan") is gebaseerd op de vorige strategie en
+  // dus verouderd. Trek het overal in; wie het nog wil, geeft het gewoon opnieuw door
+  // vanuit de bijgewerkte strategie (les uit de Hovenier Uden-casus, 14-08-2026: een
+  // strategiewijziging liet oud, doorgegeven advies overal onopgemerkt liggen, en dat
+  // advies sprak de nieuwe strategie later tegen zonder dat iemand het zag).
+  await deleteOutgoingClusterAdvice(slug, url);
 }
 
 // ── Korte samenvatting per pagina (de toplaag boven de volle strategie) ──
@@ -475,13 +482,25 @@ export async function savePageClusterAdvice(slug: string, url: string, advice: s
 }
 
 // Cluster-advies van één bronpagina weer weghalen (bij "herstel" van een
-// doorgezette tabel-rij).
+// doorgezette tabel-rij, of wanneer de ontvangende pagina het advies zelf negeert).
 export async function deletePageClusterAdvice(slug: string, url: string, sourceUrl: string): Promise<void> {
   await ensureSchema();
   await ensureTables();
   const u = normUrl(url);
   if (!u) return;
   await sql`DELETE FROM page_cluster_advice WHERE client_slug = ${slug} AND url = ${u} AND source_url IS NOT DISTINCT FROM ${sourceUrl || null}`;
+}
+
+// Al het advies weghalen dat VANUIT deze pagina naar ANDERE pagina's is doorgegeven
+// (ongeacht welke pagina het ontving). Wordt automatisch aangeroepen zodra deze
+// pagina een nieuwe strategie krijgt (zie savePagePlan hierboven): het oude advies
+// was op de oude strategie gebaseerd en mag dan nergens meer meewegen.
+export async function deleteOutgoingClusterAdvice(slug: string, sourceUrl: string): Promise<void> {
+  await ensureSchema();
+  await ensureTables();
+  const u = normUrl(sourceUrl);
+  if (!u) return;
+  await sql`DELETE FROM page_cluster_advice WHERE client_slug = ${slug} AND source_url = ${u}`;
 }
 
 // Uitgaand: welk advies is er VANUIT deze (bron)pagina doorgegeven aan andere

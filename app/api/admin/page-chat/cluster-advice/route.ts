@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
-import { getClientUrls, getPageClusterAdvice, getOutgoingClusterAdvice } from "../../../../../lib/site-urls";
+import { getClientUrls, getPageClusterAdvice, getOutgoingClusterAdvice, deletePageClusterAdvice } from "../../../../../lib/site-urls";
 import { extractClusterAdvice } from "../../../../../lib/page-chat-ground";
 import { anthropicConfigured } from "../../../../../lib/anthropic";
 
@@ -49,4 +49,17 @@ export async function GET(req: NextRequest) {
   }
   const incoming = await getPageClusterAdvice(slug, url);
   return NextResponse.json({ ok: true, incoming });
+}
+
+// Eén meegegeven advies negeren/verwijderen (de ontvangende pagina wil het niet
+// laten meewegen, bijvoorbeeld omdat het de eigen, nieuwere strategie tegenspreekt).
+export async function DELETE(req: NextRequest) {
+  if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
+  const slug = req.nextUrl.searchParams.get("slug") || "";
+  const url = req.nextUrl.searchParams.get("url") || "";
+  const sourceUrl = req.nextUrl.searchParams.get("sourceUrl") || "";
+  if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
+  const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+  await deletePageClusterAdvice(slug, url, sourceUrl);
+  return NextResponse.json({ ok: true });
 }

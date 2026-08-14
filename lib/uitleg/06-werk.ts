@@ -63,6 +63,10 @@ export const HOOFDSTUK: Hoofdstuk = {
         "beide plekken waar de chat staat: bij de pagina in Pagina's én op de projectkaart in de planning. " +
         "Zonder die klik draaien de volgende fases op de live data alleen, zonder de conclusies uit het " +
         "gesprek.\n\n" +
+        "**Nieuwe strategie trekt oud, doorgegeven advies in.** Leg je de strategie opnieuw vast, dan verdwijnt " +
+        "advies dat die pagina eerder via \"Gelieerde pagina's\" doorgaf automatisch overal. Meegegeven advies " +
+        "staat bij de ontvanger zichtbaar boven de chat met een knop \"Negeer dit advies\"; het lopende gesprek " +
+        "wint altijd van ouder advies.\n\n" +
         "**Alle documenten van een pagina komen in één Google Drive-map**, en die kies je bovenaan het " +
         "fase-blok: de knop staat naast \"Alles in één keer\", want daar worden ze ook gemaakt. Strategie, " +
         "analyse, blauwdruk en copy landen er alle vier in. Kies je niets, dan blijven de documenten in het " +

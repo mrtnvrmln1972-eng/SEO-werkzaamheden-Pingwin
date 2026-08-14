@@ -113,7 +113,7 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     "",
     `HUIDIG PLAN VOOR DE GEOPENDE PAGINA: ${plan || "(nog geen plan)"}`,
     "",
-    "MEEGEGEVEN CLUSTER-ADVIES (vanuit de analyse van een andere pagina; gebruik dit als vertrekpunt voor het doel en de zoekwoorden van deze pagina en toets het aan de live feiten):",
+    "MEEGEGEVEN CLUSTER-ADVIES (vanuit de analyse van een andere pagina; gebruik dit als vertrekpunt voor het doel en de zoekwoorden van deze pagina en toets het aan de live feiten. Dit is een SUGGESTIE uit een ouder gesprek, geen vaststaand besluit: zegt Maarten in DIT gesprek expliciet iets anders (bijvoorbeeld dat de bestaande URL/structuur blijft staan), dan wint dat altijd; neem het meegegeven advies dan niet over in de samenvatting of het plan):",
     clusterAdvice.length ? clusterAdvice.map((a) => `- ${a.advice}${a.sourceUrl ? ` (uit de analyse van ${normUrl(a.sourceUrl)})` : ""}`).join("\n") : "- (geen meegegeven cluster-advies)",
     ...(clusterFullContext ? ["", clusterFullContext] : []),
     "",
@@ -125,6 +125,7 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
 
 HARDE REGELS:
 - Verzin NIETS over het bestaan of de ranking van een pagina. Gebruik alleen de live feiten hieronder en wat je via gereedschap ophaalt.
+- MEEGEGEVEN CLUSTER-ADVIES IS EEN SUGGESTIE, GEEN BESLUIT: het komt uit een eerder, ander gesprek over een andere pagina. Spreekt Maarten dat in DIT gesprek tegen (bijvoorbeeld: de bestaande URL/pagina blijft gewoon staan), dan is dat de nieuwste, geldende beslissing; laat het meegegeven advies dan volledig los, ook in de eindsamenvatting en het plan. Twijfel je of het nog geldt, vraag het na in plaats van het stilzwijgend te combineren met wat Maarten net zei.
 - Je hebt Search Console (rankings, klikken, vertoningen). Daarnaast heb je gereedschap dat je ZELF inschakelt wanneer het je advies scherper maakt. Wees niet zuinig als het telt, maar batch en vermijd overbodige calls:
   • ahrefs_keyword_volume: echt maandelijks zoekvolume, difficulty én zoekintentie van zoekwoorden (batch ze). Voor termkeuze, vergelijking en intentie-matching.
   • ahrefs_keyword_ideas: zoekwoord-ideeën rond een zaad-term, met volume. Om termen te vinden waar de klant nog NIET op rankt en de beste primaire/secundaire set te kiezen.
