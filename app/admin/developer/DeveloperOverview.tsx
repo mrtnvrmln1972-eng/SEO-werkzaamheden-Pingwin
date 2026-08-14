@@ -402,16 +402,25 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   const content = (
     <>
         <div className="dev-wide">
-        <div className="section-title">
-          Taken voor de developer ({activeRows.length})
-          {saveLabel && <span className="focus-save-status" style={{ marginLeft: "var(--s-3)" }}>{saveLabel}</span>}
-          <span className="dev-view-toggle">
-            {slug && (
-              <button type="button" className="dev-nieuw-btn" onClick={() => setVenster({ taak: null, clientSlug: slug, clientName: clientName || slug })}>+ Nieuwe taak</button>
-            )}
-            <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Lijst per klant</button>
-            <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Weekplanning</button>
+        <div className="section-title dev-kop-sticky">
+          <span className="dev-kop-titel">
+            Taken voor de developer ({activeRows.length})
+            {saveLabel && <span className="focus-save-status" style={{ marginLeft: "var(--s-3)" }}>{saveLabel}</span>}
+            <span className="dev-view-toggle">
+              {slug && (
+                <button type="button" className="dev-nieuw-btn" onClick={() => setVenster({ taak: null, clientSlug: slug, clientName: clientName || slug })}>+ Nieuwe taak</button>
+              )}
+              <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Lijst per klant</button>
+              <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Weekplanning</button>
+            </span>
           </span>
+          {/* Blijft, samen met de rest van deze balk, bovenin staan: bij een lange
+              weekplanning was dit knopje allang voorbij gescrolld tegen de tijd dat
+              je hem nodig had. */}
+          {view === "week" && activeRows.length > 0 && (
+            <button type="button" className="btn btn-ghost btn-klein dev-kop-naar-week"
+              onClick={() => huidigeWeekRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })}>Naar deze week</button>
+          )}
         </div>
         {view === "list" && (
           <p className="dev-intro">
@@ -432,9 +441,6 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         {view === "week" && activeRows.length > 0 && (
           <div className="dev-week-scherm">
             <div className="cockpit-card dev-week">
-              <div className="dev-week-toolbar">
-                <button type="button" className="ghost-btn small" onClick={() => huidigeWeekRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })}>Naar deze week</button>
-              </div>
               <div className="dev-weeks-scroll" ref={weeksScrollRef}>
                 {DEV_WEEK_OFFSETS.map((offset) => {
                   const weekStart = mondayOf(offset);

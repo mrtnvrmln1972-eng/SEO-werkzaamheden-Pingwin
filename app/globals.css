@@ -865,16 +865,36 @@ tbody td:last-child { text-align: center; }
    net als .tk-wide op het Taken-tabblad. */
 .dev-wide { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); box-sizing: border-box; padding-left: 32px; padding-right: 32px; }
 .dev-week { padding: 16px 18px; }
+/* De kop van dit scherm ("Taken voor de developer" + Nieuwe taak/Lijst per
+   klant/Weekplanning, en in de weekplanning ook "Naar deze week") blijft
+   bovenin staan, onder de vaste cockpit-kopbalk (die is zelf sticky op
+   top: 0 met een hoogte van ongeveer 80px, vandaar dezelfde top-waarde als
+   elders in dit bestand). Zonder dit scrolde je bij een lange weekplanning
+   die knoppen straal voorbij, en moest je weer helemaal naar boven om van
+   weergave te wisselen of terug naar de huidige week te springen. */
+.dev-kop-sticky {
+  position: sticky; top: 80px; z-index: 30;
+  background: var(--app-bg);
+  justify-content: space-between; flex-wrap: wrap; gap: var(--s-2);
+  padding: var(--s-2) 0; margin-bottom: var(--s-3);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+.dev-kop-titel { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.dev-kop-naar-week { flex-shrink: 0; }
 /* Weekplanning: één verticaal scrollende lijst van weken (elke week zelf
    horizontaal, maandag t/m zondag), met de "nog niet ingepland"-balk er als
    vaste voet onder (zie .dev-pool-sticky). */
-.dev-week-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
 .dev-weeks-scroll { max-height: 62vh; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 2px 4px 2px 2px; scroll-behavior: smooth; }
 .dev-week-row-label { font-weight: 700; font-size: 13px; color: var(--dark); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
 .dev-week-row-nu .dev-week-row-label { color: var(--orange-dark); }
 .dev-week-row-nu-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; background: var(--orange-light); color: var(--orange-dark); padding: 2px 8px; border-radius: 999px; }
 .dev-week-grid { display: grid; grid-template-columns: repeat(7, minmax(180px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 4px; }
-.dev-day { border: 1px solid var(--border); border-radius: 8px; background: var(--light); min-height: 340px; display: flex; flex-direction: column; }
+/* Vroeger een vaste 340px, ook als een week maar één taak op één dag had:
+   dan stonden er zes lege dagen van 340px hoog naast één kaartje van 100px.
+   Grid-cellen rekken van zichzelf al gelijk mee met de hoogste kolom in hun
+   rij; deze kleine bodemwaarde is alleen nog voor een compleet lege week,
+   zodat die niet dichtklapt tot een streepje. */
+.dev-day { border: 1px solid var(--border); border-radius: 8px; background: var(--light); min-height: 64px; display: flex; flex-direction: column; }
 .dev-day.today { border-color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange); }
 .dev-day-head { font-size: 12px; font-weight: 700; color: var(--dark); padding: 8px 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; line-height: 1.2; }
 .dev-day-head span { font-weight: 500; color: var(--gray); font-size: 11px; }
