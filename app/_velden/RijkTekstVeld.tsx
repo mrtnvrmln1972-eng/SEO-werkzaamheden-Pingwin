@@ -96,6 +96,16 @@ export default function RijkTekstVeld({
       if (n.tagName === "LI" && n.parentElement && (n.parentElement.tagName === "UL" || n.parentElement.tagName === "OL")) {
         return n as HTMLElement;
       }
+      // De inhoud VAN een uitklapper (rtv-vouw-body) is zelf geen zelfstandig
+      // sleepbaar onderdeel: hij hoort bij zijn <details>/<summary> en mag er
+      // nooit los van komen. Zonder deze uitzondering ving de DIV-regel
+      // hieronder 'm al af zodra je binnen een open uitklapper sleepte: dan
+      // verhuisde alleen de inhoud, met een lege uitklapper en losse inhoud
+      // tot gevolg. Precies dit gebeurde op 14-08-2026 bij Paul Hoevenaars
+      // ("SEO-strategie (Uitgebreid, Ook Oud)" raakte zo zijn hele inhoud
+      // kwijt) en al eerder op 11-08-2026 bij Kamsteeg. Doorklimmen naar het
+      // omliggende <details> pakt voortaan het hele blok in één keer beet.
+      if (n.classList.contains("rtv-vouw-body")) { n = n.parentElement; continue; }
       if (BLOK_TAGS.has(n.tagName)) return n as HTMLElement;
       n = n.parentElement;
     }
