@@ -33,6 +33,14 @@ type Row = DevTask;
 
 const WEEKDAYS = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 const MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
+// Weekplanning: geen los "vorige/volgende week"-knopje meer, maar één
+// verticaal scrollende lijst van weken (elke week zelf horizontaal, maandag
+// t/m zondag). Acht weken terug en zestien vooruit is ruim genoeg voor "en de
+// week daarna, et cetera" zonder dat de lijst onnodig groeit; de huidige week
+// staat er middenin, dus terugscrollen kan net zo ver als vooruit.
+const DEV_WEKEN_TERUG = 8;
+const DEV_WEKEN_VOORUIT = 16;
+const DEV_WEEK_OFFSETS = Array.from({ length: DEV_WEKEN_TERUG + DEV_WEKEN_VOORUIT + 1 }, (_, i) => i - DEV_WEKEN_TERUG);
 const MAARTEN_EMAIL = "maarten@pingwin.nl";
 /** Het laatst gebruikte "aan"-adres van deze lijst; MailPopup onthoudt het na versturen. */
 const MAIL_AAN_SLEUTEL = "pingwin-devlijst-mail-aan";
@@ -74,8 +82,17 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   const [loading, setLoading] = useState(!initialTasks);
   const [view, setView] = useState<"list" | "week">("list");
-  const [weekOffset, setWeekOffset] = useState(0);
   const [dragTaskIdx, setDragTaskIdx] = useState<number | null>(null);
+  // De weekplanning scrollt zelf (verticaal, alle weken onder elkaar); deze week
+  // moet bij het openen van dat blok meteen bovenaan in beeld staan, in plaats
+  // van dat je eerst acht weken terug moet scrollen.
+  const weeksScrollRef = useRef<HTMLDivElement | null>(null);
+  const huidigeWeekRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (view !== "week") return;
+    const t = setTimeout(() => huidigeWeekRef.current?.scrollIntoView({ block: "start" }), 0);
+    return () => clearTimeout(t);
+  }, [view]);
   // Terugkoppeling-popup bij het afvinken van een taak als klaar.
   const [feedbackFor, setFeedbackFor] = useState<number | null>(null);
   const [feedbackNote, setFeedbackNote] = useState("");
@@ -245,8 +262,6 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
 
   // Weekplanning: taken per uitvoerdatum + de nog niet ingeplande taken. Zelf
   // afgeronde taken horen niet meer op het bord.
-  const weekStart = mondayOf(weekOffset);
-  const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
   const todayIso = isoOf(new Date());
   const tasksByDay = new Map<string, { r: Row; idx: number }[]>();
   rows.forEach((r, idx) => { if (r.ownerDone) return; if (r.execDate) { if (!tasksByDay.has(r.execDate)) tasksByDay.set(r.execDate, []); tasksByDay.get(r.execDate)!.push({ r, idx }); } });
@@ -354,6 +369,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
 
   const content = (
     <>
+        <div className="dev-wide">
         <div className="section-title">
           Taken voor de developer ({activeRows.length})
           {saveLabel && <span className="focus-save-status" style={{ marginLeft: "var(--s-3)" }}>{saveLabel}</span>}
@@ -365,11 +381,11 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Weekplanning</button>
           </span>
         </div>
-        <p className="dev-intro">
-          {view === "list"
-            ? "Alle klanten bij elkaar: de taken die op status “Naar Dev” staan, plus de taken die je zelf aanmaakt. Sleep een taak binnen een klant om de prioriteit te bepalen, zet een uitvoerdatum, en open “Bewerk” om de opdracht, de opmerking en de documenten (ook een zip) bij te werken. Vink zelf “Afgerond” aan om een taak naar het archief van die klant te verplaatsen, los van het vinkje van de developer."
-            : "Sleep taken naar een dag om ze in te plannen. De datum blijft bewaard (dezelfde als de uitvoerdatum in de lijst)."}
-        </p>
+        {view === "list" && (
+          <p className="dev-intro">
+            Alle klanten bij elkaar: de taken die op status “Naar Dev” staan, plus de taken die je zelf aanmaakt. Sleep een taak binnen een klant om de prioriteit te bepalen, zet een uitvoerdatum, en open “Bewerk” om de opdracht, de opmerking en de documenten (ook een zip) bij te werken. Vink zelf “Afgerond” aan om een taak naar het archief van die klant te verplaatsen, los van het vinkje van de developer.
+          </p>
+        )}
         {loading && <p className="muted">Taken laden…</p>}
         {!loading && rows.length === 0 && (
           <p className="muted">
@@ -382,28 +398,46 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         )}
 
         {view === "week" && activeRows.length > 0 && (
-          <div className="cockpit-card dev-week">
-            <div className="dev-week-nav">
-              <button type="button" onClick={() => setWeekOffset((w) => w - 1)}>&larr; Vorige</button>
-              <span className="dev-week-label">Week van {weekStart.getDate()} {MONTHS_SHORT[weekStart.getMonth()]} {weekStart.getFullYear()}</span>
-              <button type="button" onClick={() => setWeekOffset(0)}>Deze week</button>
-              <button type="button" onClick={() => setWeekOffset((w) => w + 1)}>Volgende &rarr;</button>
+          <div className="dev-week-scherm">
+            <div className="cockpit-card dev-week">
+              <div className="dev-week-toolbar">
+                <button type="button" className="ghost-btn small" onClick={() => huidigeWeekRef.current?.scrollIntoView({ block: "start", behavior: "smooth" })}>Naar deze week</button>
+              </div>
+              <div className="dev-weeks-scroll" ref={weeksScrollRef}>
+                {DEV_WEEK_OFFSETS.map((offset) => {
+                  const weekStart = mondayOf(offset);
+                  const weekDays = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart); d.setDate(d.getDate() + i); return d; });
+                  return (
+                    <div key={offset} ref={offset === 0 ? huidigeWeekRef : undefined} className={"dev-week-row" + (offset === 0 ? " dev-week-row-nu" : "")}>
+                      <div className="dev-week-row-label">
+                        Week van {weekStart.getDate()} {MONTHS_SHORT[weekStart.getMonth()]} {weekStart.getFullYear()}
+                        {offset === 0 && <span className="dev-week-row-nu-badge">deze week</span>}
+                      </div>
+                      <div className="dev-week-grid">
+                        {weekDays.map((d, i) => {
+                          const iso = isoOf(d);
+                          const items = tasksByDay.get(iso) || [];
+                          return (
+                            <div key={iso} className={"dev-day" + (iso === todayIso ? " today" : "")}
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={(e) => { e.preventDefault(); if (dragTaskIdx !== null) { setDate(dragTaskIdx, iso); setDragTaskIdx(null); } }}>
+                              <div className="dev-day-head">{WEEKDAYS[i]}<span>{d.getDate()} {MONTHS_SHORT[d.getMonth()]}</span></div>
+                              <div className="dev-day-body">{items.map(({ r, idx }) => taskCard(r, idx))}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="dev-week-grid">
-              {weekDays.map((d, i) => {
-                const iso = isoOf(d);
-                const items = tasksByDay.get(iso) || [];
-                return (
-                  <div key={iso} className={"dev-day" + (iso === todayIso ? " today" : "")}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => { e.preventDefault(); if (dragTaskIdx !== null) { setDate(dragTaskIdx, iso); setDragTaskIdx(null); } }}>
-                    <div className="dev-day-head">{WEEKDAYS[i]}<span>{d.getDate()} {MONTHS_SHORT[d.getMonth()]}</span></div>
-                    <div className="dev-day-body">{items.map(({ r, idx }) => taskCard(r, idx))}</div>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="dev-pool" onDragOver={(e) => e.preventDefault()}
+
+            {/* Altijd in beeld onderin, ook als je in de weken hierboven omhoog of
+                omlaag scrolt: sleep een taak hierheen om hem weer los te maken van
+                een dag. Meer dan een handvol taken? Dan scrollt deze balk zelf
+                horizontaal in plaats van steeds hoger te worden. */}
+            <div className="dev-pool dev-pool-sticky" onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); if (dragTaskIdx !== null) { setDate(dragTaskIdx, ""); setDragTaskIdx(null); } }}>
               <div className="dev-pool-head">Nog niet ingepland ({undated.length}) — sleep naar een dag</div>
               <div className="dev-pool-body">
@@ -500,6 +534,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             </div>
           </div>
         )}
+        </div>
     </>
   );
 

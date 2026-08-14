@@ -856,11 +856,26 @@ tbody td:last-child { text-align: center; }
 .dev-view-toggle button { font-size: 12px; font-weight: 600; padding: 4px 12px; border: 1px solid var(--border); background: #fff; color: var(--gray); border-radius: 14px; cursor: pointer; }
 .dev-view-toggle button:hover { border-color: var(--orange); color: var(--orange); }
 .dev-view-toggle button.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+/* Deze pagina (werkgereedschap, geen klant-oplevering) mag breder dan de
+   standaard .container: breekt bewust uit die 1700px-grens tot bijna de volle
+   schermbreedte, gecentreerd op het viewport i.p.v. op de ouder, dus dit werkt
+   ook wanneer dit scherm ingebed in de klant-cockpit hangt (14-08-2026). */
+.dev-wide {
+  width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); box-sizing: border-box;
+  /* Gelijke padding aan beide kanten centreert de inhoud vanzelf; op een smal
+     scherm blijft het bij 24px, op een breed scherm groeit de padding mee
+     zodat de inhoud zelf nooit breder dan ~1900px wordt. */
+  padding-left: max(24px, calc(50vw - 950px)); padding-right: max(24px, calc(50vw - 950px));
+}
 .dev-week { padding: 16px 18px; }
-.dev-week-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-.dev-week-nav button { font-size: 12px; padding: 5px 10px; border: 1px solid var(--border); background: #fff; color: var(--dark); border-radius: 6px; cursor: pointer; }
-.dev-week-nav button:hover { border-color: var(--orange); color: var(--orange); }
-.dev-week-label { font-weight: 700; font-size: 14px; color: var(--dark); margin-right: auto; }
+/* Weekplanning: één verticaal scrollende lijst van weken (elke week zelf
+   horizontaal, maandag t/m zondag), met de "nog niet ingepland"-balk er als
+   vaste voet onder (zie .dev-pool-sticky). */
+.dev-week-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.dev-weeks-scroll { max-height: 62vh; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding: 2px 4px 2px 2px; scroll-behavior: smooth; }
+.dev-week-row-label { font-weight: 700; font-size: 13px; color: var(--dark); margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.dev-week-row-nu .dev-week-row-label { color: var(--orange-dark); }
+.dev-week-row-nu-badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; background: var(--orange-light); color: var(--orange-dark); padding: 2px 8px; border-radius: 999px; }
 .dev-week-grid { display: grid; grid-template-columns: repeat(7, minmax(180px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 4px; }
 .dev-day { border: 1px solid var(--border); border-radius: 8px; background: var(--light); min-height: 340px; display: flex; flex-direction: column; }
 .dev-day.today { border-color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange); }
@@ -915,8 +930,14 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 }
 .dev-pool { margin-top: 14px; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; background: var(--white); }
 .dev-pool-head { font-size: 12px; font-weight: 700; color: var(--gray); margin-bottom: 8px; }
-.dev-pool-body { display: flex; flex-wrap: wrap; gap: 10px; }
-.dev-pool-body .dev-task-card { width: 260px; }
+/* Eén rij die zelf horizontaal scrolt zodra er meer taken zijn dan er in beeld
+   passen (ongeveer zes), in plaats van steeds hoger te worden. */
+.dev-pool-body { display: flex; flex-wrap: nowrap; gap: 10px; overflow-x: auto; padding-bottom: 2px; }
+.dev-pool-body .dev-task-card { flex: 0 0 260px; width: 260px; }
+/* Altijd onderin in beeld: blijft staan terwijl je in de weken hierboven
+   scrolt. Witte ondergrond + schaduw naar boven, zodat duidelijk is dat dit
+   een vaste balk is en geen gewoon kaartje in de lijst. */
+.dev-pool-sticky { position: sticky; bottom: 0; z-index: 5; margin-top: 16px; box-shadow: 0 -6px 16px rgba(31, 27, 20, 0.10); }
 @media (max-width: 900px) { .dev-week-grid { grid-template-columns: repeat(7, minmax(180px, 1fr)); } }
 
 /* Pagina's-tab: URL-lijst (spiegel) + plan-alinea */
@@ -3493,10 +3514,9 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 /* Razorsharp: beide kolommen beginnen op exact dezelfde hoogte. */
 .tk-links > .cockpit-card:first-child, .tk-rechts > .cockpit-card:first-child { margin-top: 0; }
 @media (max-width: 1150px) { .tk-grid { grid-template-columns: 1fr; } }
-/* Het geheel boxed i.p.v. tot de volle breedte van .container: op een breed
-   scherm blijft er zo aan weerszijden wat lucht over, in plaats van dat de
-   twee kolommen tot de randen uitrekken. */
-.tk-boxed { max-width: 1320px; margin: 0 auto; }
+/* Boxed is hier gewoon de bestaande .container-breedte (1700px, gecentreerd);
+   een eigen, smallere grens (1320px, 14-08-2026) liet op een breed scherm een
+   groot leeg stuk rechts staan en is weer verwijderd. */
 
 /* Weekplanning-bord: taken over weekkolommen, huidige week gemarkeerd, slepen. */
 .wp-wrap, .wp-empty { margin-top: 14px; }
