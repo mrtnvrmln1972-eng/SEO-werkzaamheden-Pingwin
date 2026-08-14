@@ -13,9 +13,13 @@ import type { KaartChatState } from "./useKaartChat";
 import type { WpTask, WpPageInfo } from "./types";
 import MeegegevenAdvies from "../pagina-chat/MeegegevenAdvies";
 
-export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, refreshBoard }: {
+export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, ensureDriveMap, refreshBoard }: {
   slug: string; t: WpTask; page?: WpPageInfo; chat: KaartChatState;
-  driveMap: DriveMap | null; onKiesMap: () => void; refreshBoard: () => void;
+  driveMap: DriveMap | null; onKiesMap: () => void;
+  /** Zelfde poort als bij de fases: pas de strategie vastleggen (en het
+      document ervan maken) zodra er een Drive-map is. */
+  ensureDriveMap: (actie: () => void) => void;
+  refreshBoard: () => void;
 }) {
   const { chatOpen, setChatOpen, msgs, chatFout, openBericht, setOpenBericht, wegVraag, setWegVraag,
     input, setInput, chatBusy, msgsRef, vatFase, laatsteAntwoord } = chat;
@@ -102,7 +106,7 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, re
             <div className="wp-chat-acties">
               <button type="button" className="btn btn-primary btn-klein" disabled={chatBusy || !!vatFase}
                 title="Vat het hele gesprek samen tot de definitieve conclusie, zet die als vastgelegde strategie (de basis voor gelieerde pagina's, analyse, blauwdruk en copy) en maak er het Pingwin-document van in de Drive-map."
-                onClick={() => void chat.vatSamenEnLegVast()}>
+                onClick={() => ensureDriveMap(() => void chat.vatSamenEnLegVast())}>
                 {vatFase === "samenvatten" ? "Samenvatten…" : vatFase === "vastleggen" ? "Strategie vastleggen…" : vatFase === "document" ? "Document maken…" : page?.strategie ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
               </button>
               {/* Eén plek voor de mapkeuze: die staat nu in de kop van het

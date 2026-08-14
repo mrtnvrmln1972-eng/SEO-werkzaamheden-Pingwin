@@ -9,10 +9,13 @@ import Voortgang from "../Voortgang";
 import DriveRij from "./DriveRij";
 import type { DriveFolder } from "./types";
 
-export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApplied, driveFolder, openPicker }: {
+export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApplied, driveFolder, openPicker, ensureDriveMap }: {
   slug: string; url: string; siteBase: string;
   setErr: (v: string) => void; onApplied: (plan?: string) => void;
   driveFolder: DriveFolder | null; openPicker: () => void;
+  /** Pas overnemen zodra er een Drive-map is; ontbreekt die, dan klapt de
+      mapkiezer open en volgt de actie zodra je kiest. */
+  ensureDriveMap: (actie: () => void) => void;
 }) {
   // Elke stap is een inklapbare, genummerde kaart (toggle).
   const [schemaOpen, setSchemaOpen] = useState(false);
@@ -122,7 +125,7 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
               )}
               <DriveRij folder={driveFolder} legeTekst="nog geen Drive-map, kies er een zodat het document en het .json-bestand in de juiste map komen" onKies={openPicker} style={{ margin: "var(--s-3) 0 var(--s-2)" }} />
               <div className="pch-canni-apply">
-                <button type="button" className={"pcd-btn pcd-btn-primary" + (schApplyBusy ? " busy" : "") + (schDone && !schApplyBusy ? " pcd-done" : "")} disabled={schApplyBusy} onClick={applySch} title="Maakt een kort uitleg-document + los .json-bestand in de Drive-map en één Dev-taak.">{schApplyBusy ? "Overnemen…" : schDone ? "✓ Overgenomen" : "Overnemen (document + JSON + taak)"}</button>
+                <button type="button" className={"pcd-btn pcd-btn-primary" + (schApplyBusy ? " busy" : "") + (schDone && !schApplyBusy ? " pcd-done" : "")} disabled={schApplyBusy} onClick={() => ensureDriveMap(applySch)} title="Maakt een kort uitleg-document + los .json-bestand in de Drive-map en één Dev-taak. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.">{schApplyBusy ? "Overnemen…" : schDone ? "✓ Overgenomen" : "Overnemen (document + JSON + taak)"}</button>
                 {schApplyInfo && (
                   <div className="pch-apply-panel">
                     <div className="pch-apply-row">

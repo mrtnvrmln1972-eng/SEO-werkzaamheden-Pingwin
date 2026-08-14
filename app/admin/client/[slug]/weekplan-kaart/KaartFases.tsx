@@ -34,12 +34,17 @@ export function FaseChips({ page, onToggleOpen }: { page: WpPageInfo; onToggleOp
 }
 
 export default function KaartFases({
-  slug, t, page, naarDev, driveMap, onKiesMap,
+  slug, t, page, naarDev, driveMap, onKiesMap, ensureDriveMap,
   busy, setBusy, foutje, setFoutje, melding, setMelding,
   onBespreek, haalConclusie, onMail, refreshBoard, dev, doorgevoerd,
 }: {
   slug: string; t: WpTask; page?: WpPageInfo; naarDev: boolean;
   driveMap: DriveMap | null; onKiesMap: () => void;
+  /** Voert een actie pas uit zodra er een Drive-map is: is die er al, dan
+      meteen; anders klapt de mapkiezer open en volgt de actie zodra je kiest
+      (of blijft uit als je annuleert). Alle documenten van deze pagina horen
+      in één map te landen, dus geen enkel document maakt hier meer zonder. */
+  ensureDriveMap: (actie: () => void) => void;
   busy: string; setBusy: (v: string) => void;
   /** Fout en melding zijn van de hele kaart: ook de titel, het doorzetten naar de
       developer en het afronden van de chat schrijven erin. Ze worden hieronder
@@ -69,15 +74,12 @@ export default function KaartFases({
   // vinkje op het weekbord, dus beide schermen blijven gelijk lopen.
   const [vinkBezig, setVinkBezig] = useState<string>("");
   const [verifyMsg, setVerifyMsg] = useState<{ tekst: string; ok: boolean } | null>(null);
-  // Geen Drive-map gekozen en toch een document starten: niet blokkeren (soms is
-  // er simpelweg geen klantmap), maar wél de knop een paar tellen laten opvallen
-  // en de mapkiezer meteen openen, zodat "geen map gekozen" een bewuste keuze
-  // wordt in plaats van iets dat erdoorheen glipt.
+  // Geen Drive-map gekozen en toch een document starten: de knop laat even
+  // opvallen dat de mapkiezer daarom opengaat (de echte poort zit in
+  // ensureDriveMap hieronder, dit is alleen het visuele signaal erbij).
   const [mapKnipper, setMapKnipper] = useState(false);
-  function verifieerDriveMap() {
-    if (driveMap) return;
+  function knipperMap() {
     setMapKnipper(true);
-    onKiesMap();
     setTimeout(() => setMapKnipper(false), 4000);
   }
 
@@ -133,12 +135,18 @@ export default function KaartFases({
     return [basis, extraFases ? `Ook: ${extraFases}` : "", conclusie ? `Conclusie uit de kaart-chat: ${conclusie}` : ""].filter(Boolean).join("\n\n").slice(0, 1500);
   }
 
-  async function startDocStep(steps: ("analyse" | "blauwdruk" | "copy")[]) {
+  function startDocStep(steps: ("analyse" | "blauwdruk" | "copy")[]) {
     if (busy || runActive) return;
-    // Nooit blokkeren, wel even laten opvallen: zonder gekozen map komt het
-    // document alleen intern te staan in plaats van als Word-bestand in de
-    // klantmap in Drive.
-    verifieerDriveMap();
+    // Pas echt starten zodra er een Drive-map is: is die er nog niet, dan klapt
+    // de mapkiezer open en draait deze stap zodra je kiest. Alle documenten van
+    // deze pagina horen in dezelfde map te landen, dus geen enkele stap start
+    // meer zonder, ook niet per ongeluk.
+    if (!driveMap) knipperMap();
+    ensureDriveMap(() => void werkelijkStartDocStep(steps));
+  }
+
+  async function werkelijkStartDocStep(steps: ("analyse" | "blauwdruk" | "copy")[]) {
+    if (busy || runActive) return;
     setBusy(steps.join("+")); setFoutje(""); setMelding("");
     try {
       // Gerichte sturing: achtergrond + de sturing van deze fase(s) + de laatste

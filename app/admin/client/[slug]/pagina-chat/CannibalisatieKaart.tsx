@@ -10,9 +10,12 @@ import DriveRij from "./DriveRij";
 import type { useCannibalisatie } from "./useCannibalisatie";
 import type { DriveFolder } from "./types";
 
-export default function CannibalisatieKaart({ canni, driveFolder, openPicker }: {
+export default function CannibalisatieKaart({ canni, driveFolder, openPicker, ensureDriveMap }: {
   canni: ReturnType<typeof useCannibalisatie>;
   driveFolder: DriveFolder | null; openPicker: () => void;
+  /** Pas overnemen zodra er een Drive-map is; ontbreekt die, dan klapt de
+      mapkiezer open en volgt de actie zodra je kiest. */
+  ensureDriveMap: (actie: () => void) => void;
 }) {
   const { pc, pcBusy, pcOpen, setPcOpen, runPc, canniHtml, onCanniClick, applyBusy, applyMsg, applyInfo, canniDone, applyRec, wpConf, wpMsg, wpFormOpen, setWpFormOpen, wpForm, setWpForm, wpSaving, saveWpConn, wpRedirects } = canni;
   // Elke stap is een inklapbare, genummerde kaart (toggle).
@@ -59,7 +62,7 @@ export default function CannibalisatieKaart({ canni, driveFolder, openPicker }: 
             {/* Map + overnemen blijven ook zichtbaar als de analyse is ingeklapt. */}
             <DriveRij folder={driveFolder} legeTekst="nog geen Drive-map, kies er een zodat het taak-document in de juiste map komt" onKies={openPicker} style={{ margin: "var(--s-3) 0 var(--s-2)" }} />
             <div className="pch-canni-apply">
-              <button type="button" className={"pcd-btn pcd-btn-primary" + (applyBusy ? " busy" : "") + (canniDone && !applyBusy ? " pcd-done" : "")} disabled={applyBusy} onClick={applyRec} title="Zet de redirects + interne links door als Dev-taak met document, en de de-optimalisatie-info als basis naar de betreffende pagina's.">{applyBusy ? "Overnemen…" : canniDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
+              <button type="button" className={"pcd-btn pcd-btn-primary" + (applyBusy ? " busy" : "") + (canniDone && !applyBusy ? " pcd-done" : "")} disabled={applyBusy} onClick={() => ensureDriveMap(applyRec)} title="Zet de redirects + interne links door als Dev-taak met document, en de de-optimalisatie-info als basis naar de betreffende pagina's. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.">{applyBusy ? "Overnemen…" : canniDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
               {applyInfo && (
                 <div className="pch-apply-panel">
                   <div className="pch-apply-row">

@@ -98,6 +98,17 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
   const [driveFolder, setDriveFolder] = useState<DriveFolder | null>(null);
   // Stappen die na het kiezen van een Drive-map (pop-up) alsnog moeten draaien.
   const [pendingRun, setPendingRun] = useState<{ steps: string[]; audience: "intern" | "klant" } | null>(null);
+  // Generieke variant voor elke andere actie die een document maakt (strategie
+  // vastleggen, interne links overnemen, structured data overnemen, cannibalisatie
+  // overnemen): ontbreekt de map, dan klapt de kiezer open en volgt de actie zodra
+  // je kiest. Alle documenten van deze pagina horen in dezelfde map te landen; geen
+  // van deze knoppen maakt nog een document zonder gekozen bestemming.
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  function ensureDriveMap(actie: () => void) {
+    if (driveFolder) { actie(); return; }
+    setPendingAction(() => actie);
+    openPicker();
+  }
   const [nuance, setNuance] = useState("");
 
   // ── Google Drive bestemmingsmap (het venster zelf is DriveMapKiezer) ──
@@ -137,7 +148,7 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
       <StrategieKaart chat={chat} url={url} siteBase={siteBase}
         chatOpen={chatOpen} setChatOpen={setChatOpen}
         planDone={planDone} planSlot={planSlot} taskDone={taskDone}
-        driveFolder={driveFolder} setDriveFolder={setDriveFolder} openPicker={openPicker} />
+        driveFolder={driveFolder} setDriveFolder={setDriveFolder} openPicker={openPicker} ensureDriveMap={ensureDriveMap} />
 
       {applied && <div className="saved-msg" style={{ marginTop: "var(--s-2)" }} dangerouslySetInnerHTML={{ __html: eigenHtml(applied) }} />}
       {err && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{err}</div>}
@@ -155,22 +166,23 @@ export default function PageChat({ slug, url, clientEmail, clientName, onApplied
         pageLive={pageLive} driveFolder={driveFolder} openPicker={openPicker}
         nuance={nuance} setNuance={setNuance} ensureFolderThenRun={ensureFolderThenRun} />
 
-      <CannibalisatieKaart canni={canni} driveFolder={driveFolder} openPicker={openPicker} />
+      <CannibalisatieKaart canni={canni} driveFolder={driveFolder} openPicker={openPicker} ensureDriveMap={ensureDriveMap} />
 
       <AfwijsVenster canni={canni} />
       <CheckVenster canni={canni} siteBase={siteBase} />
 
       <InterneLinksKaart slug={slug} url={url} siteBase={siteBase}
-        setErr={setErr} onApplied={onApplied} driveFolder={driveFolder} openPicker={openPicker} />
+        setErr={setErr} onApplied={onApplied} driveFolder={driveFolder} openPicker={openPicker} ensureDriveMap={ensureDriveMap} />
 
       <StructuredDataKaart slug={slug} url={url} siteBase={siteBase}
-        setErr={setErr} onApplied={onApplied} driveFolder={driveFolder} openPicker={openPicker} />
+        setErr={setErr} onApplied={onApplied} driveFolder={driveFolder} openPicker={openPicker} ensureDriveMap={ensureDriveMap} />
 
       <DriveMapKiezer slug={slug} url={url} open={pickerOpen}
-        onClose={() => { setPickerOpen(false); setPendingRun(null); }}
+        onClose={() => { setPickerOpen(false); setPendingRun(null); setPendingAction(null); }}
         onChosen={(f) => {
           setDriveFolder(f); setPickerOpen(false);
           if (pendingRun) { const pr = pendingRun; setPendingRun(null); docRun.startBackgroundRun(pr.steps, f.id, pr.audience); }
+          if (pendingAction) { const actie = pendingAction; setPendingAction(null); actie(); }
         }} />
     </div>
   );

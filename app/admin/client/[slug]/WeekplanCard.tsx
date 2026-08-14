@@ -54,6 +54,16 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   // chat maken documenten, dus die keuze hoort hier en niet in één van de twee.
   const [driveMap, setDriveMap] = useState<DriveMap | null>(null);
   const [kiezerOpen, setKiezerOpen] = useState(false);
+  // Een actie die pas mag draaien zodra er een map is (of net gekozen is). Alle
+  // documenten van deze pagina, in elke fase, horen in die ene map te landen;
+  // zonder deze poort kon een document ook zonder gekozen map gemaakt worden en
+  // bleef het in het dashboard zelf hangen in plaats van bij de klant in Drive.
+  const [naMapKeuze, setNaMapKeuze] = useState<(() => void) | null>(null);
+  function ensureDriveMap(actie: () => void) {
+    if (driveMap) { actie(); return; }
+    setNaMapKeuze(() => actie);
+    setKiezerOpen(true);
+  }
   useEffect(() => {
     if (!open || !t.url) return;
     let alive = true;
@@ -106,7 +116,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               starten, en pas daarna praten. */}
           {open && (
             <KaartFases slug={slug} t={t} page={page} naarDev={dev.naarDev}
-              driveMap={driveMap} onKiesMap={() => setKiezerOpen(true)}
+              driveMap={driveMap} onKiesMap={() => setKiezerOpen(true)} ensureDriveMap={ensureDriveMap}
               busy={busy} setBusy={setBusy}
               foutje={foutje} setFoutje={setFoutje} melding={melding} setMelding={setMelding}
               onBespreek={(prefill) => void chat.openChat(prefill)}
@@ -119,7 +129,8 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               Ook op kaarten zonder pagina, dan met een eigen bird's eye-gesprek. */}
           {open && (
             <KaartChat slug={slug} t={t} page={page} chat={chat}
-              driveMap={driveMap} onKiesMap={() => setKiezerOpen(true)} refreshBoard={refreshBoard} />
+              driveMap={driveMap} onKiesMap={() => setKiezerOpen(true)} ensureDriveMap={ensureDriveMap}
+              refreshBoard={refreshBoard} />
           )}
 
           {open && <KaartOnderRegel slug={slug} t={t} dev={dev} onMail={onMail} />}
@@ -143,8 +154,11 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
 
       {t.url && (
         <DriveMapKiezer slug={slug} url={t.url} open={kiezerOpen}
-          onClose={() => setKiezerOpen(false)}
-          onChosen={(m) => { setDriveMap(m); setKiezerOpen(false); }} />
+          onClose={() => { setKiezerOpen(false); setNaMapKeuze(null); }}
+          onChosen={(m) => {
+            setDriveMap(m); setKiezerOpen(false);
+            if (naMapKeuze) { const actie = naMapKeuze; setNaMapKeuze(null); actie(); }
+          }} />
       )}
     </div>
   );

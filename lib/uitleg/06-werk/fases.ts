@@ -30,10 +30,14 @@ export const BLOKKEN: Uitklapper[] = [
       "advies dat die pagina eerder via \"Gelieerde pagina's\" doorgaf automatisch overal. Meegegeven advies " +
       "staat bij de ontvanger zichtbaar boven de chat met een knop \"Negeer dit advies\"; het lopende gesprek " +
       "wint altijd van ouder advies.\n\n" +
-      "**Alle documenten van een pagina komen in één Google Drive-map**, en die kies je bovenaan het " +
-      "fase-blok: de knop staat naast \"Alles in één keer\", want daar worden ze ook gemaakt. Strategie, " +
-      "analyse, blauwdruk en copy landen er alle vier in. Kies je niets, dan blijven de documenten in het " +
-      "dashboard zelf staan en is er nog steeds een link.\n\n" +
+      "**Alle documenten van een pagina komen in één Google Drive-map, en dat is verplicht.** Je kiest hem " +
+      "bovenaan het fase-blok: de knop staat naast \"Alles in één keer\", want daar worden ze ook gemaakt. " +
+      "Start je een fase die een document maakt (strategie vastleggen, analyse, blauwdruk, copy, en op de " +
+      "Pagina's-pagina ook interne links, structured data en cannibalisatie overnemen) zonder dat er al een " +
+      "map is, dan klapt de mapkiezer vanzelf open; de actie draait pas zodra je kiest of een nieuwe map " +
+      "maakt, of helemaal niet als je het venster sluit. Dat is bewust: één map per pagina, met alle " +
+      "documenten van elke fase erin, in plaats van dat sommige stukken in Drive belanden en andere alleen in " +
+      "het dashboard blijven hangen.\n\n" +
       "Bij een nieuwe pagina bestaat die map nog niet, en dat is de normale situatie. Daarom maak je hem in " +
       "hetzelfde venster: het naamveld staat al ingevuld met een voorstel uit het pad van de pagina " +
       "(`/hovenier/oosterhout/` wordt \"Hovenier Oosterhout\"), en zodra de map er is sta je er meteen in, " +
@@ -47,13 +51,9 @@ export const BLOKKEN: Uitklapper[] = [
       "gaat en uit een gesprek of een mail komt.\n\n" +
       "Eén uitzondering zit erin: bestaat de pagina nog niet, dan wordt de analyse overgeslagen. Je kunt een " +
       "pagina die er niet is niet analyseren.\n\n" +
-      "**Elk document landt automatisch als Word-bestand in de Drive-map van de klant**, zodra die map " +
-      "gekozen is: de analyse, de blauwdruk en de copy worden na het genereren meteen geüpload en gedeeld, " +
-      "met de deel-link erbij vastgelegd als werkzaamheid. Start je zo'n document zonder dat er al een map " +
-      "gekozen is, dan gaat de knop \"Drive-map kiezen of maken\" even knipperen en klapt de mapkiezer meteen " +
-      "open; het document wordt niet tegengehouden, maar zo wordt \"geen map gekozen\" een bewuste keuze in " +
-      "plaats van iets dat erdoorheen glipt (en zonder gekozen map blijft het document intern in het " +
-      "dashboard staan, met alsnog een link).\n\n" +
+      "**Elk document landt automatisch als Word-bestand in de Drive-map van de klant**: de analyse, de " +
+      "blauwdruk en de copy worden na het genereren meteen geüpload en gedeeld, met de deel-link erbij " +
+      "vastgelegd als werkzaamheid.\n\n" +
       "**De Implementatie-rij heeft nu ook \"Developer\" en \"Gedaan\" naast Mail.** \"Developer\" opent " +
       "hetzelfde doorzet-venster als de knop onderaan de kaart: daar kies je welke Drive-documenten meegaan " +
       "en wat de sitebouwer moet doen. \"Gedaan\" her-fetcht de live pagina en meet of de afgesproken " +

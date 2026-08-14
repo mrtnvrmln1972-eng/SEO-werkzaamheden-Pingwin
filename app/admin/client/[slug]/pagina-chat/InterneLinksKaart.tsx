@@ -9,10 +9,13 @@ import Voortgang from "../Voortgang";
 import DriveRij from "./DriveRij";
 import type { DriveFolder } from "./types";
 
-export default function InterneLinksKaart({ slug, url, siteBase, setErr, onApplied, driveFolder, openPicker }: {
+export default function InterneLinksKaart({ slug, url, siteBase, setErr, onApplied, driveFolder, openPicker, ensureDriveMap }: {
   slug: string; url: string; siteBase: string;
   setErr: (v: string) => void; onApplied: (plan?: string) => void;
   driveFolder: DriveFolder | null; openPicker: () => void;
+  /** Pas overnemen zodra er een Drive-map is; ontbreekt die, dan klapt de
+      mapkiezer open en volgt de actie zodra je kiest. */
+  ensureDriveMap: (actie: () => void) => void;
 }) {
   // Elke stap is een inklapbare, genummerde kaart (toggle).
   const [linksOpen, setLinksOpen] = useState(false);
@@ -96,7 +99,7 @@ export default function InterneLinksKaart({ slug, url, siteBase, setErr, onAppli
               {/* Map + overnemen blijven ook zichtbaar als het voorstel is ingeklapt. */}
               <DriveRij folder={driveFolder} legeTekst="nog geen Drive-map, kies er een zodat het taak-document in de juiste map komt" onKies={openPicker} style={{ margin: "var(--s-3) 0 var(--s-2)" }} />
               <div className="pch-canni-apply">
-                <button type="button" className={"pcd-btn pcd-btn-primary" + (ilApplyBusy ? " busy" : "") + (ilDone && !ilApplyBusy ? " pcd-done" : "")} disabled={ilApplyBusy} onClick={applyIl} title="Zet het interne-links-voorstel door als Dev-taak met een begrijpelijk document.">{ilApplyBusy ? "Overnemen…" : ilDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
+                <button type="button" className={"pcd-btn pcd-btn-primary" + (ilApplyBusy ? " busy" : "") + (ilDone && !ilApplyBusy ? " pcd-done" : "")} disabled={ilApplyBusy} onClick={() => ensureDriveMap(applyIl)} title="Zet het interne-links-voorstel door als Dev-taak met een begrijpelijk document. Is er nog geen Drive-map gekozen, dan vraagt deze knop er eerst een.">{ilApplyBusy ? "Overnemen…" : ilDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
                 {ilApplyInfo && (
                   <div className="pch-apply-panel">
                     <div className="pch-apply-row">

@@ -10,12 +10,17 @@ import DriveRij from "./DriveRij";
 import type { useStrategieChat } from "./useStrategieChat";
 import type { DriveFolder } from "./types";
 
-export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatOpen, planDone, planSlot, taskDone, driveFolder, setDriveFolder, openPicker }: {
+export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatOpen, planDone, planSlot, taskDone, driveFolder, setDriveFolder, openPicker, ensureDriveMap }: {
   chat: ReturnType<typeof useStrategieChat>;
   url: string; siteBase: string;
   chatOpen: boolean; setChatOpen: React.Dispatch<React.SetStateAction<boolean>>;
   planDone?: boolean; planSlot?: React.ReactNode; taskDone: boolean;
   driveFolder: DriveFolder | null; setDriveFolder: (f: DriveFolder | null) => void; openPicker: () => void;
+  /** Pas de strategie vastleggen (en het document maken) zodra er een
+      Drive-map is; ontbreekt die, dan klapt de mapkiezer open en volgt de
+      actie zodra je kiest. Alle documenten van deze pagina horen in dezelfde
+      map te landen. */
+  ensureDriveMap: (actie: () => void) => void;
 }) {
   const { msgs, chats, chatId, convoOpen, setConvoOpen, openBericht, setOpenBericht, input, setInput, busy, editIdx, setEditIdx, editRef, wegChat, setWegChat, wegIdx, setWegIdx, taskGen, stratLink, finalizePhase, lastAssistant, send, newChat, openChat, removeChat, deleteMsg, saveEdit, cancelSend, renderMsgHtml, makeWorkItem, acceptPlan, summarizeAndFinalize } = chat;
 
@@ -120,9 +125,9 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
               </button>
             )}
             {lastAssistant && (
-              <button type="button" className={"ghost-btn small" + (taskGen ? " busy" : "")} onClick={() => void makeWorkItem()} disabled={taskGen}>{taskGen ? "Document maken…" : "Document opnieuw maken"}</button>
+              <button type="button" className={"ghost-btn small" + (taskGen ? " busy" : "")} onClick={() => ensureDriveMap(() => void makeWorkItem())} disabled={taskGen}>{taskGen ? "Document maken…" : "Document opnieuw maken"}</button>
             )}
-            <HelpHint wide title="Document opnieuw maken (herkansing)" text={"Herkansing voor alleen de documentstap: maakt van de laatste conclusie het nette **Pingwin-document** (in de Drive-map van de pagina, of als download) en legt hem vast als afgeronde werkzaamheid met de documentlink ernaast.\nNormaal hoef je deze knop niet te gebruiken: 'Vat samen & leg strategie vast' doet dit al automatisch. Gebruik hem als de documentstap toen mislukte (bijvoorbeeld zonder Drive-koppeling) of als je alleen een vers document wilt zonder de strategie opnieuw samen te vatten."} />
+            <HelpHint wide title="Document opnieuw maken (herkansing)" text={"Herkansing voor alleen de documentstap: maakt van de laatste conclusie het nette **Pingwin-document** in de Drive-map van de pagina, en legt hem vast als afgeronde werkzaamheid met de documentlink ernaast. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.\nNormaal hoef je deze knop niet te gebruiken: 'Vat samen & leg strategie vast' doet dit al automatisch. Gebruik hem als de documentstap toen mislukte of als je alleen een vers document wilt zonder de strategie opnieuw samen te vatten."} />
           </div>
           )}
           <div className="page-chat-followup">
@@ -133,8 +138,8 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
               <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
             </div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
-              <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => void summarizeAndFinalize()} disabled={busy || taskGen || !!finalizePhase}
-                title="Vat het hele gesprek samen tot de definitieve conclusie, zet die als vastgelegde strategie bovenaan en maakt er het Pingwin-document van in de Drive-map (of als download).">
+              <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => ensureDriveMap(() => void summarizeAndFinalize())} disabled={busy || taskGen || !!finalizePhase}
+                title="Vat het hele gesprek samen tot de definitieve conclusie, zet die als vastgelegde strategie bovenaan en maakt er het Pingwin-document van in de Drive-map. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.">
                 {finalizePhase === "samenvatten" ? "Samenvatten…" : finalizePhase === "vastleggen" ? "Strategie vastleggen…" : finalizePhase === "document" ? "Document maken…" : (planDone || taskDone) ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
               </button>
               <HelpHint wide title="Vat samen & leg strategie vast" text={"Sluit het gesprek af met deze ene knop. Er gebeuren dan drie dingen na elkaar:\n- De AI redeneert nog één keer over alles wat besproken en gemeten is en schrijft de **definitieve conclusie** (hij mag daarbij pagina's en concurrenten nameten in plaats van gokken).\n- Die conclusie wordt meteen de **vastgelegde strategie** bovenin dit blok, die alle volgende stappen aanstuurt (en die je daar altijd nog kunt bewerken).\n- Er wordt het nette **Pingwin-document** van gemaakt in de Drive-map van de pagina (of als download zonder Drive), vastgelegd als afgeronde werkzaamheid.\nChat je daarna verder, dan heet de knop 'Vat opnieuw samen': een nieuwe conclusie vervangt de vastgelegde strategie en er komt een vers document; het oude document blijft in Drive staan.\nOnderbreken kan tijdens het samenvatten met het kruisje; dan wordt er niets vastgelegd."} />
