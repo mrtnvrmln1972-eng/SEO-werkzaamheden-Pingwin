@@ -855,14 +855,6 @@ tbody td:last-child { text-align: center; }
 .dev-view-toggle button { font-size: 12px; font-weight: 600; padding: 4px 12px; border: 1px solid var(--border); background: #fff; color: var(--gray); border-radius: 14px; cursor: pointer; }
 .dev-view-toggle button:hover { border-color: var(--orange); color: var(--orange); }
 .dev-view-toggle button.active { background: var(--orange); border-color: var(--orange); color: #fff; }
-/* Deze pagina (werkgereedschap, geen klant-oplevering) mag breder dan de
-   standaard .container: breekt bewust uit die 1700px-grens, gecentreerd op
-   het viewport i.p.v. op de ouder, dus dit werkt ook wanneer dit scherm
-   ingebed in de klant-cockpit hangt. Eerst met een ingebouwde grens van
-   ~1900px, maar die liet op een breed scherm nog steeds een flink leeg stuk
-   staan (14-08-2026): geen maximumbreedte meer, alleen een klein vast randje,
-   net als .tk-wide op het Taken-tabblad. */
-.dev-wide { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); box-sizing: border-box; padding-left: 32px; padding-right: 32px; }
 .dev-week { padding: 16px 18px; }
 /* De kop van dit scherm ("Taken voor de developer" + Nieuwe taak/Lijst per
    klant/Weekplanning, en in de weekplanning ook "Naar deze week") blijft
@@ -1491,6 +1483,10 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .page-chat-input { display: flex; gap: 8px; margin-top: 16px; }
 .page-chat-input input { flex: 1 1 auto; font-size: 13px; padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; outline: none; }
 .page-chat-input input:focus { border-color: var(--orange); }
+/* Vaste kolombreedtes (uit de colgroup) in plaats van meegroeien met de
+   inhoud, anders werkt de eenregel-afkap hieronder niet: zonder een echte
+   breedte heeft de cel niets om op af te knippen. */
+.dev-table { table-layout: fixed; }
 .dev-table td { vertical-align: middle; }
 /* Developer: klaar (groen) vs nog te doen (lichtrood), afvinken + mailknop */
 .dev-table tr.dev-todo td { background: #FDECEA; }
@@ -1523,6 +1519,10 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .dev-cell { font-size: 13px; color: var(--dark); line-height: 1.4; word-break: break-word; }
 .dev-cell.dev-muted { color: var(--gray); }
 .dev-cell a { color: var(--orange) !important; text-decoration: underline; }
+/* Eén regel, punten erachter als het niet past: een taak kan een lange
+   instructie als titel hebben, en dat mag de rij niet meer torenhoog maken.
+   De volledige tekst blijft gewoon op het scherm te lezen via "Bekijk". */
+.dev-cell-1regel, .dev-1regel { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .dev-date { font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 5px; color: var(--dark); background: var(--white); width: 100%; }
 .dev-date:focus { border-color: var(--orange); outline: none; }
 .cockpit-card {

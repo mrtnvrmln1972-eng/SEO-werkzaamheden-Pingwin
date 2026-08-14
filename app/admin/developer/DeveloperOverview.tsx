@@ -301,7 +301,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         <span className="dev-task-client">{r.clientName}</span>
         {r.fase && <span className="dev-task-fase">{r.fase}</span>}
       </div>
-      <div className="dev-task-desc" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} />
+      <div className="dev-task-desc dev-1regel" title={stripText(r.taak)} dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} />
       <div className="dev-task-meta">
         {statusBadge(r.status)}
         {r.uren ? <span className="dev-task-uren">{r.uren} min</span> : null}
@@ -340,18 +340,16 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       <colgroup>
         <col style={{ width: "22px" }} />
         <col />
-        <col />
         <col style={{ width: "150px" }} />
         <col style={{ width: "72px" }} />
         <col style={{ width: "80px" }} />
         <col style={{ width: "150px" }} />
-        <col style={{ width: "190px" }} />
+        <col style={{ width: "150px" }} />
       </colgroup>
       <thead>
         <tr>
           <th></th>
           <th>Taak</th>
-          <th>Opm. developer</th>
           <th>Documenten</th>
           <th className="col-center">Klaar</th>
           <th className="col-center">Afgerond</th>
@@ -372,8 +370,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       onDrop={sleepbaar ? (e) => { e.stopPropagation(); moveTo(idx); } : undefined}
     >
       <td className="drag-handle" draggable={sleepbaar} onDragStart={sleepbaar ? () => setDragIdx(idx) : undefined} onDragEnd={sleepbaar ? () => setDragIdx(null) : undefined} title={sleepbaar ? "Sleep om de prioriteit te wijzigen" : undefined}>{sleepbaar ? "⠿" : ""}</td>
-      <td><span className="dev-cell" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
-      <td><span className="dev-cell dev-muted" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} /></td>
+      <td><span className="dev-cell dev-cell-1regel" title={stripText(r.taak)} dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
       <td>
         {r.docs && r.docs.length > 0 ? (
           <span className="dev-task-docs">
@@ -387,13 +384,6 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       <td className="col-center"><button type="button" className={"dev-done-toggle dev-afgerond-toggle-cell" + (r.ownerDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleAfgerond(idx, !r.ownerDone); }} title={r.ownerDone ? "Afgerond (klik om terug naar open te zetten)" : "Zelf afronden"}>{r.ownerDone ? "☑" : "☐"}</button></td>
       <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
       <td className="dev-rij-acties">
-        {/* Terug naar de kaart waar deze taak vandaan komt. Heen kon al, terug
-            niet: je moest hem zelf opzoeken tussen alle weken. */}
-        {/^wp:\d+$/.test(r.taskKey) && (
-          <a className="ghost-btn small" onClick={(e) => e.stopPropagation()}
-            href={`/admin/client/${r.clientSlug}?tab=werkzaamheden&kaart=${encodeURIComponent(`${r.clientSlug}:${r.taskKey.slice(3)}`)}`}
-            title="Open de kaart in de planning van deze klant">↩ Kaart</a>
-        )}
         <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Bekijk de hele taak: opmerking, documenten en (met het juiste recht) aanpassen">👁 Bekijk</button>
         <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailVenster(r, r.devNote); }} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
         {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
@@ -405,7 +395,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
 
   const content = (
     <>
-        <div className="dev-wide">
+        <div>
         <div className="section-title dev-kop-sticky">
           <span className="dev-kop-titel">
             Taken voor de developer ({activeRows.length})
