@@ -88,7 +88,14 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
               if (tekst) onLijstPunt(tekst);
             }
           }}
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw, dossierHeeftInhoud === true) }} />
+          // Zonder pagina bestaat er geen dossier, dus meteen tonen. Mét
+          // pagina: verbergen zolang de dossier-check nog loopt (null) en
+          // zodra hij inhoud blijkt te hebben (true); alleen tonen als hij
+          // écht leeg is bevestigd (false). Zo gaat het nooit meer "eerst
+          // zichtbaar, dan meteen weer weg" (twee kaartjes die opflitsen en
+          // verdwijnen) zodra de dossier-check iets vindt: de overgang loopt
+          // alleen nog van verborgen naar zichtbaar, nooit andersom.
+          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw, t.url ? dossierHeeftInhoud !== false : false) }} />
       )}
       {t.url && <PaginaDossier slug={slug} url={t.url} zonderStand kaartTekst={t.toelichting} kaartTitel={t.taak} onHeeftInhoud={setDossierHeeftInhoud} />}
       {/* Je eigen aantekeningen. Los van de kaarttekst die de assistent
