@@ -60,6 +60,14 @@ export default function ActiviteitPanel({ slug }: { slug: string }) {
   useEffect(() => {
     setLaden(true);
     laad().finally(() => setLaden(false));
+    // Stil, op de achtergrond, meteen ook het verleden erbij halen: zo hoeft
+    // niemand zelf op "Haal het verleden op" te klikken om te zien wat er al
+    // klaarstaat. Idempotent (dubbele regels kunnen niet ontstaan), dus dit mag
+    // gewoon bij elk bezoek aan dit tabblad.
+    fetch("/api/admin/activiteit", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, vullen: true }),
+    }).then((r) => r.json()).then((d) => { if (d?.ok) void laad(); }).catch(() => {});
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [slug]);
 

@@ -13,6 +13,7 @@
 import { sql, ensureSchema } from "./db";
 import { logActiviteiten, type LogInput, type ActiviteitSoort } from "./activiteit";
 import { diffKlantTekst, type ContentDiff } from "./content-diff";
+import { getAfgerondeTaken } from "./tasks";
 
 const DOC_SOORT: Record<string, ActiviteitSoort> = {
   analyse: "analyse", blauwdruk: "blauwdruk", copy: "copy", structured: "structured",
@@ -144,7 +145,20 @@ export async function vulActiviteitUitBestaandeData(slug: string): Promise<VulRe
     });
   }
 
-  // 9. Verstuurde mail met werk erin, ook van vóór deze uitbreiding.
+  // 9. Taken die nu al op Klaar/Verwerkt staan (ook de taken van vóór deze
+  //    uitbreiding). Geen exacte afrondingsdatum bekend, dus updated_at als
+  //    beste benadering; zie de toelichting bij getAfgerondeTaken.
+  const taken = await stil(getAfgerondeTaken(slug), [] as Awaited<ReturnType<typeof getAfgerondeTaken>>);
+  for (const t of taken) {
+    rijen.push({
+      slug, soort: "taak", bron: "client_tasks", bronId: t.identiteit,
+      gebeurdeOp: t.updatedAt, url: t.pageUrl, zichtbaar: t.klantZichtbaar,
+      intern: `Taak afgerond: ${t.categorie ? `${t.categorie} – ` : ""}${t.tekst}`,
+      klant: t.tekst,
+    });
+  }
+
+  // 10. Verstuurde mail met werk erin, ook van vóór deze uitbreiding.
   const mails = await stil(
     sql`SELECT id, subject, received_at, superhuman_link, web_link FROM client_emails
         WHERE client_slug = ${slug} AND direction = 'out'`.then((r) => r.rows),

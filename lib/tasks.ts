@@ -69,7 +69,7 @@ function taakTekst(s: string): string {
 // keer helemaal opnieuw op). Bewust GEEN status/uren/link/toelichting hierin,
 // want dat zijn precies de velden die veranderen zonder dat het een andere
 // taak wordt; anders is een statuswissel naar "Klaar" niet meer te herkennen.
-function taakIdentiteit(t: { categorie: string; taak: string; maand: string }): string {
+export function taakIdentiteit(t: { categorie: string; taak: string; maand: string }): string {
   return [
     (t.categorie || "").trim().toLowerCase(),
     taakTekst(t.taak).toLowerCase(),
@@ -242,6 +242,30 @@ export async function setClientDocLink(slug: string, pageUrl: string, stepKind: 
     UPDATE client_tasks SET client_doc_link = ${link || null}, updated_at = now()
     WHERE client_slug = ${slug} AND page_url = ${pageUrl} AND step_kind = ${stepKind}`;
   return (res.rowCount ?? 0) > 0;
+}
+
+// Taken die NU op Klaar/Verwerkt staan, voor het terugwerkend vullen van het
+// "Wat we doen"-logboek. client_tasks houdt geen geschiedenis bij van wanneer
+// een taak precies afgerond werd (elke save herbouwt de tabel), dus updated_at
+// (laatste keer dat de rij is opgeslagen) is de beste beschikbare datum: geen
+// exacte afrondingsdatum, wel een echte, bruikbare datum in plaats van niets.
+export type AfgerondeTaak = {
+  identiteit: string; tekst: string; categorie: string; pageUrl: string | null;
+  klantZichtbaar: boolean; updatedAt: string;
+};
+export async function getAfgerondeTaken(slug: string): Promise<AfgerondeTaak[]> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT categorie, taak, maand, page_url, klant_zichtbaar, updated_at FROM client_tasks
+    WHERE client_slug = ${slug} AND lower(trim(status)) IN ('klaar', 'verwerkt')`;
+  return rows.map((r) => ({
+    identiteit: taakIdentiteit({ categorie: (r.categorie as string) || "", taak: (r.taak as string) || "", maand: (r.maand as string) || "" }),
+    tekst: taakTekst((r.taak as string) || ""),
+    categorie: (r.categorie as string) || "",
+    pageUrl: (r.page_url as string) || null,
+    klantZichtbaar: r.klant_zichtbaar === true,
+    updatedAt: new Date(r.updated_at as string).toISOString(),
+  }));
 }
 
 export async function hasTasks(slug: string): Promise<boolean> {
