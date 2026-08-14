@@ -111,7 +111,8 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               foutje={foutje} setFoutje={setFoutje} melding={melding} setMelding={setMelding}
               onBespreek={(prefill) => void chat.openChat(prefill)}
               haalConclusie={chat.chatConclusie}
-              onMail={onMail} refreshBoard={refreshBoard} />
+              onMail={onMail} refreshBoard={refreshBoard}
+              dev={dev} doorgevoerd={doorgevoerd} />
           )}
 
           {/* Chat direct onder het Doel-blok: de uitkomst hiervan voedt de fases eronder.

@@ -18,18 +18,23 @@ export function useDoorgevoerd({ slug, id, refreshBoard }: { slug: string; id: n
   const [controle, setControle] = useState<Meting>(null);
   const [bezig, setBezig] = useState(false);
 
-  async function meet() {
-    if (bezig) return;
+  // Geeft de meting ook terug (naast het bewaren in state), zodat een knop die
+  // ná de meting nog iets moet doen (zoals de Implementatie-fase afvinken zodra
+  // alles echt live blijkt) niet apart hoeft te wachten op een state-update.
+  async function meet(): Promise<Meting> {
+    if (bezig) return null;
     setBezig(true);
     try {
       const d = await fetch("/api/admin/weekplan/doorgevoerd", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, id }),
       }).then((r) => r.json());
-      if (d?.ok && d.meting) { setControle(d.meting); if (d.gewijzigd) refreshBoard(); }
-      else setControle({ samenvatting: d?.error || "De controle lukte niet.", punten: [], alles: false, meetbaar: false });
+      if (d?.ok && d.meting) { setControle(d.meting); if (d.gewijzigd) refreshBoard(); return d.meting as Meting; }
+      const mislukt = { samenvatting: d?.error || "De controle lukte niet.", punten: [], alles: false, meetbaar: false };
+      setControle(mislukt); return mislukt;
     } catch {
-      setControle({ samenvatting: "De controle lukte niet.", punten: [], alles: false, meetbaar: false });
+      const mislukt = { samenvatting: "De controle lukte niet.", punten: [], alles: false, meetbaar: false };
+      setControle(mislukt); return mislukt;
     } finally { setBezig(false); }
   }
 

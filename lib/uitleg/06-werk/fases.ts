@@ -46,6 +46,18 @@ export const BLOKKEN: Uitklapper[] = [
       "zijn uit beeld. Een uitleg-knopje verschijnt nu alleen nog bij sturing die echt over deze pagina " +
       "gaat en uit een gesprek of een mail komt.\n\n" +
       "Eén uitzondering zit erin: bestaat de pagina nog niet, dan wordt de analyse overgeslagen. Je kunt een " +
-      "pagina die er niet is niet analyseren.",
+      "pagina die er niet is niet analyseren.\n\n" +
+      "**Elk document landt automatisch als Word-bestand in de Drive-map van de klant**, zodra die map " +
+      "gekozen is: de analyse, de blauwdruk en de copy worden na het genereren meteen geüpload en gedeeld, " +
+      "met de deel-link erbij vastgelegd als werkzaamheid. Start je zo'n document zonder dat er al een map " +
+      "gekozen is, dan gaat de knop \"Drive-map kiezen of maken\" even knipperen en klapt de mapkiezer meteen " +
+      "open; het document wordt niet tegengehouden, maar zo wordt \"geen map gekozen\" een bewuste keuze in " +
+      "plaats van iets dat erdoorheen glipt (en zonder gekozen map blijft het document intern in het " +
+      "dashboard staan, met alsnog een link).\n\n" +
+      "**De Implementatie-rij heeft nu ook \"Developer\" en \"Gedaan\" naast Mail.** \"Developer\" opent " +
+      "hetzelfde doorzet-venster als de knop onderaan de kaart: daar kies je welke Drive-documenten meegaan " +
+      "en wat de sitebouwer moet doen. \"Gedaan\" her-fetcht de live pagina en meet of de afgesproken " +
+      "wijziging er echt staat (dezelfde meting als \"Is dit doorgevoerd?\" bovenaan de kaart); staat hij " +
+      "er, dan vinkt Implementatie zichzelf af en kun je meteen door naar Structured data.",
   },
 ];

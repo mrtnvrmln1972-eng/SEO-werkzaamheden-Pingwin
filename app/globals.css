@@ -2781,6 +2781,11 @@ button.org-sec-kop:hover { color: var(--orange-dark); }
   50% { transform: scale(1.25); box-shadow: 0 0 0 7px rgba(232, 119, 34, 0); background: var(--orange); color: #fff; }
 }
 .help-hint-q.hh-attract { animation: hh-pulse 1.1s ease-in-out infinite; border-color: var(--orange); }
+
+/* Zelfde aandachtstrekker, nu op de Drive-map-knop: geen map gekozen en toch een
+   document gestart, dan knippert de knop een paar tellen terwijl de mapkiezer
+   opent. Nooit een harde blokkade, wel een bewuste keuze. */
+.wp-drive-knipper { animation: hh-pulse 1.1s ease-in-out infinite; }
 .hh-callout { position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); z-index: 70; white-space: nowrap; background: var(--orange); color: #fff; font-size: var(--fs-sm); font-weight: 700; letter-spacing: .2px; padding: 6px 12px; border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,0.18); pointer-events: none; animation: hh-callout-in .3s ease-out; }
 .hh-callout::before { content: ""; position: absolute; left: -5px; top: 50%; transform: translateY(-50%) rotate(45deg); width: 10px; height: 10px; background: var(--orange); }
 @keyframes hh-callout-in { from { opacity: 0; transform: translateY(-50%) translateX(-6px); } to { opacity: 1; transform: translateY(-50%) translateX(0); } }

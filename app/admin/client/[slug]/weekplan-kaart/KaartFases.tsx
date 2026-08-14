@@ -11,6 +11,8 @@ import { linkifyHtml } from "../../../../../lib/linkify";
 import { docsBewerkLink } from "../../../../../lib/drive-id";
 import { volgendeFase, faseLabel } from "../../../../../lib/fase-volgorde";
 import type { DriveMap } from "../DriveMapKiezer";
+import type { NaarDev } from "./KaartOnderRegel";
+import type { Meting } from "./KaartControle";
 import { FASEN } from "./fase-iconen";
 import type { FaseKey, WpTask, WpPageInfo } from "./types";
 
@@ -34,7 +36,7 @@ export function FaseChips({ page, onToggleOpen }: { page: WpPageInfo; onToggleOp
 export default function KaartFases({
   slug, t, page, naarDev, driveMap, onKiesMap,
   busy, setBusy, foutje, setFoutje, melding, setMelding,
-  onBespreek, haalConclusie, onMail, refreshBoard,
+  onBespreek, haalConclusie, onMail, refreshBoard, dev, doorgevoerd,
 }: {
   slug: string; t: WpTask; page?: WpPageInfo; naarDev: boolean;
   driveMap: DriveMap | null; onKiesMap: () => void;
@@ -48,6 +50,14 @@ export default function KaartFases({
   haalConclusie: () => Promise<string>;
   onMail: (aud: "klant" | "dev") => void;
   refreshBoard: () => void;
+  /** Zelfde doorzet-venster als de bottomregel: "Developer" in de
+      Implementatie-rij opent precies dat venster, met dezelfde Drive-documenten
+      erbij, in plaats van een tweede, eigen versie ervan te bouwen. */
+  dev: NaarDev;
+  /** Dezelfde "Is dit doorgevoerd?"-meting als bovenaan de kaart. De
+      Implementatie-rij gebruikt hem voor de knop "Gedaan": mist die knop deze
+      prop (kaarten zonder pagina), dan verschijnt hij simpelweg niet. */
+  doorgevoerd?: { controle: Meting; bezig: boolean; meet: () => Promise<Meting> };
 }) {
   const [run, setRun] = useState<RunInfo>(null);
   const [everLinks, setEverLinks] = useState<Record<string, string>>({});
@@ -59,6 +69,17 @@ export default function KaartFases({
   // vinkje op het weekbord, dus beide schermen blijven gelijk lopen.
   const [vinkBezig, setVinkBezig] = useState<string>("");
   const [verifyMsg, setVerifyMsg] = useState<{ tekst: string; ok: boolean } | null>(null);
+  // Geen Drive-map gekozen en toch een document starten: niet blokkeren (soms is
+  // er simpelweg geen klantmap), maar wél de knop een paar tellen laten opvallen
+  // en de mapkiezer meteen openen, zodat "geen map gekozen" een bewuste keuze
+  // wordt in plaats van iets dat erdoorheen glipt.
+  const [mapKnipper, setMapKnipper] = useState(false);
+  function verifieerDriveMap() {
+    if (driveMap) return;
+    setMapKnipper(true);
+    onKiesMap();
+    setTimeout(() => setMapKnipper(false), 4000);
+  }
 
   const runActive = !!run && run.status === "running";
   const schemaRunning = schemaStatus === "running";
@@ -114,6 +135,10 @@ export default function KaartFases({
 
   async function startDocStep(steps: ("analyse" | "blauwdruk" | "copy")[]) {
     if (busy || runActive) return;
+    // Nooit blokkeren, wel even laten opvallen: zonder gekozen map komt het
+    // document alleen intern te staan in plaats van als Word-bestand in de
+    // klantmap in Drive.
+    verifieerDriveMap();
     setBusy(steps.join("+")); setFoutje(""); setMelding("");
     try {
       // Gerichte sturing: achtergrond + de sturing van deze fase(s) + de laatste
@@ -232,12 +257,30 @@ export default function KaartFases({
       return <button type="button" className="btn btn-ghost btn-klein" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep([key])}>{tekst}</button>;
     }
     if (key === "bouw") {
+      const gedaanBezig = doorgevoerd?.bezig;
       return (
         <>
-          {/* Doorzetten naar de sitebouwer stond hier én in de actiebalk én onderaan
-              bij Delen. Drie knoppen voor één handeling. Hij staat nu alleen nog
-              bovenaan in de actiebalk; deze rij toont wél de stand ("Bij de
-              developer"), want dat is een signaal en geen knop. */}
+          {/* Developer: zelfde doorzet-venster als de knop onderaan de kaart (met
+              de Drive-documenten van deze pagina erbij), nu ook direct bij de fase
+              waar hij hoort. Staat de kaart al bij de developer, dan haalt dezelfde
+              knop hem er weer af. */}
+          {dev && (
+            <button type="button" className={"btn btn-ghost btn-klein" + (naarDev ? " wp-act-aan" : "")} disabled={dev.bezig}
+              title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart klaar voor de developer: de opdracht, de pagina en de documenten."}
+              onClick={() => void dev.zetNaarDev()}>
+              {dev.bezig ? "Bezig…" : naarDev ? "✓ Bij de developer" : "Developer"}
+            </button>
+          )}
+          {/* Gedaan: her-fetcht de live pagina en meet of de afgesproken wijziging
+              er echt staat. Klopt dat, dan vinkt hij Implementatie meteen af, zodat
+              je door kunt naar Structured data zonder dat apart te hoeven doen. */}
+          {doorgevoerd && (
+            <button type="button" className="btn btn-ghost btn-klein" disabled={!!gedaanBezig || vinkBezig === "bouw"}
+              title="Controleert of de wijziging al echt live staat; is dat zo, dan wordt Implementatie meteen afgevinkt."
+              onClick={() => void (async () => { const m = await doorgevoerd.meet(); if (m?.alles) await zetFase("bouw", true); })()}>
+              {gedaanBezig ? "Checken…" : "Gedaan"}
+            </button>
+          )}
           <button type="button" className="btn btn-ghost btn-klein" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
         </>
       );
@@ -273,7 +316,7 @@ export default function KaartFases({
             was hij onvindbaar op het moment dat je hem nodig had: vóór de eerste
             fase, niet erna. */}
         {t.url && (
-          <button type="button" className="btn btn-quiet btn-klein" onClick={onKiesMap}
+          <button type="button" className={"btn btn-quiet btn-klein" + (mapKnipper ? " wp-drive-knipper" : "")} onClick={onKiesMap}
             title={driveMap
               ? `Alle documenten van deze pagina komen in "${driveMap.path || driveMap.name}". Klik om een andere map te kiezen of een nieuwe te maken.`
               : "Er is nog geen map: de documenten blijven in het dashboard staan. Klik om de Drive-map te kiezen of aan te maken."}>
