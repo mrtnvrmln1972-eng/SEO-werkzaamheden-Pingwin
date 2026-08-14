@@ -60,7 +60,14 @@ export default function ControleUitslag({ controle, onMail }: { controle: NonNul
               {p.koppen && p.koppen.bedoeld.length > 0 && (
                 <details className="wp-controle-details">
                   <summary>Welke koppen</summary>
-                  <div className="wp-controle-bron muted">Vergeleken met {p.koppen.bron}</div>
+                  {/* Welk document precies de bron was, mét link. Zonder de link kon je
+                      alleen lezen "vergeleken met Copy" en moest je zelf op zoek naar
+                      wélk copy-document dat was, terwijl die link allang bekend was. */}
+                  <div className="wp-controle-bron muted">
+                    Vergeleken met {p.koppen.link
+                      ? <a href={p.koppen.link} target="_blank" rel="noreferrer">{p.koppen.bron}</a>
+                      : p.koppen.bron}
+                  </div>
                   <ul className="wp-controle-koppen">
                     {p.koppen.bedoeld.map((k, j) => (
                       <li key={j} className={p.koppen && p.koppen.ontbreekt.includes(k) ? "wp-kop-mist" : "wp-kop-ok"}>{k}</li>

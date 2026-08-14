@@ -58,6 +58,15 @@ export const BLOKKEN: Uitklapper[] = [
       "hetzelfde doorzet-venster als de knop onderaan de kaart: daar kies je welke Drive-documenten meegaan " +
       "en wat de sitebouwer moet doen. \"Gedaan\" her-fetcht de live pagina en meet of de afgesproken " +
       "wijziging er echt staat (dezelfde meting als \"Is dit doorgevoerd?\" bovenaan de kaart); staat hij " +
-      "er, dan vinkt Implementatie zichzelf af en kun je meteen door naar Structured data.",
+      "er, dan vinkt Implementatie zichzelf af en kun je meteen door naar Structured data. Bij die meting " +
+      "staat nu ook een klikbare link naar het document waarmee vergeleken is (meestal het copy-document), " +
+      "zodat je nooit hoeft te gokken welke tekst als bron gold.\n\n" +
+      "**Het copy-document gaat standaard mee, naar de developer én in de mail.** Zowel het doorzet-venster " +
+      "als het mailvenster laten zien wat je kunt meesturen, en beide vinken het copy-document nu standaard " +
+      "aan als het er is (naast de pagina zelf en een eventuele goedgekeurde klantversie); voorheen moest je " +
+      "dat zelf aanvinken en werd dat vaak vergeten. Ook stond de copy soms helemaal niet in de lijst: had " +
+      "een pagina meerdere losse klantversies (bijlagen uit oudere mails), dan waren de zes plekken al vol " +
+      "vóórdat de copy aan de beurt kwam. De pijplijn-documenten (copy, blauwdruk, analyse) staan nu vooraan " +
+      "in die lijst en zijn dus nooit meer het slachtoffer van de grens.",
   },
 ];

@@ -4,6 +4,7 @@ import { guardSlug } from "../../../../../lib/admin-scope";
 import { getWeekplan, getWeekplanDev, setWeekplanNaarDev } from "../../../../../lib/weekplan";
 import { docsVoorPagina } from "../../../../../lib/developer";
 import { goedgekeurdeVersies } from "../../../../../lib/doc-versions";
+import { getStepLinks } from "../../../../../lib/page-doc-run";
 import { ALLE_PUNTEN, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { devSturing } from "../../../../../lib/developer";
 import { planOpvolging } from "../../../../../lib/mail-opvolg";
@@ -43,6 +44,11 @@ export async function GET(req: NextRequest) {
   // immers de tekst die de sitebouwer op de site moet zetten.
   const geldend = (await goedgekeurdeVersies(slug, docSleutel).catch(() => []))
     .map((v) => v.driveLink).filter(Boolean);
+  // Is er een copy-document, dan hoort dat standaard aan te staan: dat is de
+  // tekst die de sitebouwer meestal moet verwerken. Stond er niet bij, dan ging
+  // een kaart naar de developer (of een mail aan hem) zonder de copy erbij, en
+  // moest hij die alsnog los opvragen.
+  const copyLink = kaart.url ? (await getStepLinks(slug, kaart.url).catch(() => null))?.copy || "" : "";
 
   return NextResponse.json({
     ok: true,
@@ -53,8 +59,8 @@ export async function GET(req: NextRequest) {
     taak: opgeslagen?.taak && opgeslagen.taak !== kaart.taak ? opgeslagen.taak : "",
     toelichting: opgeslagen?.toelichting || "",
     docs: beschikbaar,
-    // De pagina staat standaard aan; de rest kies je zelf.
-    gekozen: gekozen.length ? gekozen.map((d) => d.url) : [...(kaart.url ? [kaart.url] : []), ...geldend],
+    // De pagina en het copy-document staan standaard aan; de rest kies je zelf.
+    gekozen: gekozen.length ? gekozen.map((d) => d.url) : Array.from(new Set([...(kaart.url ? [kaart.url] : []), ...geldend, ...(copyLink ? [copyLink] : [])])),
     voorstelTaak: kaart.taak || "",
     voorstelToelichting: devSturing(kaart.toelichting || ""),
     url: kaart.url || "",

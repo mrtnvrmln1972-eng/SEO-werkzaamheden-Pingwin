@@ -154,6 +154,21 @@ export async function docsVoorPagina(slug: string, url: string): Promise<{ label
   // klikken, dus dat hoort niet als "De pagina" in de lijst.
   if (/^https?:\/\//i.test(url)) voegToe("De pagina", url);
 
+  // De pijplijn-documenten (copy, blauwdruk, analyse) staan vóór de losse
+  // klantversies, en niet pas erachteraan. Ze werden eerder als laatste
+  // toegevoegd, terwijl de lijst daarna op 6 werd afgekapt: had een pagina
+  // meerdere klantversies (dezelfde bijlage in twee mails, een oudere en een
+  // nieuwere), dan waren die zes plekken al vol vóórdat de copy aan de beurt
+  // kwam. Het gevolg: de sitebouwer kreeg de opdracht zonder de copy erbij,
+  // precies het document waar hij het meest naar vraagt.
+  try {
+    const { getStepLinks } = await import("./page-doc-run");
+    const s = await getStepLinks(slug, url);
+    voegToe("Copy", s.copy);
+    voegToe("Blauwdruk", s.blauwdruk);
+    voegToe("Analyse", s.analyse);
+  } catch { /* zonder pijplijn-documenten verder */ }
+
   try {
     const { rows } = await sql`
       SELECT naam, drive_link, status, source FROM page_doc_versions
@@ -174,15 +189,7 @@ export async function docsVoorPagina(slug: string, url: string): Promise<{ label
     }
   } catch { /* zonder klantversies verder */ }
 
-  try {
-    const { getStepLinks } = await import("./page-doc-run");
-    const s = await getStepLinks(slug, url);
-    voegToe("Copy", s.copy);
-    voegToe("Blauwdruk", s.blauwdruk);
-    voegToe("Analyse", s.analyse);
-  } catch { /* zonder pijplijn-documenten verder */ }
-
-  return uit.slice(0, 6);
+  return uit.slice(0, 8);
 }
 
 export async function getDeveloperTasks(): Promise<DevTask[]> {
