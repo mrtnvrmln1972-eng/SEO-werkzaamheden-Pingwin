@@ -325,7 +325,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       <div className="dev-task-actions" onClick={(e) => e.stopPropagation()}>
         <label className="dev-check-label"><input type="checkbox" checked={r.devDone} onChange={(e) => toggleDone(idx, e.target.checked)} /> Klaar</label>
         <label className="dev-check-label dev-check-afgerond"><input type="checkbox" checked={r.ownerDone} onChange={(e) => toggleAfgerond(idx, e.target.checked)} /> Afgerond</label>
-        <button type="button" className="ghost-btn small" onClick={() => setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName })} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
+        <button type="button" className="ghost-btn small" onClick={() => setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName })} title="Bekijk de hele taak: opmerking, documenten en (met het juiste recht) aanpassen">👁 Bekijk</button>
         <button type="button" className="ghost-btn small dev-mail-btn" onClick={() => mailVenster(r, r.devNote)} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
         {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
           <button type="button" className="btn btn-ghost btn-klein" onClick={() => void controleer(r)} title="Meet de live pagina op wat er is afgesproken">🔍 Is dit doorgevoerd?</button>
@@ -394,7 +394,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             href={`/admin/client/${r.clientSlug}?tab=werkzaamheden&kaart=${encodeURIComponent(`${r.clientSlug}:${r.taskKey.slice(3)}`)}`}
             title="Open de kaart in de planning van deze klant">↩ Kaart</a>
         )}
-        <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
+        <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Bekijk de hele taak: opmerking, documenten en (met het juiste recht) aanpassen">👁 Bekijk</button>
         <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailVenster(r, r.devNote); }} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
         {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
           <button type="button" className="btn btn-ghost btn-klein" onClick={(e) => { e.stopPropagation(); void controleer(r); }} title="Meet de live pagina op wat er is afgesproken">🔍 Controleer</button>
