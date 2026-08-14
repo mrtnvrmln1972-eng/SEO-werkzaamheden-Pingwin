@@ -19,6 +19,16 @@ export async function POST(req: NextRequest) {
   const sleutel = req.nextUrl.searchParams.get("sleutel");
   if (sleutel !== SLEUTEL) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
 
+  // Rechtstreeks een zelf aangeleverde, herstelde HTML wegschrijven (voor
+  // wanneer de losgeraakte inhoud handmatig teruggezet is in het juiste
+  // uitklapper-blok, in plaats van een hele oudere versie terug te zetten).
+  let body: Record<string, unknown> = {};
+  try { body = await req.json(); } catch { /* geen body: dan de historie-modus hieronder */ }
+  if (typeof body.html === "string" && body.html.trim()) {
+    const focus = await saveFocus(SLUG, { html: body.html });
+    return NextResponse.json({ ok: true, modus: "handmatig", lengte: focus.html.length });
+  }
+
   const versies = await getFocusHistorie(SLUG);
   // Standaard versie 189: 07:54:53 UTC, 11.151 tekens, de laatst bewaarde
   // volledige versie vlak vóór de corruptie (07:58:57 UTC, 3.323 tekens).
