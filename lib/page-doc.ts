@@ -107,7 +107,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
   const text = [
     `KLANT: ${client?.name || slug}`,
     client?.seoProfile ? `KLANTPROFIEL: ${client.seoProfile}` : "",
-    `PAGINA: ${url}`,
+    `PAGINA (de exacte, bestaande URL; gebruik deze notatie letterlijk, verander nooit koppeltekens, schuine strepen, hoofdletters of spelling; stel je een andere URL voor, benoem die dan expliciet als "voorgestelde nieuwe URL", vervang de bestaande notatie nooit stilzwijgend): ${url}`,
     content || measure
       ? `FEITEN LIVE GECHECKT OP: ${liveStamp} (de pagina is op dit moment vers uitgelezen; vermeld deze datum in het document)`
       : `LET OP: de pagina kon op ${liveStamp} NIET live uitgelezen worden; benoem in het document dat de meting ontbreekt en baseer geen content-gaps op aannames`,

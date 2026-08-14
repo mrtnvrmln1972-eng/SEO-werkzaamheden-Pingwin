@@ -78,7 +78,7 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     (client?.seoProfile || "").trim() || "(NOG NIET INGEVULD, vraag hiernaar als het relevant is)",
     ...(notities ? ["", "NOTITIES VAN MAARTEN OVER DEZE KLANT (eigen aantekeningen: telefoontjes, afspraken, waarnemingen; betrouwbare achtergrond, hierin staat vaak wat de klant wel of juist niet wil):", notities] : []),
     "",
-    `GEOPENDE PAGINA: ${url}`,
+    `GEOPENDE PAGINA (de exacte, bestaande URL; gebruik deze notatie altijd letterlijk zo terug, verander nooit koppeltekens, schuine strepen, hoofdletters of spelling; stel je een andere URL voor, benoem die dan expliciet als "voorgestelde nieuwe URL" naast de bestaande, vervang de bestaande notatie nooit stilzwijgend): ${url}`,
     ...(live && live.status !== null
       ? [
           `LIVE GECHECKT OP ${liveStamp} (zojuist opgehaald; dit is de actuele waarheid, de gescande lijst hieronder kan ouder zijn):`,

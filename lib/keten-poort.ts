@@ -27,12 +27,15 @@ export type KetenConflict = { claim: string; feit: string };
 
 const POORT_SYSTEM = `Je controleert een SEO-documentketen op HARDE tegenspraken voordat de volgende stap gegenereerd wordt.
 Je krijgt: (1) de verse, zojuist gemeten feiten van een pagina (live koppen, titel, Search Console, top-10), en (2) het vastgelegde plan en eventuele eerdere ketenstappen.
-Vind UITSLUITEND harde, meetbare tegenspraken tussen het plan/de eerdere stappen en de verse meting. Voorbeelden van een hard conflict:
-- het plan of een eerdere stap zegt dat een sectie/kop/CTA/link ONTBREEKT, terwijl de live koppen of de meting laten zien dat die er al staat;
+Vind UITSLUITEND harde, meetbare tegenspraken: een BEWERING OVER DE HUIDIGE WERKELIJKHEID die de verse meting weerlegt. Voorbeelden van een hard conflict:
+- het plan of een eerdere stap zegt dat een sectie/kop/CTA/link NU AL ONTBREEKT of NU AL BESTAAT, terwijl de live koppen of de meting het tegendeel laten zien;
 - er wordt een redirect of interne link voorgesteld naar een URL die volgens de meting niet bestaat (404);
-- het plan noemt een positie, een volume of een gemeten waarde die meer dan een factor 2 afwijkt van de verse data;
+- het plan noemt een HUIDIGE positie, een HUIDIG volume of een andere HUIDIGE gemeten waarde die meer dan een factor 2 afwijkt van de verse data;
 - het plan kiest een primair zoekwoord dat lijnrecht ingaat tegen wat een eerdere ketenstap vastlegde.
-GEEN conflict (poort open laten): een andere formulering, een mening, een dosering, iets dat de meting niet kan zien (bijvoorbeeld tekst onderaan de pagina die niet in de eerste koppen zit), of ontbrekende data. Bij twijfel: geen conflict.
+GEEN conflict (poort open laten), dit is GEEN uitputtende lijst maar de meest voorkomende valkuil:
+- een NORM, DOEL of CRITERIUM dat de volgende stap nog moet BEREIKEN (bijvoorbeeld "H2-dekking moet 60-80% zijn", "meta-description moet 120-155 tekens zijn"), ook als de huidige, gemeten waarde daar ver vanaf zit. Dat is geen tegenspraak, dat IS het gat dat de analyse hoort te signaleren en de volgende stap hoort te dichten; alleen een norm die het plan ten onrechte als AL BEHAALD beschrijft ("dekking is al 70%, dus klaar") is wél een conflict als de meting iets anders laat zien.
+- een andere formulering, een mening, een dosering, iets dat de meting niet kan zien (bijvoorbeeld tekst onderaan de pagina die niet in de eerste koppen zit), of ontbrekende data.
+Bij twijfel: geen conflict.
 Antwoord met UITSLUITEND geldige JSON, exact dit formaat, niets eromheen:
 {"conflicten":[{"claim":"wat het plan of de eerdere stap beweert, kort","feit":"wat de verse meting laat zien, kort"}]}
 Geen tegenspraken: {"conflicten":[]}. Maximaal 5 conflicten, de hardste eerst. Geen emoji.`;
