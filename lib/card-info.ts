@@ -9,6 +9,9 @@ import { linkifyHtml } from "./linkify";
 import { puntSoort } from "./punt-soort";
 import { striptToeschrijvingen, type HerkomstContext } from "./herkomst";
 import { mdToHtml } from "./markdown";
+import { opdrachtKey, type OpdrachtMark } from "./opdracht-key";
+
+export type { OpdrachtMark } from "./opdracht-key";
 
 export type CardFaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 
@@ -499,11 +502,41 @@ const SVG = (paden: string, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24
 const ICO_VLAG = SVG("M4 21V4|M4 4h12l-2 4 2 4H4");
 const ICO_KLEMBORD = SVG("M9 4h6v3H9z|M9 4H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2|M9 12h6|M9 16h4");
 
-function lijst(regels: string[], cls: string, mails?: MailLinks): string {
+// Vinkje + "Check live"-knop achter één opdrachtregel. Alleen de kaart
+// "Opdrachten in deze kaart" krijgt dit mee (opdrachtMarks is dan gezet, ook
+// als het object leeg is); "Waarom deze pagina" en "Aanpak en afspraken"
+// blijven zonder, dat zijn geen losse, afvinkbare instructies.
+// Niet elke opdracht is automatisch te toetsen (een losse instructie naar de
+// developer levert geen meetbaar feit op); vandaar het vinkje ernaast om het
+// zelf, met de hand, als gecontroleerd te markeren.
+function opdrachtControls(tekst: string, mark: OpdrachtMark | undefined, bezig: boolean): string {
+  const status = mark?.status || "open";
+  const klaar = status === "handmatig" || status === "automatisch_ok";
+  const key = opdrachtKey(tekst);
+  const meldingAttr = mark?.melding ? ` title="${escapeHtml(mark.melding)}"` : "";
+  const chip = status === "automatisch_ok"
+    ? `<span class="wp-fase-chip wp-fase-klaar"${meldingAttr}>✓ live gecheckt</span>`
+    : status === "handmatig"
+      ? `<span class="wp-fase-chip wp-fase-klaar">✓ handmatig</span>`
+      : status === "automatisch_niet"
+        ? `<span class="wp-fase-chip wp-fase-fout"${meldingAttr}>✕ nog niet gevonden</span>`
+        : "";
+  return `<span class="wp-opdracht-controls" data-opdracht-key="${key}">` +
+    `<label class="wp-fase-vink" title="${klaar ? "Afgerond, klik om terug te zetten" : "Zelf gecontroleerd: markeer als klaar"}">` +
+    `<input type="checkbox" class="wp-opdracht-vink" ${klaar ? "checked" : ""} ${bezig ? "disabled" : ""} /></label>` +
+    `<button type="button" class="btn btn-ghost btn-klein wp-opdracht-check" ${bezig ? "disabled" : ""} title="Haal de live pagina op en controleer automatisch of dit is doorgevoerd">${bezig ? "Bezig…" : "Check live"}</button>` +
+    chip +
+    `</span>`;
+}
+
+function lijst(regels: string[], cls: string, mails?: MailLinks, opdrachtMarks?: Record<string, OpdrachtMark>, opdrachtBezig?: Record<string, boolean>): string {
   // Elk punt (Doel én Aanpak) krijgt een klein »-knopje: zet dit punt op een
   // bespreeklijst (Sander, klant, ...). De kaart-component vangt de klik af.
   const knop = '<button type="button" class="wp-info-lijstbtn" title="Zet dit punt op een bespreeklijst">&raquo;</button>';
-  return `<ul class="${cls}">${regels.map((r) => `<li>${knop}${inline(r, mails)}</li>`).join("")}</ul>`;
+  return `<ul class="${cls}">${regels.map((r) => {
+    const controls = opdrachtMarks ? opdrachtControls(r, opdrachtMarks[opdrachtKey(r)], !!opdrachtBezig?.[opdrachtKey(r)]) : "";
+    return `<li>${knop}${inline(r, mails)}${controls}</li>`;
+  }).join("")}</ul>`;
 }
 
 function infoKaart(icoon: string, kop: string, inhoud: string): string {
@@ -520,7 +553,7 @@ export function eerdereNotitiesHtml(toelichting: string, pageUrl?: string, taak?
   return { html: linkifyHtml(lijst(info.rest, "wp-punt-lijst", mails), domain), aantal: info.rest.length };
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean, verbergVerhaal?: boolean): string {
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean, verbergVerhaal?: boolean, opdrachtMarks?: Record<string, OpdrachtMark>, opdrachtBezig?: Record<string, boolean>): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   // Kant-en-klare inhoud (bijv. een contentagenda): de Achtergrond/Aanpak-per-fase-
   // indeling hieronder knipt per regel en zou een tabel in losse pipe-regels breken.
@@ -548,7 +581,7 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   // De losse opdrachten die in deze kaart zijn samengevoegd. Hier staan ze op één
   // plek in plaats van aan de titel geplakt.
   if (info.opdrachten.length) {
-    kaarten.push(infoKaart(ICO_KLEMBORD, "Opdrachten in deze kaart", lijst(info.opdrachten, "wp-punt-lijst", mails)));
+    kaarten.push(infoKaart(ICO_KLEMBORD, "Opdrachten in deze kaart", lijst(info.opdrachten, "wp-punt-lijst", mails, opdrachtMarks || {}, opdrachtBezig)));
   }
   const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
 
