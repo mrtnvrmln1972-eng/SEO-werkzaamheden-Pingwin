@@ -11,6 +11,7 @@ import type { DriveMap } from "../DriveMapKiezer";
 import { Icoon, ICOON } from "./fase-iconen";
 import type { KaartChatState } from "./useKaartChat";
 import type { WpTask, WpPageInfo } from "./types";
+import MeegegevenAdvies from "../pagina-chat/MeegegevenAdvies";
 
 export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, refreshBoard }: {
   slug: string; t: WpTask; page?: WpPageInfo; chat: KaartChatState;
@@ -37,6 +38,7 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, re
       ))}
       {chatOpen && (
         <div className="wp-chat-body">
+          {t.url && <MeegegevenAdvies slug={slug} url={t.url} siteBase={origin} />}
           <div className="wp-chat-msgs" ref={msgsRef}>
             {msgs.length === 0 && !chatBusy && (
               <div className="muted wp-chat-leeg">
