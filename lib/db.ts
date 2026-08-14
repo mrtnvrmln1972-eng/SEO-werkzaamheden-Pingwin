@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "k1-3cf2a450";
+export const KERN_SCHEMA_VERSIE = "k1-42448837";
 
 async function init(): Promise<void> {
   await sql`
@@ -356,21 +356,6 @@ async function init(): Promise<void> {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
       PRIMARY KEY (client_slug, url_key, fase)
-    )`;
-
-  // Status per opdrachtregel op een projectkaart ("Opdrachten in deze kaart").
-  // Zie lib/opdracht-marks.ts. Anders dan page_phase_marks hoort een opdracht
-  // bij één kaart (task_id), niet bij een url_key: een taak kan over een
-  // pagina gaan die nog niet bestaat, of over iets dat geen pagina is.
-  await sql`
-    CREATE TABLE IF NOT EXISTS weekplan_opdracht_marks (
-      task_id       INTEGER NOT NULL,
-      opdracht_key  TEXT NOT NULL,
-      status        TEXT NOT NULL,
-      melding       TEXT,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-      PRIMARY KEY (task_id, opdracht_key)
     )`;
 
   // Werkzaamheden per klant, ín het dashboard (alternatief voor de Google Sheet).

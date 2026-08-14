@@ -1,6 +1,5 @@
 import { BLOKKEN as notificaties } from "./notificaties";
 import { BLOKKEN as fases } from "./fases";
-import { BLOKKEN as opdrachtCheck } from "./opdracht-check";
 import { BLOKKEN as planning } from "./planning";
 import { BLOKKEN as paginalijst } from "./paginalijst";
 import { BLOKKEN as sitebouwer } from "./sitebouwer";
@@ -21,7 +20,6 @@ export const HOOFDSTUK: Hoofdstuk = {
   uitklappers: [
     ...notificaties,
     ...fases,
-    ...opdrachtCheck,
     ...planning,
     ...paginalijst,
     ...sitebouwer,

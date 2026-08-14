@@ -6,9 +6,8 @@
 // vanuit drie hoeken, met eigen kopjes en eigen archieven, dus je las hetzelfde
 // drie keer en wist niet welke de actuele was.
 
-import { useEffect, useState } from "react";
-import { cardInfoHtml, eerdereNotitiesHtml, type MailLinks, type OpdrachtMark } from "../../../../../lib/card-info";
-import { opdrachtKey } from "../../../../../lib/opdracht-key";
+import { useState } from "react";
+import { cardInfoHtml, eerdereNotitiesHtml, type MailLinks } from "../../../../../lib/card-info";
 import DocVersies from "../DocVersies";
 import KaartNotitie from "../KaartNotitie";
 import PaginaDossier from "../PaginaDossier";
@@ -54,44 +53,6 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
   const [archief, setArchief] = useState<{ op: string; soort: string; tekst: string }[]>([]);
   const [archiefBezig, setArchiefBezig] = useState(false);
 
-  // Status per opdrachtregel ("Opdrachten in deze kaart"): zelf afgevinkt of
-  // automatisch gecheckt tegen de live pagina. Zie lib/opdracht-marks.ts.
-  const [opdrachtMarks, setOpdrachtMarks] = useState<Record<string, OpdrachtMark>>({});
-  const [opdrachtBezig, setOpdrachtBezig] = useState<Record<string, boolean>>({});
-
-  useEffect(() => {
-    let stop = false;
-    (async () => {
-      try {
-        const d = await fetch(`/api/admin/weekplan/opdracht-check?slug=${encodeURIComponent(slug)}&taskId=${t.id}`).then((r) => r.json());
-        if (!stop && d?.ok) setOpdrachtMarks(d.marks || {});
-      } catch { /* stil; de regels tonen dan gewoon "open" */ }
-    })();
-    return () => { stop = true; };
-  }, [slug, t.id]);
-
-  // Zelf afvinken (of terugzetten). tekst komt uit de <li> zelf, net als bij
-  // de bespreeklijst-knop hierboven: er is geen apart id per opdrachtregel.
-  async function zetOpdracht(tekst: string, af: boolean) {
-    const k = opdrachtKey(tekst);
-    setOpdrachtBezig((v) => ({ ...v, [k]: true }));
-    try {
-      await fetch("/api/admin/weekplan/opdracht-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taskId: t.id, tekst, status: af ? "handmatig" : "open" }) });
-      setOpdrachtMarks((v) => ({ ...v, [k]: { status: af ? "handmatig" : "open", melding: null } }));
-    } catch { /* stil; opnieuw klikken kan altijd */ }
-    finally { setOpdrachtBezig((v) => ({ ...v, [k]: false })); }
-  }
-
-  async function checkOpdracht(tekst: string) {
-    const k = opdrachtKey(tekst);
-    setOpdrachtBezig((v) => ({ ...v, [k]: true }));
-    try {
-      const d = await fetch("/api/admin/weekplan/opdracht-verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, taskId: t.id, tekst, url: t.url }) }).then((r) => r.json());
-      if (d?.ok) setOpdrachtMarks((v) => ({ ...v, [k]: { status: d.gevonden ? "automatisch_ok" : "automatisch_niet", melding: d.melding || null } }));
-    } catch { /* stil; opnieuw klikken kan altijd */ }
-    finally { setOpdrachtBezig((v) => ({ ...v, [k]: false })); }
-  }
-
   // De oude notities worden apart opgehaald zodat ze onderaan dit blok komen, bij
   // het archief van het dossier, in plaats van als tweede archief midden op de kaart.
   const ouder = hasInfo ? eerdereNotitiesHtml(t.toelichting, t.url, t.taak, mailLinks) : null;
@@ -117,32 +78,17 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
           onClick={(e) => {
             const el = (e.target as HTMLElement).closest?.(".wp-maildatum") as HTMLElement | null;
             if (el && onOpenMailDate) { e.stopPropagation(); onOpenMailDate(el.dataset.datum || ""); return; }
-            // Opdrachtregel: tekst komt uit de <li> zelf (net als de
-            // bespreeklijst-knop), met de »-knop én de vinkje/check-controls
-            // eraf, zodat alleen de instructie zelf overblijft.
-            const opdrachtEl = (e.target as HTMLElement).closest?.(".wp-opdracht-vink, .wp-opdracht-check") as HTMLElement | null;
-            if (opdrachtEl) {
-              e.stopPropagation();
-              const li = opdrachtEl.closest("li");
-              const kloon = li?.cloneNode(true) as HTMLElement | undefined;
-              kloon?.querySelectorAll(".wp-info-lijstbtn, .wp-opdracht-controls").forEach((b) => b.remove());
-              const tekst = (kloon?.textContent || "").replace(/\s+/g, " ").trim();
-              if (!tekst) return;
-              if (opdrachtEl.classList.contains("wp-opdracht-vink")) void zetOpdracht(tekst, (opdrachtEl as HTMLInputElement).checked);
-              else void checkOpdracht(tekst);
-              return;
-            }
             const lb = (e.target as HTMLElement).closest?.(".wp-info-lijstbtn") as HTMLElement | null;
             if (lb) {
               e.stopPropagation();
               const li = lb.closest("li");
               const kloon = li?.cloneNode(true) as HTMLElement | undefined;
-              kloon?.querySelectorAll(".wp-info-lijstbtn, .wp-opdracht-controls").forEach((b) => b.remove());
+              kloon?.querySelectorAll(".wp-info-lijstbtn").forEach((b) => b.remove());
               const tekst = (kloon?.textContent || "").replace(/\s+/g, " ").trim();
               if (tekst) onLijstPunt(tekst);
             }
           }}
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw, dossierHeeftInhoud === true, opdrachtMarks, opdrachtBezig) }} />
+          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw, dossierHeeftInhoud === true) }} />
       )}
       {t.url && <PaginaDossier slug={slug} url={t.url} zonderStand kaartTekst={t.toelichting} kaartTitel={t.taak} onHeeftInhoud={setDossierHeeftInhoud} />}
       {/* Je eigen aantekeningen. Los van de kaarttekst die de assistent

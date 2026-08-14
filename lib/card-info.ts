@@ -9,20 +9,13 @@ import { linkifyHtml } from "./linkify";
 import { puntSoort } from "./punt-soort";
 import { striptToeschrijvingen, type HerkomstContext } from "./herkomst";
 import { mdToHtml } from "./markdown";
-import { opdrachtKey, type OpdrachtMark } from "./opdracht-key";
-
-export type { OpdrachtMark } from "./opdracht-key";
 
 export type CardFaseKey = "strategie" | "gelieerde" | "analyse" | "blauwdruk" | "copy" | "bouw" | "structured";
 
 export type CardInfo = {
   achtergrond: string[];   // het unieke verhaal: wat is er mis, cijfers, waarom nu
   afspraken: string[];     // mail-datums, wie, referenties
-  overig: string[];        // punten die nergens anders passen
-  // De losse opdrachten die in deze kaart zijn samengevoegd. Stonden vroeger met
-  // " + " aan elkaar geplakt in de TITEL; daar horen ze niet, want een titel zegt
-  // waar het over gaat en de kaart zegt wat er moet gebeuren.
-  opdrachten: string[];
+  overig: string[];        // punten die nergens anders passen, incl. losse opdrachtregels
   perFase: Partial<Record<CardFaseKey, string[]>>;
   // Wat er niet in de begrensde kaart past. Gaat NIET verloren: het staat ingeklapt
   // onderaan onder "Eerdere notities", voor als je het voor een blauwdruk nodig hebt.
@@ -35,7 +28,6 @@ export type CardInfo = {
 // dingen over te zeggen zijn.
 const MAX_WAAROM = 4;
 const MAX_AFSPRAKEN = 4;
-const MAX_OPDRACHTEN = 6;
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -324,13 +316,13 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
   // elke kaart die er al staat, en komt zo'n naam ook niet meer in een mail
   // terecht die uit deze tekst wordt gemaakt. Zie lib/herkomst.ts voor het waarom.
   toelichting = striptToeschrijvingen(toelichting || "", herkomst || {});
-  const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], opdrachten: [], perFase: {}, rest: [] };
+  const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], perFase: {}, rest: [] };
   const seen = new Set<string>();
   // De titel van de kaart hoort niet als bullet IN de kaart. Bij het samenvoegen
   // werd de titel van het nieuwe punt er telkens bij geplakt, dus stond hij er
   // soms twee keer in, licht anders geformuleerd.
   const titelWoorden = taak ? inhoudswoorden(taak) : null;
-  let sectie: "achtergrond" | "afspraken" | "aanpak" | "opdrachten" = "achtergrond";
+  let sectie: "achtergrond" | "afspraken" | "aanpak" = "achtergrond";
   for (const raw of (toelichting || "").split("\n")) {
     const regel = raw.trim();
     if (!regel) continue;
@@ -351,8 +343,10 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
     if (isKopje(regel)) {
       const kop = regel.replace(/:$/, "").toLowerCase();
       if (/afspraken|herkomst|bron/.test(kop)) sectie = "afspraken";
-      else if (/opdracht/.test(kop)) sectie = "opdrachten";
-      else if (/aanpak|deeltaken|taken|stappen/.test(kop)) sectie = "aanpak";
+      // Een "opdracht"-kopje krijgt geen eigen vak meer (dat was een apart,
+      // automatisch samengesteld blok waar je zelf geen zicht op had): het
+      // valt nu gewoon onder "Aanpak en afspraken", net als de rest.
+      else if (/opdracht|aanpak|deeltaken|taken|stappen/.test(kop)) sectie = "aanpak";
       else sectie = "achtergrond";
       continue; // het kopje zelf niet dubbel tonen; de render zet eigen kopjes
     }
@@ -367,7 +361,6 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
     }
     const kaal = regel.replace(/^-\s*/, "").trim();
     if (sectie === "afspraken") info.afspraken.push(kaal);
-    else if (sectie === "opdrachten") info.opdrachten.push(kaal);
     else if (sectie === "aanpak") info.overig.push(kaal);
     else info.achtergrond.push(kaal);
   }
@@ -401,7 +394,6 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
   info.achtergrond = ontdubbel(info.achtergrond);
   info.afspraken = ontdubbel(info.afspraken);
   info.overig = ontdubbel(info.overig);
-  info.opdrachten = ontdubbel(info.opdrachten);
   for (const f of Object.keys(info.perFase) as CardFaseKey[]) {
     info.perFase[f] = ontdubbel(info.perFase[f] || []);
   }
@@ -415,10 +407,6 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
   if (info.afspraken.length > MAX_AFSPRAKEN) {
     info.rest.push(...info.afspraken.slice(MAX_AFSPRAKEN));
     info.afspraken = info.afspraken.slice(0, MAX_AFSPRAKEN);
-  }
-  if (info.opdrachten.length > MAX_OPDRACHTEN) {
-    info.rest.push(...info.opdrachten.slice(MAX_OPDRACHTEN));
-    info.opdrachten = info.opdrachten.slice(0, MAX_OPDRACHTEN);
   }
   // Per fase één regel; de rest is bijna altijd een andere formulering van dezelfde
   // instructie en hoort niet naast de stap te staan waar je mee bezig bent.
@@ -502,41 +490,11 @@ const SVG = (paden: string, cls = "") => `<svg class="${cls}" viewBox="0 0 24 24
 const ICO_VLAG = SVG("M4 21V4|M4 4h12l-2 4 2 4H4");
 const ICO_KLEMBORD = SVG("M9 4h6v3H9z|M9 4H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2|M9 12h6|M9 16h4");
 
-// Vinkje + "Check live"-knop achter één opdrachtregel. Alleen de kaart
-// "Opdrachten in deze kaart" krijgt dit mee (opdrachtMarks is dan gezet, ook
-// als het object leeg is); "Waarom deze pagina" en "Aanpak en afspraken"
-// blijven zonder, dat zijn geen losse, afvinkbare instructies.
-// Niet elke opdracht is automatisch te toetsen (een losse instructie naar de
-// developer levert geen meetbaar feit op); vandaar het vinkje ernaast om het
-// zelf, met de hand, als gecontroleerd te markeren.
-function opdrachtControls(tekst: string, mark: OpdrachtMark | undefined, bezig: boolean): string {
-  const status = mark?.status || "open";
-  const klaar = status === "handmatig" || status === "automatisch_ok";
-  const key = opdrachtKey(tekst);
-  const meldingAttr = mark?.melding ? ` title="${escapeHtml(mark.melding)}"` : "";
-  const chip = status === "automatisch_ok"
-    ? `<span class="wp-fase-chip wp-fase-klaar"${meldingAttr}>✓ live gecheckt</span>`
-    : status === "handmatig"
-      ? `<span class="wp-fase-chip wp-fase-klaar">✓ handmatig</span>`
-      : status === "automatisch_niet"
-        ? `<span class="wp-fase-chip wp-fase-fout"${meldingAttr}>✕ nog niet gevonden</span>`
-        : "";
-  return `<span class="wp-opdracht-controls" data-opdracht-key="${key}">` +
-    `<label class="wp-fase-vink" title="${klaar ? "Afgerond, klik om terug te zetten" : "Zelf gecontroleerd: markeer als klaar"}">` +
-    `<input type="checkbox" class="wp-opdracht-vink" ${klaar ? "checked" : ""} ${bezig ? "disabled" : ""} /></label>` +
-    `<button type="button" class="btn btn-ghost btn-klein wp-opdracht-check" ${bezig ? "disabled" : ""} title="Haal de live pagina op en controleer automatisch of dit is doorgevoerd">${bezig ? "Bezig…" : "Check live"}</button>` +
-    chip +
-    `</span>`;
-}
-
-function lijst(regels: string[], cls: string, mails?: MailLinks, opdrachtMarks?: Record<string, OpdrachtMark>, opdrachtBezig?: Record<string, boolean>): string {
+function lijst(regels: string[], cls: string, mails?: MailLinks): string {
   // Elk punt (Doel én Aanpak) krijgt een klein »-knopje: zet dit punt op een
   // bespreeklijst (Sander, klant, ...). De kaart-component vangt de klik af.
   const knop = '<button type="button" class="wp-info-lijstbtn" title="Zet dit punt op een bespreeklijst">&raquo;</button>';
-  return `<ul class="${cls}">${regels.map((r) => {
-    const controls = opdrachtMarks ? opdrachtControls(r, opdrachtMarks[opdrachtKey(r)], !!opdrachtBezig?.[opdrachtKey(r)]) : "";
-    return `<li>${knop}${inline(r, mails)}${controls}</li>`;
-  }).join("")}</ul>`;
+  return `<ul class="${cls}">${regels.map((r) => `<li>${knop}${inline(r, mails)}</li>`).join("")}</ul>`;
 }
 
 function infoKaart(icoon: string, kop: string, inhoud: string): string {
@@ -553,7 +511,7 @@ export function eerdereNotitiesHtml(toelichting: string, pageUrl?: string, taak?
   return { html: linkifyHtml(lijst(info.rest, "wp-punt-lijst", mails), domain), aantal: info.rest.length };
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean, verbergVerhaal?: boolean, opdrachtMarks?: Record<string, OpdrachtMark>, opdrachtBezig?: Record<string, boolean>): string {
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean, verbergVerhaal?: boolean): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   // Kant-en-klare inhoud (bijv. een contentagenda): de Achtergrond/Aanpak-per-fase-
   // indeling hieronder knipt per regel en zou een tabel in losse pipe-regels breken.
@@ -574,14 +532,13 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   if (info.achtergrond.length && !verbergVerhaal) {
     kaarten.push(infoKaart(ICO_VLAG, "Waarom deze pagina", lijst(info.achtergrond, "wp-check-lijst", mails)));
   }
+  // Losse "opdracht"-regels (vroeger een eigen vak "Opdrachten in deze kaart")
+  // vallen hier ook onder: dat was een automatisch samengesteld bakje waarvan
+  // de herkomst (chat, mail, scan, handmatig) nergens zichtbaar was, dus geen
+  // apart, ongecontroleerd vak meer. Gewoon aanpak, als de rest.
   const aanpak = ontdubbel([...info.overig, ...info.afspraken]);
   if (aanpak.length && !verbergVerhaal) {
     kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst", mails)));
-  }
-  // De losse opdrachten die in deze kaart zijn samengevoegd. Hier staan ze op één
-  // plek in plaats van aan de titel geplakt.
-  if (info.opdrachten.length) {
-    kaarten.push(infoKaart(ICO_KLEMBORD, "Opdrachten in deze kaart", lijst(info.opdrachten, "wp-punt-lijst", mails, opdrachtMarks || {}, opdrachtBezig)));
   }
   const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
 

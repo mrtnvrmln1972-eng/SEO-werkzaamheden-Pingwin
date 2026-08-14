@@ -41,8 +41,10 @@ export const BLOKKEN: Uitklapper[] = [
       "**De kaart heeft een vaste titel:** het pad plus wat we ermee doen, bijvoorbeeld " +
       "\"/hovenier/etten-leur/ · herstellen\". Dat is geen opmaak-keuze maar een reparatie: er werd bij elke keer " +
       "laden een nieuwe opdracht met een plusje achter de titel geplakt, tot 190 tekens, en één kaart stond " +
-      "daardoor op 183 tekens. Losse opdrachten staan nu ín de kaart onder \"Opdrachten\". Schrijf je zelf een " +
-      "titel, dan blijft die staan.\n\n" +
+      "daardoor op 183 tekens. Losse opdrachten staan nu ín de kaart, onder \"Aanpak en afspraken\" (tot " +
+      "14 augustus 2026 was dat nog een apart vak \"Opdrachten\"; dat vak is weg, want de herkomst van zo'n " +
+      "regel, chat, mail, scan of eigen tekst, was er niet aan af te zien, en dus ook niet te vertrouwen). " +
+      "Schrijf je zelf een titel, dan blijft die staan.\n\n" +
       "**Elke kaart heeft een archief.** Wat van de kaart af gaat blijft bewaard met datum: een eerdere titel, " +
       "een kaarttekst voordat hij werd opgeschoond, en regels die niet meer pasten. Daarvóór werd de tekst op " +
       "vierduizend tekens afgekapt zonder melding, en stonden er kaarten precies op die grens. Er verdween dus " +
