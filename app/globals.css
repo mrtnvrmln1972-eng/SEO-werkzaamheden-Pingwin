@@ -873,10 +873,11 @@ tbody td:last-child { text-align: center; }
    weergave te wisselen of terug naar de huidige week te springen. */
 .dev-kop-sticky {
   position: sticky; top: 80px; z-index: 30;
-  background: var(--app-bg);
+  background: var(--white);
+  border: 1px solid var(--card-border); border-radius: var(--r-lg);
   flex-wrap: wrap; gap: var(--s-2);
-  padding: var(--s-2) 0; margin-bottom: var(--s-3);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  padding: var(--s-3) var(--s-4); margin-bottom: var(--s-3);
+  box-shadow: var(--shadow-md);
 }
 /* Neemt de resterende ruimte in, zodat de titel en de weergave-knoppen links
    blijven staan en "Naar deze week" er als enige naar de rechterkant duwt,
