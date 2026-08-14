@@ -7,11 +7,13 @@ import { urlKey } from "./url-key";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SqlTag = (strings: TemplateStringsArray, ...values: any[]) => Promise<{ rows: any[] }>;
 import { generateDocSpec, type DocKind } from "./page-doc";
-import { buildPingwinDoc } from "./pingwin-docx";
+import { buildPingwinDoc, type DocSpec } from "./pingwin-docx";
 import { upsertStepTask } from "./tasks";
-import { getPageDriveFolder } from "./site-urls";
+import { getPageDriveFolder, getPageDocOutputs } from "./site-urls";
 import { uploadDocx } from "./drive";
 import { setAhrefsContext } from "./ahrefs";
+import { getClientBySlug } from "./clients";
+import { buildCopyKlantSpec, copyNaarSecties } from "./copy-doc-klant";
 
 // ═══════════════════════════════════════════════════════════
 // ACHTERGROND-RUN: analyse -> blauwdruk -> copy los van de browser
@@ -406,4 +408,58 @@ async function generateAndStoreDoc(slug: string, url: string, kind: DocKind, ext
     klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: audience === "klant",
   }).catch(() => null);
   return "";
+}
+
+// ═══════════════════════════════════════════════════════════
+// AL GEGENEREERDE TEKST ALSNOG NAAR DRIVE
+// ═══════════════════════════════════════════════════════════
+// Voor een stap die ooit zonder gekozen Drive-map is gemaakt: de tekst ligt al
+// vast (interne documentweergave, "tussenfase" genoemd), maar er is nog geen
+// Word-bestand in de klantmap en dus geen link om mee te sturen naar de
+// developer of in een mail. In plaats van de stap opnieuw te laten genereren
+// (kost AI-tijd en kan een andere tekst opleveren dan wat al is uitgezocht of
+// aangeleverd), bouwt dit de opgeslagen tekst gewoon om tot hetzelfde
+// Pingwin-document en zet die in de inmiddels gekozen map. Vereist dus dat er
+// al een map gekozen is; dat is precies de poort die ensureDriveMap afdwingt.
+export async function uploadExistingDoc(slug: string, url: string, kind: DocKind, audience: "intern" | "klant" = "klant"): Promise<string> {
+  const folder = await getPageDriveFolder(slug, url);
+  if (!folder) throw new Error("Kies eerst een Drive-map voor deze pagina.");
+  const outputs = await getPageDocOutputs(slug, url).catch(() => ({} as Record<string, string>));
+  const tekst = (outputs[kind] || "").trim();
+  if (!tekst) throw new Error(`Er is nog geen ${STEP_TITLE[kind].toLowerCase()} vastgelegd voor deze pagina.`);
+  const client = await getClientBySlug(slug);
+  if (!client) throw new Error("Klant niet gevonden.");
+  const pad = pagePath(url);
+  const label: Record<DocKind, string> = { analyse: "SEO-analyse", blauwdruk: "SEO-blauwdruk", copy: "Copy-briefing" };
+
+  let spec: DocSpec | null = null;
+  if (kind === "copy") {
+    const r = await buildCopyKlantSpec(slug, url).catch(() => null);
+    if (r?.ok && r.spec) spec = r.spec;
+  }
+  if (!spec) {
+    spec = {
+      klant: client.name, rapporttype: label[kind], titel: `${label[kind]} voor ${pad}`, ondertitel: pad,
+      meta: { Pagina: pad, Datum: new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) },
+      sfeerbeeldUrl: url, sections: copyNaarSecties(tekst),
+    };
+  }
+
+  const buffer = await buildPingwinDoc(spec);
+  const filename = `${safeName(spec.klant)}-${kind}-${safeName(pad)}.docx`;
+  const { link } = await uploadDocx(folder.folderId, filename, buffer);
+
+  await ensureSchema(); await ensureRunTable();
+  const st = (k: DocKind) => (k === kind ? "done" : "skipped");
+  await sql`
+    INSERT INTO page_doc_runs (client_slug, url, folder_id, audience, status, analyse_state, blauwdruk_state, copy_state, analyse_link, blauwdruk_link, copy_link)
+    VALUES (${slug}, ${url}, ${folder.folderId}, ${audience}, 'done', ${st("analyse")}, ${st("blauwdruk")}, ${st("copy")},
+      ${kind === "analyse" ? link : null}, ${kind === "blauwdruk" ? link : null}, ${kind === "copy" ? link : null})`;
+
+  await upsertStepTask(slug, {
+    pageUrl: url, stepKind: STEP_KIND[kind], title: `${STEP_TITLE[kind]}: ${pad}`,
+    link, clientLink: audience === "klant" ? link : undefined, klantToelichting: STEP_KLANT[kind], wie: "SEO", fase: "Bouwen", klantZichtbaar: audience === "klant",
+  }).catch(() => null);
+
+  return link;
 }

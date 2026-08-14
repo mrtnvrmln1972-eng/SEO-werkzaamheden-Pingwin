@@ -67,6 +67,11 @@ export const BLOKKEN: Uitklapper[] = [
       "dat zelf aanvinken en werd dat vaak vergeten. Ook stond de copy soms helemaal niet in de lijst: had " +
       "een pagina meerdere losse klantversies (bijlagen uit oudere mails), dan waren de zes plekken al vol " +
       "vóórdat de copy aan de beurt kwam. De pijplijn-documenten (copy, blauwdruk, analyse) staan nu vooraan " +
-      "in die lijst en zijn dus nooit meer het slachtoffer van de grens.",
+      "in die lijst en zijn dus nooit meer het slachtoffer van de grens.\n\n" +
+      "**Oudere tekst zonder Drive-link alsnog uploaden, zonder opnieuw te genereren.** Is een analyse, " +
+      "blauwdruk of copy ooit gemaakt zonder gekozen map (van vóór de verplichte mapkeuze), dan wijst de link " +
+      "naar de interne documentweergave. Daar staat nu de knop \"Kies Drive-map en upload\": hij zet precies " +
+      "de al vastgelegde tekst om naar het Pingwin-document, zonder de AI opnieuw aan het werk te zetten, en " +
+      "vanaf dat moment gebruiken Developer en Mail die nieuwe Drive-link.",
   },
 ];

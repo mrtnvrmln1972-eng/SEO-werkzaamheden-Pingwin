@@ -5,6 +5,7 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../../../lib/constants";
 import { getScopeFromCookie, canAccessSlug } from "../../../../../lib/admin-scope";
 import { getPageDocOutputs } from "../../../../../lib/site-urls";
 import { mdToHtml } from "../../../../../lib/markdown";
+import UploadNaarDrive from "./UploadNaarDrive";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,13 @@ export default async function DocumentPage({ params, searchParams }: {
               Het document wordt op dit moment opgebouwd, dus het downloaden duurt even.
               {kind === "copy" ? " Bij copy krijg je de volledige klant-briefing: omslag, uitleg, de zoekwoorden en de webteksten." : ""}
             </p>
+            {/* Deze tekst staat hier omdat er destijds geen Drive-map gekozen was.
+                Alsnog een echt Word-bestand in de klantmap zetten, zonder de stap
+                opnieuw te laten schrijven, kan met deze knop; de link die daaruit
+                komt is vanaf dat moment ook de link die Developer en Mail gebruiken. */}
+            {(kind === "analyse" || kind === "blauwdruk" || kind === "copy") && (
+              <UploadNaarDrive slug={params.slug} url={url} kind={kind} />
+            )}
             <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(content, siteBase) }} />
           </>
         ) : (
