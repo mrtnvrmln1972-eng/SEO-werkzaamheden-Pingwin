@@ -481,13 +481,15 @@ export default function ClientCockpit({
 
             {/* Twee kolommen, allebei even breed: links de Overview (assistent +
                 weekplanning), rechts Bespreeklijsten, Laatste mails en Zoekwoorden &
-                links onder elkaar. Boxed komt al van .container (1700px,
-                gecentreerd); geen eigen, smallere grens meer nodig.
+                links onder elkaar. tk-wide breekt bewust uit de standaard
+                .container-breedte (1700px bleek op een breed scherm nog steeds
+                een flink leeg stuk over te laten); alleen een klein vast randje.
 
                 Links stond alles onder elkaar open: de assistent met al zijn
                 onderwerpen, en daaronder de hele weekplanning. Je scrolde dus altijd
                 langs dingen die je op dat moment niet nodig had. Nu één kop met drie
                 blokken die dicht beginnen, zodat je zelf kiest wat je openzet. */}
+            <div className="tk-wide">
             <div className="tk-grid">
             <div className="tk-links">
             <div className="cockpit-card ovc-card">
@@ -744,6 +746,7 @@ export default function ClientCockpit({
               </div>
             </div>
 
+            </div>
             </div>
             </div>
 

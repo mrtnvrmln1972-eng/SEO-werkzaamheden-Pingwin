@@ -857,16 +857,13 @@ tbody td:last-child { text-align: center; }
 .dev-view-toggle button:hover { border-color: var(--orange); color: var(--orange); }
 .dev-view-toggle button.active { background: var(--orange); border-color: var(--orange); color: #fff; }
 /* Deze pagina (werkgereedschap, geen klant-oplevering) mag breder dan de
-   standaard .container: breekt bewust uit die 1700px-grens tot bijna de volle
-   schermbreedte, gecentreerd op het viewport i.p.v. op de ouder, dus dit werkt
-   ook wanneer dit scherm ingebed in de klant-cockpit hangt (14-08-2026). */
-.dev-wide {
-  width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); box-sizing: border-box;
-  /* Gelijke padding aan beide kanten centreert de inhoud vanzelf; op een smal
-     scherm blijft het bij 24px, op een breed scherm groeit de padding mee
-     zodat de inhoud zelf nooit breder dan ~1900px wordt. */
-  padding-left: max(24px, calc(50vw - 950px)); padding-right: max(24px, calc(50vw - 950px));
-}
+   standaard .container: breekt bewust uit die 1700px-grens, gecentreerd op
+   het viewport i.p.v. op de ouder, dus dit werkt ook wanneer dit scherm
+   ingebed in de klant-cockpit hangt. Eerst met een ingebouwde grens van
+   ~1900px, maar die liet op een breed scherm nog steeds een flink leeg stuk
+   staan (14-08-2026): geen maximumbreedte meer, alleen een klein vast randje,
+   net als .tk-wide op het Taken-tabblad. */
+.dev-wide { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); box-sizing: border-box; padding-left: 32px; padding-right: 32px; }
 .dev-week { padding: 16px 18px; }
 /* Weekplanning: één verticaal scrollende lijst van weken (elke week zelf
    horizontaal, maandag t/m zondag), met de "nog niet ingepland"-balk er als
@@ -3514,9 +3511,12 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 /* Razorsharp: beide kolommen beginnen op exact dezelfde hoogte. */
 .tk-links > .cockpit-card:first-child, .tk-rechts > .cockpit-card:first-child { margin-top: 0; }
 @media (max-width: 1150px) { .tk-grid { grid-template-columns: 1fr; } }
-/* Boxed is hier gewoon de bestaande .container-breedte (1700px, gecentreerd);
-   een eigen, smallere grens (1320px, 14-08-2026) liet op een breed scherm een
-   groot leeg stuk rechts staan en is weer verwijderd. */
+/* Boxed bleek ook met de gewone .container-breedte (1700px) op een breed
+   scherm nog een flink leeg stuk aan weerszijden te laten (14-08-2026, na
+   een eerdere, nog smallere poging van 1320px). Geen vaste maximumbreedte
+   meer: dit breekt bewust uit .container, met alleen een klein vast randje,
+   zodat de inhoud meegroeit met hoe breed het scherm ook is. */
+.tk-wide { width: 100vw; margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw); box-sizing: border-box; padding-left: 32px; padding-right: 32px; }
 
 /* Weekplanning-bord: taken over weekkolommen, huidige week gemarkeerd, slepen. */
 .wp-wrap, .wp-empty { margin-top: 14px; }
