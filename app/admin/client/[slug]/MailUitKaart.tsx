@@ -54,6 +54,40 @@ export default function MailUitKaart({
   // die de klant terugstuurde. De kaart zelf kent alleen analyse, blauwdruk en
   // copy, dus juist de herziene versie kon je anders niet meesturen.
   const [docs, setDocs] = useState<{ label: string; url: string }[]>([]);
+  // Een screenshot erbij: slepen of plakken (zelfde patroon als MailPopup), in de
+  // browser verkleind naar max 1400px (JPEG) en pas bij versturen als <img>
+  // onderaan de mail gezet. Los van de tekst houden voorkomt gerommel met de
+  // cursorpositie in het bewerkbare vak.
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  function acceptImageFile(file: File | null | undefined) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1400;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL("image/jpeg", 0.85);
+        setPendingImages((prev) => (prev.length >= 6 ? prev : [...prev, data]));
+      };
+      img.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  }
+  function onPasteImage(e: React.ClipboardEvent) {
+    const item = Array.from(e.clipboardData?.items || []).find((i) => i.type.startsWith("image/"));
+    if (item) { e.preventDefault(); acceptImageFile(item.getAsFile()); }
+  }
+  function onDropImage(e: React.DragEvent) {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault(); setDragOver(false);
+    for (const f of Array.from(e.dataTransfer.files)) acceptImageFile(f);
+  }
 
   const conceptSleutel = `pingwin-mailconcept-${slug}-${t.id}`;
   function bewaarConcept() {
@@ -72,6 +106,7 @@ export default function MailUitKaart({
   // leeg. Geen automatische tekst: Maarten dicteert zijn mails en moest een
   // standaardtekst eerst weggooien.
   useEffect(() => {
+    setPendingImages([]);
     // Ook bij een taak zónder pagina: documenten hangen dan aan de taak zelf.
     // Stond hier eerder achter "if (t.url)", waardoor je bij zo'n taak niets kon
     // meesturen terwijl er wél documenten aan hingen.
@@ -181,7 +216,7 @@ export default function MailUitKaart({
       const d = await fetch("/api/admin/task/mail", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, to: adres, onderwerp: ond, tekst, links: mee, taak: t.taak, url: t.url,
-          herinnerDagen: herinner ? herinnerDagen : 0 }),
+          afbeeldingen: pendingImages, herinnerDagen: herinner ? herinnerDagen : 0 }),
       }).then((r) => r.json());
       if (d?.ok) { wisConcept(); setKlaar(d.samenvatting || "Verstuurd."); setTimeout(onClose, 1600); }
       else setErr(d?.error || "Versturen mislukte.");
@@ -244,8 +279,25 @@ export default function MailUitKaart({
           <span className="wp-mail-onderwerp-label">Onderwerp</span>
           <input value={onderwerp} onChange={(e) => setOnderwerp(e.target.value)} placeholder="Onderwerp van de mail" />
         </label>
-        <div className="wp-mail-edit" contentEditable suppressContentEditableWarning ref={ref}
-          data-placeholder="De mail verschijnt hier…" style={{ opacity: busy ? 0.5 : 1 }} onBlur={bewaarConcept} />
+        <div className={"wp-mail-edit" + (dragOver ? " chat-dropping" : "")} contentEditable suppressContentEditableWarning ref={ref}
+          data-placeholder="De mail verschijnt hier… (een screenshot erin plakken of slepen mag)" style={{ opacity: busy ? 0.5 : 1 }}
+          onBlur={bewaarConcept} onPaste={onPasteImage}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDropImage} />
+        {pendingImages.length > 0 && (
+          <div className="chat-img-preview">
+            <span className="chat-img-row">
+              {pendingImages.map((im, j) => (
+                <span key={j} className="chat-img-thumb">
+                  <img src={im} alt={`Afbeelding ${j + 1} klaar om mee te sturen`} />
+                  <button type="button" className="chat-img-thumb-del" title="Deze afbeelding weghalen" onClick={() => setPendingImages((prev) => prev.filter((_, k) => k !== j))}>&times;</button>
+                </span>
+              ))}
+            </span>
+            <span>{pendingImages.length === 1 ? "Gaat onderaan de mail mee." : `${pendingImages.length} afbeeldingen gaan onderaan de mail mee.`} (max 6)</span>
+          </div>
+        )}
         {busy && <div className="muted" style={{ marginTop: "var(--s-2)" }}>Mail aan het schrijven…</div>}
         <div className="wp-mail-foot">
           {/* Na het versturen is het stil: kwam er antwoord, en is het ook echt

@@ -46,7 +46,8 @@ export const HOOFDSTUK: Hoofdstuk = {
         "pagina en de documenten als klikbare links. In dat berichtvak kun je nu ook een screenshot plakken of " +
         "erin slepen, bijvoorbeeld om aan te wijzen welk blok nog fout staat; hij gaat als afbeelding onderaan " +
         "de mail mee. Ditzelfde geldt overal in het dashboard waar dit mailvenster verschijnt, niet alleen bij " +
-        "de sitebouwer.\n\n" +
+        "de sitebouwer. Het andere mailvenster, \"Mail vanuit deze kaart\" (de Mail-knop op een projectkaart in " +
+        "de weekplanning), is een los scherm en heeft dezelfde plak-of-sleep-knop nu ook.\n\n" +
         "Daarnaast staat er bij een taak die van een projectkaart komt de knop \"Is dit doorgevoerd?\": dezelfde " +
         "meting als op de kaart zelf, maar dan met één klik vanuit de lijst, zodat je bij een terugkoppeling van " +
         "de sitebouwer niet eerst de kaart hoeft op te zoeken.",

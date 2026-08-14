@@ -53,6 +53,18 @@ function plakOnderaan(html: string, links: { label: string; url: string }[]): st
   return `${html}\n${regels}`;
 }
 
+// Meegestuurde screenshots (geplakt of gesleept in het bewerkbare vak) gaan
+// als losse <img>-blokken onderaan de mail, na de links. Zelfde plek en vorm
+// als in MailPopup, dat andere mailvenster in het dashboard.
+function plakAfbeeldingen(html: string, afbeeldingen: string[]): string {
+  if (!afbeeldingen.length) return html;
+  const imgs = afbeeldingen
+    .filter((a) => /^data:image\//i.test(a))
+    .map((a) => `<img src="${a}" alt="Bijgevoegde afbeelding" style="max-width:100%;margin-top:8px;display:block;border-radius:8px;">`)
+    .join("\n");
+  return `${html}\n${imgs}`;
+}
+
 // Adressen opschonen. Microsoft weigerde "maarten@pingwin.nl," omdat de komma als
 // onderdeel van het adres meeging: "Recipient is not resolved". Splitsen op komma en
 // puntkomma lost dat op en maakt meerdere ontvangers meteen mogelijk.
@@ -108,7 +120,7 @@ function naarHtml(tekst: string, links: { label: string; url: string }[]): { htm
 
 export async function POST(req: NextRequest) {
   let body: { slug?: string; to?: string; onderwerp?: string; tekst?: string; links?: { label: string; url: string }[];
-               herinnerDagen?: number; taak?: string; url?: string };
+               afbeeldingen?: string[]; herinnerDagen?: number; taak?: string; url?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
@@ -137,9 +149,11 @@ export async function POST(req: NextRequest) {
   }
 
   const links = (Array.isArray(body.links) ? body.links : []).filter((l) => l && l.url && l.label);
+  // Max 6, zelfde grens als het venster zelf hanteert bij het toevoegen.
+  const afbeeldingen = (Array.isArray(body.afbeeldingen) ? body.afbeeldingen : []).filter((a) => typeof a === "string").slice(0, 6);
   const klant = await getClientBySlug(slug).catch(() => null);
   const { html: metLinks, ongeplaatst } = naarHtml(tekst, links);
-  const html = linkifyPaden(plakOnderaan(metLinks, ongeplaatst), klant?.domain || "");
+  const html = plakAfbeeldingen(linkifyPaden(plakOnderaan(metLinks, ongeplaatst), klant?.domain || ""), afbeeldingen);
   const r = await msSendMail(ontvangers, onderwerp || "Bericht van Pingwin", html);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error || "Versturen mislukte." }, { status: 502 });
 
