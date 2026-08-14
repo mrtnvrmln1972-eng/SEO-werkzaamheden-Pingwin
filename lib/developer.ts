@@ -125,16 +125,31 @@ export function devSturing(toelichting: string): string {
  * verwerken van \"Bogard Klantenservice.docx\""), en die liepen in de
  * developerlijst over drie regels. De volledige naam blijft als tooltip staan.
  */
+function kortNaam(naam: string): string {
+  let n = naam.trim().replace(/\.(docx?|pdf|txt|md)$/i, "").replace(/\s{2,}/g, " ").trim();
+  if (n.length > 34) n = n.slice(0, 33).replace(/[\s,;:-]+$/, "") + "\u2026";
+  return n;
+}
 function kortLabel(naam: string, vanKlant: boolean): string {
-  let n = naam.trim();
+  const n = naam.trim();
   // "Geldende versie na verwerken van X" is voor de sitebouwer gewoon: de tekst.
   if (/^geldende versie/i.test(n)) return "Geldende versie";
-  n = n.replace(/\.(docx?|pdf|txt|md)$/i, "").replace(/\s{2,}/g, " ").trim();
-  if (n.length > 28) n = n.slice(0, 27).replace(/[\s,;:-]+$/, "") + "\u2026";
-  return vanKlant ? `${n} (klant)` : n;
+  return vanKlant ? `${kortNaam(n)} (klant)` : kortNaam(n);
+}
+// Het label van een pijplijn-document (copy/blauwdruk/analyse) is de echte
+// bestandsnaam, niet het kale woord "Copy". Twee regels die allebei "Copy"
+// heten zijn met geen mogelijkheid uit elkaar te houden: pas de titel laat
+// zien w\u00e1t je vastknoopt, en of het al een echt Drive-bestand is of nog de
+// interne (nog niet ge\u00fcploade) tekst.
+async function pijplijnLabel(categorie: string, link: string): Promise<string> {
+  if (!link) return "";
+  if (link.startsWith("/")) return `${categorie} (nog niet in Drive)`;
+  const { fileName } = await import("./drive");
+  const naam = await fileName(link).catch(() => "");
+  return naam ? `${categorie}: ${kortNaam(naam)}` : categorie;
 }
 
-export async function docsVoorPagina(slug: string, url: string): Promise<{ label: string; url: string }[]> {
+export async function docsVoorPagina(slug: string, url: string, extra: { categorie: string; url: string }[] = []): Promise<{ label: string; url: string }[]> {
   if (!url) return [];
   const uit: { label: string; url: string }[] = [];
   const gezien = new Set<string>();
@@ -161,27 +176,37 @@ export async function docsVoorPagina(slug: string, url: string): Promise<{ label
   // nieuwere), dan waren die zes plekken al vol vóórdat de copy aan de beurt
   // kwam. Het gevolg: de sitebouwer kreeg de opdracht zonder de copy erbij,
   // precies het document waar hij het meest naar vraagt.
+  //
+  // `extra` is een los aangeleverde link per categorie (bijvoorbeeld het
+  // copy_url-veld van een taak: een tekst die niet uit de pijplijn komt, maar
+  // apart is binnengekomen). Is dat toevallig hetzelfde bestand als het
+  // pijplijndocument, dan verdwijnt hij vanzelf (voegToe dedupt op URL); is het
+  // een ANDER bestand, dan komt hij als eigen, óók getitelde regel erbij, in
+  // plaats van als een even generiek "Copy-doc" ernaast te staan.
   try {
     const { getStepLinks } = await import("./page-doc-run");
     const s = await getStepLinks(slug, url);
-    voegToe("Copy", s.copy);
-    voegToe("Blauwdruk", s.blauwdruk);
-    voegToe("Analyse", s.analyse);
+    const alleKinden = [
+      { kind: "copy" as const, categorie: "Copy" }, { kind: "blauwdruk" as const, categorie: "Blauwdruk" }, { kind: "analyse" as const, categorie: "Analyse" },
+    ];
+    for (const k of alleKinden) {
+      if (s[k.kind]) voegToe(await pijplijnLabel(k.categorie, s[k.kind]), s[k.kind]);
+    }
+    for (const e of extra) {
+      if (e.url) voegToe(await pijplijnLabel(e.categorie, e.url), e.url);
+    }
     // Is een stap wel gegenereerd maar staat er geen Drive-link bij (er was toen
     // geen map gekozen), dan blijft de tekst zonder deze terugval onvindbaar in
     // dit venster: het document bestaat wél, maar niets om mee te sturen. De
     // interne documentweergave heeft altijd een knop om alsnog een Word-bestand
     // te downloaden, dus die link werkt ook als vangnet.
-    const alleKinden = [
-      { kind: "copy", label: "Copy" }, { kind: "blauwdruk", label: "Blauwdruk" }, { kind: "analyse", label: "Analyse" },
-    ] as const;
     const ontbreekt = alleKinden.filter((k) => !s[k.kind]);
     if (ontbreekt.length) {
       const { getPageDocOutputs } = await import("./site-urls");
       const outputs = await getPageDocOutputs(slug, url).catch(() => ({} as Record<string, string>));
       for (const k of ontbreekt) {
         if ((outputs[k.kind] || "").trim()) {
-          voegToe(k.label, `/admin/client/${slug}/document?kind=${k.kind}&url=${encodeURIComponent(url)}`);
+          voegToe(`${k.categorie} (nog niet in Drive)`, `/admin/client/${slug}/document?kind=${k.kind}&url=${encodeURIComponent(url)}`);
         }
       }
     }

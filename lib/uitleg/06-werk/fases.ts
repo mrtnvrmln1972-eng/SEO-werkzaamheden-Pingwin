@@ -68,6 +68,12 @@ export const BLOKKEN: Uitklapper[] = [
       "een pagina meerdere losse klantversies (bijlagen uit oudere mails), dan waren de zes plekken al vol " +
       "vóórdat de copy aan de beurt kwam. De pijplijn-documenten (copy, blauwdruk, analyse) staan nu vooraan " +
       "in die lijst en zijn dus nooit meer het slachtoffer van de grens.\n\n" +
+      "**Elke regel in die lijst heet nu naar het bestand dat hij is, niet naar zijn categorie.** \"Copy\" en " +
+      "\"Copy-doc\" naast elkaar leek twee keer hetzelfde, terwijl het vaak twee verschillende documenten " +
+      "waren: het document uit de pijplijn en een los aangeleverde tekst (bijvoorbeeld het copy_url-veld van " +
+      "een taak, gevuld vanuit een mail). Beide regels tonen nu de echte bestandsnaam (\"Copy: " +
+      "Copy-briefing-hovenier-uden\"), en is het toevallig hetzelfde bestand, dan komt het er nog maar één " +
+      "keer in te staan in plaats van als twee identiek ogende regels.\n\n" +
       "**Oudere tekst zonder Drive-link alsnog uploaden, zonder opnieuw te genereren.** Is een analyse, " +
       "blauwdruk of copy ooit gemaakt zonder gekozen map (van vóór de verplichte mapkeuze), dan wijst de link " +
       "naar de interne documentweergave. Daar staat nu de knop \"Kies Drive-map en upload\": hij zet precies " +

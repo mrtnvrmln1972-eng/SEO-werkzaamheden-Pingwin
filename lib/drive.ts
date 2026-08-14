@@ -68,6 +68,23 @@ export async function folderName(folderId: string): Promise<string> {
   return (j.name as string) || "";
 }
 
+// De echte bestandsnaam van een Drive-document, uit een geplakte link of losse
+// id. Gebruikt in keuzelijsten (het doorzet- en mailvenster) zodat een knop als
+// "Copy" of "Copy-doc" wordt wat hij hoort te zijn: de titel van het bestand dat
+// je meestuurt, niet een generiek woord waaraan niet te zien is óf, en zo ja
+// welk, verschil er met een andere regel in dezelfde lijst is.
+export async function fileName(idOrUrl: string): Promise<string> {
+  const id = driveIdFromUrl(idOrUrl);
+  if (!id) return "";
+  try {
+    const t = await token();
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=name&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${t}` } });
+    if (!res.ok) return "";
+    const j = await res.json();
+    return (j.name as string) || "";
+  } catch { return ""; }
+}
+
 // ── Documentinhoud lezen (Google Doc/Sheet/Slides) ──
 // Haalt een Drive-file-id uit een geplakte URL of losse id. Ondersteunt de
 // gangbare Google-linkvormen (/d/<id>/, ?id=<id>) plus een kale id.

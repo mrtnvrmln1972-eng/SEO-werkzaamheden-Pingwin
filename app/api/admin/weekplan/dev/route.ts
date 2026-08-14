@@ -37,7 +37,11 @@ export async function GET(req: NextRequest) {
   // (dezelfde sleutel als de kaart gebruikt). Zonder die terugval kreeg je bij een
   // taak zonder pagina een lege lijst, terwijl er wél documenten aan hingen.
   const docSleutel = kaart.url || `taak:${id}`;
-  const beschikbaar = await docsVoorPagina(slug, docSleutel).catch(() => []);
+  // Het losse copy_url-veld van de taak (een tekst die apart is aangeleverd of
+  // gevonden, niet uit de pijplijn) gaat als "Copy"-categorie mee de lijst in;
+  // is het toevallig hetzelfde bestand als het pijplijndocument, dan houdt
+  // docsVoorPagina er automatisch maar één van over.
+  const beschikbaar = await docsVoorPagina(slug, docSleutel, kaart.copyUrl ? [{ categorie: "Copy", url: kaart.copyUrl }] : []).catch(() => []);
   const gekozen = opgeslagen?.docs || [];
   // De versie die jij hebt aangemerkt als geldend staat standaard aan: dat is
   // immers de tekst die de sitebouwer op de site moet zetten.
@@ -48,8 +52,10 @@ export async function GET(req: NextRequest) {
   // een kaart naar de developer (of een mail aan hem) zonder de copy erbij, en
   // moest hij die alsnog los opvragen. Gepakt uit `beschikbaar` (niet los
   // opnieuw opgezocht): die lijst wijst ook naar de interne documentweergave
-  // als er nog geen Drive-link is, en dan moet precies díe link aanstaan.
-  const copyLink = beschikbaar.find((d) => d.label === "Copy")?.url || "";
+  // als er nog geen Drive-link is, en dan moet precies díe link aanstaan. Het
+  // label is nu "Copy: <bestandsnaam>" of "Copy (nog niet in Drive)" in plaats
+  // van kaal "Copy", dus hier op het voorvoegsel matchen, niet op een vaste tekst.
+  const copyLink = beschikbaar.find((d) => /^Copy(:|\s\()/.test(d.label))?.url || "";
 
   return NextResponse.json({
     ok: true,
