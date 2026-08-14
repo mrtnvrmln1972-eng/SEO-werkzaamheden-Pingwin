@@ -14,7 +14,7 @@ import type { DriveMap } from "../DriveMapKiezer";
 import { FASEN } from "./fase-iconen";
 import type { FaseKey, WpTask, WpPageInfo } from "./types";
 
-type RunInfo = { status: string; steps: Record<string, string>; links: Record<string, string> } | null;
+type RunInfo = { status: string; steps: Record<string, string>; links: Record<string, string>; error?: string } | null;
 
 /** Dichtgeklapt: compacte fase-chips. Klik = de kaart openen. */
 export function FaseChips({ page, onToggleOpen }: { page: WpPageInfo; onToggleOpen: () => void }) {
