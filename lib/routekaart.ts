@@ -237,10 +237,21 @@ export const PUNTEN: Punt[] = [
   },
 ];
 
-/** Kan dit punt vandaag beginnen? */
+/**
+ * Kan dit punt vandaag beginnen?
+ *
+ * Blokkeert ook als het punt hetzelfde scherm raakt als iets dat nú "loopt"
+ * (zie `botstMetLopend`). Tot 14-08-2026 gaf deze functie hier nog groen licht
+ * en stond alleen een waarschuwingstekst ernaast; daardoor liet het scherm de
+ * kopieerknop gewoon zien voor een punt dat in dezelfde bestanden zou gaan
+ * schrijven als een lopend punt, en dat is precies hoe twee chats op elkaar
+ * botsen. Punten die elkaars scherm niet raken mogen nog steeds gewoon
+ * tegelijk, dat is bewust zo (zie `parallelNu`).
+ */
 export function kanStarten(p: Punt): boolean {
   if (p.stand !== "open") return false;
-  return p.nodig.every((c) => PUNTEN.find((x) => x.code === c)?.stand === "af");
+  if (!p.nodig.every((c) => PUNTEN.find((x) => x.code === c)?.stand === "af")) return false;
+  return botstMetLopend(p).length === 0;
 }
 
 /** Welke punten houden dit punt tegen (alleen de nog niet afgeronde). */

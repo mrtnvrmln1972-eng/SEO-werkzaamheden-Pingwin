@@ -182,6 +182,8 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
             <span className="rk-geblokkeerd">
               {p.stand === "loopt"
                 ? "Loopt al in een andere chat."
+                : p.botstLopend.length > 0
+                ? `Nu niet starten: raakt hetzelfde scherm als ${p.botstLopend.join(" en ")}, dat nu loopt.`
                 : `Kan nog niet beginnen: ${p.wacht.join(" en ")} moet eerst af zijn.`}
             </span>
           )}
