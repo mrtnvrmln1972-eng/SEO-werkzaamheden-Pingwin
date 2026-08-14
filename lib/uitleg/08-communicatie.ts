@@ -39,6 +39,19 @@ export const HOOFDSTUK: Hoofdstuk = {
         "voordat hij de link verstuurt.",
     },
     {
+      titel: "Mailen naar de sitebouwer",
+      kern: "Een screenshot van het probleem erbij, en meteen zien of het al klopt.",
+      tekst:
+        "In het Developer-tabblad staat bij elke taak een mailknop met alles al ingevuld: klant, taak, de " +
+        "pagina en de documenten als klikbare links. In dat berichtvak kun je nu ook een screenshot plakken of " +
+        "erin slepen, bijvoorbeeld om aan te wijzen welk blok nog fout staat; hij gaat als afbeelding onderaan " +
+        "de mail mee. Ditzelfde geldt overal in het dashboard waar dit mailvenster verschijnt, niet alleen bij " +
+        "de sitebouwer.\n\n" +
+        "Daarnaast staat er bij een taak die van een projectkaart komt de knop \"Is dit doorgevoerd?\": dezelfde " +
+        "meting als op de kaart zelf, maar dan met één klik vanuit de lijst, zodat je bij een terugkoppeling van " +
+        "de sitebouwer niet eerst de kaart hoeft op te zoeken.",
+    },
+    {
       titel: "Delen zonder inlog",
       kern: "Lange, onraadbare links voor precies één ding.",
       tekst:

@@ -8,6 +8,7 @@ import OntwikkelMenu from "../OntwikkelMenu";
 import Tellers from "../Tellers";
 import MeldingenMenu from "../MeldingenMenu";
 import MailPopup from "../client/[slug]/MailPopup";
+import ControleUitslag, { type Meting } from "../client/[slug]/weekplan-kaart/KaartControle";
 
 // Verwijdert scripts/handlers/inline font-kleur uit opgeslagen taak-HTML, houdt
 // links en basis-opmaak. De inhoud is bij invoer al geschoond; dit is de vangnet.
@@ -104,6 +105,31 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   const [afgerondOpen, setAfgerondOpen] = useState<Record<string, boolean>>({});
   // De taak waarover gemaild wordt; niet-leeg betekent: mailvenster staat open.
   const [mailVoor, setMailVoor] = useState<{ r: Row; note: string } | null>(null);
+
+  // "Is dit doorgevoerd?": dezelfde meting als op de projectkaart in de
+  // weekplanning, maar dan met één klik vanuit deze lijst, zodat je niet voor
+  // elke terugkoppeling van de sitebouwer eerst de kaart hoeft op te zoeken.
+  // Alleen mogelijk voor taken die van een weekplan-kaart komen (taskKey
+  // "wp:<id>") met een pagina erbij; dat is precies hoe een taak hier
+  // meestal terechtkomt (via "Zet klaar voor de sitebouwer"). Het is een
+  // proef: er wordt niets opgeslagen, je ziet alleen het bewijs.
+  const [controleVoor, setControleVoor] = useState<{ r: Row; meting: Meting; bezig: boolean } | null>(null);
+  function kaartIdVan(r: Row): number | null {
+    const m = /^wp:(\d+)$/.exec(r.taskKey);
+    return m ? Number(m[1]) : null;
+  }
+  async function controleer(r: Row) {
+    const id = kaartIdVan(r);
+    if (!id) return;
+    setControleVoor({ r, meting: null, bezig: true });
+    try {
+      const d = await fetch(`/api/admin/weekplan/doorgevoerd?slug=${encodeURIComponent(r.clientSlug)}&id=${id}`).then((x) => x.json());
+      if (d?.ok && d.meting) setControleVoor({ r, meting: d.meting, bezig: false });
+      else setControleVoor({ r, meting: { samenvatting: d?.error || "De controle lukte niet.", punten: [], alles: false, meetbaar: false }, bezig: false });
+    } catch {
+      setControleVoor({ r, meting: { samenvatting: "De controle lukte niet.", punten: [], alles: false, meetbaar: false }, bezig: false });
+    }
+  }
   // Het adres waar de mail standaard heen gaat. Maarten mailt hiermee zijn
   // sitebouwer, de sitebouwer mailt hiermee Maarten terug, dus het adres staat
   // niet vast: het onthoudt wat je de vorige keer gebruikte.
@@ -297,6 +323,9 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         <label className="dev-check-label dev-check-afgerond"><input type="checkbox" checked={r.ownerDone} onChange={(e) => toggleAfgerond(idx, e.target.checked)} /> Afgerond</label>
         <button type="button" className="ghost-btn small" onClick={() => setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName })} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
         <button type="button" className="ghost-btn small dev-mail-btn" onClick={() => mailVenster(r, r.devNote)} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
+        {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
+          <button type="button" className="btn btn-ghost btn-klein" onClick={() => void controleer(r)} title="Meet de live pagina op wat er is afgesproken">🔍 Is dit doorgevoerd?</button>
+        )}
       </div>
     </div>
   );
@@ -363,6 +392,9 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         )}
         <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Taak, opmerking en documenten aanpassen">✎ Bewerk</button>
         <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailVenster(r, r.devNote); }} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
+        {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
+          <button type="button" className="btn btn-ghost btn-klein" onClick={(e) => { e.stopPropagation(); void controleer(r); }} title="Meet de live pagina op wat er is afgesproken">🔍 Controleer</button>
+        )}
       </td>
     </tr>
   );
@@ -508,6 +540,28 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             onthoudAls={MAIL_AAN_SLEUTEL}
             onVerstuurd={() => { try { setMailAan(localStorage.getItem(MAIL_AAN_SLEUTEL) || mailAan); } catch { /* geen opslag */ } }}
           />
+        )}
+
+        {controleVoor && (
+          <div className="compose-overlay" onClick={() => setControleVoor(null)}>
+            <div className="compose-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="compose-head">
+                <span>Is dit doorgevoerd? &middot; {controleVoor.r.clientName}</span>
+                <button type="button" className="chat-float-close" onClick={() => setControleVoor(null)}>&times;</button>
+              </div>
+              <div className="compose-body">
+                <div className="muted" style={{ marginBottom: "var(--s-2)" }}>{stripText(controleVoor.r.taak)}</div>
+                {controleVoor.bezig || !controleVoor.meting ? (
+                  <p className="muted">Bezig met meten…</p>
+                ) : (
+                  <ControleUitslag controle={controleVoor.meting} onMail={() => { const r = controleVoor.r; setControleVoor(null); mailVenster(r, r.devNote); }} />
+                )}
+              </div>
+              <div className="compose-foot">
+                <button type="button" className="logout-btn" onClick={() => setControleVoor(null)}>Sluiten</button>
+              </div>
+            </div>
+          </div>
         )}
 
         {feedbackFor !== null && rows[feedbackFor] && (

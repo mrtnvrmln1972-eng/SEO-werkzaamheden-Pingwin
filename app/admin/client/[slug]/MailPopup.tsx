@@ -36,14 +36,49 @@ export default function MailPopup({
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const ref = useRef<HTMLDivElement | null>(null);
+  // Een screenshot erbij: slepen of plakken (net als bij de assistent-chat),
+  // in de browser verkleind naar max 1400px (JPEG) en pas bij versturen als
+  // <img> onderaan het bericht gezet. Los houden van de tekst voorkomt
+  // gerommel met de cursorpositie in het bewerkbare vak.
+  const [pendingImages, setPendingImages] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setTo(aanTo); setMsg("");
+    setTo(aanTo); setMsg(""); setPendingImages([]);
     fetch("/api/admin/mail?status=1").then((r) => r.json()).then((d) => setConnected(d.ok ? !!d.connected : false)).catch(() => setConnected(false));
     if (ref.current) ref.current.innerHTML = berichtHtml || "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  function acceptImageFile(file: File | null | undefined) {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 1400;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const data = canvas.toDataURL("image/jpeg", 0.85);
+        setPendingImages((prev) => (prev.length >= 6 ? prev : [...prev, data]));
+      };
+      img.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  }
+  function onPasteImage(e: React.ClipboardEvent) {
+    const item = Array.from(e.clipboardData?.items || []).find((i) => i.type.startsWith("image/"));
+    if (item) { e.preventDefault(); acceptImageFile(item.getAsFile()); }
+  }
+  function onDropImage(e: React.DragEvent) {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault(); setDragOver(false);
+    for (const f of Array.from(e.dataTransfer.files)) acceptImageFile(f);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +89,12 @@ export default function MailPopup({
 
   if (!open || typeof document === "undefined") return null;
 
-  function tekst(): string { return ref.current?.innerHTML || berichtHtml; }
+  function tekst(): string {
+    const basis = ref.current?.innerHTML || berichtHtml;
+    if (!pendingImages.length) return basis;
+    const imgs = pendingImages.map((im) => `<img src="${im}" alt="Bijgevoegde afbeelding" style="max-width:100%;margin-top:8px;display:block;border-radius:8px;">`).join("");
+    return `${basis}${imgs}`;
+  }
 
   async function versturen() {
     if (!to.trim()) { setMsg("Vul een ontvanger in."); return; }
@@ -91,10 +131,33 @@ export default function MailPopup({
           <label className="compose-label">Aan</label>
           <input className="compose-input" value={to} onChange={(e) => setTo(e.target.value)} placeholder="naam@bedrijf.nl" autoComplete="off" />
           {extra && <div style={{ marginTop: "var(--s-3)" }}>{extra}</div>}
-          <label className="compose-label">Bericht</label>
+          <label className="compose-label">Bericht <span className="muted">(een screenshot erin plakken of slepen mag)</span></label>
           <div className="compose-rich">
-            <div ref={ref} className="klant-pop-editor focus-rich" contentEditable suppressContentEditableWarning onBlur={() => { /* opmaak blijft staan, we lezen pas bij versturen */ }} />
+            <div
+              ref={ref}
+              className={"klant-pop-editor focus-rich" + (dragOver ? " chat-dropping" : "")}
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={() => { /* opmaak blijft staan, we lezen pas bij versturen */ }}
+              onPaste={onPasteImage}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDropImage}
+            />
           </div>
+          {pendingImages.length > 0 && (
+            <div className="chat-img-preview">
+              <span className="chat-img-row">
+                {pendingImages.map((im, j) => (
+                  <span key={j} className="chat-img-thumb">
+                    <img src={im} alt={`Afbeelding ${j + 1} klaar om mee te sturen`} />
+                    <button type="button" className="chat-img-thumb-del" title="Deze afbeelding weghalen" onClick={() => setPendingImages((prev) => prev.filter((_, k) => k !== j))}>&times;</button>
+                  </span>
+                ))}
+              </span>
+              <span>{pendingImages.length === 1 ? "Gaat onderaan de mail mee." : `${pendingImages.length} afbeeldingen gaan onderaan de mail mee.`} (max 6)</span>
+            </div>
+          )}
           {connected === false && (
             <div className="muted" style={{ marginTop: "var(--s-2)", fontSize: "var(--fs-sm)" }}>
               In deze omgeving is geen mailkoppeling; de knop opent je eigen mailprogramma met alles voorgevuld.
