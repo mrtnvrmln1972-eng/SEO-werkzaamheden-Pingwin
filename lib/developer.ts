@@ -263,7 +263,23 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
     LEFT JOIN clients c ON c.slug = w.client_slug
     WHERE w.naar_dev = true
     ORDER BY w.week_year, w.week_no, w.sort_order`.then((r) => r.rows).catch(() => [] as Record<string, unknown>[]);
-  for (const r of wp) {
+  // De documenten per doorgezette kaart ophalen kost zelf een paar databasevragen
+  // (page_doc_versions plus de documentketen); dat achter elkaar voor elke kaart
+  // deed, was de reden dat opslaan in de developerlijst traag aanvoelde zodra er
+  // een stuk of tien kaarten open stonden: elke actie leest de hele lijst opnieuw
+  // uit (zie de "await getDeveloperTasks()" na elke opslag hieronder). Parallel
+  // ophalen duurt ongeveer zo lang als de traagste kaart, in plaats van de som
+  // van allemaal.
+  const wpDocs = await Promise.all(wp.map((r) => {
+    const dd = r.dev_docs;
+    if (Array.isArray(dd) && dd.length) return Promise.resolve(dd as { label: string; url: string }[]);
+    // Dezelfde sleutel als de kaart gebruikt om documenten te bewaren
+    // (WeekplanCard: `t.url || "taak:" + t.id`). Zonder die terugval zag de
+    // developer niets bij een taak die niet aan een pagina hangt, terwijl er
+    // wél documenten aan waren gehangen: de kolom bleef leeg op een streepje.
+    return docsVoorPagina(r.client_slug as string, (r.url as string) || `taak:${Number(r.id)}`);
+  }));
+  wp.forEach((r, i) => {
     const slug = r.client_slug as string;
     const key = `wp:${Number(r.id)}`;
     const mm = metaMap.get(slug + "|" + key);
@@ -292,15 +308,9 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       // Handmatig gekozen documenten gaan voor: bij een herziene tekst van de
       // klant moet die de site op, niet onze eigen copy. Is er niets gekozen,
       // dan alles wat bij de pagina hoort.
-      docs: Array.isArray(r.dev_docs) && (r.dev_docs as unknown[]).length
-        ? (r.dev_docs as { label: string; url: string }[])
-        // Dezelfde sleutel als de kaart gebruikt om documenten te bewaren
-        // (WeekplanCard: `t.url || "taak:" + t.id`). Zonder die terugval zag de
-        // developer niets bij een taak die niet aan een pagina hangt, terwijl er
-        // wél documenten aan waren gehangen: de kolom bleef leeg op een streepje.
-        : await docsVoorPagina(slug, (r.url as string) || `taak:${Number(r.id)}`),
+      docs: wpDocs[i],
     });
-  }
+  });
 
   // Zelf aangemaakte taken: die staan in geen enkele andere tabel, dus ze komen
   // hier rechtstreeks uit developer_overview. Ze gedragen zich verder precies als

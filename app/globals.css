@@ -910,12 +910,15 @@ tbody td:last-child { text-align: center; }
 .dev-task-client { font-size: 10px; font-weight: 700; color: var(--orange-dark); text-transform: uppercase; letter-spacing: 0.3px; }
 .dev-task-fase { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; background: #EDE9FE; color: #6D28D9; padding: 1px 6px; border-radius: 8px; }
 .dev-task-desc { font-size: 13px; color: var(--dark); line-height: 1.4; }
-.dev-task-desc a, .dev-task-note a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
-.dev-task-note { font-size: 12px; color: var(--gray); line-height: 1.4; margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 4px; }
+.dev-task-desc a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
 .dev-task-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 .dev-task-uren { font-size: 11px; color: var(--gray); font-weight: 600; }
 .dev-task-doc { font-size: 11px; font-weight: 600; color: var(--link); text-decoration: none; }
 .dev-task-doc:hover { text-decoration: underline; }
+/* Vervangt de vroegere volle opmerkingtekst op het kaartje (die kon het
+   kaartje torenhoog maken): alleen een signaal dát er een opmerking is, de
+   inhoud zie je pas via "Bewerk". */
+.dev-task-note-stip { font-size: 13px; font-weight: 700; color: var(--gray); letter-spacing: 1px; cursor: help; }
 /* De documenten bij een dev-taak: de copy, de blauwdruk, de teksten van de klant. */
 .dev-task-docs { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-2); }
 /* In de taaktabel blijft het bij korte chips op één regel: de rij moet één regel

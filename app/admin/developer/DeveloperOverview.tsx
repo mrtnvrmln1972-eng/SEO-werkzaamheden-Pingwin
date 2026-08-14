@@ -302,11 +302,15 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         {r.fase && <span className="dev-task-fase">{r.fase}</span>}
       </div>
       <div className="dev-task-desc" dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} />
-      {stripText(r.toelichting) && <div className="dev-task-note" dangerouslySetInnerHTML={{ __html: safeHtml(r.toelichting) }} />}
       <div className="dev-task-meta">
         {statusBadge(r.status)}
         {r.uren ? <span className="dev-task-uren">{r.uren} min</span> : null}
         {r.link && /^https?:/i.test(r.link) ? <a href={r.link} target="_blank" rel="noreferrer" className="dev-task-doc" onClick={(e) => e.stopPropagation()}>pagina ↗</a> : null}
+        {/* De volledige opmerking (kan een flink stuk instructie zijn) hoort niet
+            in dit compacte kaartje: de titel hierboven is genoeg om de taak te
+            herkennen. Dit stipje laat alleen zien dát er een opmerking is; de
+            hele tekst lees je via "Bewerk". */}
+        {stripText(r.toelichting) && <span className="dev-task-note-stip" title="Er staat een opmerking bij deze taak; open Bewerk om hem te lezen">···</span>}
       </div>
       {/* De documenten die bij deze taak horen. Een opdracht als "zet de nieuwe
           copy live" zonder de copy erbij is geen opdracht; dan moet de
