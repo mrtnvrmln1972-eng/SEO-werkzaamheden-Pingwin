@@ -20,8 +20,9 @@
 #
 # Twee sleutels, en meer niet:
 #  - CLAUDE_CODE_OAUTH_TOKEN, repo-secret in GitHub. Waarmee de ronde mag denken,
-#    op Maartens eigen abonnement in plaats van op een aparte rekening.
-#    Staat hij er niet, dan wordt ANTHROPIC_API_KEY gebruikt (betalen per woord).
+#    op Maartens eigen abonnement in plaats van op een aparte rekening. Er is geen
+#    terugval op een API-sleutel: ontbreekt dit token, dan mislukt de ronde, en dat
+#    is beter dan stilletjes per woord gaan afrekenen.
 #  - GITHUB_TWEAK_TOKEN, in Vercel. Waarmee het dashboard dit hier mag starten.
 #    Die hoort bij de starter, niet bij de ronde, en komt hier dus niet voor.
 # ═══════════════════════════════════════════════════════════
@@ -166,17 +167,20 @@ jobs:
           RONDE_JAR: /tmp/ronde-cookies.txt
         with:
           # ── WELKE REKENING DIT WERK BETAALT ──
-          # Staat CLAUDE_CODE_OAUTH_TOKEN als repo-secret klaar, dan draait deze
-          # ronde op Maartens Claude-abonnement, precies zoals een gewone chat:
-          # geen aparte rekening per ronde. Staat hij er niet, dan valt hij terug
-          # op ANTHROPIC_API_KEY, en dat is betalen per verwerkt woord. Dat laatste
-          # was tot 15-08-2026 de enige weg, en daardoor kostte één mislukt plan
-          # 7,24 dollar terwijl dezelfde vraag in een chat niets extra's kost.
+          # Alleen het abonnementstoken, en geen API-sleutel ernaast. Dat laatste
+          # is een reparatie van 15-08-2026, een uur na de eerste poging.
           #
-          # Allebei invullen kan niet: een lege waarde telt als niet ingevuld, dus
-          # de sleutel wordt alleen doorgegeven als er géén token is.
+          # Er stond een terugval: geef de API-sleutel door als er geen token is.
+          # Die regel leverde bij een aanwezig token een LEGE anthropic_api_key op,
+          # en een lege sleutel is niet hetzelfde als geen sleutel: hij komt wél in
+          # de omgeving te staan, en een ingevulde API-sleutel gaat vóór een
+          # abonnementstoken. Gevolg: de ronde viel in 86 milliseconden om, nog
+          # vóór er één woord gedacht was, met kosten nul en zonder leesbare reden.
+          #
+          # Nu is er één weg. Ontbreekt het token, dan mislukt de ronde zichtbaar,
+          # en dat is met opzet beter dan stilletjes terugvallen op de betaalde
+          # sleutel: een rekening hoort nooit een verrassing te zijn.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
           prompt: "/groot-punt bouwen"
           claude_args: "--model ${{ github.event.inputs.model || 'claude-sonnet-5' }} --allowedTools Bash,Edit,Write,Read,Glob,Grep"
 
@@ -196,17 +200,20 @@ jobs:
           RONDE_JAR: /tmp/ronde-cookies.txt
         with:
           # ── WELKE REKENING DIT WERK BETAALT ──
-          # Staat CLAUDE_CODE_OAUTH_TOKEN als repo-secret klaar, dan draait deze
-          # ronde op Maartens Claude-abonnement, precies zoals een gewone chat:
-          # geen aparte rekening per ronde. Staat hij er niet, dan valt hij terug
-          # op ANTHROPIC_API_KEY, en dat is betalen per verwerkt woord. Dat laatste
-          # was tot 15-08-2026 de enige weg, en daardoor kostte één mislukt plan
-          # 7,24 dollar terwijl dezelfde vraag in een chat niets extra's kost.
+          # Alleen het abonnementstoken, en geen API-sleutel ernaast. Dat laatste
+          # is een reparatie van 15-08-2026, een uur na de eerste poging.
           #
-          # Allebei invullen kan niet: een lege waarde telt als niet ingevuld, dus
-          # de sleutel wordt alleen doorgegeven als er géén token is.
+          # Er stond een terugval: geef de API-sleutel door als er geen token is.
+          # Die regel leverde bij een aanwezig token een LEGE anthropic_api_key op,
+          # en een lege sleutel is niet hetzelfde als geen sleutel: hij komt wél in
+          # de omgeving te staan, en een ingevulde API-sleutel gaat vóór een
+          # abonnementstoken. Gevolg: de ronde viel in 86 milliseconden om, nog
+          # vóór er één woord gedacht was, met kosten nul en zonder leesbare reden.
+          #
+          # Nu is er één weg. Ontbreekt het token, dan mislukt de ronde zichtbaar,
+          # en dat is met opzet beter dan stilletjes terugvallen op de betaalde
+          # sleutel: een rekening hoort nooit een verrassing te zijn.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
           prompt: "/groot-punt plan"
           claude_args: "--model ${{ github.event.inputs.model || 'claude-opus-5' }} --allowedTools Bash,Edit,Write,Read,Glob,Grep"
 

@@ -129,17 +129,20 @@ jobs:
           RONDE_JAR: /tmp/ronde-cookies.txt
         with:
           # ── WELKE REKENING DIT WERK BETAALT ──
-          # Staat CLAUDE_CODE_OAUTH_TOKEN als repo-secret klaar, dan draait deze
-          # ronde op Maartens Claude-abonnement, precies zoals een gewone chat:
-          # geen aparte rekening per ronde. Staat hij er niet, dan valt hij terug
-          # op ANTHROPIC_API_KEY, en dat is betalen per verwerkt woord. Dat laatste
-          # was tot 15-08-2026 de enige weg, en daardoor kostte één mislukt plan
-          # 7,24 dollar terwijl dezelfde vraag in een chat niets extra's kost.
+          # Alleen het abonnementstoken, en geen API-sleutel ernaast. Dat laatste
+          # is een reparatie van 15-08-2026, een uur na de eerste poging.
           #
-          # Allebei invullen kan niet: een lege waarde telt als niet ingevuld, dus
-          # de sleutel wordt alleen doorgegeven als er géén token is.
+          # Er stond een terugval: geef de API-sleutel door als er geen token is.
+          # Die regel leverde bij een aanwezig token een LEGE anthropic_api_key op,
+          # en een lege sleutel is niet hetzelfde als geen sleutel: hij komt wél in
+          # de omgeving te staan, en een ingevulde API-sleutel gaat vóór een
+          # abonnementstoken. Gevolg: de ronde viel in 86 milliseconden om, nog
+          # vóór er één woord gedacht was, met kosten nul en zonder leesbare reden.
+          #
+          # Nu is er één weg. Ontbreekt het token, dan mislukt de ronde zichtbaar,
+          # en dat is met opzet beter dan stilletjes terugvallen op de betaalde
+          # sleutel: een rekening hoort nooit een verrassing te zijn.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
           # Dezelfde opdracht als in een chat: .claude/commands/tweaks.md.
           prompt: "/tweaks"
           # HET MODEL HOORT BIJ HET SOORT WERK, EN DAT IS HIER VASTGEZET.
