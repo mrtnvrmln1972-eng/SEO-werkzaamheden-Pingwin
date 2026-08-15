@@ -7736,11 +7736,18 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 }
 .prog-blik a.aan { border-color: var(--accent-warm); background: var(--accent-warm); color: var(--white); font-weight: 600; }
 
+/* Op een smal scherm valt de kolom "kosten" weg (die staat in de uitklap van de
+   maand toch al). Het aantal kolommen moet dan exact gelijk lopen met wat er
+   overblijft; is het er één te weinig, dan zakt de laatste cel naar een tweede
+   rij en ziet de tabel er kapot uit. Daarom staan de tellingen erbij. */
 @media (max-width: 720px) {
-  .prog-maand, .prog-maand-kop { grid-template-columns: var(--s-4) 4.5em 1fr 6em; }
+  /* pijl, maand, balk, omzet, netto */
+  .prog-maand, .prog-maand-kop { grid-template-columns: var(--s-4) 4.5em 1fr 5.5em 5.5em; }
   .prog-maand-bedrag.verberg-klein, .prog-maand-kop span.verberg-klein { display: none; }
-  .prog-post { grid-template-columns: 1fr 6em 6em; }
+  /* naam, kans, omzet, netto */
+  .prog-post { grid-template-columns: 1fr 4em 5.5em 5.5em; }
   .prog-post-bedrag.verberg-klein { display: none; }
-  .prog-regel, .prog-regel-kop { grid-template-columns: 1fr 5em 6em; }
+  /* naam, vanaf, kans, per maand */
+  .prog-regel, .prog-regel-kop { grid-template-columns: 1fr 6em 4em 5.5em; }
   .prog-regel > .verberg-klein, .prog-regel-kop > .verberg-klein { display: none; }
 }
