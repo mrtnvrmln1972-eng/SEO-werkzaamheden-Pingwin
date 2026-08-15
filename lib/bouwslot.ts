@@ -64,14 +64,26 @@ async function klaar(): Promise<void> {
  */
 export async function bevrijdSlot(): Promise<{ ronde: string; baan: Baan } | null> {
   await klaar();
+  // Let op de `::int` achter elke ingevulde waarde: die zijn niet optioneel.
+  // Een ingevulde waarde gaat als parameter naar de database, en die heeft dan
+  // nog geen type. In een gewone vergelijking leidt Postgres dat zelf af, maar
+  // hier wordt hij vermenigvuldigd met een INTERVAL, en dan gokt hij op tekst.
+  // `text * interval` bestaat niet, dus mislukte élke pagina die deze vraag
+  // stelt, inclusief de tweak-stapel. Live aangetroffen op 15-08-2026, meteen
+  // nadat dit gedeelde slot er kwam; `proeven/sql-vorm.proef.ts` rekent het nu na.
+  //
+  // Twee losse voorwaarden in plaats van één CASE, met dezelfde reden: zo staat
+  // elke waarde in zijn eigen vergelijking en is er geen twijfel mogelijk.
   const vervallen = await sql`
     UPDATE tweak_ronde
     SET ronde = NULL
     WHERE id = 1
       AND ronde IS NOT NULL
-      AND gestart < now() - (CASE WHEN baan = 'punt'
-                                  THEN ${VERVAL_MINUTEN.punt}
-                                  ELSE ${VERVAL_MINUTEN.tweak} END * INTERVAL '1 minute')
+      AND (
+        (baan = 'punt'  AND gestart < now() - (${VERVAL_MINUTEN.punt}::int * INTERVAL '1 minute'))
+        OR
+        (baan <> 'punt' AND gestart < now() - (${VERVAL_MINUTEN.tweak}::int * INTERVAL '1 minute'))
+      )
     RETURNING ronde, baan`;
   if (vervallen.rowCount === 0) return null;
 
