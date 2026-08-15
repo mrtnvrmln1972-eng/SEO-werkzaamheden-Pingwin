@@ -35,8 +35,13 @@ buiten een tweak-ronde iets nieuws, dan gelden de gewone regels uit `CLAUDE.md` 
 1. **Claim de ronde. Dit is de eerste handeling, vóór alles.**
 
    ```
-   POST /api/admin/tweaks/ronde  { "actie": "claim" }
+   POST /api/admin/tweaks/ronde  { "actie": "claim", "ronde": "<$TWEAK_RONDE, of laat weg>" }
    ```
+
+   Staat de omgevingsvariabele `TWEAK_RONDE` er (dat is zo als de ronde vanaf de knop "Nu
+   draaien" start), geef die naam dan mee. De werkstroom geeft het slot aan het eind onder
+   precies die naam terug, ook als er onderweg iets misgaat; een andere naam betekent dat de
+   wachtrij drie kwartier dicht blijft staan.
 
    Je krijgt `{ ok: true, ronde, tweaks }` terug: het slot is van jou en de meldingen staan al op
    `bezig`, in de volgorde waarin je ze hoort te doen (eerst wat Maarten op "direct doorvoeren"

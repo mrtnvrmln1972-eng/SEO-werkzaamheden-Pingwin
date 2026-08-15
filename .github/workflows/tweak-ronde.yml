@@ -66,6 +66,9 @@ jobs:
           # standen kan bijwerken. Precies dezelfde weg als in een chat, dus
           # ook hier alleen-lezen, met de tweak-standen als enige uitzondering.
           PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
+          # De naam van deze ronde, zodat de stap hieronder precies déze ronde
+          # kan teruggeven en nooit die van iemand anders.
+          TWEAK_RONDE: gh-${{ github.run_id }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Dezelfde opdracht als in een chat: .claude/commands/tweaks.md.
@@ -87,3 +90,35 @@ jobs:
           # signaal dat er te grote dingen in de wachtrij komen; die horen op
           # "apart" en daarna op de routekaart, niet op een zwaarder model hier.
           claude_args: "--model claude-sonnet-5 --allowedTools Bash,Edit,Write,Read,Glob,Grep"
+
+      # ═══════════════════════════════════════════════════════════
+      # HET SLOT GAAT ALTIJD TERUG, OOK ALS DE RONDE MISLUKT
+      # ═══════════════════════════════════════════════════════════
+      # Zonder deze stap eindigt de werkstroom terwijl het slot van hem blijft.
+      # Live gebeurd op 15-08-2026, eerste echte ronde: de werkstroom was na
+      # 79 seconden klaar, en het scherm bleef "er loopt een ronde" zeggen tot
+      # het slot drie kwartier later vanzelf verviel. Maarten keek dus naar een
+      # scherm dat loog, en de wachtrij stond al die tijd dicht.
+      #
+      # `if: always()` is hier het hele punt: juist een ronde die halverwege
+      # omvalt moet de wachtrij vrijgeven. De vervaltijd blijft als vangnet voor
+      # het geval de runner zelf verdwijnt, maar hij hoort de uitzondering te
+      # zijn en niet de normale weg terug.
+      #
+      # Alleen déze ronde wordt teruggegeven (op naam), nooit die van een chat
+      # die er toevallig naast loopt.
+      - name: De wachtrij hoe dan ook teruggeven
+        if: always()
+        env:
+          PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
+          TWEAK_RONDE: gh-${{ github.run_id }}
+        run: |
+          DASHBOARD="https://pingwin-seo-dashboard.vercel.app"
+          JAR="$(mktemp)"
+          curl -s --max-time 15 -c "$JAR" \
+            "$DASHBOARD/api/kijk?sleutel=$PINGWIN_KIJK_SLEUTEL" > /dev/null || true
+          curl -s --max-time 15 -b "$JAR" -X POST \
+            -H "Content-Type: application/json" \
+            -d "{\"actie\":\"terug\",\"ronde\":\"$TWEAK_RONDE\"}" \
+            "$DASHBOARD/api/admin/tweaks/ronde" || true
+          echo ""
