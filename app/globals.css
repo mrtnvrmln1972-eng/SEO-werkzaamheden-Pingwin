@@ -7324,6 +7324,7 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 }
 .tw-sluit:hover { color: var(--orange-dark); }
 .tw-body { padding: var(--s-5); overflow-y: auto; flex: 1 1 auto; }
+.tw-body-slepend { outline: 2px dashed var(--orange); outline-offset: -6px; background: var(--brand-orange-faint); }
 .tw-body-beeld { padding: var(--s-4); }
 .tw-body-beeld img { display: block; max-width: 100%; height: auto; border-radius: var(--r-md); }
 .tw-veld {

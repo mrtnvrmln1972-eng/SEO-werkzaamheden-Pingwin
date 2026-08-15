@@ -76,6 +76,7 @@ export default function TweakKnop() {
   // Kleine aanpassing of een groter idee: hetzelfde knopje, twee bakken. Een
   // idee gaat niet mee in een ronde maar krijgt eerst een voorstel van mij.
   const [soort, setSoort] = useState<"tweak" | "idee">("tweak");
+  const [slepend, setSlepend] = useState(false);
   const veldRef = useRef<HTMLTextAreaElement>(null);
 
   const scherm = schermNaam(pad, zoek?.get("tab") ?? null);
@@ -154,7 +155,16 @@ export default function TweakKnop() {
               <button type="button" className="tw-sluit" onClick={() => setOpen(false)} aria-label="Sluiten">×</button>
             </div>
 
-            <div className="tw-body">
+            <div
+              className={"tw-body" + (slepend ? " tw-body-slepend" : "")}
+              onDragOver={(e) => { e.preventDefault(); setSlepend(true); }}
+              onDragLeave={() => setSlepend(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setSlepend(false);
+                void neemBestand(e.dataTransfer.files?.[0]);
+              }}
+            >
               <div className="tw-soort">
                 <button
                   type="button"
@@ -188,7 +198,7 @@ export default function TweakKnop() {
                 placeholder="Typ of dicteer wat er niet klopt en wat je wilt zien. Rommelig mag."
               />
               <div className="tw-hulp">
-                Schermafbeelding erin plakken kan gewoon met Ctrl/Cmd+V, of kies er een.
+                Schermafbeelding erin plakken kan met Ctrl/Cmd+V, slepen in dit venster, of kies er een.
               </div>
 
               {beeld ? (
