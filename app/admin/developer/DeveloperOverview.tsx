@@ -344,7 +344,11 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         <col style={{ width: "72px" }} />
         <col style={{ width: "80px" }} />
         <col style={{ width: "150px" }} />
-        <col style={{ width: "150px" }} />
+        {/* De knoppenrij (Bekijk, Mail, Controleer) staat op één regelhoogte en
+            mag niet omslaan; deze kolom is dus zo breed dat alle drie erin passen.
+            De tabel staat op table-layout: fixed, dus zonder deze breedte valt de
+            laatste knop buiten beeld in plaats van dat de kolom meegroeit. */}
+        <col style={{ width: "270px" }} />
       </colgroup>
       <thead>
         <tr>
