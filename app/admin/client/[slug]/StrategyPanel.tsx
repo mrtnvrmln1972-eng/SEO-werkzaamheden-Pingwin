@@ -123,7 +123,7 @@ export default function StrategyPanel({ slug, initialSessions, openSessionId, on
                           <div key={i} className={"strategy-action" + (a.done ? " strategy-action-verwerkt" : "")}>
                             <span className="strategy-action-taak">{a.taak}</span>
                             {a.done
-                              ? <button type="button" className="ghost-btn small strategy-verwerkt-btn on" onClick={() => toggleDone(s.id, i, false)} title="Klik om het verwerkt-vinkje weer weg te halen">✓ Verwerkt</button>
+                              ? <button type="button" className="ghost-btn small strategy-verwerkt-btn on" onClick={() => toggleDone(s.id, i, false)} title="Klik om het verwerkt-vinkje weer weg te halen">Verwerkt</button>
                               : <button type="button" className="ghost-btn small strategy-verwerkt-btn" onClick={() => toggleDone(s.id, i, true)} title="Markeer dit actiepunt als verwerkt (zonder er een taak van te maken)">Verwerkt</button>}
                             {a.taskId
                               ? <span className="strategy-action-done" title="Deze staat al tussen de werkzaamheden">✓ in taken</span>

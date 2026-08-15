@@ -43,10 +43,10 @@ export default function CheckVenster({ canni, siteBase }: { canni: ReturnType<ty
                     const status = rowStatus[checkPath];
                     if (status === "afgewezen") return <button type="button" className="pcd-btn small pcd-warn" onClick={() => setRowStatus(checkPath, null)}>Afgewezen, herstel</button>;
                     if (status === "doorgezet") return <button type="button" className="pcd-btn small pcd-blue" onClick={() => setRowStatus(checkPath, null)}>→ Bij pagina&rsquo;s, herstel</button>;
-                    if (status === "taak") return <button type="button" className="pcd-btn small pcd-purple" onClick={() => setRowStatus(checkPath, null)}>✓ Taak gemaakt, herstel</button>;
+                    if (status === "taak") return <button type="button" className="pcd-btn small pcd-purple" onClick={() => setRowStatus(checkPath, null)}>Taak gemaakt, herstel</button>;
                     return (<>
                       {redirect
-                        ? <button type="button" className={"pcd-btn small" + (wpDone[redirect.from]?.verified ? " pcd-done" : "")} disabled={!!wpBusy} onClick={() => runWpRedirect(redirect.from, redirect.to)}>{wpDone[redirect.from]?.verified ? "✓ Uitgevoerd" : "Uitvoeren (301)"}</button>
+                        ? <button type="button" className={"pcd-btn small" + (wpDone[redirect.from]?.verified ? " pcd-done" : "")} disabled={!!wpBusy} onClick={() => runWpRedirect(redirect.from, redirect.to)}>{wpDone[redirect.from]?.verified ? "Uitgevoerd" : "Uitvoeren (301)"}</button>
                         : <button type="button" className={"pcd-btn small" + (status === "uitgevoerd" ? " pcd-done" : "")} disabled={!!wpBusy} onClick={() => openInBackend(checkPath)}>{status === "uitgevoerd" ? "✓ Uitgevoerd" : "Uitvoeren (open backend)"}</button>}
                       {!redirect && <button type="button" className="pcd-btn small wp-ghost-blue" disabled={!!wpBusy} onClick={() => sendRowToPage(checkPath)}>Naar pagina&rsquo;s</button>}
                       <button type="button" className="pcd-btn small wp-ghost-purple" disabled={!!wpBusy} onClick={() => makeRowTask(checkPath)} title="Maakt een taak in Werkzaamheden met een werkdocument (met de diepere duiding als achtergrond).">{wpBusy === checkPath ? "Bezig…" : "Taak maken"}</button>

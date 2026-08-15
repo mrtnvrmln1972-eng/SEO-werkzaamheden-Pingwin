@@ -31,7 +31,7 @@ function LaatsteStandKnop() {
   return (
     <span className="org-action-hint pnl-acties-info" style={{ marginLeft: "auto" }}>
       <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen(true)}>
-        Laatste stand structured data{stand?.verouderd ? " ⚠" : ""}
+        Laatste stand structured data{stand?.verouderd ? " (verouderd)" : ""}
       </button>
       <HelpHint text="Maandelijks onderzoekt het dashboard via het web de actuele schema.org- en Google-richtlijnen (bijvoorbeeld welke rich results nog gelden en welke niet meer) en past die toe bij het genereren van structured data. Klik de knop om te lezen wat er nu geldt, of om het onderzoek te verversen als het ouder dan een maand is." />
       {open && typeof document !== "undefined" && createPortal(

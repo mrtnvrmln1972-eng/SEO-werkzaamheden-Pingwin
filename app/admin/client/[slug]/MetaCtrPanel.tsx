@@ -376,7 +376,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         )}
         <button type="button" className="ghost-btn small" onClick={() => { setWpUser(wp?.username || ""); setWpEdit((v) => !v); }}
           title="Koppel de WordPress-site met een applicatie-wachtwoord, zodat goedgekeurde meta's met één knop op de site gezet worden. Aanmaken: op de site inloggen → Gebruikers → Profiel → Applicatiewachtwoorden.">
-          {wp?.connected ? `Site gekoppeld ✓ (${wp.username})` : "Site koppelen"}
+          {wp?.connected ? `Site gekoppeld (${wp.username})` : "Site koppelen"}
         </button>
       </div>
       {wpEdit && (

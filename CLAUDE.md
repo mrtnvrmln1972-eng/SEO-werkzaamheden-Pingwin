@@ -69,9 +69,26 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
   een informatief knopje krijgt `.pnl-acties-info` en staat losgekoppeld (meestal uiterst rechts).
   Bij een `.strategy-card`-paneel (het gangbare inklapbare cockpit-paneel) staat de knoppenrij als
   volle-breedte, links uitgelijnde, omslaande rij direct onder de kop. Referentie-implementatie:
-  `app/admin/client/[slug]/OrgDataPanel.tsx` (de "Bedrijfsgegevens"-toolbar). Dit is nu een pilot
-  op één paneel; nog niet bewaakt door `proeven/opmaak.proef.ts` (volgt zodra er 2-3 panelen op
-  deze manier zijn omgebouwd).
+  `app/admin/client/[slug]/OrgDataPanel.tsx` (de "Bedrijfsgegevens"-toolbar).
+
+  **Sinds 15-08-2026 wordt dit nagerekend in plaats van onthouden: `proeven/huisstijl.proef.ts`.**
+  Die proef leest élk `<button>` in `app/` (met een echte parser, want een arrow-functie in de
+  open-tag breekt een regex) en wordt rood op twee dingen: een knop die het knopsysteem niet
+  gebruikt, en een emoji in een knoplabel. Losse teken-knopjes (een kruisje, een vinkje, een
+  pijltje) mogen kaal blijven; dat zijn bedieningstekens, geen knoppen in de huisstijl.
+
+  De vrijstellingen staan in `proeven/huisstijl-erfenis.json` en dat bestand heeft **twee aparte
+  lijsten, met opzet**. `knopsysteem` bevat de 57 bestanden van vóór die datum en werkt als een
+  ratel: alleen korter, nooit langer, en een bestand dat schoon is geworden moet eraf (de proef
+  meldt dat zelf). `emoji` is **leeg en blijft leeg**: die zes gevallen zijn meteen opgeruimd,
+  want een regel zonder uitzonderingen is de enige soort die niet langzaam uitholt. Zet daar dus
+  nooit een bestand bij, haal de emoji weg.
+
+  Waarom dit er kwam: de regel hierboven stond er al sinds 8 augustus, is gelezen, en werd op
+  15 augustus alsnog gebroken op de developer-pagina (drie knoppen onder elkaar, twee
+  knopsystemen door elkaar, emoji ervoor) én door een nieuwe knop die bovenop een bestaande knop
+  werd gezet. Een regel die alleen in dit document leeft, wordt gebroken zodra iemand haast
+  heeft. Dat is inmiddels de derde keer dat die les hier opgeschreven staat; vandaar de poort.
 - **Met terugwerkende kracht (vaste regel, 31-07-2026).** Elke opmaak- of dashboardaanpassing geldt automatisch óók voor bestaande kaarten, taken en chats, in alle werelden (Pingwin én NOC). Bouw zulke aanpassingen daarom in de weergave-laag (renderer/parser, zoals `lib/card-info.ts`), niet alleen in de prompt voor nieuwe data. Maarten hoeft dit niet meer per wijziging te vragen.
 
 ## 0b. DE UITLEGPAGINA BIJWERKEN (vaste stap, 06-08-2026)
