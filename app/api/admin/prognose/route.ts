@@ -8,7 +8,9 @@ import {
 import { moneybirdConfigured, getProfitLoss, getMbContacts } from "../../../../lib/moneybird";
 import {
   bouwVoorstel, setLinkbuilderZoekterm, setLinkbuilderId, linkbuildingPostNaam,
+  leverancierMaandbedragen,
 } from "../../../../lib/prognose-boekhouding";
+import { listKostenregels, saveKostenregel } from "../../../../lib/kostenmodel";
 import { vervangPost, maandNu } from "../../../../lib/prognose";
 
 export const runtime = "nodejs";
@@ -21,7 +23,7 @@ export const maxDuration = 60;
 async function stuurPrognose() {
   const klanten = await listClients();
   const uitkomst = await getPrognose(
-    klanten.map((k) => ({ slug: k.slug, name: k.name, fase: k.fase, budget: k.budget })),
+    klanten.map((k) => ({ slug: k.slug, name: k.name, fase: k.fase, grp: k.grp, budget: k.budget })),
   );
   return NextResponse.json({ ok: true, ...uitkomst });
 }
@@ -48,11 +50,16 @@ export async function PATCH(req: NextRequest) {
       // Zo blijft er één bedrag bestaan in plaats van twee die uit elkaar lopen.
       bedrag?: number; linkbuilding?: number;
     };
+    kostenregel?: { id: number; percentage?: number; bedrag?: number; actief?: boolean; leverancier?: string; doelgroep?: string };
   };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
 
   try {
     if (body.instelling) await savePrognoseInstelling(body.instelling);
+    if (body.kostenregel?.id) {
+      const { id, ...rest } = body.kostenregel;
+      await saveKostenregel(id, rest);
+    }
     if (body.regel?.slug) {
       const { slug, bedrag, linkbuilding, ...rest } = body.regel;
       await saveRegelExtra(slug, rest);
@@ -99,6 +106,33 @@ export async function POST(req: NextRequest) {
         .map((c) => ({ id: c.id, naam: c.name, email: c.email }))
         .sort((a, b) => a.naam.localeCompare(b.naam, "nl"));
       return NextResponse.json({ ok: true, contacten });
+    }
+
+    // Het hele kostenmodel in één keer vullen uit de boekhouding. Dit is de knop
+    // die Maarten het handmatige werk bespaart: hij zoekt elke leverancier uit
+    // het model op in Moneybird, telt op wat er per maand aan betaald is, en zet
+    // dat bedrag in de regel. Daarna past het model zichzelf toe op de klanten.
+    if (body.actie === "kostenmodel-vullen") {
+      if (!moneybirdConfigured()) {
+        return NextResponse.json({ ok: false, error: "Moneybird is niet gekoppeld." }, { status: 400 });
+      }
+      const regels = await listKostenregels();
+      const namen = [...new Set(regels.map((r) => r.leverancier).filter(Boolean))];
+      const bedragen = await leverancierMaandbedragen(namen);
+      const gevonden: string[] = [];
+      const gemist: string[] = [];
+      for (const r of regels) {
+        const b = bedragen.find((x) => x.naam === r.leverancier);
+        if (!b || !b.gevonden) { if (r.leverancier) gemist.push(r.leverancier); continue; }
+        gevonden.push(`${b.contactNaam || r.leverancier}: ${b.perMaandGemiddeld} per maand`);
+        // Een percentage-regel rekent met de omzet en heeft het bedrag niet
+        // nodig; het wordt wel bewaard, zodat het scherm kan laten zien of het
+        // model klopt met wat de leverancier werkelijk factureert.
+        await saveKostenregel(r.id, { bedrag: b.perMaandGemiddeld });
+      }
+      const uit = await stuurPrognose();
+      const d = await uit.json();
+      return NextResponse.json({ ...d, leveranciers: bedragen, gevonden, gemist });
     }
 
     // Linkbuilding die niet per klant te herleiden is, alsnog laten meetellen.

@@ -49,6 +49,34 @@ export const HOOFDSTUK: Hoofdstuk = {
         "*Wat er nog niet is:* de leads komen uit het dashboard zelf, nog niet automatisch uit HubSpot.",
     },
     {
+      titel: "Het kostenmodel: welke kosten horen bij welke omzet",
+      kern: "Drie soorten regels die zichzelf toepassen, in plaats van een bedrag per klant dat je moet bijhouden.",
+      tekst:
+        "Pingwin heeft geen kostenpost per klant, maar drie manieren waarop kosten aan omzet vastzitten. " +
+        "Die staan als regels in het dashboard, en een regel past zichzelf toe. Dat is met opzet: een bedrag " +
+        "dat je per klant met de hand invult is de dag nadat je een tarief wijzigt alweer verkeerd, en dat " +
+        "merkt niemand.\n\n" +
+        "**Een percentage van de omzet.** De klanten van Multimedia Concepts worden door Pingwin " +
+        "gefactureerd, maar MMC doet de uitvoering en factureert daarvoor ongeveer zeventig procent terug. " +
+        "Verhoog je het maandbedrag van zo'n klant, dan beweegt de kostenkant vanzelf mee. Naast de regel " +
+        "staat wat MMC werkelijk factureerde, zodat je in één oogopslag ziet of het model klopt met de " +
+        "praktijk.\n\n" +
+        "**Een leveranciersfactuur verdelen over een groep klanten.** De maandfactuur van de linkbuilder " +
+        "dekt de linkbuilding van alle eigen SEO-klanten samen, zonder uitsplitsing op de factuur. Het " +
+        "bedrag is dus bekend, de verdeling niet. Die wordt gemaakt naar rato van wat er per klant aan " +
+        "linkbuilding begroot staat; staat dat nergens, dan wordt er gelijk verdeeld en staat dat erbij. " +
+        "De som blijft altijd precies de factuur, nooit meer en nooit minder.\n\n" +
+        "**Een vaste maandpost.** Hosting en updateservice (Greenbug) en Google Ads (Gladior) horen bij " +
+        "omzet die niet als maandbedrag per klant in het dashboard staat. Die kosten toerekenen aan een " +
+        "klant zou zijn marge vertekenen, want de omzet die ertegenover staat telt hier niet mee. Ze gaan " +
+        "dus één keer per maand van het totaal af, zichtbaar met naam en al.\n\n" +
+        "**Eén regel voorkomt dubbeltellen:** een klant die onder een kostenregel valt gebruikt die regel, " +
+        "een klant zonder regel gebruikt zijn eigen linkbuildingbedrag. Nooit allebei. Zonder die regel zou " +
+        "een eigen SEO-klant zijn linkbuilding twee keer dragen en de helft minder waard lijken dan hij is.\n\n" +
+        "Eén knop haalt de bedragen bij alle leveranciers tegelijk op uit de boekhouding. Verder is er niets " +
+        "aan te vinken; de regels doen de rest.",
+    },
+    {
       titel: "De prognose vullen vanuit de boekhouding",
       kern: "Wat elke klant werkelijk factureert komt uit Moneybird, de linkbuilding uit de facturen van de linkbuilder.",
       tekst:

@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { PrognoseUitkomst, MaandUitkomst, PrognoseRegel, Post, Bijdrage } from "../../../lib/prognose";
 import BoekhoudingVullen from "./BoekhoudingVullen";
+import Kostenmodel from "./Kostenmodel";
+import type { KostenRegel } from "../../../lib/kostenmodel";
 
 // ═══════════════════════════════════════════════════════════
 // DE PROGNOSE OP HET SCHERM
@@ -33,10 +35,14 @@ function temperatuur(kans: number): { klasse: string; label: string } {
   return { klasse: "koel", label: "koel" };
 }
 
-type Props = { begin: PrognoseUitkomst };
+// De prognose komt binnen mét het kostenmodel erbij; het scherm toont dat als
+// een eigen paneel, want het is de plek waar de kostenkant vandaan komt.
+export type PrognoseData = PrognoseUitkomst & { kostenregels?: KostenRegel[]; kostenMeldingen?: string[] };
+
+type Props = { begin: PrognoseData };
 
 export default function PrognosePaneel({ begin }: Props) {
-  const [data, setData] = useState<PrognoseUitkomst>(begin);
+  const [data, setData] = useState<PrognoseData>(begin);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState("");
   const [openMaand, setOpenMaand] = useState<string | null>(null);
@@ -49,7 +55,7 @@ export default function PrognosePaneel({ begin }: Props) {
       const r = await fetch(url, { headers: { "Content-Type": "application/json" }, ...init });
       const d = await r.json();
       if (!r.ok || !d.ok) { setFout(d.error || "Opslaan mislukt."); return false; }
-      setData(d as PrognoseUitkomst);
+      setData(d as PrognoseData);
       return true;
     } catch {
       setFout("De server is niet bereikbaar.");
@@ -85,7 +91,13 @@ export default function PrognosePaneel({ begin }: Props) {
         zetOpen={setOpenMaand}
       />
 
-      <BoekhoudingVullen herlaad={(d) => setData(d as PrognoseUitkomst)} />
+      <Kostenmodel
+        regels={data.kostenregels || []}
+        meldingen={data.kostenMeldingen || []}
+        herlaad={(d) => setData(d as PrognoseData)}
+      />
+
+      <BoekhoudingVullen herlaad={(d) => setData(d as PrognoseData)} />
 
       <Regels regels={regels} bezig={bezig} stuur={stuur} />
 
@@ -223,6 +235,19 @@ function MaandOpbouw({ maand }: { maand: MaandUitkomst }) {
       <OpbouwGroep titel="Lopende klanten" regels={klanten} />
       <OpbouwGroep titel="Leads, naar kans gerekend" regels={leads} />
       <OpbouwGroep titel="Losse posten" regels={losse} />
+
+      {(maand.modelVast || []).filter((v) => v.bedrag > 0).length > 0 && (
+        <div className="prog-opbouw-titel">Kosten die niet aan een klant hangen</div>
+      )}
+      {(maand.modelVast || []).filter((v) => v.bedrag > 0).map((v) => (
+        <div className="prog-post" key={v.naam}>
+          <span className="prog-post-naam">{v.naam}</span>
+          <span className="prog-post-bedrag" />
+          <span className="prog-post-bedrag" />
+          <span className="prog-post-bedrag slecht verberg-klein">{euro(v.bedrag)}</span>
+          <span className="prog-post-bedrag slecht">{euro(-v.bedrag)}</span>
+        </div>
+      ))}
 
       {maand.vasteLasten > 0 && (
         <div className="prog-post">

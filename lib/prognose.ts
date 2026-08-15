@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { getSetting, setSetting } from "./settings";
+import { listKostenregels, pasKostenmodelToe, type KostenRegel } from "./kostenmodel";
 
 // ═══════════════════════════════════════════════════════════
 // PROGNOSE: WAT VERDIENEN WE DE KOMENDE MAANDEN
@@ -275,6 +276,14 @@ export type PrognoseRegel = {
   opmerking: string;
   /** Waarschuwing voor op het scherm, bijvoorbeeld een lead zonder bedrag. */
   gat: string;
+  /**
+   * Kosten die uit het kostenmodel komen (een percentage van de omzet, of een
+   * deel van een leveranciersfactuur). Staat hier iets in, dan is dát de
+   * kostenkant van deze klant en telt zijn eigen linkbuildingbedrag NIET mee.
+   * Anders zou je dubbel tellen, en dat is precies het soort fout dat er
+   * plausibel uitziet.
+   */
+  modelKosten: { naam: string; bedrag: number }[];
 };
 
 /** Wat één regel in één maand bijdraagt. */
@@ -302,6 +311,8 @@ export type MaandUitkomst = {
   postOmzet: number;
   postKosten: number;
   vasteLasten: number;
+  /** Kosten uit het kostenmodel die niet aan een klant zijn toegerekend. */
+  modelVast: { naam: string; bedrag: number }[];
   omzet: number;
   kosten: number;
   netto: number;
@@ -326,6 +337,8 @@ export type PrognoseUitkomst = {
 
 type KlantBron = {
   slug: string; name: string; fase: string;
+  /** Klantgroep: leeg = eigen Pingwin-klant, "mmc" = Multimedia Concepts. */
+  grp?: string | null;
   budget: { maandbudget: number; linkbuilding: number };
 };
 
@@ -347,6 +360,10 @@ export function berekenPrognose(
   posten: Post[],
   instelling: PrognoseInstelling,
   vanaf: Maand = maandNu(),
+  // Het kostenmodel komt van buiten (lib/kostenmodel.ts) zodat deze functie
+  // puur rekenwerk blijft en zonder database te toetsen is.
+  kosten: { perKlant: Map<string, { naam: string; bedrag: number }[]>; vast: { naam: string; bedrag: number }[] }
+    = { perKlant: new Map(), vast: [] },
 ): PrognoseUitkomst {
   const regels: PrognoseRegel[] = klanten
     .filter((k) => k.fase === "klant" || k.fase === "lead")
@@ -370,6 +387,7 @@ export function berekenPrognose(
         eindMaand: e?.eindMaand || null,
         opmerking: e?.opmerking || "",
         gat: bedrag <= 0 ? "nog geen maandbedrag ingevuld" : "",
+        modelKosten: kosten.perKlant.get(k.slug) || [],
       };
     })
     .sort((a, b) => (a.fase === b.fase ? b.bedrag - a.bedrag : a.fase === "klant" ? -1 : 1));
@@ -382,16 +400,20 @@ export function berekenPrognose(
 
     for (const r of regels) {
       if (!actiefIn(r, maand)) continue;
-      if (r.bedrag <= 0 && r.linkbuilding <= 0 && r.extraKosten <= 0) continue;
+      // Dekt het kostenmodel deze klant, dan is dát de kostenkant en telt zijn
+      // eigen linkbuildingbedrag niet ook nog eens mee. Nooit allebei.
+      const uitModel = r.modelKosten.reduce((s, m) => s + m.bedrag, 0);
+      const eigenKosten = (r.modelKosten.length ? uitModel : r.linkbuilding) + r.extraKosten;
+      if (r.bedrag <= 0 && eigenKosten <= 0) continue;
       const w = r.fase === "klant" ? 1 : r.kans / 100;
       const omzet = r.bedrag * w;
-      const kosten = (r.linkbuilding + r.extraKosten) * w;
+      const kosten = eigenKosten * w;
       if (r.fase === "klant") { zekerOmzet += omzet; zekerKosten += kosten; }
       else { verwachtOmzet += omzet; verwachtKosten += kosten; }
       bijdragen.push({
         slug: r.slug, naam: r.naam, soort: r.fase === "klant" ? "klant" : "lead",
         kans: r.fase === "klant" ? 100 : r.kans,
-        omzet, kosten, netto: omzet - kosten, bruto: r.bedrag - r.linkbuilding - r.extraKosten,
+        omzet, kosten, netto: omzet - kosten, bruto: r.bedrag - eigenKosten,
       });
     }
 
@@ -410,15 +432,20 @@ export function berekenPrognose(
       });
     }
 
+    // Kosten uit het kostenmodel die bij niemand horen (hosting, Google Ads):
+    // één keer per maand, net als de eigen vaste lasten.
+    const modelVastTotaal = kosten.vast.reduce((s, v) => s + v.bedrag, 0);
+
     const omzet = zekerOmzet + verwachtOmzet + postOmzet;
-    const kosten = zekerKosten + verwachtKosten + postKosten + instelling.vasteLasten;
-    const netto = omzet - kosten;
+    const kostenTotaal = zekerKosten + verwachtKosten + postKosten + instelling.vasteLasten + modelVastTotaal;
+    const netto = omzet - kostenTotaal;
     const opDoel = instelling.targetOp === "omzet" ? omzet : netto;
     maanden.push({
       maand, label: maandLabel(maand),
       zekerOmzet, zekerKosten, verwachtOmzet, verwachtKosten, postOmzet, postKosten,
       vasteLasten: instelling.vasteLasten,
-      omzet, kosten, netto, opDoel,
+      modelVast: kosten.vast,
+      omzet, kosten: kostenTotaal, netto, opDoel,
       haaltDoel: opDoel >= instelling.target,
       bijdragen: bijdragen.sort((a, b) => b.netto - a.netto),
     });
@@ -429,18 +456,27 @@ export function berekenPrognose(
   const tekortNu = nu ? Math.max(0, instelling.target - nu.opDoel) : 0;
   const lopende = regels.filter((r) => r.fase === "klant" && r.bedrag > 0);
   const gemiddeldPerKlant = lopende.length
-    ? lopende.reduce((s, r) => s + (r.bedrag - r.linkbuilding - r.extraKosten), 0) / lopende.length
+    ? lopende.reduce((s, r) => {
+        const uitModel = r.modelKosten.reduce((t, m) => t + m.bedrag, 0);
+        return s + (r.bedrag - (r.modelKosten.length ? uitModel : r.linkbuilding) - r.extraKosten);
+      }, 0) / lopende.length
     : 0;
 
   return { instelling, maanden, regels, posten, doelMaand, tekortNu, gemiddeldPerKlant };
 }
 
 /** De prognose zoals het scherm hem krijgt: klanten uit de database erbij. */
-export async function getPrognose(klanten: KlantBron[]): Promise<PrognoseUitkomst> {
-  const [instelling, extras, posten] = await Promise.all([
+export async function getPrognose(klanten: KlantBron[]): Promise<PrognoseUitkomst & { kostenregels: KostenRegel[]; kostenMeldingen: string[] }> {
+  const [instelling, extras, posten, kostenregels] = await Promise.all([
     getPrognoseInstelling(),
     getRegelExtras(),
     listPosten(),
+    listKostenregels().catch(() => [] as KostenRegel[]),
   ]);
-  return berekenPrognose(klanten, extras, posten, instelling);
+  const model = pasKostenmodelToe(
+    klanten.map((k) => ({ ...k, grp: k.grp ?? null })),
+    kostenregels,
+  );
+  const uit = berekenPrognose(klanten, extras, posten, instelling, maandNu(), model);
+  return { ...uit, kostenregels, kostenMeldingen: model.meldingen };
 }

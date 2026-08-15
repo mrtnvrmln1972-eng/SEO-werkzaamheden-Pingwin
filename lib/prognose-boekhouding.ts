@@ -350,6 +350,60 @@ export async function bouwVoorstel(klanten: KlantBron[]): Promise<Voorstel> {
   };
 }
 
+// ── Wat een leverancier per maand kost ──
+// Het kostenmodel werkt met leveranciersnamen (Win Win, Greenbug, Gladior,
+// Multimedia Concepts). Deze functie zoekt ze op in de boekhouding en telt op
+// wat er per maand aan ze betaald is, zodat niemand een bedrag hoeft te typen
+// dat Moneybird al weet.
+
+export type LeverancierBedrag = {
+  naam: string;
+  gevonden: boolean;
+  contactNaam: string | null;
+  perMaandGemiddeld: number;
+  perMaand: { maand: string; bedrag: number }[];
+  maandenMetFactuur: number;
+};
+
+export async function leverancierMaandbedragen(namen: string[]): Promise<LeverancierBedrag[]> {
+  const tot = maandPlus(maandNu(), -1);
+  const van = maandPlus(tot, -(VENSTER_MAANDEN - 1));
+  const maanden: Maand[] = Array.from({ length: VENSTER_MAANDEN }, (_, i) => maandPlus(van, i));
+  const plat = (m: string) => m.replace("-", "");
+  const contacten = await getMbContacts().catch(() => []);
+
+  const uit: LeverancierBedrag[] = [];
+  for (const naam of namen) {
+    const s = sleutel(naam);
+    const contact = contacten.find(
+      (c) => (c.email || "").toLowerCase() === naam.toLowerCase() || (s.length >= 4 && sleutel(c.name).includes(s)),
+    );
+    if (!contact) {
+      uit.push({ naam, gevonden: false, contactNaam: null, perMaandGemiddeld: 0, perMaand: [], maandenMetFactuur: 0 });
+      continue;
+    }
+    const regels = await getLeverancierRegels(contact.id, plat(van), plat(tot)).catch(() => [] as LeverancierRegel[]);
+    const perMaand = maanden.map((m) => ({
+      maand: m,
+      bedrag: Math.round(regels.filter((r) => r.maand === m).reduce((sum, r) => sum + r.bedrag, 0)),
+    }));
+    const metFactuur = perMaand.filter((m) => m.bedrag > 0);
+    const totaal = perMaand.reduce((sum, m) => sum + m.bedrag, 0);
+    uit.push({
+      naam,
+      gevonden: true,
+      contactNaam: contact.name,
+      // Delen door de maanden waarin er iets gefactureerd is, niet door het hele
+      // venster: een leverancier die pas twee maanden meedraait heeft geen half
+      // maandbedrag.
+      perMaandGemiddeld: metFactuur.length ? Math.round(totaal / metFactuur.length) : 0,
+      perMaand,
+      maandenMetFactuur: metFactuur.length,
+    });
+  }
+  return uit;
+}
+
 /** De naam van de vaste maandpost voor niet-toewijsbare linkbuilding. */
 export function linkbuildingPostNaam(leverancier: string | null): string {
   return `Linkbuilding (${(leverancier || "leverancier").trim()})`;

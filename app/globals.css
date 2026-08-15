@@ -7810,3 +7810,18 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 }
 .prog-restant .prog-kop-titel { margin-bottom: var(--s-2); }
 .prog-restant .prog-boek-maanden { padding-left: var(--s-0); border-bottom: none; }
+
+/* Het kostenmodel: regels die zichzelf toepassen, in gewone taal op het scherm. */
+.prog-kostenregel {
+  padding: var(--s-3) var(--s-0); border-bottom: 1px solid var(--card-border);
+}
+.prog-kostenregel:last-of-type { border-bottom: none; }
+.prog-kostenregel-kop {
+  display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+  font-size: var(--fs-base); line-height: var(--lh-base); margin-bottom: var(--s-1);
+}
+.prog-kostenregel-uit { margin-left: auto; }
+.prog-kostenregel-check {
+  font-size: var(--fs-base); line-height: var(--lh-base); color: var(--text-secondary);
+  padding: var(--s-2) var(--s-0); font-variant-numeric: tabular-nums;
+}
