@@ -3,10 +3,13 @@ import { guardOwner } from "../../../../lib/admin-scope";
 import { listClients, setClientBudget } from "../../../../lib/clients";
 import {
   getPrognose, savePrognoseInstelling, saveRegelExtra,
-  addPost, deletePost, maandNu, maandPlus,
+  addPost, deletePost, maandPlus,
 } from "../../../../lib/prognose";
-import { moneybirdConfigured, getProfitLoss } from "../../../../lib/moneybird";
-import { bouwVoorstel, setLinkbuilderZoekterm } from "../../../../lib/prognose-boekhouding";
+import { moneybirdConfigured, getProfitLoss, getMbContacts } from "../../../../lib/moneybird";
+import {
+  bouwVoorstel, setLinkbuilderZoekterm, setLinkbuilderId, linkbuildingPostNaam,
+} from "../../../../lib/prognose-boekhouding";
+import { vervangPost, maandNu } from "../../../../lib/prognose";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -78,10 +81,38 @@ export async function POST(req: NextRequest) {
     post?: { naam: string; soort?: string; maand?: string; bedrag?: number; kans?: number; herhaalt?: boolean };
     slugs?: string[];
     linkbuilder?: string;
+    linkbuilderId?: string | null;
+    bedrag?: number;
+    naam?: string;
   };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
 
   try {
+    // De leveranciers om uit te kiezen. Een keuzelijst raadt niet; een zoekterm
+    // op een mailadres wel, en die miste precies het geval waar het om ging (de
+    // linkbuilder staat in de boekhouding onder zijn bedrijfsnaam).
+    if (body.actie === "moneybird-contacten") {
+      if (!moneybirdConfigured()) {
+        return NextResponse.json({ ok: false, error: "Moneybird is niet gekoppeld." }, { status: 400 });
+      }
+      const contacten = (await getMbContacts())
+        .map((c) => ({ id: c.id, naam: c.name, email: c.email }))
+        .sort((a, b) => a.naam.localeCompare(b.naam, "nl"));
+      return NextResponse.json({ ok: true, contacten });
+    }
+
+    // Linkbuilding die niet per klant te herleiden is, alsnog laten meetellen.
+    // De kosten zijn echt; alleen de verdeling over klanten is onbekend. Als
+    // vaste maandpost staan ze in de prognose in plaats van uit beeld te vallen.
+    if (body.actie === "linkbuilding-als-maandpost") {
+      const bedrag = Math.max(0, Math.round(Number(body.bedrag) || 0));
+      if (!bedrag) return NextResponse.json({ ok: false, error: "Geen bedrag om over te nemen." }, { status: 400 });
+      await vervangPost(body.naam || linkbuildingPostNaam(null), {
+        soort: "kosten", maand: maandNu(), bedrag, kans: 100, herhaalt: true,
+      });
+      return await stuurPrognose();
+    }
+
     // ── De prognose vullen vanuit de boekhouding ──
     // Bewust twee losse stappen. "voorstel" leest alleen en laat zien wat er zou
     // veranderen; "overnemen" schrijft, en alleen de regels die Maarten aanvinkt.
@@ -92,6 +123,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "Moneybird is niet gekoppeld." }, { status: 400 });
       }
       if (body.linkbuilder !== undefined) await setLinkbuilderZoekterm(body.linkbuilder);
+      if (body.linkbuilderId !== undefined) await setLinkbuilderId(body.linkbuilderId);
 
       const klanten = await listClients();
       const voorstel = await bouwVoorstel(klanten.map((k) => ({

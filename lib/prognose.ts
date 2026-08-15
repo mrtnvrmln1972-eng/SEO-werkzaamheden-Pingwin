@@ -237,6 +237,19 @@ export async function addPost(p: { naam: string; soort?: string; maand?: string;
   return { id: r.id, naam: r.naam, soort: r.soort === "kosten" ? "kosten" : "omzet", maand: r.maand, bedrag: Number(r.bedrag), kans: r.kans, herhaalt: !!r.herhaalt };
 }
 
+/**
+ * Zet een post neer die maar één keer mag bestaan, herkenbaar aan zijn naam.
+ * Gebruikt door het vullen uit de boekhouding: twee keer op dezelfde knop
+ * drukken hoort de post bij te werken, niet te verdubbelen.
+ */
+export async function vervangPost(naam: string, p: { soort?: string; maand?: string; bedrag?: number; kans?: number; herhaalt?: boolean }): Promise<Post> {
+  await ensureTable();
+  const schoon = String(naam || "").trim().slice(0, 120);
+  if (!schoon) throw new Error("Geef de post een naam.");
+  await sql`DELETE FROM prognose_post WHERE naam = ${schoon}`;
+  return addPost({ naam: schoon, ...p });
+}
+
 export async function deletePost(id: number): Promise<boolean> {
   await ensureTable();
   const { rowCount } = await sql`DELETE FROM prognose_post WHERE id = ${id}`;

@@ -7790,3 +7790,14 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   .prog-boek > .verberg-klein, .prog-boek-kop > span.verberg-klein { display: none; }
   .prog-boek-melding, .prog-boek-maanden { padding-left: var(--s-6); }
 }
+
+/* Linkbuilding die niet per klant te herleiden is. Bewust een opvallend blok en
+   geen dichtgeklapt detail: bij een leverancier die "Linkbuilding februari"
+   factureert is dit de normale uitkomst, en die kosten horen mee te tellen. */
+.prog-restant {
+  margin-top: var(--s-4); padding: var(--s-4);
+  border: 1px solid var(--card-border); border-left: var(--s-1) solid var(--accent-warm);
+  border-radius: var(--r-md); background: var(--brand-orange-faint);
+}
+.prog-restant .prog-kop-titel { margin-bottom: var(--s-2); }
+.prog-restant .prog-boek-maanden { padding-left: var(--s-0); border-bottom: none; }

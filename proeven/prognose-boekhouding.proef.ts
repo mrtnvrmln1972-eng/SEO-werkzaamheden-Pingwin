@@ -90,5 +90,36 @@ check("twee verschillende bedrijven blijven verschillend", sleutel("Kamsteeg") =
   check("zonder naam en zonder domein koppelt niets", noemtKlant("wat dan ook", "", ""), "false");
 }
 
+// ── 8. De omschrijvingen zoals ze er in het echt uitzien ──
+// Vastgelegd op 15-08-2026 aan de hand van de werkelijke facturen van de
+// linkbuilder. Ze noemen géén klant ("Linkbuilding februari 2026"), en dat is
+// hier geen randgeval maar de normale situatie. Deze proef legt dat vast zodat
+// niemand later denkt dat de koppeling stuk is: er valt niets te koppelen.
+{
+  const echte = [
+    "Linkbuilding",
+    "Linkbuilding februari 2026",
+    "Linkbuilding december 2025",
+    "Factuur voor linkbuilding",
+    "Diensten voor tuinonderhoud en SEO",
+  ];
+  const klanten = [
+    ["One Day Clinic", "onedayclinic.nl"],
+    ["Kamsteeg", "kamsteeg.nl"],
+    ["Paul Hoevenaars", "paulhoevenaars.nl"],
+  ];
+  const gekoppeld = echte.filter((tekst) =>
+    klanten.some(([naam, domein]) => noemtKlant(tekst, sleutel(naam), sleutel(domein))),
+  );
+  check("een factuurregel zonder klantnaam koppelt aan niemand", gekoppeld.length, 0);
+  // En andersom: zodra de leverancier de klant er wél bij zet, moet het meteen
+  // werken zonder dat er iets aan de code hoeft te veranderen.
+  check(
+    "met een klantnaam erbij koppelt hij wel",
+    noemtKlant("Linkbuilding februari 2026 One Day Clinic", sleutel("One Day Clinic"), sleutel("onedayclinic.nl")),
+    "true",
+  );
+}
+
 console.log(fouten === 0 ? "\nHet uitlezen klopt.\n" : `\n${fouten} fout(en) bij het uitlezen.\n`);
 process.exit(fouten === 0 ? 0 : 1);

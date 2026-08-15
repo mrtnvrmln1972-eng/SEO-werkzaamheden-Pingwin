@@ -40,8 +40,14 @@ export const VENSTER_MAANDEN = 6;
 
 // Welk Moneybird-contact de linkbuilder is. Instelbaar, want dit is een product
 // dat straks bij een ander bureau draait, en die heeft een andere leverancier.
-// Standaard het adres dat Pingwin gebruikt.
+//
+// Twee instellingen met opzet, en de eerste wint. Een ZOEKTERM (naam of
+// mailadres) is handig om mee te beginnen, maar hij raadt: het mailadres dat je
+// kent hoeft niet het mailadres te zijn waaronder de leverancier in de
+// boekhouding staat, en dan vindt hij niets zonder te zeggen waarom. Een gekozen
+// CONTACT-ID raadt nooit. Vandaar de keuzelijst op het scherm.
 export const SETTING_LINKBUILDER = "prognose_linkbuilder_contact";
+export const SETTING_LINKBUILDER_ID = "prognose_linkbuilder_contact_id";
 const LINKBUILDER_STANDAARD = "info@co.vision";
 
 export async function getLinkbuilderZoekterm(): Promise<string> {
@@ -49,6 +55,12 @@ export async function getLinkbuilderZoekterm(): Promise<string> {
 }
 export async function setLinkbuilderZoekterm(v: string): Promise<void> {
   await setSetting(SETTING_LINKBUILDER, String(v || "").trim() || LINKBUILDER_STANDAARD);
+}
+export async function getLinkbuilderId(): Promise<string | null> {
+  return (await getSetting(SETTING_LINKBUILDER_ID)) || null;
+}
+export async function setLinkbuilderId(v: string | null): Promise<void> {
+  await setSetting(SETTING_LINKBUILDER_ID, String(v || "").trim() || null);
 }
 
 // ── Namen vergelijken ──
@@ -108,10 +120,26 @@ export type Voorstel = {
   vanMaand: string;
   totMaand: string;
   regels: VoorstelRegel[];
-  /** Linkbuildingregels die bij geen enkele klant te plaatsen waren. */
-  linkbuildingRestant: { bedrag: number; regels: LeverancierRegel[] };
+  /**
+   * Linkbuildingregels die bij geen enkele klant te plaatsen waren.
+   *
+   * Dit is bij Pingwin geen randgeval maar de normale situatie: de facturen van
+   * de linkbuilder heten "Linkbuilding februari 2026", zonder klantnaam erin.
+   * Daarom staat er naast het totaal ook een maandbedrag: die kosten zijn echt,
+   * alleen de verdeling over klanten is onbekend. Als vaste maandpost tellen ze
+   * dan gewoon mee in de prognose, in plaats van uit beeld te vallen.
+   */
+  linkbuildingRestant: {
+    bedrag: number;
+    /** Gemiddeld per maand over de maanden waarin er gefactureerd is. */
+    perMaandGemiddeld: number;
+    perMaand: { maand: string; bedrag: number }[];
+    regels: LeverancierRegel[];
+  };
   linkbuilderGevonden: boolean;
+  linkbuilderNaam: string | null;
   linkbuilderZoekterm: string;
+  linkbuilderId: string | null;
   /** Facturerende contacten die nog niet als klant of lead in het dashboard staan. */
   onbekend: { contactId: string; naam: string; url: string; bedrag: number; maanden: number }[];
 };
@@ -168,19 +196,23 @@ export async function bouwVoorstel(klanten: KlantBron[]): Promise<Voorstel> {
   const maanden: Maand[] = Array.from({ length: VENSTER_MAANDEN }, (_, i) => maandPlus(van, i));
   const platteMaand = (m: string) => m.replace("-", "");
 
-  const zoekterm = await getLinkbuilderZoekterm();
-  const [omzet, contacten] = await Promise.all([
+  const [zoekterm, gekozenId, omzet, contacten] = await Promise.all([
+    getLinkbuilderZoekterm(),
+    getLinkbuilderId(),
     getOmzetPerKlantPerMaand(platteMaand(van), platteMaand(tot)),
     getMbContacts().catch(() => []),
   ]);
 
-  // De linkbuilder opzoeken op mailadres of op naam. Vinden we hem niet, dan
-  // gaat de rest gewoon door: het maandbedrag klopt dan nog steeds, alleen de
-  // linkbuildingkosten blijven op wat er stond.
+  // Heeft Maarten de leverancier uit de lijst gekozen, dan is dat het antwoord.
+  // Anders zoeken op mailadres of naam, en dat kán mislopen: de linkbuilder die
+  // je kent als "info@co.vision" staat in de boekhouding onder de bedrijfsnaam,
+  // en dan vindt een zoekterm niets. Vinden we hem niet, dan gaat de rest gewoon
+  // door; alleen de linkbuildingkosten blijven dan op wat er stond.
   const zoek = sleutel(zoekterm);
-  const linkbuilder = contacten.find(
-    (c) => (c.email || "").toLowerCase() === zoekterm.toLowerCase() || (zoek.length >= 4 && sleutel(c.name).includes(zoek)),
-  );
+  const linkbuilder = (gekozenId ? contacten.find((c) => c.id === gekozenId) : null)
+    || contacten.find(
+      (c) => (c.email || "").toLowerCase() === zoekterm.toLowerCase() || (zoek.length >= 4 && sleutel(c.name).includes(zoek)),
+    );
   let lbRegels: LeverancierRegel[] = [];
   if (linkbuilder) {
     lbRegels = await getLeverancierRegels(linkbuilder.id, platteMaand(van), platteMaand(tot)).catch(() => []);
@@ -289,13 +321,36 @@ export async function bouwVoorstel(klanten: KlantBron[]): Promise<Voorstel> {
   regels.sort((a, b) => (a.wijzigt === b.wijzigt ? b.bedrag - a.bedrag : a.wijzigt ? -1 : 1));
   onbekend.sort((a, b) => b.bedrag - a.bedrag);
 
+  // Het restant per maand, zodat het als vaste maandpost mee kan tellen. Delen
+  // door het aantal maanden waarin er íets gefactureerd is en niet door het hele
+  // venster: begon de linkbuilding pas twee maanden geleden, dan is het geen
+  // derde van een maandbedrag.
+  const restantPerMaand = maanden.map((m) => ({
+    maand: m,
+    bedrag: Math.round(restant.filter((r) => r.maand === m).reduce((s, r) => s + r.bedrag, 0)),
+  }));
+  const metBedrag = restantPerMaand.filter((m) => m.bedrag > 0);
+  const restantTotaal = Math.round(restant.reduce((s, r) => s + r.bedrag, 0));
+
   return {
     vanMaand: van,
     totMaand: tot,
     regels,
-    linkbuildingRestant: { bedrag: Math.round(restant.reduce((s, r) => s + r.bedrag, 0)), regels: restant.slice(0, 40) },
+    linkbuildingRestant: {
+      bedrag: restantTotaal,
+      perMaandGemiddeld: metBedrag.length ? Math.round(restantTotaal / metBedrag.length) : 0,
+      perMaand: restantPerMaand,
+      regels: restant.slice(0, 40),
+    },
     linkbuilderGevonden: !!linkbuilder,
+    linkbuilderNaam: linkbuilder?.name || null,
     linkbuilderZoekterm: zoekterm,
+    linkbuilderId: linkbuilder?.id || null,
     onbekend,
   };
+}
+
+/** De naam van de vaste maandpost voor niet-toewijsbare linkbuilding. */
+export function linkbuildingPostNaam(leverancier: string | null): string {
+  return `Linkbuilding (${(leverancier || "leverancier").trim()})`;
 }

@@ -64,12 +64,19 @@ export const HOOFDSTUK: Hoofdstuk = {
         "klant die per kwartaal factureert wordt het totaal omgerekend naar een maandbedrag, want het " +
         "middelste bedrag zou daar drie keer te hoog uitkomen. Wisselt het sterk, dan staat de bandbreedte " +
         "erbij.\n\n" +
-        "De linkbuilding komt uit de inkoopfacturen van de linkbuilder (instelbaar, standaard het adres dat " +
-        "Pingwin gebruikt). Er wordt naar de **factuurregels** gekeken en niet naar het factuurtotaal: in de " +
-        "omschrijving van een regel staat meestal de klantnaam of het domein, en zo valt de linkbuilding per " +
-        "klant toe te wijzen. Regels waarin geen bekende klant genoemd wordt, worden **niet** verdeeld over " +
-        "de klanten die wel herkend zijn; die staan apart in beeld met hun bedrag, zodat de marge per klant " +
-        "geen schatting wordt.\n\n" +
+        "De linkbuilding komt uit de inkoopfacturen van de linkbuilder, die je uit een keuzelijst van je " +
+        "Moneybird-contacten kiest. Bewust een keuzelijst en geen zoekveld: zoeken op het mailadres dat je " +
+        "kent gaat mis zodra de leverancier in de boekhouding onder zijn bedrijfsnaam staat, en dan vindt " +
+        "hij niets zonder te zeggen waarom.\n\n" +
+        "Er wordt naar de **factuurregels** gekeken en niet naar het factuurtotaal, want alleen in die regels " +
+        "kan staan om welke klant het gaat. Staat er een klantnaam of domein in, dan gaat het bedrag naar die " +
+        "klant. Staat dat er niet in, en dat is bij een factuur met de omschrijving \"Linkbuilding februari " +
+        "2026\" de normale situatie, dan wordt het **niet** verdeeld over de klanten die wel herkend zijn. " +
+        "Uitsmeren maakt van de marge per klant een schatting die niemand later nog als schatting herkent.\n\n" +
+        "Die kosten zijn wel echt, dus verdwijnen ze ook niet. Ze komen apart in beeld met hun maandbedrag " +
+        "en een knop om ze als vaste maandpost mee te nemen; dan tellen ze gewoon in de prognose, alleen " +
+        "niet toegerekend aan een klant. Gaat de leverancier later per klant specificeren, dan haal je die " +
+        "post weg en verdeelt het zich vanzelf.\n\n" +
         "**Er wordt niets automatisch overschreven.** De knop levert een voorstel: naast elkaar wat het " +
         "dashboard nu zegt en wat de boekhouding zegt, met per regel waarom, en per klant een maandoverzicht " +
         "om het na te kijken. Pas als je vinkt en op overnemen drukt verandert er iets. Een knop die twintig " +

@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Voorstel, VoorstelRegel } from "../../../lib/prognose-boekhouding";
 
+type MbContact = { id: string; naam: string; email: string | null };
+
 // ═══════════════════════════════════════════════════════════
 // DE PROGNOSE VULLEN VANUIT DE BOEKHOUDING
 // ═══════════════════════════════════════════════════════════
@@ -30,22 +32,42 @@ export default function BoekhoudingVullen({ herlaad }: Props) {
   const [bezig, zetBezig] = useState(false);
   const [fout, zetFout] = useState("");
   const [melding, zetMelding] = useState("");
-  const [linkbuilder, zetLinkbuilder] = useState("");
+  const [contacten, zetContacten] = useState<MbContact[] | null>(null);
+  const [linkbuilderId, zetLinkbuilderId] = useState("");
   const [openRegel, zetOpenRegel] = useState<string | null>(null);
 
-  async function ophalen() {
+  // De leverancierslijst één keer ophalen, zodra hij nodig is. Een keuzelijst in
+  // plaats van een zoekveld, omdat zoeken op een mailadres precies dit geval
+  // mist: de linkbuilder staat in de boekhouding onder zijn bedrijfsnaam.
+  async function contactenOphalen() {
+    if (contacten) return;
+    try {
+      const r = await fetch("/api/admin/prognose", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actie: "moneybird-contacten" }),
+      });
+      const d = await r.json();
+      if (d.ok) zetContacten(d.contacten as MbContact[]);
+    } catch { /* de rest werkt ook zonder de lijst */ }
+  }
+
+  async function ophalen(metId?: string) {
     zetBezig(true); zetFout(""); zetMelding("");
     try {
       const r = await fetch("/api/admin/prognose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actie: "boekhouding-voorstel", ...(linkbuilder ? { linkbuilder } : {}) }),
+        body: JSON.stringify({
+          actie: "boekhouding-voorstel",
+          ...(metId !== undefined ? { linkbuilderId: metId || null } : {}),
+        }),
       });
       const d = await r.json();
       if (!r.ok || !d.ok) { zetFout(d.error || "Ophalen uit de boekhouding mislukt."); return; }
       const v = d.voorstel as Voorstel;
       zetVoorstel(v);
-      if (!linkbuilder) zetLinkbuilder(v.linkbuilderZoekterm);
+      zetLinkbuilderId(v.linkbuilderId || "");
+      contactenOphalen();
       // Alles wat verandert staat standaard aan: dat is de bedoeling van de knop.
       // Uitvinken kan per regel, en dat is de rem die telt.
       zetGekozen(new Set(v.regels.filter((x) => x.wijzigt && x.slug).map((x) => x.slug as string)));
@@ -86,7 +108,7 @@ export default function BoekhoudingVullen({ herlaad }: Props) {
           wordt niets overgenomen tot je erop drukt.
         </div>
         <div className="prog-kop-acties">
-          <button type="button" className="btn btn-ghost btn-klein" onClick={ophalen} disabled={bezig}>
+          <button type="button" className="btn btn-ghost btn-klein" onClick={() => ophalen()} disabled={bezig}>
             {bezig && !voorstel ? "Bezig met ophalen" : voorstel ? "Opnieuw ophalen" : "Ophalen uit Moneybird"}
           </button>
         </div>
@@ -100,23 +122,24 @@ export default function BoekhoudingVullen({ herlaad }: Props) {
           <div className="prog-instel">
             <div className="prog-instel-veld">
               <label htmlFor="lb-contact">Van welke leverancier komt de linkbuilding</label>
-              <input
-                id="lb-contact" value={linkbuilder} disabled={bezig}
-                onChange={(e) => zetLinkbuilder(e.target.value)}
-                placeholder="info@co.vision"
-              />
+              <select
+                id="lb-contact" value={linkbuilderId} disabled={bezig || !contacten}
+                onChange={(e) => { zetLinkbuilderId(e.target.value); ophalen(e.target.value); }}
+              >
+                <option value="">{contacten ? "Kies een leverancier" : "Leveranciers laden"}</option>
+                {(contacten || []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.naam}{c.email ? ` (${c.email})` : ""}</option>
+                ))}
+              </select>
             </div>
-            <button type="button" className="btn btn-ghost btn-klein" onClick={ophalen} disabled={bezig}>
-              Opnieuw zoeken
-            </button>
           </div>
 
           <div className="prog-kop-uitleg">
             Gekeken van {voorstel.vanMaand} tot en met {voorstel.totMaand}. De lopende maand telt niet mee,
             die is halverwege.{" "}
             {voorstel.linkbuilderGevonden
-              ? "De linkbuilder is gevonden; regels waarin een klantnaam of domein staat zijn aan die klant toegewezen."
-              : `De linkbuilder (${voorstel.linkbuilderZoekterm}) is niet gevonden in Moneybird, dus de linkbuildingbedragen blijven staan zoals ze stonden.`}
+              ? `De facturen van ${voorstel.linkbuilderNaam} zijn meegenomen. Regels waarin een klantnaam of domein staat zijn aan die klant toegewezen; de rest staat onderaan.`
+              : `De linkbuilder is niet gevonden (er is gezocht op ${voorstel.linkbuilderZoekterm}). Kies hem hierboven uit de lijst, dan komen de linkbuildingkosten er wel bij. Tot die tijd blijven ze staan zoals ze stonden.`}
           </div>
 
           {wijzigend.length === 0 ? (
@@ -196,25 +219,66 @@ export default function BoekhoudingVullen({ herlaad }: Props) {
           )}
 
           {voorstel.linkbuildingRestant.regels.length > 0 && (
-            <details className="prog-details">
-              <summary>
-                {euro(voorstel.linkbuildingRestant.bedrag)} aan linkbuilding was niet aan een klant toe te wijzen
-              </summary>
-              <div className="prog-kop-uitleg">
-                In deze factuurregels stond geen klantnaam of domein dat het dashboard herkent. Ze zijn bewust
-                niet verdeeld over de klanten die wél herkend zijn; dan zou de marge per klant een schatting worden.
+            <div className="prog-restant">
+              <div className="prog-kop-titel">
+                {euro(voorstel.linkbuildingRestant.perMaandGemiddeld)} per maand aan linkbuilding,
+                niet aan een klant toe te wijzen
               </div>
-              {voorstel.linkbuildingRestant.regels.map((r, i) => (
-                <div className="prog-post" key={`${r.factuur}-${i}`}>
-                  <span className="prog-post-naam">
-                    <a href={r.url} target="_blank" rel="noreferrer">{r.omschrijving || r.factuur}</a>
-                  </span>
-                  <span className="prog-post-bedrag">{r.maand}</span>
-                  <span className="prog-post-bedrag verberg-klein" />
-                  <span className="prog-post-bedrag slecht">{euro(r.bedrag)}</span>
-                </div>
-              ))}
-            </details>
+              <div className="prog-kop-uitleg">
+                In deze factuurregels staat geen klantnaam of domein (ze heten bijvoorbeeld &ldquo;Linkbuilding
+                februari 2026&rdquo;), dus is niet te zien welk deel bij welke klant hoort. Ze worden bewust niet
+                verdeeld over de klanten die wél herkend zijn; dan zou de marge per klant een schatting worden die
+                niemand later nog als schatting herkent.
+                <br />
+                Deze kosten zijn wél echt. Neem ze mee als vaste maandpost, dan tellen ze in de prognose in plaats
+                van uit beeld te vallen. Wordt het bedrag later per klant zichtbaar op de factuur, dan haal je de
+                post weg en verdeelt hij zich vanzelf.
+              </div>
+              <div className="prog-boek-maanden">
+                {voorstel.linkbuildingRestant.perMaand.map((m) => (
+                  <span key={m.maand} className="prog-chip post">{m.maand}: {euro(m.bedrag)}</span>
+                ))}
+              </div>
+              <div className="prog-kop-acties">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-klein"
+                  disabled={bezig || voorstel.linkbuildingRestant.perMaandGemiddeld <= 0}
+                  onClick={async () => {
+                    zetBezig(true); zetFout("");
+                    try {
+                      const r = await fetch("/api/admin/prognose", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          actie: "linkbuilding-als-maandpost",
+                          bedrag: voorstel.linkbuildingRestant.perMaandGemiddeld,
+                          naam: `Linkbuilding (${voorstel.linkbuilderNaam || "leverancier"})`,
+                        }),
+                      });
+                      const d = await r.json();
+                      if (!r.ok || !d.ok) { zetFout(d.error || "Toevoegen mislukt."); return; }
+                      herlaad(d);
+                      zetMelding(`Linkbuilding staat nu als vaste maandpost van ${euro(voorstel.linkbuildingRestant.perMaandGemiddeld)} in de prognose.`);
+                    } catch { zetFout("De server is niet bereikbaar."); } finally { zetBezig(false); }
+                  }}
+                >
+                  Als vaste maandpost meenemen
+                </button>
+              </div>
+              <details className="prog-details">
+                <summary>De {voorstel.linkbuildingRestant.regels.length} factuurregels erachter</summary>
+                {voorstel.linkbuildingRestant.regels.map((r, i) => (
+                  <div className="prog-post" key={`${r.factuur}-${i}`}>
+                    <span className="prog-post-naam">
+                      <a href={r.url} target="_blank" rel="noreferrer">{r.omschrijving || r.factuur}</a>
+                    </span>
+                    <span className="prog-post-bedrag">{r.maand}</span>
+                    <span className="prog-post-bedrag verberg-klein" />
+                    <span className="prog-post-bedrag slecht">{euro(r.bedrag)}</span>
+                  </div>
+                ))}
+              </details>
+            </div>
           )}
         </>
       )}
