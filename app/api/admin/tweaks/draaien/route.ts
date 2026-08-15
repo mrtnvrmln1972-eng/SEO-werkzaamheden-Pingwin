@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 // werkstroom (.github/workflows/tweak-ronde.yml) die Claude Code draait met de
 // opdracht /tweaks. Eén klik, en de aanpassing staat straks live.
 //
-// ER ZIJN TWEE SLEUTELS VOOR NODIG, EN ALLEBEI OM EEN ANDERE REDEN:
+// ER ZIJN DRIE SLEUTELS VOOR NODIG, ELK OM EEN ANDERE REDEN:
 //  1. GITHUB_TWEAK_TOKEN, in Vercel. Waarmee dit dashboard bij GitHub mag
 //     aankloppen om de werkstroom te starten. Een fijnmazig token op deze ene
 //     repo, met alleen het recht "Actions: read and write". Meer heeft hij niet
@@ -27,9 +27,13 @@ export const dynamic = "force-dynamic";
 //  2. ANTHROPIC_API_KEY, als repo-secret in GitHub. Waarmee de werkstroom Claude
 //     mag laten denken. Die staat bewust NIET in Vercel: dit dashboard hoeft er
 //     niet bij te kunnen, alleen de werkstroom.
+//  3. PINGWIN_KIJK_SLEUTEL, als repo-secret in GitHub. Waarmee de ronde bij dit
+//     dashboard mag kijken en de standen mag bijwerken. Zonder deze claimt hij
+//     de wachtrij niet en meldt hij niets terug; dan draait hij blind.
 //
-// Ontbreekt de eerste, dan zegt deze route dat gewoon, met wat er moet gebeuren.
-// Een knop die stilletjes niets doet is erger dan geen knop.
+// Alleen de eerste kan deze route zien, want alleen die staat hier. Ontbreekt
+// hij, dan zegt de route dat gewoon, met wat er moet gebeuren. Een knop die
+// stilletjes niets doet is erger dan geen knop.
 // ═══════════════════════════════════════════════════════════
 
 const REPO = process.env.GITHUB_TWEAK_REPO || "mrtnvrmln1972-eng/SEO-werkzaamheden-Pingwin";
@@ -112,10 +116,11 @@ export async function POST(req: NextRequest) {
       ok: false,
       klaarzetten: true,
       error:
-        "De knop is er, de sleutels nog niet. Er zijn er twee nodig: GITHUB_TWEAK_TOKEN " +
-        "in Vercel (een fijnmazig GitHub-token op deze repo met het recht Actions: read and " +
-        "write), en ANTHROPIC_API_KEY als repo-secret in GitHub. Zolang ze er niet zijn start " +
-        "je een ronde met de knop hiernaast, die de startregel op je klembord zet.",
+        "De knop is er, de sleutels nog niet. Er zijn er drie nodig: GITHUB_TWEAK_TOKEN in " +
+        "Vercel (een fijnmazig GitHub-token op deze repo met het recht Actions: read and " +
+        "write), en als repo-secret in GitHub zowel ANTHROPIC_API_KEY als PINGWIN_KIJK_SLEUTEL. " +
+        "Zolang ze er niet zijn start je een ronde met de knop hiernaast, die de startregel op " +
+        "je klembord zet.",
     }, { status: 503 });
   }
 

@@ -11,11 +11,14 @@
 # wachtrij moet voorkomen. Het slot in de database vangt het op, maar een tweede
 # ronde die elk uur voor niets opstart kost wel geld.
 #
-# Twee sleutels, allebei ergens anders:
-#  - ANTHROPIC_API_KEY staat als repo-secret in GitHub (Settings, Secrets and
-#    variables, Actions). Alleen deze werkstroom komt erbij.
-#  - GITHUB_TWEAK_TOKEN staat in Vercel en is waarmee het dashboard dit hier mag
-#    starten. Die komt in dit bestand dus niet voor.
+# Drie sleutels, elk ergens anders, en elk voor iets anders:
+#  - ANTHROPIC_API_KEY, repo-secret in GitHub. Waarmee de ronde mag denken.
+#  - PINGWIN_KIJK_SLEUTEL, repo-secret in GitHub. Waarmee de ronde bij het
+#    dashboard mag kijken en de standen mag bijwerken. Zonder deze kan hij de
+#    wachtrij niet claimen en niet melden dat er iets klaarstaat; dan draait hij
+#    blind. Zelfde waarde als de meekijk-sleutel op /admin.
+#  - GITHUB_TWEAK_TOKEN, in Vercel. Waarmee het dashboard dit hier mag starten.
+#    Die hoort bij de knop, niet bij de ronde, en komt hier dus niet voor.
 # ═══════════════════════════════════════════════════════════
 
 name: Tweak-ronde
@@ -51,6 +54,11 @@ jobs:
 
       - name: De stapel afwerken
         uses: anthropics/claude-code-action@v1
+        env:
+          # De meekijk-sleutel, zodat de ronde het dashboard kan lezen en de
+          # standen kan bijwerken. Precies dezelfde weg als in een chat, dus
+          # ook hier alleen-lezen, met de tweak-standen als enige uitzondering.
+          PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Dezelfde opdracht als in een chat: .claude/commands/tweaks.md.
