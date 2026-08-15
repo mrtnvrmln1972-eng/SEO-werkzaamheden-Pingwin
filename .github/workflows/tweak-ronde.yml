@@ -2,7 +2,7 @@
 # EEN TWEAK-RONDE, GESTART VANUIT HET DASHBOARD
 # ═══════════════════════════════════════════════════════════
 # Maarten drukt op "Nu draaien" op /admin/tweaks, of het uurwerk van het
-# dashboard doet het vanzelf (/api/cron/bouwrondes, elk uur overdag als er iets
+# dashboard doet het vanzelf (/api/cron/nachtronde: overdag start jij hem zelf, als er iets
 # klaarstaat). Wat hier gebeurt is precies wat er in een chat gebeurt als hij
 # /tweaks plakt: de wachtrij wordt geclaimd, afgewerkt, gebouwd en in één keer
 # live gezet.
@@ -95,6 +95,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          # De pakketten uit de cache halen scheelt elke ronde een stuk van de
+          # opstarttijd. Die opstarttijd is vaste kost: even lang voor één
+          # aanpassing als voor tien, dus elke seconde eraf telt dubbel.
+          cache: npm
 
       - name: Pakketten installeren
         run: npm ci

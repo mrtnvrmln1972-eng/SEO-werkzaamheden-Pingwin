@@ -57,14 +57,30 @@ export type RondeStand = {
 };
 
 /**
- * Hoeveel minuten één tweak ongeveer kost, zolang deze ronde er nog geen enkele
- * heeft afgerond. Zodra er één klaar is rekent het scherm met het echte tempo
- * van déze ronde, dus dit getal telt alleen de eerste paar minuten mee.
+ * WAAR DE TIJD VAN EEN RONDE IN ZIT, GEMETEN OP 15-08-2026.
+ *
+ * Echte rondes duurden 176 en 338 seconden. Dat valt uiteen in twee stukken, en
+ * dat verschil is de hele reden dat deze stapel bestaat:
+ *
+ *  - VASTE KOSTEN, ongeveer vijf minuten: de omgeving opstarten, de laatste code
+ *    ophalen, de proeven draaien, en na het pushen wachten tot de nieuwe versie
+ *    er echt staat. Die vijf minuten zijn even lang voor één aanpassing als voor
+ *    tien. Daarom is één ronde met tien tweaks veel goedkoper dan tien rondes.
+ *  - PER AANPASSING, ongeveer anderhalve minuut: het echte zoeken en wijzigen.
+ *
+ * Eerst stond hier één getal van zes minuten per tweak, en dat was een gok. Drie
+ * aanpassingen kwamen daardoor op achttien minuten uit terwijl het er negen zijn.
+ * Een schatting die er twee keer naast zit, is geen schatting maar ruis.
  */
-const MINUTEN_PER_TWEAK = 6;
+const VASTE_MINUTEN = 5;
+const MINUTEN_PER_TWEAK = 1.5;
 
 function minuten(n: number): string {
-  if (n < 60) return `${n} ${n === 1 ? "minuut" : "minuten"}`;
+  // Nederlandse komma bij een halve minuut; "1.5 minuten" leest als een fout.
+  if (n < 60) {
+    const tekst = Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
+    return `${tekst} ${n === 1 ? "minuut" : "minuten"}`;
+  }
   const u = Math.floor(n / 60);
   const r = n % 60;
   return r ? `${u} uur en ${r} min` : `${u} uur`;
@@ -144,15 +160,21 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
     const klaar = rondeNu.klaar ?? 0;
     const over = Math.max(0, totaal - klaar);
     const verstreken = Math.max(0, (Date.now() - new Date(rondeNu.gestart).getTime()) / 60000);
-    const perStuk = klaar > 0 ? verstreken / klaar : MINUTEN_PER_TWEAK;
+    // De verwachting vooraf, en zodra er meldingen klaar zijn het echte tempo van
+    // déze ronde erbij. Dat tempo telt alleen voor wat er nog over is; de vaste
+    // kosten zitten dan immers al in de verstreken tijd.
+    const vooraf = VASTE_MINUTEN + totaal * MINUTEN_PER_TWEAK;
+    const rest = klaar > 0
+      ? Math.max(1, Math.round(over * (verstreken / klaar)))
+      : Math.max(1, Math.round(vooraf - verstreken));
     return {
-      totaal, klaar, over,
+      totaal, klaar, over, rest,
       verstreken: Math.round(verstreken),
-      rest: Math.max(1, Math.round(perStuk * over)),
+      verwacht: Math.round(klaar > 0 ? verstreken + rest : vooraf),
       deel: totaal > 0 ? klaar / totaal : 0,
-      // Twee keer zo lang als verwacht en nog niets afgerond: dan is er iets mis
+      // Ruim over de verwachting heen en nog niets afgerond: dan is er iets mis
       // en hoort het scherm dat te zeggen in plaats van te blijven draaien.
-      traag: klaar === 0 && verstreken > MINUTEN_PER_TWEAK * 2,
+      traag: klaar === 0 && verstreken > vooraf,
     };
   })();
 
@@ -361,6 +383,8 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
           {t.prioriteit === "nu" && <span className="tw-stand-chip tw-chip-nu">Gaat als eerste</span>}
           {t.prioriteit === "geparkeerd" && <span className="tw-stand-chip">Geparkeerd</span>}
           {t.punt && <span className="tw-stand-chip tw-chip-punt">{t.punt}</span>}
+          {/* Per melding wat hij ongeveer kost, zodat de optelsom navolgbaar is. */}
+          {opties.sleepbaar && <span className="tw-stand-chip gp-tijd">± {minuten(MINUTEN_PER_TWEAK)}</span>}
           {t.rondes > 1 && <span className="tw-stand-chip tw-rondes">{t.rondes} rondes</span>}
         </div>
         {t.notitie && <div className="tw-notitie">{t.notitie}</div>}
@@ -512,6 +536,7 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
                   <span className="gp-nu-tijd">
                     Begonnen om {klok(rondeNu.gestart)}, {minuten(voortgang.verstreken)} bezig
                     {voortgang.over > 0 ? `, nog ongeveer ${minuten(voortgang.rest)}` : ""}
+                    {" "}(totaal ongeveer {minuten(voortgang.verwacht)})
                   </span>
                 </div>
               </>
@@ -523,8 +548,10 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
               </div>
             )}
             <p className="gp-venster">
-              Een tweede ronde kan er niet naast; die zou in dezelfde bestanden schrijven. Dit
-              scherm kijkt elke vijftien seconden zelf of hij nog loopt.
+              Ongeveer {minuten(VASTE_MINUTEN)} gaat op aan opstarten, proeven en live zetten, en
+              dat is even lang voor één aanpassing als voor tien. De rest is het echte werk:
+              ongeveer anderhalve minuut per aanpassing. Eén ronde met tien tweaks is dus veel
+              goedkoper dan tien losse rondes.
             </p>
           </div>
         ) : rondeNu.ronde ? (

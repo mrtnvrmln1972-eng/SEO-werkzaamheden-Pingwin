@@ -2,7 +2,7 @@
 # DE BOUWRONDE VOOR ÉÉN GROOT PUNT
 # ═══════════════════════════════════════════════════════════
 # Wordt gestart door het dashboard: elk uur vanzelf binnen het nachtvenster
-# (/api/cron/bouwrondes), of meteen met de knop "Nu draaien" op
+# (/api/cron/nachtronde), of meteen met de knop "Nu draaien" op
 # /admin/grote-punten. Hij pakt ÉÉN punt: het bovenste uit de bouwwachtrij, dus
 # een punt met een plan waar Maarten ja tegen gezegd heeft. Staat er niets te
 # bouwen, dan schrijft hij een plan voor een punt waar hij er een van gevraagd
@@ -101,6 +101,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          # De pakketten uit de cache halen scheelt elke ronde een stuk van de
+          # opstarttijd. Die opstarttijd is vaste kost: even lang voor één
+          # aanpassing als voor tien, dus elke seconde eraf telt dubbel.
+          cache: npm
 
       - name: Pakketten installeren
         if: steps.kijk.outputs.werk != 'geen'
