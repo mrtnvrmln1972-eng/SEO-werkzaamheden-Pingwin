@@ -49,6 +49,37 @@ export const HOOFDSTUK: Hoofdstuk = {
         "*Wat er nog niet is:* de leads komen uit het dashboard zelf, nog niet automatisch uit HubSpot.",
     },
     {
+      titel: "De prognose vullen vanuit de boekhouding",
+      kern: "Wat elke klant werkelijk factureert komt uit Moneybird, de linkbuilding uit de facturen van de linkbuilder.",
+      tekst:
+        "De bedragen stonden al in de boekhouding. Ze daarna met de hand in het dashboard overtypen is niet " +
+        "alleen werk, het is ook de garantie dat de twee er na een paar maanden niet meer hetzelfde over " +
+        "zeggen. Eén knop leest ze uit.\n\n" +
+        "Wat er gebeurt: alle verkoopfacturen van de laatste zes afgesloten maanden, gegroepeerd per klant " +
+        "per maand. Daaruit komt wat die klant per maand factureert. De lopende maand telt niet mee, want " +
+        "die is halverwege en zou elke klant goedkoper laten lijken dan hij is.\n\n" +
+        "**Maandelijks en niet-maandelijks worden uit elkaar gehouden**, en dat is het hele verschil tussen " +
+        "een bruikbaar en een misleidend getal. Bij een klant die elke maand factureert is het maandbedrag " +
+        "het middelste bedrag van die maanden, zodat één eenmalige projectfactuur het niet optilt. Bij een " +
+        "klant die per kwartaal factureert wordt het totaal omgerekend naar een maandbedrag, want het " +
+        "middelste bedrag zou daar drie keer te hoog uitkomen. Wisselt het sterk, dan staat de bandbreedte " +
+        "erbij.\n\n" +
+        "De linkbuilding komt uit de inkoopfacturen van de linkbuilder (instelbaar, standaard het adres dat " +
+        "Pingwin gebruikt). Er wordt naar de **factuurregels** gekeken en niet naar het factuurtotaal: in de " +
+        "omschrijving van een regel staat meestal de klantnaam of het domein, en zo valt de linkbuilding per " +
+        "klant toe te wijzen. Regels waarin geen bekende klant genoemd wordt, worden **niet** verdeeld over " +
+        "de klanten die wel herkend zijn; die staan apart in beeld met hun bedrag, zodat de marge per klant " +
+        "geen schatting wordt.\n\n" +
+        "**Er wordt niets automatisch overschreven.** De knop levert een voorstel: naast elkaar wat het " +
+        "dashboard nu zegt en wat de boekhouding zegt, met per regel waarom, en per klant een maandoverzicht " +
+        "om het na te kijken. Pas als je vinkt en op overnemen drukt verandert er iets. Een knop die twintig " +
+        "bedragen in één klik omzet is precies de knop waarvan je later niet meer weet wat hij gedaan heeft.\n\n" +
+        "Twee dingen die de stilte hoorbaar maken. Een bedrijf dat wél factureert maar geen klant of lead in " +
+        "het dashboard heeft, komt apart in beeld: dat is omzet die nu buiten de prognose valt. En een klant " +
+        "in het dashboard waar de boekhouding niets over zegt, blijft in de lijst staan met die melding erbij, " +
+        "want een klant zonder facturen is zelf een signaal.",
+    },
+    {
       titel: "Verbruik en kosten per actie",
       kern: "Wat kost welke knop, per klant en per periode, met AI en Ahrefs samengeteld.",
       tekst:

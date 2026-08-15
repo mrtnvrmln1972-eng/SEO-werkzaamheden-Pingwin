@@ -7751,3 +7751,42 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   .prog-regel, .prog-regel-kop { grid-template-columns: 1fr 6em 4em 5.5em; }
   .prog-regel > .verberg-klein, .prog-regel-kop > .verberg-klein { display: none; }
 }
+
+/* ── Prognose vullen uit de boekhouding ──────────────────────────
+   Naast elkaar: wat het dashboard nu zegt en wat Moneybird zegt. Dezelfde
+   kolombreedtes als de andere prognosetabellen, met een vinkje ervoor. */
+
+.prog-boek {
+  display: grid; grid-template-columns: var(--s-5) 1fr 6.5em 6.5em 6.5em 6.5em;
+  gap: var(--s-3); align-items: center; padding: var(--s-2) var(--s-1);
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+.prog-boek-kop {
+  display: grid; grid-template-columns: var(--s-5) 1fr 6.5em 6.5em 6.5em 6.5em;
+  gap: var(--s-3); padding: var(--s-2) var(--s-1); border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--label-muted); font-weight: 600;
+}
+.prog-boek-kop span { text-align: right; }
+.prog-boek-kop span:nth-child(-n+2) { text-align: left; }
+.prog-boek-melding {
+  display: flex; flex-wrap: wrap; gap: var(--s-3);
+  padding: var(--s-0) var(--s-1) var(--s-2) var(--s-8);
+}
+.prog-boek-maanden {
+  display: flex; flex-wrap: wrap; gap: var(--s-2);
+  padding: var(--s-0) var(--s-1) var(--s-3) var(--s-8);
+  border-bottom: 1px dashed var(--card-border);
+}
+.prog-details { margin-top: var(--s-4); border-top: 1px solid var(--card-border); padding-top: var(--s-3); }
+.prog-details > summary {
+  cursor: pointer; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  color: var(--label-muted); font-weight: 600; margin-bottom: var(--s-2);
+}
+.prog-details > summary:hover { color: var(--orange-dark); }
+
+@media (max-width: 720px) {
+  /* vinkje, klant, staat nu, boekhouding */
+  .prog-boek, .prog-boek-kop { grid-template-columns: var(--s-5) 1fr 5.5em 5.5em; }
+  .prog-boek > .verberg-klein, .prog-boek-kop > span.verberg-klein { display: none; }
+  .prog-boek-melding, .prog-boek-maanden { padding-left: var(--s-6); }
+}

@@ -139,6 +139,8 @@ type RawInvoice = {
   date?: string | null;
   due_date?: string | null;
   total_unpaid?: string | number | null;
+  total_price_excl_tax?: string | number | null;
+  total_price_excl_tax_base?: string | number | null;
   contact_id?: string | number | null;
   contact?: { id?: string | number; company_name?: string | null; firstname?: string | null; lastname?: string | null; email?: string | null; send_invoices_to_email?: string | null } | null;
 };
@@ -292,6 +294,7 @@ type RawDetailRow = {
   ledger_account_id?: string | number | null;
   price?: string | number | null;
   amount?: string | null;
+  description?: string | null;
   total_price_excl_tax_with_discount?: string | number | null;
   total_price_excl_tax_with_discount_base?: string | number | null;
 };
@@ -407,6 +410,120 @@ export async function getExpensesByContact(month: string): Promise<ContactAmount
 
 export async function getExpensesByContactRaw(month: string): Promise<unknown> {
   return mbFetch("/reports/expenses_by_contact", { period: month });
+}
+
+// ─── Wat elke klant per maand factureert ───
+// Voor de prognose: niet "wat kwam er binnen" maar "wat komt er elke maand
+// binnen, per klant". Dat is één vraag aan de verkoopfacturen over een venster
+// van een paar maanden, daarna groeperen op klant én op factuurmaand.
+//
+// Bewust de factuurbedragen EXCLUSIEF btw: btw is doorgeefgeld, dat hoort niet
+// in een winstprognose. En bewust op factuurdatum en niet op betaaldatum: de
+// prognose gaat over wat je verdient, niet over wanneer het op de rekening staat.
+
+export type KlantMaandOmzet = {
+  contactId: string;
+  contactName: string;
+  email: string | null;
+  url: string;
+  /** Per maand ("JJJJ-MM") het gefactureerde bedrag excl. btw. */
+  perMaand: Record<string, number>;
+};
+
+function invoiceExclBtw(r: RawInvoice): number {
+  const v = r.total_price_excl_tax ?? r.total_price_excl_tax_base;
+  return Number(v || 0) || 0;
+}
+
+/** "JJJJ-MM" uit een factuurdatum; leeg als de datum onbruikbaar is. */
+function maandVanDatum(d: string | null | undefined): string {
+  const t = String(d || "");
+  return /^\d{4}-\d{2}/.test(t) ? t.slice(0, 7) : "";
+}
+
+/**
+ * Alle verkoopfacturen in een venster, gegroepeerd per klant per maand.
+ * `van` en `tot` zijn "JJJJMM" (inclusief). Cache: 6 uur.
+ */
+export async function getOmzetPerKlantPerMaand(van: string, tot: string): Promise<KlantMaandOmzet[]> {
+  const key = `${van}..${tot}`;
+  const cached = await cacheGet<KlantMaandOmzet[]>("omzet_per_klant", key, 6 * 60);
+  if (cached) return cached;
+
+  const raw = (await mbFetchAll("/sales_invoices.json", { filter: `period:${key}` })) as RawInvoice[];
+  const byContact = new Map<string, KlantMaandOmzet>();
+  for (const r of raw) {
+    // Een concept of een gestorneerde factuur is geen omzet. Alles wat verstuurd
+    // of betaald is telt wel; anders mist de laatste maand steevast de facturen
+    // die nog niet betaald zijn, en dan lijkt elke klant net gestopt.
+    const staat = String(r.state || "");
+    if (staat === "draft" || staat === "new") continue;
+    const maand = maandVanDatum(r.invoice_date || r.date);
+    if (!maand) continue;
+    const bedrag = invoiceExclBtw(r);
+    if (!bedrag) continue;
+    const cid = r.contact?.id != null ? String(r.contact.id) : r.contact_id != null ? String(r.contact_id) : "";
+    if (!cid) continue;
+    const entry = byContact.get(cid) || {
+      contactId: cid,
+      contactName: contactDisplayName(r.contact),
+      email: r.contact?.send_invoices_to_email || r.contact?.email || null,
+      url: mbContactUrl(cid),
+      perMaand: {},
+    };
+    entry.perMaand[maand] = (entry.perMaand[maand] || 0) + bedrag;
+    byContact.set(cid, entry);
+  }
+
+  const list = [...byContact.values()];
+  await cacheSet("omzet_per_klant", key, list);
+  return list;
+}
+
+// ─── Wat één leverancier ons kost, regel voor regel ───
+// De linkbuilder stuurt één factuur met meerdere regels, en in die regels staat
+// meestal voor welke klant het is. Daarom halen we de REGELS op en niet alleen
+// het factuurtotaal: zonder de omschrijving valt de linkbuilding niet per klant
+// toe te wijzen, en dan is de marge per klant een schatting.
+
+export type LeverancierRegel = {
+  maand: string;        // "JJJJ-MM"
+  omschrijving: string;
+  bedrag: number;       // excl. btw
+  factuur: string;
+  url: string;
+};
+
+/** Alle inkoopfactuur- en bonregels van één leverancier in een venster. Cache: 6 uur. */
+export async function getLeverancierRegels(contactId: string, van: string, tot: string): Promise<LeverancierRegel[]> {
+  const key = `${contactId}:${van}..${tot}`;
+  const cached = await cacheGet<LeverancierRegel[]>("leverancier_regels", key, 6 * 60);
+  if (cached) return cached;
+
+  const filter = `period:${van}..${tot},contact_id:${contactId}`;
+  const [pi, rc] = await Promise.all([
+    mbFetchAll("/documents/purchase_invoices.json", { filter }).catch(() => [] as unknown[]),
+    mbFetchAll("/documents/receipts.json", { filter }).catch(() => [] as unknown[]),
+  ]);
+
+  const regels: LeverancierRegel[] = [];
+  for (const doc of [...pi, ...rc] as RawDocument[]) {
+    const maand = maandVanDatum(doc.invoice_date || doc.date);
+    if (!maand) continue;
+    const label = String(doc.invoice_id || doc.reference || "factuur");
+    const url = docUrl("purchase", String(doc.id));
+    const details = doc.details || [];
+    if (details.length === 0) continue;
+    for (const d of details) {
+      const bedrag = rowAmount(d);
+      if (Math.abs(bedrag) < 0.005) continue;
+      regels.push({ maand, omschrijving: String(d.description || "").trim(), bedrag, factuur: label, url });
+    }
+  }
+
+  regels.sort((a, b) => (b.maand || "").localeCompare(a.maand || ""));
+  await cacheSet("leverancier_regels", key, regels);
+  return regels;
 }
 
 // ─── Contacten (voor het koppelen aan dashboard-klanten) ───

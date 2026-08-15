@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { PrognoseUitkomst, MaandUitkomst, PrognoseRegel, Post, Bijdrage } from "../../../lib/prognose";
+import BoekhoudingVullen from "./BoekhoudingVullen";
 
 // ═══════════════════════════════════════════════════════════
 // DE PROGNOSE OP HET SCHERM
@@ -83,6 +84,8 @@ export default function PrognosePaneel({ begin }: Props) {
         open={openMaand}
         zetOpen={setOpenMaand}
       />
+
+      <BoekhoudingVullen herlaad={(d) => setData(d as PrognoseUitkomst)} />
 
       <Regels regels={regels} bezig={bezig} stuur={stuur} />
 

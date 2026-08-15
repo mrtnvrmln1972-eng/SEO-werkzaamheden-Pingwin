@@ -6,6 +6,7 @@ import {
   addPost, deletePost, maandNu, maandPlus,
 } from "../../../../lib/prognose";
 import { moneybirdConfigured, getProfitLoss } from "../../../../lib/moneybird";
+import { bouwVoorstel, setLinkbuilderZoekterm } from "../../../../lib/prognose-boekhouding";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -72,10 +73,55 @@ export async function PATCH(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const g = await guardOwner(req); if (!g.ok) return g.res;
-  let body: { actie?: string; post?: { naam: string; soort?: string; maand?: string; bedrag?: number; kans?: number; herhaalt?: boolean } };
+  let body: {
+    actie?: string;
+    post?: { naam: string; soort?: string; maand?: string; bedrag?: number; kans?: number; herhaalt?: boolean };
+    slugs?: string[];
+    linkbuilder?: string;
+  };
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
 
   try {
+    // ── De prognose vullen vanuit de boekhouding ──
+    // Bewust twee losse stappen. "voorstel" leest alleen en laat zien wat er zou
+    // veranderen; "overnemen" schrijft, en alleen de regels die Maarten aanvinkt.
+    // Eén knop die twintig bedragen tegelijk omzet is precies de knop waarvan je
+    // later niet meer weet wat hij gedaan heeft.
+    if (body.actie === "boekhouding-voorstel" || body.actie === "boekhouding-overnemen") {
+      if (!moneybirdConfigured()) {
+        return NextResponse.json({ ok: false, error: "Moneybird is niet gekoppeld." }, { status: 400 });
+      }
+      if (body.linkbuilder !== undefined) await setLinkbuilderZoekterm(body.linkbuilder);
+
+      const klanten = await listClients();
+      const voorstel = await bouwVoorstel(klanten.map((k) => ({
+        slug: k.slug, name: k.name, fase: k.fase, domain: k.domain,
+        moneybirdContactId: k.moneybirdContactId, budget: k.budget,
+      })));
+
+      if (body.actie === "boekhouding-voorstel") {
+        return NextResponse.json({ ok: true, voorstel });
+      }
+
+      const kies = new Set(Array.isArray(body.slugs) ? body.slugs : []);
+      let overgenomen = 0;
+      for (const r of voorstel.regels) {
+        if (!r.slug || !kies.has(r.slug) || !r.wijzigt) continue;
+        const klant = klanten.find((k) => k.slug === r.slug);
+        if (!klant) continue;
+        await setClientBudget(r.slug, {
+          maandbudget: Math.max(0, r.bedrag),
+          linkbuilding: Math.max(0, r.linkbuilding),
+          uurtarief: klant.budget.uurtarief,
+          beschikbareUren: klant.budget.beschikbareUren,
+        });
+        overgenomen++;
+      }
+      const uit = await stuurPrognose();
+      const d = await uit.json();
+      return NextResponse.json({ ...d, overgenomen });
+    }
+
     // Vaste lasten laten vullen vanuit de boekhouding: het gemiddelde van de
     // laatste drie afgesloten maanden. Zo hoeft Maarten niet te schatten wat
     // Moneybird al weet. Losse klantkosten (linkbuilding) horen hier niet bij,
