@@ -21,7 +21,9 @@
 # raakt de rondes niet meer.
 #
 # Twee sleutels, en meer niet:
-#  - ANTHROPIC_API_KEY, repo-secret in GitHub. Waarmee de ronde mag denken.
+#  - CLAUDE_CODE_OAUTH_TOKEN, repo-secret in GitHub. Waarmee de ronde mag denken,
+#    op Maartens eigen abonnement in plaats van op een aparte rekening.
+#    Staat hij er niet, dan wordt ANTHROPIC_API_KEY gebruikt (betalen per woord).
 #  - GITHUB_TWEAK_TOKEN, in Vercel. Waarmee het dashboard dit hier mag starten.
 #    Die hoort bij de starter, niet bij de ronde, en komt hier dus niet voor.
 # ═══════════════════════════════════════════════════════════
@@ -113,7 +115,18 @@ jobs:
           TWEAK_RONDE: ${{ github.event.inputs.ronde }}
           RONDE_JAR: /tmp/ronde-cookies.txt
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # ── WELKE REKENING DIT WERK BETAALT ──
+          # Staat CLAUDE_CODE_OAUTH_TOKEN als repo-secret klaar, dan draait deze
+          # ronde op Maartens Claude-abonnement, precies zoals een gewone chat:
+          # geen aparte rekening per ronde. Staat hij er niet, dan valt hij terug
+          # op ANTHROPIC_API_KEY, en dat is betalen per verwerkt woord. Dat laatste
+          # was tot 15-08-2026 de enige weg, en daardoor kostte één mislukt plan
+          # 7,24 dollar terwijl dezelfde vraag in een chat niets extra's kost.
+          #
+          # Allebei invullen kan niet: een lege waarde telt als niet ingevuld, dus
+          # de sleutel wordt alleen doorgegeven als er géén token is.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN == '' && secrets.ANTHROPIC_API_KEY || '' }}
           # Dezelfde opdracht als in een chat: .claude/commands/tweaks.md.
           prompt: "/tweaks"
           # HET MODEL HOORT BIJ HET SOORT WERK, EN DAT IS HIER VASTGEZET.
