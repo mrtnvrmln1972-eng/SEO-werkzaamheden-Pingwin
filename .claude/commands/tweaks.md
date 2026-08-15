@@ -88,9 +88,21 @@ er iets gebeurd is; een ronde die er niet in komt hoort te mislukken, niet te sl
    regel, geen uitzondering: er wordt uit meerdere chats naar `main` gepusht.
 3. **Sorteer op bestand, niet op volgorde van melden.** Drie tweaks in hetzelfde scherm doe je
    in één keer open. Dat is waar de tijdwinst zit.
-4. **Doe ze allemaal, dan één keer bouwen.** `npm run proef`, daarna commit en push naar `main`,
+4. **Meld elke melding zodra je hem gewijzigd hebt. Dit is geen administratie.**
+
+   ```
+   POST /api/admin/tweaks/ronde  { "actie": "gebouwd", "id": <id> }
+   ```
+
+   Doe dit meteen na de wijziging van díe melding, dus tijdens het werk en niet
+   achteraf op een rij. Dit is het enige signaal dat op Maartens scherm beweegt terwijl jij
+   bezig bent: de balk loopt hierop. Zonder deze meldingen staat er vijf minuten lang
+   "0 van 3" terwijl je alles al gedaan hebt, en dan heeft hij geen enkele reden om te
+   geloven dat er iets gebeurt. Precies dat is op 15-08-2026 misgegaan.
+
+5. **Doe ze allemaal, dan één keer bouwen.** `npm run proef`, daarna commit en push naar `main`,
    daarna `scripts/wacht-op-deploy.sh`. Eén ronde, één deploy.
-5. **Zet de standen bij.** Dit is geen administratie, dit is het seintje aan Maarten.
+6. **Zet de standen bij.** Dit is geen administratie, dit is het seintje aan Maarten.
    - Op `bezig` zetten hoeft niet meer; dat deed de claim in stap 1 al.
    - Na de deploy: op `stand: "controleer"`, met in `reactie` één regel over wat je gedaan hebt,
      in gewone taal. Die regel komt onder zijn melding te staan, dus schrijf hem voor hem, niet
@@ -104,7 +116,7 @@ er iets gebeurd is; een ronde die er niet in komt hoort te mislukken, niet te sl
    waar dat mag. `PATCH /api/admin/tweaks` met `{ id, stand, reactie }`. Wat je daar níet mag: de
    voorrang veranderen (direct doorvoeren, parkeren) of de volgorde slepen. Dat is Maartens keuze.
 
-6. **Geef de ronde terug als je klaar bent, of als je stopt.**
+7. **Geef de ronde terug als je klaar bent, of als je stopt.**
 
    ```
    POST /api/admin/tweaks/ronde  { "actie": "terug", "ronde": "<de ronde uit stap 1>" }
@@ -122,7 +134,7 @@ er iets gebeurd is; een ronde die er niet in komt hoort te mislukken, niet te sl
    vragen. Precies dat gebeurde op 15-08-2026 bij de eerste echte ronde vanaf de knop: hij eindigde
    netjes, bouwde niets, en liet geen woord achter. Een ronde die niets doet is prima; een ronde
    die niet zegt waarom, is een storing.
-7. **Kijk of het klopt met eigen ogen** vóór je iets op `controleer` zet. Zie
+8. **Kijk of het klopt met eigen ogen** vóór je iets op `controleer` zet. Zie
    "Meekijken" in `CLAUDE.md`; een schermafbeelding maken kan, dus doe dat bij alles wat over
    vormgeving gaat. Iets op `controleer` zetten dat je niet gezien hebt is precies de
    heen-en-weer die deze hele opzet moet weghalen.

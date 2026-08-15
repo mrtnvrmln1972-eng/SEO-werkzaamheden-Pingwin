@@ -51,6 +51,8 @@ export type RondeStand = {
   bezig: number;
   /** In welke baan de lopende ronde werkt: de tweaks, of een groot punt. */
   baan: "tweak" | "punt" | null;
+  /** Hoeveel meldingen van déze ronde al gewijzigd zijn (nog niet live). */
+  gebouwd: number;
   /** Hoeveel meldingen van déze ronde al doorgevoerd zijn en klaarstaan. */
   klaar: number;
   /** Hoeveel meldingen deze ronde in totaal onder handen heeft (bezig + klaar). */
@@ -90,8 +92,9 @@ export async function rondeStand(): Promise<RondeStand> {
   const naam = slot.ronde ?? "";
   const r = await sql`
     SELECT
-      count(*) FILTER (WHERE stand = 'bezig')::int                              AS bezig,
-      count(*) FILTER (WHERE stand = 'controleer' AND ronde = ${naam})::int     AS klaar
+      count(*) FILTER (WHERE stand = 'bezig')::int                                       AS bezig,
+      count(*) FILTER (WHERE stand = 'bezig' AND gebouwd IS NOT NULL)::int                AS gebouwd,
+      count(*) FILTER (WHERE stand = 'controleer' AND ronde = ${naam})::int               AS klaar
     FROM tweaks`;
   const bezig = Number(r.rows[0]?.bezig ?? 0);
   const klaar = Number(r.rows[0]?.klaar ?? 0);
@@ -100,6 +103,7 @@ export async function rondeStand(): Promise<RondeStand> {
     gestart: slot.gestart,
     baan: slot.baan,
     bezig,
+    gebouwd: Number(r.rows[0]?.gebouwd ?? 0) + klaar,
     klaar,
     totaal: bezig + klaar,
   };

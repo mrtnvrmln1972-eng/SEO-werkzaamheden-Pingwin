@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardDev, isMeekijker } from "../../../../../lib/admin-scope";
 import { claimRonde, geefRondeTerug, breekRondeAf, rondeStand, MAX_PER_RONDE } from "../../../../../lib/tweak-ronde";
+import { meldGebouwd } from "../../../../../lib/tweaks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,6 +57,16 @@ export async function POST(req: NextRequest) {
     const ronde = String(body?.ronde ?? "").trim();
     if (!ronde) return NextResponse.json({ ok: false, error: "Welke ronde?" }, { status: 400 });
     await geefRondeTerug(ronde);
+    return NextResponse.json({ ok: true, ronde: await rondeStand() });
+  }
+
+  // De ronde meldt per melding dat hij hem gewijzigd heeft, nog vóór het live
+  // zetten. Dat is het enige signaal dat tijdens een ronde beweegt; zonder dit
+  // staat de balk minuten stil op "0 van 3" terwijl er volop gewerkt wordt.
+  if (actie === "gebouwd") {
+    const id = Number(body?.id);
+    if (!id) return NextResponse.json({ ok: false, error: "Welke melding?" }, { status: 400 });
+    await meldGebouwd(id);
     return NextResponse.json({ ok: true, ronde: await rondeStand() });
   }
 

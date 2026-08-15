@@ -52,8 +52,8 @@ function klok(iso: string | null): string {
 export type RondeStand = {
   ronde: string | null; gestart: string | null; bezig: number;
   baan?: "tweak" | "punt" | null;
-  /** Hoeveel meldingen van deze ronde al doorgevoerd zijn, en hoeveel er in totaal in zitten. */
-  klaar?: number; totaal?: number;
+  /** Hoeveel er al gewijzigd zijn (nog niet live), hoeveel er live staan, en het totaal. */
+  gebouwd?: number; klaar?: number; totaal?: number;
 };
 
 /**
@@ -158,23 +158,28 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
     if (!rondeNu.ronde || !rondeNu.gestart) return null;
     const totaal = rondeNu.totaal ?? rondeNu.bezig;
     const klaar = rondeNu.klaar ?? 0;
-    const over = Math.max(0, totaal - klaar);
+    // De balk loopt op wat er GEBOUWD is, niet op wat er live staat. Live gaan
+    // gebeurt in één keer aan het eind; daar kan een balk niets mee.
+    const gebouwd = Math.max(rondeNu.gebouwd ?? 0, klaar);
+    const over = Math.max(0, totaal - gebouwd);
     const verstreken = Math.max(0, (Date.now() - new Date(rondeNu.gestart).getTime()) / 60000);
     // De verwachting vooraf, en zodra er meldingen klaar zijn het echte tempo van
     // déze ronde erbij. Dat tempo telt alleen voor wat er nog over is; de vaste
     // kosten zitten dan immers al in de verstreken tijd.
     const vooraf = VASTE_MINUTEN + totaal * MINUTEN_PER_TWEAK;
-    const rest = klaar > 0
-      ? Math.max(1, Math.round(over * (verstreken / klaar)))
+    const rest = gebouwd > 0
+      ? Math.max(1, Math.round(over * (verstreken / gebouwd)) + (klaar < totaal ? VASTE_MINUTEN / 2 : 0))
       : Math.max(1, Math.round(vooraf - verstreken));
     return {
-      totaal, klaar, over, rest,
+      totaal, klaar, gebouwd, over, rest,
       verstreken: Math.round(verstreken),
-      verwacht: Math.round(klaar > 0 ? verstreken + rest : vooraf),
-      deel: totaal > 0 ? klaar / totaal : 0,
-      // Ruim over de verwachting heen en nog niets afgerond: dan is er iets mis
+      verwacht: Math.round(gebouwd > 0 ? verstreken + rest : vooraf),
+      deel: totaal > 0 ? gebouwd / totaal : 0,
+      // Welke fase: eerst bouwen, dan live zetten, dan klaar om te bekijken.
+      fase: klaar >= totaal ? "klaar" : over === 0 ? "live" : "bouwen",
+      // Ruim over de verwachting heen en nog niets gebouwd: dan is er iets mis
       // en hoort het scherm dat te zeggen in plaats van te blijven draaien.
-      traag: klaar === 0 && verstreken > vooraf,
+      traag: gebouwd === 0 && verstreken > vooraf,
     };
   })();
 
@@ -519,7 +524,7 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
               <span className="gp-nu-titel">
                 {rondeNu.baan === "punt"
                   ? "Tweaks wachten daarop; ze bouwen nooit tegelijk"
-                  : `${voortgang.klaar} van ${voortgang.totaal} doorgevoerd`}
+                  : `${voortgang.gebouwd} van ${voortgang.totaal} gebouwd`}
               </span>
             </div>
             {rondeNu.baan !== "punt" && (
@@ -529,9 +534,9 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
                 </div>
                 <div className="gp-nu-regel">
                   <span className="gp-nu-stap">
-                    {voortgang.over === 0
-                      ? "Alles doorgevoerd, bezig met live zetten"
-                      : `Nog ${voortgang.over} te gaan`}
+                    {voortgang.fase === "klaar" ? "Alles staat live"
+                      : voortgang.fase === "live" ? "Alles gebouwd, nu proeven draaien en live zetten"
+                        : `Aan het bouwen, nog ${voortgang.over} te gaan`}
                   </span>
                   <span className="gp-nu-tijd">
                     Begonnen om {klok(rondeNu.gestart)}, {minuten(voortgang.verstreken)} bezig

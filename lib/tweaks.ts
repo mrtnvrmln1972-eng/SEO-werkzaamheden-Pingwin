@@ -30,7 +30,7 @@ import { eenmalig } from "./schema-stand";
 
 // Vingerafdruk van `doeBouw()` hieronder; `proeven/schema-versie.proef.ts`
 // rekent hem na en noemt zelf de waarde die hier hoort te staan.
-export const TWEAKS_SCHEMA_VERSIE = "tw1-7e69f1e2";
+export const TWEAKS_SCHEMA_VERSIE = "tw1-72de9abd";
 
 async function doeBouw(): Promise<void> {
   await sql`
@@ -82,6 +82,14 @@ async function doeBouw(): Promise<void> {
   // Meldingen van vóór de eigen volgorde stonden allemaal op 0; dan zegt de
   // lijst niets. Ze krijgen hun bestaande volgorde (oudste eerst) alsnog mee.
   await sql`UPDATE tweaks SET volgorde = id * 10 WHERE volgorde = 0`;
+  // WANNEER IS EEN TWEAK "GEDAAN"? EERDER PAS AAN HET EIND, EN DAT KLOPTE NIET.
+  // Een ronde zet alles pas op `controleer` ná de deploy, dus allemaal tegelijk
+  // op het laatste moment. De voortgangsbalk stond daardoor de hele ronde op
+  // "0 van 3" en sprong dan ineens naar 3. Live gezien op 15-08-2026: vijf
+  // minuten bezig, nul beweging, en dus geen enkele reden om te geloven dat er
+  // iets gebeurde. Deze stempel wordt gezet zodra de wijziging geschreven is,
+  // dus tijdens het werk in plaats van erna.
+  await sql`ALTER TABLE tweaks ADD COLUMN IF NOT EXISTS gebouwd TIMESTAMPTZ`;
   await sql`CREATE INDEX IF NOT EXISTS tweaks_stand_idx ON tweaks (stand, id DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS tweaks_wachtrij_idx ON tweaks (stand, volgorde)`;
   // Het slot van de wachtrij: precies één rij, met daarin de ronde die nu loopt.
@@ -312,6 +320,7 @@ export async function zetStand(
         reacties = ${JSON.stringify(draad)},
         rondes = rondes + ${opties.telRonde ? 1 : 0},
         punt = ${punt},
+        gebouwd = CASE WHEN ${stand} = 'wachtrij' THEN NULL ELSE gebouwd END,
         ronde = CASE WHEN ${losGeclaimd} THEN NULL ELSE ronde END,
         bezig_sinds = CASE WHEN ${losGeclaimd} THEN NULL ELSE bezig_sinds END,
         afgerond = ${af}
@@ -342,6 +351,18 @@ export async function zetVolgorde(ids: number[]): Promise<void> {
   await ensureTweaks();
   await Promise.all(ids.map((id, i) =>
     sql`UPDATE tweaks SET volgorde = ${(i + 1) * 10} WHERE id = ${id}`));
+}
+
+/**
+ * De ronde meldt: deze melding is gewijzigd. Nog niet live, wel klaar.
+ *
+ * Dit is het enige signaal dat tijdens een ronde beweegt, en daarom hangt de
+ * voortgangsbalk eraan. Zonder dit staat het scherm minutenlang stil terwijl er
+ * volop gewerkt wordt.
+ */
+export async function meldGebouwd(id: number): Promise<void> {
+  await ensureTweaks();
+  await sql`UPDATE tweaks SET gebouwd = now() WHERE id = ${id} AND stand = 'bezig'`;
 }
 
 export async function verwijderTweak(id: number): Promise<void> {
