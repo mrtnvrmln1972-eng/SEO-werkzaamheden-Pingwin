@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { magNaarWachtrij, PLAN_MINIMUM, STANDEN, STAPPEN } from "../lib/grote-punten";
+import { magNaarWachtrij, PLAN_MINIMUM, PLAN_STAPPEN, STANDEN, STAPPEN, stappenVoor } from "../lib/grote-punten";
+import { leesBon, maakBon } from "../lib/ronde-bon";
 import {
   baanNu, eindeVanDeNacht, isNacht, mediaan, NACHT_EIND, NACHT_START,
   START_MINUTEN, uurHier, verwachteMinuten, verwachteStarts, voortgang, volgendeNacht,
@@ -24,6 +25,10 @@ import {
 // Draait mee in `prebuild` (via proeven/alles.mjs), dus ook op Vercel. Rood
 // betekent: de bouw mislukt en het komt niet live.
 // ═══════════════════════════════════════════════════════════
+
+// De bon wordt ondertekend met SESSION_SECRET. Bij een bouw hoeft die er niet te
+// zijn, en een proef die afhangt van de omgeving is geen poort maar een gok.
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || "alleen-voor-deze-proef";
 
 let fouten = 0;
 function proef(naam: string, goed: boolean, uitleg = "") {
@@ -94,8 +99,41 @@ proef("een ronde kan zijn eigen plan niet goedkeuren",
 
 // ── 5. De ronde geeft het slot altijd terug, ook als hij omvalt ──
 proef("de nachtronde geeft de wachtrij hoe dan ook terug",
-  /if: always\(\)/.test(puntStroom) && /"actie":\\"terug\\"|actie\\":\\"terug/.test(puntStroom),
+  /if: always\(\)/.test(puntStroom) && /actie\\":\\"terug/.test(puntStroom),
   "Zonder een always()-stap houdt een omgevallen ronde het slot vast en staat de hele nacht stil.");
+
+// ── 5b. EEN RONDE DIE ER NIET IN KOMT, MISLUKT. HIJ SLAAGT NIET. ──
+// Dit is de duurste les van 15-08-2026. De rondes kwamen het dashboard niet meer
+// binnen (de meekijk-sleutel van Maarten was ingetrokken toen hij een nieuwe
+// maakte), kregen "Geen toegang", gingen vrolijk verder, deden niets, en de
+// werkstroom kleurde groen. Vier meldingen stonden een uur later nog in de
+// wachtrij en niemand kon zien waarom.
+for (const [naam, stroom] of [["tweak-ronde", tweakStroom], ["punt-nacht", puntStroom]] as const) {
+  proef(`${naam}: de ronde haalt eerst toegang op en stopt hard als dat niet lukt`,
+    /api\/ronde\/toegang/.test(stroom) && /exit 1/.test(stroom),
+    "Zonder een stap die faalt bij 'geen toegang' draait de ronde leeg en meldt hij toch succes.");
+  proef(`${naam}: de ronde krijgt zijn eigen toegangsbon mee`,
+    /inputs:[\s\S]*?bon:/.test(stroom),
+    "De bon komt van het dashboard zelf en vervalt niet als Maarten een nieuwe meekijk-sleutel maakt.");
+  // Alleen de echte regels tellen, niet het commentaar: waaróm die sleutel weg
+  // moest hoort juist opgeschreven te blijven staan.
+  const zonderUitleg = stroom.split("\n").filter((r) => !r.trim().startsWith("#")).join("\n");
+  proef(`${naam}: hangt niet meer aan de meekijk-sleutel van Maarten`,
+    !/PINGWIN_KIJK_SLEUTEL/.test(zonderUitleg),
+    "Die sleutel is van een mens en wordt ingetrokken zodra hij een nieuwe aanmaakt; werk zonder toezicht mag daar niet aan hangen.");
+}
+
+// De bon zelf: hij moet precies één ronde toelaten, en verder niets.
+{
+  const echt = maakBon("proef-1", "punt");
+  proef("een verse bon wordt herkend", leesBon(echt)?.ronde === "proef-1");
+  proef("een geknoeide bon wordt geweigerd", leesBon(echt.slice(0, -2) + "aa") === null,
+    "Zonder handtekeningcontrole kan iedereen die het adres kent een sessie krijgen.");
+  proef("een verlopen bon wordt geweigerd",
+    leesBon(`x.punt.${Date.now() - 1000}.${"0".repeat(64)}`) === null);
+  proef("een lege bon wordt geweigerd", leesBon("") === null && leesBon(null) === null);
+  proef("de bon zegt in welke baan hij hoort", leesBon(maakBon("p", "tweak"))?.baan === "tweak");
+}
 
 // ── 6. Het nachtvenster ──
 // Zomertijd (UTC+2) en wintertijd (UTC+1) allebei, want het venster staat in
@@ -120,15 +158,21 @@ proef("het is al nacht, dus het venster is nu open",
   volgendeNacht(zomerNacht).getTime() === zomerNacht.getTime());
 proef("de nacht eindigt om 07:00", uurHier(eindeVanDeNacht(zomerNacht)) === NACHT_EIND);
 
-// Het cron-schema moet het hele venster dekken, in zomer- én wintertijd. 22:00
-// in Nederland is 20:00 UTC (zomer) of 21:00 UTC (winter); 07:00 is 05:00 of
-// 06:00 UTC. Dus moeten de uren 20 tot en met 5 erin staan.
-const cron = (/cron:\s*"([^"]+)"/.exec(puntStroom) ?? [])[1] ?? "";
-const uren = new Set((cron.split(" ")[1] ?? "").split(",").map((x) => Number(x)));
-const nodig = [20, 21, 22, 23, 0, 1, 2, 3, 4, 5];
-proef("het cron-schema dekt het hele nachtvenster in zomer- en wintertijd",
-  nodig.every((u) => uren.has(u)),
-  `Het schema is "${cron}"; nodig zijn de uren ${nodig.join(", ")} in UTC.`);
+// Het uurwerk staat in het dashboard zelf en niet in GitHub, en dat is een
+// reparatie: een schema in GitHub betekent dat de werkstroom zélf moet gaan
+// kijken of er werk is, en dat kon alleen met een sleutel die een mens naar twee
+// plekken kopieert. Precies die sleutel verviel en toen stond alles stil. Het
+// dashboard weet of er werk is, want het is zijn eigen wachtrij, en het geeft de
+// bon meteen mee.
+const vercelCrons = JSON.parse(lees("vercel.json")).crons as { path: string; schedule: string }[];
+const uurwerk = vercelCrons.find((c) => c.path === "/api/cron/bouwrondes");
+proef("het uurwerk van de wachtrijen staat in vercel.json", Boolean(uurwerk),
+  "Zonder deze cron start er niets vanzelf: geen nachtronde en geen uurlijkse tweak-ronde.");
+proef("het uurwerk loopt elk uur", /^\S+ \* \* \* \*$/.test(uurwerk?.schedule ?? ""),
+  `Gevonden: ${uurwerk?.schedule}. Elk uur is nodig, want een punt duurt langer dan een uur en de volgende moet daarna verder.`);
+proef("de werkstromen hebben geen eigen schema meer",
+  !/^\s*schedule:/m.test(puntStroom) && !/^\s*schedule:/m.test(tweakStroom),
+  "Twee uurwerken naast elkaar starten rondes die elkaar alleen maar op het slot vinden.");
 
 // ── 7. De tijdsverwachting ──
 proef("zonder metingen geldt de startwaarde",

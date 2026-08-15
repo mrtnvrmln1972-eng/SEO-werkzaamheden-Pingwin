@@ -158,6 +158,25 @@ export const STAPPEN = [
   "Zelf nagekeken op het scherm",
 ];
 
+/**
+ * De stappen van een plan-ronde. Korter, want er wordt niets gebouwd.
+ *
+ * Dat dit bestaat is een reparatie: eerst had alleen de bouw stappen, en stond
+ * er bij het schrijven van een plan één zin op het scherm zonder balk, zonder
+ * stap en zonder tijd. Je zag dus dat er íets liep, maar niet of het opschoot.
+ * Voor werk dat je niet ziet gebeuren is dat hetzelfde als niets weten.
+ */
+export const PLAN_STAPPEN = [
+  "Uitzoeken hoe het nu werkt",
+  "Het plan schrijven",
+  "Nagelezen en klaargezet voor je akkoord",
+];
+
+/** Welke stappenlijst hoort bij wat er nu gebeurt. */
+export function stappenVoor(stand: Stand): string[] {
+  return stand === "plan-maken" ? PLAN_STAPPEN : STAPPEN;
+}
+
 /** De regel die Maarten in een verse chat plakt om zelf een punt op te pakken. */
 export const STARTREGEL = "/groot-punt";
 
@@ -392,13 +411,19 @@ export async function zetRegel(id: number, regel: Regel): Promise<Punt> {
   return rij(r.rows[0]);
 }
 
-/** De voortgang van de lopende bouw, gemeld door de ronde zelf. */
+/**
+ * De voortgang van wat er nu loopt, gemeld door de ronde zelf.
+ *
+ * Geldt voor allebei de soorten werk: bouwen én een plan schrijven. Dat laatste
+ * stond er eerst niet in, en dan zie je bij een plan alleen "er wordt aan
+ * gewerkt" zonder te weten of het opschiet.
+ */
 export async function zetStap(id: number, nr: number, stap: string): Promise<void> {
   await ensureGrotePunten();
   await sql`
     UPDATE grote_punten
     SET stap = ${stap.slice(0, 200)}, stap_nr = ${nr}, stap_sinds = now()
-    WHERE id = ${id} AND stand = 'bouwt'`;
+    WHERE id = ${id} AND (stand = 'bouwt' OR (stand = 'plan-maken' AND ronde IS NOT NULL))`;
 }
 
 /** De volgorde die Maarten zelf gesleept heeft. Stappen van tien. */

@@ -42,6 +42,8 @@ export type PuntClaim =
 
 export type PuntStand = {
   slot: SlotStand;
+  /** Wordt er gebouwd, of wordt er een plan geschreven? */
+  werk: "bouw" | "plan";
   /** Het punt dat nu gebouwd wordt (of waarvoor een plan geschreven wordt). */
   bezig: Punt | null;
   /** De voortgang van dat punt: welke stap, en hoe lang nog. */
@@ -95,10 +97,17 @@ export async function puntStand(nu: Date = new Date()): Promise<PuntStand> {
     ORDER BY id ASC LIMIT 1`;
   const bezig = r.rows[0] ? await haalPunt(Number(r.rows[0].id)) : null;
   const gemeten = bezig ? await gemetenDuur() : { klein: [], middel: [], groot: [] } as Record<Omvang, number[]>;
+  // Ook een plan-ronde krijgt een voortgang. Dat stond er eerst niet in, en dan
+  // zag je bij het schrijven van een plan alleen "er wordt aan gewerkt": geen
+  // stap, geen balk, geen tijd. Bij werk dat je niet ziet gebeuren is dat
+  // hetzelfde als niets weten.
+  const werk = bezig?.stand === "plan-maken" ? "plan" : "bouw";
+  const loopt = bezig ? bezig.stand === "bouwt" || (bezig.stand === "plan-maken" && Boolean(bezig.ronde)) : false;
   return {
     slot,
     bezig,
-    voortgang: bezig && bezig.stand === "bouwt" ? voortgang(bezig, gemeten, nu) : null,
+    werk,
+    voortgang: bezig && loopt ? voortgang(bezig, gemeten, nu, werk) : null,
     nacht: isNacht(nu),
     volgendVenster: volgendeNacht(nu).toISOString(),
   };

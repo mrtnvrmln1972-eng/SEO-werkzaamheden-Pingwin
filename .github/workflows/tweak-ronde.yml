@@ -1,38 +1,50 @@
 # ═══════════════════════════════════════════════════════════
-# EEN TWEAK-RONDE, GESTART VANAF DE KNOP IN HET DASHBOARD
+# EEN TWEAK-RONDE, GESTART VANUIT HET DASHBOARD
 # ═══════════════════════════════════════════════════════════
-# Maarten drukt op "Nu draaien" op /admin/tweaks. Het dashboard klopt bij GitHub
-# aan (app/api/admin/tweaks/draaien/route.ts) en dan draait dit. Wat hier gebeurt
-# is precies wat er in een chat gebeurt als hij /tweaks plakt: de wachtrij wordt
-# geclaimd, afgewerkt, gebouwd en in één keer live gezet.
+# Maarten drukt op "Nu draaien" op /admin/tweaks, of het uurwerk van het
+# dashboard doet het vanzelf (/api/cron/bouwrondes, elk uur overdag als er iets
+# klaarstaat). Wat hier gebeurt is precies wat er in een chat gebeurt als hij
+# /tweaks plakt: de wachtrij wordt geclaimd, afgewerkt, gebouwd en in één keer
+# live gezet.
 #
-# Bewust GEEN eigen uurschema hier. Dat loopt al via een Routine op claude.ai, en
-# twee dingen die allebei elk uur een ronde starten is precies de botsing die de
-# wachtrij moet voorkomen. Het slot in de database vangt het op, maar een tweede
-# ronde die elk uur voor niets opstart kost wel geld.
+# GEEN EIGEN UURSCHEMA, EN GEEN GEDEELDE SLEUTEL MEER
+# ───────────────────────────────────────────────────────────
+# Tot 15-08-2026 kwam de ronde bij het dashboard binnen met de meekijk-sleutel
+# van Maarten (PINGWIN_KIJK_SLEUTEL als repo-secret). Die sleutel is van een
+# mens: hij vervalt zodra Maarten in de cockpit een nieuwe aanmaakt. Dat gebeurde
+# die dag, en vanaf dat moment kwam elke ronde er niet meer in. Ze meldden
+# "geslaagd", claimden niets, en de meldingen stonden een uur later nog gewoon in
+# de wachtrij. Het logboek zei het in één regel: {"ok":false,"error":"Geen toegang."}
 #
-# Drie sleutels, elk ergens anders, en elk voor iets anders:
+# Nu geeft het dashboard elke ronde een eigen ondertekende toegangsbon mee op het
+# moment dat het hem start. Niets te kopiëren, en een nieuwe meekijk-sleutel
+# raakt de rondes niet meer.
+#
+# Twee sleutels, en meer niet:
 #  - ANTHROPIC_API_KEY, repo-secret in GitHub. Waarmee de ronde mag denken.
-#  - PINGWIN_KIJK_SLEUTEL, repo-secret in GitHub. Waarmee de ronde bij het
-#    dashboard mag kijken en de standen mag bijwerken. Zonder deze kan hij de
-#    wachtrij niet claimen en niet melden dat er iets klaarstaat; dan draait hij
-#    blind. Zelfde waarde als de meekijk-sleutel op /admin.
 #  - GITHUB_TWEAK_TOKEN, in Vercel. Waarmee het dashboard dit hier mag starten.
-#    Die hoort bij de knop, niet bij de ronde, en komt hier dus niet voor.
+#    Die hoort bij de starter, niet bij de ronde, en komt hier dus niet voor.
 # ═══════════════════════════════════════════════════════════
 
 name: Tweak-ronde
 
 on:
   workflow_dispatch:
+    inputs:
+      bon:
+        description: "Toegangsbon van het dashboard (wordt automatisch meegegeven)"
+        required: true
+      ronde:
+        description: "Naam van deze ronde"
+        required: true
 
 # Eén ronde tegelijk, ook als er twee keer op de knop gedrukt wordt. Het slot in
 # de database bewaakt dit al; dit is de tweede sluiting, hier bij de bron.
 #
 # De groep heet sinds 15-08-2026 `bouwronde` en niet meer `tweak-ronde`, want de
-# nachtelijke bouwronde voor grote punten (punt-nacht.yml) zit in dezelfde groep.
-# Grote punten en tweaks bouwen nooit tegelijk: overdag de tweaks, 's nachts de
-# grote punten, en als ze elkaar toch tegenkomen wacht de tweede.
+# bouwronde voor grote punten (punt-nacht.yml) zit in dezelfde groep. Grote
+# punten en tweaks bouwen nooit tegelijk: overdag de tweaks, 's nachts de grote
+# punten, en als ze elkaar toch tegenkomen wacht de tweede.
 concurrency:
   group: bouwronde
   cancel-in-progress: false
@@ -50,7 +62,30 @@ jobs:
       # allereerste proefronde op 15-08-2026; weghalen is dus hetzelfde als de
       # werkstroom uitzetten.
       id-token: write
+    env:
+      DASHBOARD: https://pingwin-seo-dashboard.vercel.app
+      TWEAK_RONDE: ${{ github.event.inputs.ronde }}
+      RONDE_JAR: /tmp/ronde-cookies.txt
+
     steps:
+      # ═══════════════════════════════════════════════════════
+      # TOEGANG EERST, EN HARD STOPPEN ALS HET NIET LUKT
+      # ═══════════════════════════════════════════════════════
+      # Dit is de stap die er op 15 augustus niet was. De ronde kwam er niet in,
+      # ging vrolijk verder, deed niets, en de werkstroom kleurde groen. Een
+      # ronde die niet bij zijn eigen wachtrij kan, hoort te mislukken, niet te
+      # slagen; anders blijft de stapel staan en ziet niemand waarom.
+      - name: Toegang tot het dashboard
+        id: toegang
+        run: |
+          ANTWOORD="$(curl -s --max-time 20 -c "$RONDE_JAR" \
+            "$DASHBOARD/api/ronde/toegang?bon=${{ github.event.inputs.bon }}")"
+          echo "$ANTWOORD"
+          case "$ANTWOORD" in
+            *'"ok":true'*) echo "Toegang in orde." ;;
+            *) echo "::error::De ronde kan niet bij het dashboard. Hij bouwt dus niets; dit is expres een mislukking en geen stille afloop."; exit 1 ;;
+          esac
+
       - name: De laatste code ophalen
         uses: actions/checkout@v4
         with:
@@ -67,18 +102,15 @@ jobs:
       - name: De stapel afwerken
         uses: anthropics/claude-code-action@v1
         env:
-          # De meekijk-sleutel, zodat de ronde het dashboard kan lezen en de
-          # standen kan bijwerken. Precies dezelfde weg als in een chat, dus
-          # ook hier alleen-lezen, met de tweak-standen als enige uitzondering.
-          PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
-          # De naam van deze ronde, zodat de stap hieronder precies déze ronde
-          # kan teruggeven en nooit die van iemand anders.
-          TWEAK_RONDE: gh-${{ github.run_id }}
+          DASHBOARD: https://pingwin-seo-dashboard.vercel.app
+          # De naam van deze ronde en de plek waar zijn toegang staat, zodat de
+          # opdracht in .claude/commands/tweaks.md precies déze ronde claimt en
+          # teruggeeft, en nooit die van iemand anders.
+          TWEAK_RONDE: ${{ github.event.inputs.ronde }}
+          RONDE_JAR: /tmp/ronde-cookies.txt
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # Dezelfde opdracht als in een chat: .claude/commands/tweaks.md.
-          # Werkt dit niet meer na een nieuwe versie van de actie, dan zit het
-          # verschil in de namen van deze twee velden; de rest staat los.
           prompt: "/tweaks"
           # HET MODEL HOORT BIJ HET SOORT WERK, EN DAT IS HIER VASTGEZET.
           # Pingwins eigen regel (brein/12-zuinig-werken.md): het middelste model
@@ -86,43 +118,25 @@ jobs:
           # voor strategie en beoordelen. Een tweak-ronde is per definitie het
           # eerste: kleine, scherp omschreven correcties op één scherm.
           #
-          # De eerste proefronde draaide op het zwaarste model, want dat is de
-          # standaard van de omgeving. Dat is precies de fout die deze regel moet
-          # voorkomen, en hij is hier nu niet meer te vergeten: Maarten kiest geen
-          # model, de werkstroom weet welk werk hij doet.
-          #
           # Wordt een ronde structureel te dom voor zijn werk, dan is dat een
           # signaal dat er te grote dingen in de wachtrij komen; die horen op
-          # "apart" en daarna op de routekaart, niet op een zwaarder model hier.
+          # "apart" en daarna naar de grote punten, niet op een zwaarder model.
           claude_args: "--model claude-sonnet-5 --allowedTools Bash,Edit,Write,Read,Glob,Grep"
 
-      # ═══════════════════════════════════════════════════════════
+      # ═══════════════════════════════════════════════════════
       # HET SLOT GAAT ALTIJD TERUG, OOK ALS DE RONDE MISLUKT
-      # ═══════════════════════════════════════════════════════════
+      # ═══════════════════════════════════════════════════════
       # Zonder deze stap eindigt de werkstroom terwijl het slot van hem blijft.
       # Live gebeurd op 15-08-2026, eerste echte ronde: de werkstroom was na
       # 79 seconden klaar, en het scherm bleef "er loopt een ronde" zeggen tot
-      # het slot drie kwartier later vanzelf verviel. Maarten keek dus naar een
-      # scherm dat loog, en de wachtrij stond al die tijd dicht.
+      # het slot drie kwartier later vanzelf verviel.
       #
       # `if: always()` is hier het hele punt: juist een ronde die halverwege
-      # omvalt moet de wachtrij vrijgeven. De vervaltijd blijft als vangnet voor
-      # het geval de runner zelf verdwijnt, maar hij hoort de uitzondering te
-      # zijn en niet de normale weg terug.
-      #
-      # Alleen déze ronde wordt teruggegeven (op naam), nooit die van een chat
-      # die er toevallig naast loopt.
+      # omvalt moet de wachtrij vrijgeven.
       - name: De wachtrij hoe dan ook teruggeven
-        if: always()
-        env:
-          PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
-          TWEAK_RONDE: gh-${{ github.run_id }}
+        if: always() && steps.toegang.outcome == 'success'
         run: |
-          DASHBOARD="https://pingwin-seo-dashboard.vercel.app"
-          JAR="$(mktemp)"
-          curl -s --max-time 15 -c "$JAR" \
-            "$DASHBOARD/api/kijk?sleutel=$PINGWIN_KIJK_SLEUTEL" > /dev/null || true
-          curl -s --max-time 15 -b "$JAR" -X POST \
+          curl -s --max-time 15 -b "$RONDE_JAR" -X POST \
             -H "Content-Type: application/json" \
             -d "{\"actie\":\"terug\",\"ronde\":\"$TWEAK_RONDE\"}" \
             "$DASHBOARD/api/admin/tweaks/ronde" || true

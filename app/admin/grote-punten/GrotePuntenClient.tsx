@@ -33,6 +33,8 @@ type Voortgang = {
 };
 export type PuntStandUI = {
   slot: { ronde: string | null; baan: "tweak" | "punt" | null; gestart: string | null };
+  /** Wordt er gebouwd, of wordt er een plan geschreven? */
+  werk: "bouw" | "plan";
   bezig: Punt | null;
   voortgang: Voortgang | null;
   nacht: boolean;
@@ -414,7 +416,9 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
         {nu && restNu && v ? (
           <div className={"gp-nu" + (v.duurtLang ? " gp-balk-traag" : "")}>
             <div className="gp-nu-kop">
-              <span className="gp-nu-label">Nu bezig</span>
+              <span className="gp-nu-label">
+                {stand.werk === "plan" ? "Plan wordt geschreven" : "Nu aan het bouwen"}
+              </span>
               <span className="gp-code">{nu.code}</span>
               <span className="gp-nu-titel">{nu.titel}</span>
             </div>
@@ -427,23 +431,30 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
                 {minuten(restNu.verstreken)} bezig, nog ongeveer {minuten(restNu.rest)}
               </span>
             </div>
+            {stand.werk === "plan" && (
+              <div className="gp-venster">
+                Er verandert nu niets aan het dashboard. Zodra het plan er is, verschijnt het
+                hieronder voor je akkoord.
+              </div>
+            )}
             {v.duurtLang && (
               <div className="gp-traag">
-                Dit duurt langer dan zo&apos;n punt normaal kost. Meestal is dat gewoon een taaie
-                bouw; blijft hij hangen, dan geeft hij de wachtrij vanzelf weer vrij.
+                Dit duurt langer dan normaal. Meestal is dat gewoon een taaie klus; blijft hij
+                hangen, dan geeft hij de wachtrij vanzelf weer vrij.
               </div>
             )}
           </div>
         ) : nu ? (
           <div className="gp-nu">
             <div className="gp-nu-kop">
-              <span className="gp-nu-label">Nu bezig</span>
+              <span className="gp-nu-label">Net begonnen</span>
               <span className="gp-code">{nu.code}</span>
-              <span className="gp-nu-titel">Er wordt een plan geschreven voor: {nu.titel}</span>
+              <span className="gp-nu-titel">{nu.titel}</span>
             </div>
             <p className="gp-venster">
-              Dit kost geen bouwtijd en verandert niets aan het dashboard. Zodra het plan er is,
-              verschijnt het hieronder voor je akkoord.
+              De ronde is opgestart en heeft zijn eerste stap nog niet gemeld. Dat duurt normaal
+              hooguit een minuut; blijft het hier staan, dan is hij niet goed opgekomen en geeft
+              hij de wachtrij vanzelf weer vrij.
             </p>
           </div>
         ) : (

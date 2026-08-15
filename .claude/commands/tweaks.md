@@ -30,6 +30,26 @@ hele reden dat dit sneller is.
 Die uitzonderingen op de gebruikelijke werkwijze gelden alleen binnen deze opdracht. Bouw je
 buiten een tweak-ronde iets nieuws, dan gelden de gewone regels uit `CLAUDE.md` gewoon.
 
+## Hoe je bij het dashboard komt
+
+**Staat `RONDE_JAR` in de omgeving, gebruik die en verder niets.** Dat is zo als deze ronde
+vanuit het dashboard gestart is (de knop of het uurwerk). De werkstroom heeft dan al ingelogd met
+een toegangsbon die het dashboard zelf heeft ondertekend, en het koekje staat klaar:
+
+```bash
+curl -s -b "$RONDE_JAR" "$DASHBOARD/api/admin/tweaks?tel=1"
+```
+
+Gebruik in dat geval **niet** het meekijk-recept uit `CLAUDE.md`. Die sleutel is van Maarten en
+vervalt zodra hij in de cockpit een nieuwe aanmaakt. Precies dat gebeurde op 15-08-2026: elke
+ronde kreeg `{"ok":false,"error":"Geen toegang."}`, claimde niets, en meldde toch dat hij klaar
+was. De meldingen stonden een uur later nog gewoon in de wachtrij.
+
+Draai je in een gewone chat (geen `RONDE_JAR`), dan geldt het meekijk-recept uit `CLAUDE.md` wel.
+
+**Krijg je ergens "Geen toegang", stop dan meteen en zeg dat.** Niet doorgaan en niet doen alsof
+er iets gebeurd is; een ronde die er niet in komt hoort te mislukken, niet te slagen.
+
 ## Hoe je werkt
 
 1. **Claim de ronde. Dit is de eerste handeling, vóór alles.**

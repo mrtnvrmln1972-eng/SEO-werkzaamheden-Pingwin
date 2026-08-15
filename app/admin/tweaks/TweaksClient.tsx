@@ -22,7 +22,7 @@
 // scherm niet meer, en dan is de hele stapel waardeloos.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminKop from "../AdminKop";
 import Kopieer from "../Kopieer";
 import Nulmeting from "./Nulmeting";
@@ -49,7 +49,7 @@ function klok(iso: string | null): string {
   return new Date(iso).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 }
 
-export type RondeStand = { ronde: string | null; gestart: string | null; bezig: number };
+export type RondeStand = { ronde: string | null; gestart: string | null; bezig: number; baan?: "tweak" | "punt" | null };
 
 export default function TweaksClient({ begin, startregel, nulmeting, ronde, voorbeeldSlug }: {
   begin: Tweak[];
@@ -79,6 +79,26 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
       .then((j) => { if (j?.ok) setKnopKlaar({ klaar: Boolean(j.klaar), reden: j.reden }); })
       .catch(() => {});
   }, []);
+
+  const ververs = useCallback(async () => {
+    const r = await fetch("/api/admin/tweaks?alles=1").catch(() => null);
+    const j = await r?.json().catch(() => null);
+    if (!j?.ok) return;
+    setTweaks(j.tweaks as Tweak[]);
+    setRondeNu(j.ronde as RondeStand);
+  }, []);
+
+  // HET SCHERM KIJKT ZELF, IN PLAATS VAN TE BLIJVEN ZEGGEN WAT HET DACHT.
+  // Na een druk op "Nu draaien" zette dit scherm zichzelf op "er loopt een
+  // ronde" en keek daarna nooit meer. Op 15-08-2026 stond die zin daardoor een
+  // uur lang in beeld terwijl de ronde al na negentien seconden gestopt was
+  // zonder iets te doen. Een scherm dat blijft herhalen wat het ooit dacht, is
+  // erger dan een scherm dat niets zegt.
+  useEffect(() => {
+    const bezig = Boolean(rondeNu.ronde);
+    const t = setInterval(() => void ververs(), bezig ? 15000 : 120000);
+    return () => clearInterval(t);
+  }, [rondeNu.ronde, ververs]);
 
   const opVolgorde = (l: Tweak[]) => [...l].sort((a, b) => a.volgorde - b.volgorde || a.id - b.id);
   const lopend = (t: Tweak) => t.stand === "wachtrij" || t.stand === "bezig";
@@ -221,6 +241,9 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
       if (j?.ok) {
         setBericht({ soort: "ok", tekst: j.melding || "De ronde is gestart." });
         setRondeNu({ ronde: "gestart", gestart: new Date().toISOString(), bezig: 0 });
+        // Even later zelf nakijken of hij ook echt draait, in plaats van dat
+        // aan te nemen. De verversing hierboven neemt het daarna over.
+        setTimeout(() => void ververs(), 20000);
       } else {
         setBericht({ soort: "fout", tekst: j?.error || "Starten lukte niet." });
         if (j?.ronde) setRondeNu(j.ronde);

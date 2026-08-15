@@ -50,9 +50,21 @@ export const BLOKKEN: Uitklapper[] = [
       "model past zich daarop aan: bouwen is uitvoeren wat er in het plan staat en gaat op het middelste " +
       "model, een plan schrijven is uitdenken en beoordelen en gaat op het zwaarste. Jij kiest daar niets " +
       "in; de werkstroom weet welk werk hij doet.\n\n" +
+      "**Niets hangt meer aan een sleutel die iemand moet kopiëren.** Een ronde draait zonder toezicht " +
+      "en moet dus bij de wachtrij kunnen. Dat ging eerst met dezelfde meekijk-sleutel die Maarten in de " +
+      "cockpit aanmaakt, en die vervalt zodra hij een nieuwe maakt. Op 15 augustus gebeurde dat, en vanaf " +
+      "dat moment kwam élke ronde er niet meer in: ze meldden \"geslaagd\" en deden niets, terwijl de " +
+      "meldingen gewoon in de wachtrij bleven staan. Nu geeft het dashboard elke ronde op het moment van " +
+      "starten een eigen ondertekende toegangsbon mee, die een paar uur geldig is en alleen voor die ene " +
+      "ronde werkt. Er valt dus niets meer te kopiëren, en een nieuwe meekijk-sleutel raakt de rondes niet. " +
+      "Het uurwerk verhuisde om dezelfde reden mee naar het dashboard zelf: dat wéét of er werk is, want " +
+      "het is zijn eigen wachtrij. En een ronde die er tóch niet in komt, mislukt nu zichtbaar in plaats " +
+      "van groen te kleuren zonder iets te doen.\n\n" +
       "**Je ziet wat er loopt en hoe lang het nog duurt.** Bovenaan het scherm staat welk punt op dit " +
       "moment gebouwd wordt, bij welke van de vijf stappen hij is (plan gelezen, aan het bouwen, proeven, " +
-      "live zetten, zelf nagekeken) en hoeveel minuten het naar verwachting nog kost. Die verwachting is " +
+      "live zetten, zelf nagekeken) en hoeveel minuten het naar verwachting nog kost. Bij het schrijven " +
+      "van een plan gebeurt hetzelfde, met drie eigen stappen (uitzoeken, schrijven, nalezen), zodat ook " +
+      "dat geen zwarte doos is. Die verwachting is " +
       "geen gok: elk gebouwd punt laat zijn gemeten bouwtijd achter, en de verwachting voor het volgende " +
       "punt is de mediaan van wat punten van dezelfde omvang écht kostten. De mediaan en niet het " +
       "gemiddelde, want één ronde die vastliep zou een gemiddelde blijvend scheeftrekken. Duurt iets " +

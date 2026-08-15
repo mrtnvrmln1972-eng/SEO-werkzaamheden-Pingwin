@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardDev, isMeekijker } from "../../../../../lib/admin-scope";
 import { claimPunt, geefPuntRondeTerug, puntStand, rondeNaam, volgendeTaak } from "../../../../../lib/punt-ronde";
-import { zetStap, STAPPEN } from "../../../../../lib/grote-punten";
+import { haalPunt, stappenVoor, zetStap, PLAN_STAPPEN, STAPPEN } from "../../../../../lib/grote-punten";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     stand: await puntStand(),
     volgende: taak.werk ? { werk: taak.werk, code: taak.punt?.code, titel: taak.punt?.titel } : null,
     stappen: STAPPEN,
+    planStappen: PLAN_STAPPEN,
   });
 }
 
@@ -56,14 +57,18 @@ export async function POST(req: NextRequest) {
   if (actie === "stap") {
     const id = Number(body?.id);
     const nr = Number(body?.nr);
-    if (!id || !Number.isFinite(nr) || nr < 1 || nr > STAPPEN.length) {
+    const punt = id ? await haalPunt(id) : null;
+    // Welke stappenlijst geldt, hangt af van wat dit punt nu doet: bouwen kent
+    // er vijf, een plan schrijven drie.
+    const lijst = punt ? stappenVoor(punt.stand) : STAPPEN;
+    if (!punt || !Number.isFinite(nr) || nr < 1 || nr > lijst.length) {
       return NextResponse.json({
         ok: false,
-        error: `Een stap is een getal van 1 tot ${STAPPEN.length}, met het punt erbij.`,
-        stappen: STAPPEN,
+        error: `Een stap is een getal van 1 tot ${lijst.length}, met het punt erbij.`,
+        stappen: lijst,
       }, { status: 400 });
     }
-    await zetStap(id, nr, String(body?.stap ?? "") || STAPPEN[nr - 1]);
+    await zetStap(id, nr, String(body?.stap ?? "") || lijst[nr - 1]);
     return NextResponse.json({ ok: true, stand: await puntStand() });
   }
 
@@ -90,6 +95,7 @@ export async function POST(req: NextRequest) {
     ronde: uitslag.ronde,
     werk: uitslag.werk,
     punt: uitslag.punt,
-    stappen: STAPPEN,
+    // Precies de stappen die déze ronde hoort te melden, in volgorde.
+    stappen: uitslag.werk === "plan" ? PLAN_STAPPEN : STAPPEN,
   });
 }

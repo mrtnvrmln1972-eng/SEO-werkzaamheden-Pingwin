@@ -19,6 +19,23 @@ controleren.
    over beide banen heen. Dat wordt afgedwongen door het slot; jij hoeft er alleen naar te
    luisteren.
 
+## Hoe je bij het dashboard komt
+
+**Staat `RONDE_JAR` in de omgeving, gebruik die en verder niets.** Dat is zo als deze ronde
+vanuit het dashboard gestart is (de knop of de nacht). De werkstroom heeft dan al ingelogd met een
+toegangsbon die het dashboard zelf ondertekende:
+
+```bash
+curl -s -b "$RONDE_JAR" "$DASHBOARD/api/admin/punten/ronde"
+```
+
+Gebruik dan **niet** het meekijk-recept uit `CLAUDE.md`. Die sleutel is van Maarten en vervalt
+zodra hij een nieuwe aanmaakt; dat brak op 15-08-2026 elke ronde stilletjes. Draai je in een
+gewone chat (geen `RONDE_JAR`), dan geldt dat recept wel.
+
+**Krijg je ergens "Geen toegang", stop dan meteen en zeg dat.** Niet doorgaan en niet doen alsof
+er iets gebeurd is.
+
 ## Stap 1, altijd als eerste: claim de ronde
 
 ```
@@ -44,10 +61,17 @@ uitkomst die er is.
 Je bouwt hier **niets**. Je verandert geen enkel bestand in de repo. Wat je oplevert is een plan
 dat Maarten in twee minuten kan beoordelen zonder programmeur te zijn.
 
-1. **Zoek het uit voor je schrijft.** Kijk in de code hoe het nu werkt, kijk met eigen ogen op het
-   scherm (zie "Meekijken" in `CLAUDE.md`), en controleer je aannames. Een plan op een aanname is
-   een nacht weggegooid.
-2. **Schrijf het plan in gewone taal**, in de vorm hieronder. Geen bestandsnamen en geen jargon in
+**Meld je stappen, net als bij het bouwen.** Er zijn er hier drie, en Maarten ziet ze als balk met
+een tijdsverwachting op het scherm. Zonder die meldingen ziet hij alleen "er wordt aan gewerkt",
+en dat is bij werk dat je niet ziet gebeuren hetzelfde als niets weten.
+
+```
+POST /api/admin/punten/ronde  { "actie": "stap", "id": <id>, "nr": <1..3> }
+```
+
+1. **Zoek het uit voor je schrijft** (`nr: 1`). Kijk in de code hoe het nu werkt, kijk met eigen
+   ogen op het scherm, en controleer je aannames. Een plan op een aanname is een nacht weggegooid.
+2. **Schrijf het plan in gewone taal** (`nr: 2`), in de vorm hieronder. Geen bestandsnamen en geen jargon in
    de eerste vier kopjes; techniek hoort alleen onder het laatste.
 
    ```
@@ -73,7 +97,7 @@ dat Maarten in twee minuten kan beoordelen zonder programmeur te zijn.
 
 3. **Twijfel je over iets wezenlijks, vraag het in het plan.** Zet de vraag onder "Waar ik voor
    kies" als een keuze met twee opties. Niet een gok inbouwen en hopen; Maarten leest dit toch.
-4. **Zet het plan op het punt en vraag om akkoord:**
+4. **Lees het na en zet het klaar** (`nr: 3`), en vraag om akkoord:
 
    ```
    PATCH /api/admin/punten  { "id": <id>, "stand": "plan-klaar", "plan": "<het plan>",

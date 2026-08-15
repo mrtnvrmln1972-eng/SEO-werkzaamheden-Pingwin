@@ -41,6 +41,10 @@
     {
       "path": "/api/cron/schrijfstijl",
       "schedule": "0 6 1 * *"
+    },
+    {
+      "path": "/api/cron/bouwrondes",
+      "schedule": "5 * * * *"
     }
   ]
 }

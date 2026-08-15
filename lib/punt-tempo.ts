@@ -1,4 +1,4 @@
-import { STAPPEN, type Omvang, type Punt } from "./grote-punten";
+import { PLAN_STAPPEN, STAPPEN, type Omvang, type Punt } from "./grote-punten";
 
 // ═══════════════════════════════════════════════════════════
 // WAT LOOPT ER, EN HOE LANG DUURT HET NOG?
@@ -39,6 +39,15 @@ export const NACHT_EIND = 7;
 
 /** Waar de verwachting mee begint, zolang er van die omvang nog niets gemeten is. */
 export const START_MINUTEN: Record<Omvang, number> = { klein: 25, middel: 50, groot: 100 };
+
+/**
+ * Hoe lang het schrijven van een plan ongeveer kost.
+ *
+ * Eén getal en niet per omvang: uitzoeken hoe iets nu werkt en het opschrijven
+ * duurt niet drie keer zo lang omdat de bouw erna groter is. Wat de schatting
+ * scherp maakt is de stap waar de ronde is, niet de omvang.
+ */
+export const PLAN_MINUTEN = 20;
 
 /**
  * Hoeveel minuten Nederland op dit moment vóór UTC ligt (60 in de winter, 120
@@ -134,14 +143,17 @@ export function voortgang(
   punt: Pick<Punt, "gestart" | "stapNr" | "stap" | "omvang">,
   gemeten: Record<Omvang, number[]>,
   nu: Date = new Date(),
+  /** "plan" telt met de kortere stappenlijst en een vaste verwachting. */
+  soort: "bouw" | "plan" = "bouw",
 ): Voortgang {
-  const stappen = STAPPEN.length;
+  const lijst = soort === "plan" ? PLAN_STAPPEN : STAPPEN;
+  const stappen = lijst.length;
   const stapNr = Math.max(0, Math.min(stappen, punt.stapNr));
   const verstreken = punt.gestart
     ? Math.max(0, (nu.getTime() - new Date(punt.gestart).getTime()) / 60000)
     : 0;
 
-  const vooraf = verwachteMinuten(punt.omvang, gemeten);
+  const vooraf = soort === "plan" ? PLAN_MINUTEN : verwachteMinuten(punt.omvang, gemeten);
   // Hoe verder de ronde is, hoe zwaarder zijn eigen tempo meeweegt en hoe
   // minder de verwachting vooraf. Bij stap 0 weten we alleen het gemiddelde,
   // bij de laatste stap weten we het bijna zeker.
@@ -155,7 +167,7 @@ export function voortgang(
     deel,
     stapNr,
     stappen,
-    stap: punt.stap || (stapNr > 0 ? STAPPEN[stapNr - 1] : "Net begonnen"),
+    stap: punt.stap || (stapNr > 0 ? lijst[stapNr - 1] : "Net begonnen"),
     duurtLang: verstreken > vooraf * 1.5 && verstreken > 15,
   };
 }

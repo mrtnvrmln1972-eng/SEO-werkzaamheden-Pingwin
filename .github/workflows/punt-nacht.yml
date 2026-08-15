@@ -1,43 +1,40 @@
 # ═══════════════════════════════════════════════════════════
-# DE NACHTELIJKE BOUWRONDE VOOR ÉÉN GROOT PUNT
+# DE BOUWRONDE VOOR ÉÉN GROOT PUNT
 # ═══════════════════════════════════════════════════════════
-# Elk uur binnen het nachtvenster kijkt deze werkstroom of er iets klaarstaat.
-# Zo ja, dan pakt hij ÉÉN punt: het bovenste uit de bouwwachtrij, dus een punt
-# met een plan waar Maarten ja tegen gezegd heeft. Staat er niets te bouwen,
-# dan schrijft hij in plaats daarvan een plan voor een punt waar hij er een van
-# gevraagd heeft. Staat er helemaal niets, dan stopt hij meteen.
+# Wordt gestart door het dashboard: elk uur vanzelf binnen het nachtvenster
+# (/api/cron/bouwrondes), of meteen met de knop "Nu draaien" op
+# /admin/grote-punten. Hij pakt ÉÉN punt: het bovenste uit de bouwwachtrij, dus
+# een punt met een plan waar Maarten ja tegen gezegd heeft. Staat er niets te
+# bouwen, dan schrijft hij een plan voor een punt waar hij er een van gevraagd
+# heeft. Staat er helemaal niets, dan start het dashboard hem niet eens.
 #
-# WAAROM ELK UUR EN NIET ÉÉN KEER PER NACHT
+# GEEN EIGEN UURSCHEMA HIER, EN DAT IS EEN REPARATIE
 # ───────────────────────────────────────────────────────────
-# Eén punt kan een uur duren, en er passen er meerdere in een nacht. Een enkele
-# start om 22:00 zou dus na dat ene punt de rest van de nacht niets doen. Nu
-# pakt elk uur de draad weer op: loopt er nog iets, dan stopt de nieuwe ronde
-# meteen op het slot (goedkoop); is de vorige klaar, dan gaat de volgende in de
-# rij verder. Zo werkt de nacht de wachtrij van boven naar beneden af.
+# Een schema in GitHub betekent dat de werkstroom zelf moet gaan kijken of er
+# werk is, en daar had hij een sleutel van Maarten voor nodig. Die verviel op
+# 15-08-2026 doordat hij in de cockpit een nieuwe meekijk-sleutel maakte, en
+# vanaf dat moment kwam elke ronde er niet meer in: ze meldden "geslaagd" en
+# deden niets. Nu weet het dashboard of er werk is (het is zijn eigen wachtrij),
+# start het de werkstroom alleen dán, en geeft het meteen een ondertekende
+# toegangsbon mee. Er valt dus geen enkel geheim meer te kopiëren.
 #
-# HET SCHEMA STAAT IN UTC, HET VENSTER IN NEDERLANDSE TIJD
-# ───────────────────────────────────────────────────────────
-# GitHub kent alleen UTC en geen zomertijd. Daarom draait de cron ruim (van
-# 20:00 tot 06:00 UTC, dat dekt 22:00 tot 07:00 in Nederland in zowel zomer- als
-# wintertijd) en beslist de CODE of het echt nacht is: `baanNu()` in
-# lib/punt-tempo.ts, afgedwongen bij het claimen. Eén bron voor het venster, en
-# een ronde die te vroeg aanklopt krijgt gewoon nul op het rekest.
-#
-# Drie sleutels, precies dezelfde als bij de tweak-ronde:
+# Twee sleutels, en meer niet:
 #  - ANTHROPIC_API_KEY, repo-secret in GitHub. Waarmee de ronde mag denken.
-#  - PINGWIN_KIJK_SLEUTEL, repo-secret in GitHub. Waarmee de ronde het punt kan
-#    claimen, zijn voortgang kan melden en de stand kan bijwerken.
-#  - GITHUB_TWEAK_TOKEN, in Vercel. Waarmee de knop "Nu draaien" dit start.
-#    Die hoort bij de knop, niet bij de ronde, en komt hier dus niet voor.
+#  - GITHUB_TWEAK_TOKEN, in Vercel. Waarmee het dashboard dit hier mag starten.
+#    Die hoort bij de starter, niet bij de ronde, en komt hier dus niet voor.
 # ═══════════════════════════════════════════════════════════
 
-name: Groot punt, nachtronde
+name: Groot punt, bouwronde
 
 on:
-  schedule:
-    - cron: "0 20,21,22,23,0,1,2,3,4,5 * * *"
   workflow_dispatch:
     inputs:
+      bon:
+        description: "Toegangsbon van het dashboard (wordt automatisch meegegeven)"
+        required: true
+      ronde:
+        description: "Naam van deze ronde"
+        required: true
       handmatig:
         description: "Buiten het nachtvenster starten (alleen vanaf de knop in het dashboard)"
         required: false
@@ -62,31 +59,36 @@ jobs:
       id-token: write
     env:
       DASHBOARD: https://pingwin-seo-dashboard.vercel.app
-      PUNT_RONDE: gh-${{ github.run_id }}
+      PUNT_RONDE: ${{ github.event.inputs.ronde }}
+      RONDE_JAR: /tmp/ronde-cookies.txt
       PUNT_HANDMATIG: ${{ github.event.inputs.handmatig || 'nee' }}
 
     steps:
-      # ── Eerst kijken, dan pas een dure runner volzetten ──
-      # Wat er klaarstaat bepaalt namelijk het MODEL, en dat is Pingwins eigen
-      # zuinigheidsregel: het middelste model voor bouwen (mechanisch werk op
-      # een uitgeschreven plan), het zwaarste alleen voor het plan zelf, want
-      # dat is strategie en beoordelen. Maarten kiest hier niets; de werkstroom
-      # weet welk werk hij doet.
+      # ═══════════════════════════════════════════════════════
+      # TOEGANG EERST, EN HARD STOPPEN ALS HET NIET LUKT
+      # ═══════════════════════════════════════════════════════
+      # Dit is de stap die er op 15 augustus niet was. Toen kwam de ronde er niet
+      # in, ging vrolijk verder, deed niets, en de werkstroom kleurde groen. Een
+      # ronde die niet bij zijn eigen wachtrij kan, hoort te mislukken, niet te
+      # slagen; anders staat de nacht stil en ziet niemand het.
+      - name: Toegang tot het dashboard
+        id: toegang
+        run: |
+          ANTWOORD="$(curl -s --max-time 20 -c "$RONDE_JAR" \
+            "$DASHBOARD/api/ronde/toegang?bon=${{ github.event.inputs.bon }}")"
+          echo "$ANTWOORD"
+          case "$ANTWOORD" in
+            *'"ok":true'*) echo "Toegang in orde." ;;
+            *) echo "::error::De ronde kan niet bij het dashboard. Hij bouwt dus niets; dit is expres een mislukking en geen stille afloop."; exit 1 ;;
+          esac
+
       - name: Wat staat er klaar?
         id: kijk
-        env:
-          PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
         run: |
-          JAR="$(mktemp)"
-          curl -s --max-time 20 -c "$JAR" \
-            "$DASHBOARD/api/kijk?sleutel=$PINGWIN_KIJK_SLEUTEL" > /dev/null || true
-          ANTWOORD="$(curl -s --max-time 20 -b "$JAR" "$DASHBOARD/api/admin/punten/ronde" || echo '{}')"
+          ANTWOORD="$(curl -s --max-time 20 -b "$RONDE_JAR" "$DASHBOARD/api/admin/punten/ronde" || echo '{}')"
           WERK="$(printf '%s' "$ANTWOORD" | grep -o '"werk":"[a-z]*"' | head -1 | cut -d'"' -f4)"
-          NACHT="$(printf '%s' "$ANTWOORD" | grep -o '"nacht":[a-z]*' | head -1 | cut -d':' -f2)"
-          # Buiten het venster alleen doorgaan als Maarten zelf op de knop drukte.
-          if [ "$NACHT" != "true" ] && [ "$PUNT_HANDMATIG" != "ja" ]; then WERK=""; fi
           echo "werk=${WERK:-geen}" >> "$GITHUB_OUTPUT"
-          echo "Wat er klaarstaat: ${WERK:-niets te doen} (nacht: ${NACHT:-onbekend})"
+          echo "Wat er klaarstaat: ${WERK:-niets te doen}"
 
       - name: De laatste code ophalen
         if: steps.kijk.outputs.werk != 'geen'
@@ -111,9 +113,9 @@ jobs:
         if: steps.kijk.outputs.werk == 'bouwen'
         uses: anthropics/claude-code-action@v1
         env:
-          PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
-          PUNT_RONDE: gh-${{ github.run_id }}
-          PUNT_HANDMATIG: ${{ github.event.inputs.handmatig || 'nee' }}
+          DASHBOARD: https://pingwin-seo-dashboard.vercel.app
+          PUNT_RONDE: ${{ github.event.inputs.ronde }}
+          RONDE_JAR: /tmp/ronde-cookies.txt
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: "/groot-punt bouwen"
@@ -122,39 +124,29 @@ jobs:
       # ── Een plan schrijven: het zwaarste model ──
       # Hier wordt niets gebouwd. Dit is uitdenken wat er moet gebeuren en waar
       # het misgaat, en dat is precies het werk waarvoor het zwaarste model
-      # bedoeld is. Het levert een plan op dat Maarten 's ochtends beoordeelt.
+      # bedoeld is. Het levert een plan op dat Maarten beoordeelt.
       - name: Een plan schrijven
         if: steps.kijk.outputs.werk == 'plan'
         uses: anthropics/claude-code-action@v1
         env:
-          PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
-          PUNT_RONDE: gh-${{ github.run_id }}
-          PUNT_HANDMATIG: ${{ github.event.inputs.handmatig || 'nee' }}
+          DASHBOARD: https://pingwin-seo-dashboard.vercel.app
+          PUNT_RONDE: ${{ github.event.inputs.ronde }}
+          RONDE_JAR: /tmp/ronde-cookies.txt
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: "/groot-punt plan"
           claude_args: "--model claude-opus-5 --allowedTools Bash,Edit,Write,Read,Glob,Grep"
 
-      # ═══════════════════════════════════════════════════════════
+      # ═══════════════════════════════════════════════════════
       # HET SLOT GAAT ALTIJD TERUG, OOK ALS DE RONDE MISLUKT
-      # ═══════════════════════════════════════════════════════════
-      # Zonder deze stap houdt een omgevallen ronde het slot vast tot de
-      # vervaltijd, en dan staat de hele nacht stil terwijl het scherm zegt dat
-      # er iets loopt. Precies dat is bij de tweak-ronde live misgegaan op
-      # 15-08-2026; hier staat het er dus vanaf de eerste dag in.
-      #
+      # ═══════════════════════════════════════════════════════
       # `if: always()` is het hele punt: juist een ronde die halverwege omvalt
       # moet de wachtrij vrijgeven. Het punt gaat dan terug in de rij, op zijn
       # eigen plek, en de volgende ronde pakt hem gewoon weer op.
       - name: De wachtrij hoe dan ook teruggeven
-        if: always() && steps.kijk.outputs.werk != 'geen'
-        env:
-          PINGWIN_KIJK_SLEUTEL: ${{ secrets.PINGWIN_KIJK_SLEUTEL }}
+        if: always() && steps.toegang.outcome == 'success'
         run: |
-          JAR="$(mktemp)"
-          curl -s --max-time 15 -c "$JAR" \
-            "$DASHBOARD/api/kijk?sleutel=$PINGWIN_KIJK_SLEUTEL" > /dev/null || true
-          curl -s --max-time 15 -b "$JAR" -X POST \
+          curl -s --max-time 15 -b "$RONDE_JAR" -X POST \
             -H "Content-Type: application/json" \
             -d "{\"actie\":\"terug\",\"ronde\":\"$PUNT_RONDE\"}" \
             "$DASHBOARD/api/admin/punten/ronde" || true
