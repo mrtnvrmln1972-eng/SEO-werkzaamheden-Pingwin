@@ -137,6 +137,33 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
       : t)));
   }
 
+  /**
+   * Een idee is te groot voor een ronde: het verhuist naar de wachtrij voor
+   * grote punten. Daar krijgt het eerst een plan, dan Maartens akkoord, en pas
+   * daarna wordt het 's nachts gebouwd.
+   *
+   * De server zet de melding hier meteen van de stapel af, mét het G-nummer, in
+   * dezelfde handeling. Zonder dat staat hetzelfde onderwerp op twee lijsten en
+   * gaat er één van beide zwerven.
+   */
+  async function naarGrootPunt(t: Tweak) {
+    const eersteRegel = t.tekst.split("\n")[0].trim().slice(0, 200);
+    const r = await fetch("/api/admin/punten", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titel: eersteRegel || t.tekst.slice(0, 200), tekst: t.tekst, bronTweak: t.id }),
+    }).catch(() => null);
+    const j = await r?.json().catch(() => null);
+    if (!j?.ok) {
+      setBericht({ soort: "fout", tekst: j?.error || "Dat lukte niet." });
+      return;
+    }
+    setTweaks((lijst) => lijst.map((x) => (x.id === t.id
+      ? { ...x, stand: "routekaart" as Stand, punt: j.punt.code, notitie: `Staat als ${j.punt.code} in de wachtrij voor grote punten.` }
+      : x)));
+    setBericht({ soort: "ok", tekst: `Staat nu als ${j.punt.code} bij de grote punten. Daar maak ik er eerst een plan van.` });
+  }
+
   async function stuurCorrectie(id: number) {
     if (!correctie.trim()) return;
     await zet(id, "wachtrij", correctie.trim());
@@ -304,8 +331,8 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
               </div>
             )}
             {opties.idee && (
-              <button type="button" className="btn btn-primary btn-klein" onClick={() => void zet(t.id, "routekaart")}>
-                Wordt een routekaartpunt
+              <button type="button" className="btn btn-primary btn-klein" onClick={() => void naarGrootPunt(t)}>
+                Wordt een groot punt
               </button>
             )}
             {t.stand === "routekaart" && (
@@ -408,8 +435,8 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
             idee gaat nooit mee in een ronde. Ze stonden er wél, en dan lijkt het
             of je een idee vandaag nog kunt laten bouwen; dat kan niet, en het
             maakte de kaart bovendien onnodig druk. */}
-        {blok("Grotere ideeën", "Wordt niet in een ronde weggewerkt. Hier maak ik eerst een voorstel van; zeg je ja, dan wordt het een punt op de routekaart.", ideeen, { idee: true })}
-        {blok("Wordt een routekaartpunt", "Jij zei ja. Deze komen op de routekaart te staan en worden daar als ontwikkelpunt opgepakt, niet in een tweak-ronde.", naarRoutekaart)}
+        {blok("Grotere ideeën", "Wordt niet in een ronde weggewerkt. Dit soort werk gaat naar de wachtrij voor grote punten: daar maak ik er eerst een plan van, jij keurt het goed, en dan wordt het 's nachts gebouwd.", ideeen, { idee: true })}
+        {blok("Verhuisd naar de grote punten", "Jij zei ja. Deze staan nu op /admin/grote-punten; daar zie je het plan en geef je akkoord.", naarRoutekaart)}
         {toonAf && blok("Afgerond", "Klaar of apart gezet.", afgerond)}
 
         {controleer.length + wachtrij.length + ideeen.length + geparkeerd.length === 0 && (

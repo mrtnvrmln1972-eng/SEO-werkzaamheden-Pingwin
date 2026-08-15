@@ -316,19 +316,27 @@ export default function RoutekaartClient({
         )}
 
         {/* ── Uit de ideeënstapel ──
-            De brug tussen het Tweak-knopje en deze routekaart. Een idee dat te
+            De brug tussen het Tweak-knopje en het grotere werk. Een idee dat te
             groot is voor een ronde en waar Maarten ja tegen zei, hoort hier te
             landen; anders blijft het op de tweak-stapel staan tussen dingen van
-            twee minuten en verdwijnt het uit beeld. Bewust nog zonder R-nummer:
-            de punten hierboven staan in de code (lib/routekaart.ts) en dat blijft
-            de ene waarheid. Dit is de wachtkamer ervoor. */}
+            twee minuten en verdwijnt het uit beeld.
+
+            Sinds er een wachtrij voor grote punten bestaat (/admin/grote-punten)
+            gaat zo'n idee daarheen en krijgt het meteen een G-nummer: daar wordt
+            er eerst een plan van gemaakt, keurt Maarten dat goed, en wordt het
+            's nachts gebouwd. Dit blok is dan de verwijzing, niet de wachtkamer.
+            Een idee zónder nummer (van vóór die wachtrij) hoort nog steeds hier
+            en kan alsnog een R-punt worden; de punten hierboven staan in de code
+            (lib/routekaart.ts) en dat blijft de ene waarheid. */}
         {ideeen.length > 0 && (
           <section className="card rk-ideeen">
             <h2 className="rk-golf-titel">Uit de ideeënstapel ({ideeen.length})</h2>
             <p className="rk-golf-regel">
-              Hier zei je ja tegen, maar het heeft nog geen nummer. Kopieer de regel en plak hem in
-              een verse chat; dan wordt het een echt punt hierboven, met een beschrijving en een
-              plek in een golf.
+              Hier zei je ja tegen. Staat er een G-nummer bij, dan ligt het in de{" "}
+              <a className="rk-parallel-link" href="/admin/grote-punten">wachtrij voor grote punten</a>;
+              daar zie je het plan en geef je akkoord. Staat er geen nummer bij, kopieer dan de regel
+              en plak hem in een verse chat; dan wordt het een echt punt hierboven, met een
+              beschrijving en een plek in een golf.
             </p>
             <div className="rk-punten">
               {ideeen.map((i) => (
@@ -338,7 +346,9 @@ export default function RoutekaartClient({
                     {i.punt
                       ? <span className="rk-code">{i.punt}</span>
                       : <Kopieer klein tekst={`Maak van idee ${i.id} op /admin/tweaks een punt op de routekaart.`} label="Kopieer startregel" />}
-                    <a className="rk-parallel-link" href="/admin/tweaks">Naar de stapel</a>
+                    <a className="rk-parallel-link" href={i.punt?.startsWith("G") ? "/admin/grote-punten" : "/admin/tweaks"}>
+                      {i.punt?.startsWith("G") ? "Naar de grote punten" : "Naar de stapel"}
+                    </a>
                   </div>
                 </div>
               ))}

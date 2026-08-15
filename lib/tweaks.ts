@@ -30,7 +30,7 @@ import { eenmalig } from "./schema-stand";
 
 // Vingerafdruk van `doeBouw()` hieronder; `proeven/schema-versie.proef.ts`
 // rekent hem na en noemt zelf de waarde die hier hoort te staan.
-export const TWEAKS_SCHEMA_VERSIE = "tw1-2b87bbf1";
+export const TWEAKS_SCHEMA_VERSIE = "tw1-7e69f1e2";
 
 async function doeBouw(): Promise<void> {
   await sql`
@@ -94,6 +94,12 @@ async function doeBouw(): Promise<void> {
       gestart TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
   await sql`INSERT INTO tweak_ronde (id, ronde) VALUES (1, NULL) ON CONFLICT (id) DO NOTHING`;
+  // Sinds er ook 's nachts grote punten gebouwd worden, is dit niet langer het
+  // slot van de tweaks maar het slot van álle bouwrondes: er is er precies één,
+  // en beide banen delen hem. Deze kolom zegt wie hem nu heeft, zodat het scherm
+  // "er loopt een tweak-ronde" kan onderscheiden van "punt G3 wordt gebouwd", en
+  // zodat de vervaltijd per baan kan verschillen. Zie lib/bouwslot.ts.
+  await sql`ALTER TABLE tweak_ronde ADD COLUMN IF NOT EXISTS baan TEXT NOT NULL DEFAULT 'tweak'`;
   // De nulmeting: welk scherm is één keer helemaal nagelopen, en wanneer. Alleen
   // de uitkomst staat hier; de lijst schermen zelf komt uit het Intern-menu en de
   // tabbalk van een klant, want die lijsten bestaan al.

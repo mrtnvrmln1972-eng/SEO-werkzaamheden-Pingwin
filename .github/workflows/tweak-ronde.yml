@@ -28,8 +28,13 @@ on:
 
 # Eén ronde tegelijk, ook als er twee keer op de knop gedrukt wordt. Het slot in
 # de database bewaakt dit al; dit is de tweede sluiting, hier bij de bron.
+#
+# De groep heet sinds 15-08-2026 `bouwronde` en niet meer `tweak-ronde`, want de
+# nachtelijke bouwronde voor grote punten (punt-nacht.yml) zit in dezelfde groep.
+# Grote punten en tweaks bouwen nooit tegelijk: overdag de tweaks, 's nachts de
+# grote punten, en als ze elkaar toch tegenkomen wacht de tweede.
 concurrency:
-  group: tweak-ronde
+  group: bouwronde
   cancel-in-progress: false
 
 jobs:

@@ -1,4 +1,5 @@
 import { BLOKKEN as werkwijze } from "./werkwijze";
+import { BLOKKEN as grotePunten } from "./grote-punten";
 import { BLOKKEN as golf1 } from "./golf-1";
 import { BLOKKEN as golf2 } from "./golf-2";
 import { BLOKKEN as golf3 } from "./golf-3";
@@ -17,6 +18,7 @@ export const HOOFDSTUK: Hoofdstuk = {
     "te worden.",
   uitklappers: [
     ...werkwijze,
+    ...grotePunten,
     ...golf1,
     ...golf2,
     ...golf3,

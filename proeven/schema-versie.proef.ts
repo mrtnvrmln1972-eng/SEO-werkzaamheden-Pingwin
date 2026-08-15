@@ -68,6 +68,13 @@ const BLOKKEN: Blok[] = [
     constante: "TWEAKS_SCHEMA_VERSIE",
     merk: "tw1",
   },
+  {
+    bestand: "lib/grote-punten.ts",
+    vanaf: "async function doeBouw(): Promise<void> {",
+    tot: "\nexport function ensureGrotePunten",
+    constante: "GROTE_PUNTEN_SCHEMA_VERSIE",
+    merk: "gp1",
+  },
 ];
 
 const wortel = join(__dirname, "..");

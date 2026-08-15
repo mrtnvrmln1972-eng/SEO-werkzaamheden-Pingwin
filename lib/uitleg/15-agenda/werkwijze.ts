@@ -159,13 +159,12 @@ export const BLOKKEN: Uitklapper[] = [
       "per onderwerp, met een teller die laat zien hoeveel rondes het gekost heeft. Die teller is geen " +
       "sier: als iets drie rondes kost, dan is de beschrijving of de controle het probleem, niet het " +
       "bouwen.\n\n" +
-      "**Kleine aanpassing of groter idee, hetzelfde knopje.** Kies je \"groter idee\", dan gaat het " +
-      "niet mee in een ronde maar komt er eerst een voorstel: wat het oplevert, hoe het gebouwd zou " +
-      "worden, wat het raakt. Zeg je ja, dan druk je op **Wordt een routekaartpunt** en verhuist de " +
-      "melding naar `/admin/routekaart`, naar het blok \"Uit de ideeënstapel\". Daar staat hij zichtbaar " +
-      "te wachten op een nummer, met een startregel om er een echt punt van te maken. De routekaart zelf " +
-      "blijft dus één bron, met een wachtkamer ervoor in plaats van een idee dat blijft hangen tussen de " +
-      "aanpassingen van twee minuten.\n\n" +
+      "**Kleine aanpassing of groter idee, hetzelfde knopje.** Kies je \"groter idee\", dan gaat het niet " +
+      "mee in een ronde. Druk je op **Wordt een groot punt**, dan verhuist de melding naar " +
+      "`/admin/grote-punten` en krijgt hij een eigen nummer (G1, G2, ...). Daar wordt er eerst een plan " +
+      "van gemaakt, keur jij dat goed, en wordt het 's nachts gebouwd; het hoofdstuk hierboven beschrijft " +
+      "die weg. De melding blijft op de stapel zichtbaar met zijn G-nummer, zodat hetzelfde onderwerp niet " +
+      "op twee lijsten gaat zwerven.\n\n" +
       "**De stapel is een wachtrij, geen bak.** De volgorde op het scherm is de volgorde waarin de " +
       "eerstvolgende ronde ze doet, en die volgorde sleep je zelf. Per melding kun je twee dingen: " +
       "**direct doorvoeren** (hij springt vooraan) of **parkeren** (hij blijft staan maar gaat nergens " +

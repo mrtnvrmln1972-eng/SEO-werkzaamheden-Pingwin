@@ -51,6 +51,7 @@ export const SCHERMEN: { pad: string; naam: string; waarvoor: string }[] = [
   { pad: "/admin/fundament", naam: "Fundament", waarvoor: "Per klant in één oogopslag: tone of voice, structured data, concurrenten, bedrijfsprofiel en positionering." },
   { pad: "/admin/routekaart", naam: "Routekaart", waarvoor: "De ontwikkeling van dit dashboard, punt voor punt." },
   { pad: "/admin/tweaks", naam: "Tweaks", waarvoor: "De stapel kleine aanpassingen die je onderweg meldt, klaar om in één ronde door te voeren." },
+  { pad: "/admin/grote-punten", naam: "Grote punten", waarvoor: "Wat te groot is voor een tweak: eerst samen een plan, jij keurt goed, en 's nachts wordt het één voor één gebouwd." },
   { pad: "/admin/bronnen-gezondheid", naam: "Bronnen-gezondheid", waarvoor: "Per koppeling (Ahrefs, Google, Microsoft, Moneybird, WordPress): werkt hij, en sinds wanneer niet meer." },
   { pad: "/admin/agenda", naam: "Agenda", waarvoor: "Maartens eigen weekagenda: tijdblokken en taken, los van klantwerk." },
   { pad: "/admin/schermafbeeldingen", naam: "Schermafbeeldingen", waarvoor: "De beelden die /uitleg gebruikt: het dashboard fotografeert zichzelf, anoniem." },

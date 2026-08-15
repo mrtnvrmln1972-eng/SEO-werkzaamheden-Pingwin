@@ -1,5 +1,6 @@
 import { sql } from "@vercel/postgres";
 import { ensureTweaks, haalTweaks, type Tweak } from "./tweaks";
+import { bevrijdSlot, geefSlot, pakSlot, slotStand, VERVAL_MINUTEN } from "./bouwslot";
 
 // ═══════════════════════════════════════════════════════════
 // DE WACHTRIJ BEWAAKT ZICHZELF: ÉÉN RONDE TEGELIJK, OP VOLGORDE
@@ -30,8 +31,14 @@ import { ensureTweaks, haalTweaks, type Tweak } from "./tweaks";
 // Zo kán een ronde niet iets anders doen dan wat het scherm laat zien.
 // ═══════════════════════════════════════════════════════════
 
+// Sinds er ook een nachtelijke bouwronde voor grote punten bestaat, is het slot
+// gedeeld en woont het in `lib/bouwslot.ts`. Dit bestand gaat nog steeds alleen
+// over de tweak-baan; wat er veranderde is dat "bezet" nu ook bezet kan zijn
+// door een groot punt. Dat is precies de bedoeling: overdag de tweaks, 's nachts
+// de grote punten, nooit allebei tegelijk in dezelfde bestanden.
+
 /** Hoe lang een ronde het slot mag houden voor hij als vastgelopen geldt. */
-export const CLAIM_MINUTEN = 45;
+export const CLAIM_MINUTEN = VERVAL_MINUTEN.tweak;
 
 /** Hoeveel meldingen één ronde maximaal oppakt. Meer dan dit is geen ronde meer. */
 export const MAX_PER_RONDE = 25;
@@ -42,6 +49,8 @@ export type RondeStand = {
   gestart: string | null;
   /** Hoeveel meldingen deze ronde onder handen heeft. */
   bezig: number;
+  /** In welke baan de lopende ronde werkt: de tweaks, of een groot punt. */
+  baan: "tweak" | "punt" | null;
 };
 
 /**
@@ -53,73 +62,24 @@ export type RondeStand = {
  */
 export async function bevrijdVastgelopen(): Promise<number> {
   await ensureTweaks();
-  const vervallen = await sql`
-    UPDATE tweak_ronde
-    SET ronde = NULL
-    WHERE id = 1 AND ronde IS NOT NULL AND gestart < now() - (${CLAIM_MINUTEN} * INTERVAL '1 minute')
-    RETURNING ronde`;
-  if (vervallen.rowCount === 0) return 0;
-
-  const oude = String(vervallen.rows[0]?.ronde ?? "");
-  const terug = await sql`
-    UPDATE tweaks
-    SET stand = 'wachtrij', ronde = NULL, bezig_sinds = NULL
-    WHERE stand = 'bezig' AND (ronde = ${oude} OR ronde IS NULL)
-    RETURNING id`;
-  return terug.rowCount ?? 0;
+  const vrij = await bevrijdSlot();
+  if (!vrij) return 0;
+  // Het opruimen zelf doet `bevrijdSlot` al, voor beide banen. Hier telt alleen
+  // nog hoeveel meldingen daardoor weer in de wachtrij staan, voor de melding
+  // op het scherm.
+  const terug = await sql`SELECT count(*)::int AS n FROM tweaks WHERE stand = 'wachtrij'`;
+  return vrij.baan === "tweak" ? Number(terug.rows[0]?.n ?? 0) : 0;
 }
 
-/**
- * Loopt de ronde van de knop nog écht, of is hij allang klaar?
- *
- * Dit is het verschil tussen een wachtrij die vrijkomt als het werk klaar is, en
- * een wachtrij die vrijkomt als de klok het zegt. Dat tweede is wat het was, en
- * dat is precies verkeerd: op 15-08-2026 stond het scherm drie kwartier "er
- * loopt een ronde" te zeggen terwijl de werkstroom na 79 seconden klaar was.
- *
- * Een ronde die vanaf de knop start heet `gh-<nummer van de draaibeurt>`, en dat
- * nummer is precies wat je bij GitHub kunt navragen. Zegt GitHub dat hij klaar
- * is, dan is het slot van niemand meer en gaat het meteen open. Lukt navragen
- * niet (geen sleutel, GitHub plat), dan verandert er niets en blijft de
- * vervaltijd het vangnet; hij mag alleen nooit meer de gewone weg zijn.
- */
-async function loopthijEcht(ronde: string): Promise<boolean> {
-  const nummer = /^gh-(\d+)$/.exec(ronde)?.[1];
-  if (!nummer) return true; // Een ronde uit een chat kunnen we niet navragen.
-  const token = process.env.GITHUB_TWEAK_TOKEN;
-  if (!token) return true;
-  const repo = process.env.GITHUB_TWEAK_REPO || "mrtnvrmln1972-eng/SEO-werkzaamheden-Pingwin";
-  const antwoord = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${nummer}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-    cache: "no-store",
-  }).catch(() => null);
-  if (!antwoord || antwoord.status !== 200) return true;
-  const gegevens = await antwoord.json().catch(() => null);
-  return String(gegevens?.status ?? "") !== "completed";
-}
-
-/** Loopt er een ronde, en zo ja sinds wanneer? */
+/** Loopt er een ronde, en zo ja sinds wanneer en in welke baan? */
 export async function rondeStand(): Promise<RondeStand> {
   await ensureTweaks();
-  await bevrijdVastgelopen();
-
-  // Eerst navragen of de ronde van de knop nog leeft. Zo niet, dan gaat het slot
-  // meteen open in plaats van na de vervaltijd.
-  const houder = await sql`SELECT ronde FROM tweak_ronde WHERE id = 1`;
-  const naam = houder.rows[0]?.ronde ? String(houder.rows[0].ronde) : null;
-  if (naam && !(await loopthijEcht(naam))) await geefRondeTerug(naam);
-  const r = await sql`
-    SELECT (SELECT ronde FROM tweak_ronde WHERE id = 1)                        AS ronde,
-           (SELECT gestart FROM tweak_ronde WHERE id = 1)                      AS gestart,
-           (SELECT count(*) FROM tweaks WHERE stand = 'bezig')::int            AS bezig`;
-  const ronde = r.rows[0]?.ronde ? String(r.rows[0].ronde) : null;
+  const slot = await slotStand();
+  const r = await sql`SELECT count(*) FILTER (WHERE stand = 'bezig')::int AS bezig FROM tweaks`;
   return {
-    ronde,
-    gestart: ronde && r.rows[0]?.gestart ? new Date(String(r.rows[0].gestart)).toISOString() : null,
+    ronde: slot.ronde,
+    gestart: slot.gestart,
+    baan: slot.baan,
     bezig: Number(r.rows[0]?.bezig ?? 0),
   };
 }
@@ -138,14 +98,14 @@ export type ClaimUitslag =
  */
 export async function claimRonde(ronde: string): Promise<ClaimUitslag> {
   await ensureTweaks();
-  await bevrijdVastgelopen();
 
-  const slot = await sql`
-    UPDATE tweak_ronde
-    SET ronde = ${ronde}, gestart = now()
-    WHERE id = 1 AND ronde IS NULL
-    RETURNING ronde`;
-  if (slot.rowCount === 0) return { ok: false, reden: "bezet", stand: await rondeStand() };
+  // Het slot is gedeeld met de nachtelijke bouwronde voor grote punten. "Bezet"
+  // kan hier dus ook betekenen: er wordt op dit moment een groot punt gebouwd.
+  // Dat is precies de bedoeling; twee rondes in dezelfde bestanden gaat mis,
+  // ongeacht wat voor werk ze doen.
+  if (!(await pakSlot(ronde, "tweak"))) {
+    return { ok: false, reden: "bezet", stand: await rondeStand() };
+  }
 
   // Alleen echte tweaks, niet geparkeerd, in de volgorde die op het scherm staat.
   const r = await sql`
@@ -202,7 +162,7 @@ export async function breekRondeAf(): Promise<number> {
  */
 export async function geefRondeTerug(ronde: string): Promise<void> {
   await ensureTweaks();
-  await sql`UPDATE tweak_ronde SET ronde = NULL WHERE id = 1 AND ronde = ${ronde}`;
+  await geefSlot(ronde);
   await sql`
     UPDATE tweaks SET stand = 'wachtrij', ronde = NULL, bezig_sinds = NULL
     WHERE stand = 'bezig' AND ronde = ${ronde}`;

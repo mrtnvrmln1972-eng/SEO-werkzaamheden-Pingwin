@@ -7489,3 +7489,107 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   font-size: var(--fs-sm); line-height: var(--lh-md);
 }
 .rk-idee-acties { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+
+/* ═══════════════════════════════════════════════════════════
+   GROTE PUNTEN: DE WACHTRIJ EN DE NACHTELIJKE BOUW
+   ═══════════════════════════════════════════════════════════
+   Het scherm /admin/grote-punten leent bewust de kaart-, lijst- en draadvorm
+   van de tweak-stapel (.tw-item, .tw-lijst, .tw-draad). Dat is dezelfde soort
+   inhoud (een melding met een gesprek eronder), dus dezelfde vorm; een tweede
+   kaartstijl ernaast zou het dashboard alleen maar laten uitlopen.
+
+   Hieronder staat alleen wat echt nieuw is: het paneel dat laat zien wat er nu
+   gebouwd wordt, de voortgangsbalk met de tijdsverwachting, het plan, en de
+   verwachte starttijd per punt in de wachtrij. Alles op de schaal-tokens.
+   ═══════════════════════════════════════════════════════════ */
+
+.gp-nu {
+  padding: var(--s-5);
+  margin-bottom: var(--s-4);
+  background: var(--white);
+  border: 2px solid var(--orange);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+}
+.gp-nu-stil {
+  border-style: dashed;
+  border-color: var(--card-border);
+  border-width: 1px;
+  box-shadow: none;
+  background: transparent;
+}
+.gp-nu-kop { display: flex; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; }
+.gp-nu-label {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--orange-dark);
+}
+.gp-nu-titel { font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700; color: var(--dark); }
+.gp-code {
+  flex: none; padding: 2px var(--s-2); border-radius: var(--r-full);
+  background: var(--orange); color: var(--white);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+}
+.gp-code-stil { background: var(--brand-taupe-light); color: var(--brand-taupe); }
+
+/* De balk loopt op de gemelde stappen, niet op de klok: zo staat hij nooit stil
+   op het moment dat je juist wilt zien dat er nog iets gebeurt. */
+.gp-balk {
+  position: relative; height: var(--s-2); margin: var(--s-4) 0 var(--s-2);
+  background: var(--gray-light); border-radius: var(--r-full); overflow: hidden;
+}
+.gp-balk-vul {
+  position: absolute; inset: 0 auto 0 0; height: 100%;
+  background: var(--orange); border-radius: var(--r-full);
+  transition: width 0.6s ease;
+}
+.gp-balk-traag .gp-balk-vul { background: var(--brand-teal); }
+.gp-nu-regel {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3);
+  flex-wrap: wrap; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
+}
+.gp-nu-stap { font-weight: 700; }
+.gp-nu-tijd { color: var(--gray); }
+.gp-traag {
+  margin-top: var(--s-3); padding: var(--s-2) var(--s-3);
+  background: var(--brand-teal-light); color: var(--brand-teal);
+  border-radius: var(--r-md); font-size: var(--fs-xs); line-height: var(--lh-md);
+}
+.gp-venster {
+  margin: 0; font-size: var(--fs-sm); line-height: var(--lh-md); color: var(--gray);
+}
+
+/* Het plan zelf: gerenderd, met een rustige rand eromheen zodat het niet in de
+   rest van de kaart verdwijnt. */
+.gp-plan {
+  margin-top: var(--s-3); padding: var(--s-3) var(--s-4);
+  background: var(--gray-light); border-left: 3px solid var(--orange);
+  border-radius: var(--r-md); color: var(--body-text);
+  font-size: var(--fs-sm); line-height: var(--lh-md);
+}
+.gp-plan > :first-child { margin-top: 0; }
+.gp-plan > :last-child { margin-bottom: 0; }
+.gp-plan-kop {
+  margin-top: var(--s-3); font-size: var(--fs-xs); line-height: var(--lh-xs);
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray);
+}
+.gp-plan-vouw { margin-top: var(--s-2); }
+
+.gp-tijd {
+  padding: 2px var(--s-2); border-radius: var(--r-full);
+  background: var(--brand-orange-faint); color: var(--orange-dark); font-weight: 700;
+}
+.gp-chip-akkoord { background: var(--brand-orange-faint); color: var(--orange-dark); }
+.gp-chip-wacht { background: var(--brand-teal-light); color: var(--brand-teal); }
+
+.gp-nieuw { margin-top: var(--s-3); display: flex; flex-direction: column; gap: var(--s-2); align-items: flex-start; }
+.gp-nieuw-rij { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; width: 100%; }
+.gp-invoer {
+  flex: 1 1 260px; min-width: 0; padding: var(--s-2) var(--s-3);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  font: inherit; font-size: var(--fs-sm); color: var(--body-text); background: var(--white);
+}
+.gp-invoer:focus { outline: none; border-color: var(--orange); }
+.gp-keuze {
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
+  font: inherit; font-size: var(--fs-sm); color: var(--body-text); background: var(--white);
+}
