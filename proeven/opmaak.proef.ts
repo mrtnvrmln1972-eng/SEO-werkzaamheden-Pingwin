@@ -304,7 +304,7 @@ checkWaar("geen donkere tekst op de donkere kolomkop", onleesbaar.length === 0,
 // Voorvoegsels omdat een dashboard vol losse klassen zit die van elders komen;
 // dit zijn de eigen naamruimtes van de schermen die het al een keer overkomen is.
 // Kort houden en uitbreiden zodra er een nieuwe naamruimte bijkomt.
-const NAAMRUIMTEN = ["at-", "bulk-", "kw-", "wl-", "wp-", "gmb-", "hm-", "om-", "zp-", "prio-"];
+const NAAMRUIMTEN = ["at-", "bulk-", "kw-", "wl-", "wp-", "gmb-", "hm-", "om-", "zp-", "prio-", "tw-"];
 const tsxBestanden: string[] = [];
 (function zoek(map: string) {
   for (const naam of fs.readdirSync(path.join(WORTEL, map))) {

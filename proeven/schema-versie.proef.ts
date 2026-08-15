@@ -61,6 +61,13 @@ const BLOKKEN: Blok[] = [
     constante: "FASE_HISTORIE_SCHEMA_VERSIE",
     merk: "fh1",
   },
+  {
+    bestand: "lib/tweaks.ts",
+    vanaf: "async function doeBouw(): Promise<void> {",
+    tot: "\nexport function ensureTweaks",
+    constante: "TWEAKS_SCHEMA_VERSIE",
+    merk: "tw1",
+  },
 ];
 
 const wortel = join(__dirname, "..");

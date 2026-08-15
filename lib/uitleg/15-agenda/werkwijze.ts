@@ -122,6 +122,35 @@ export const BLOKKEN: Uitklapper[] = [
       "opgevraagd via GitHub in plaats van te gokken: van buitenaf ziet een mislukte build er hetzelfde uit " +
       "als een trage.",
   },
+  {
+    titel: "Kleine aanpassingen: de tweak-stapel",
+    kern: "Wat je onderweg ziet, meld je meteen; het gaat op een stapel en die wordt in één ronde doorgevoerd.",
+    tekst:
+      "Naast de routekaart met de grote punten loopt er een tweede, veel kortere lijn: de kleine dingen die " +
+      "je pas ziet doordat je met het dashboard wérkt. Een venster dat half onder de kopbalk hangt, een link " +
+      "die als kaal webadres in beeld staat in plaats van als documentnaam, een knop die op de verkeerde " +
+      "plek zit.\n\n" +
+      "**Wat er misging.** Zulke aanpassingen zijn twee minuten werk, maar kostten in de praktijk een " +
+      "kwartier. Die tijd zat niet in het bouwen. Hij zat eromheen: een werksessie die eerst uitzoekt waar " +
+      "het scherm staat, een wijziging die onderweg wordt uitgebreid met gedeelde code en een nieuwe proef, " +
+      "en een volledige bouw plus deploy voor die ene regel. Die kosten betaal je per ronde, niet per " +
+      "aanpassing. Tien losse aanpassingen kostten dus tien keer de volle prijs.\n\n" +
+      "**Hoe het nu werkt.** Op elk beheerscherm staat rechtsonder een knopje **Tweak**. Je typt of " +
+      "dicteert wat er niet klopt, op het moment dat je het ziet, vanaf het scherm waar je toch al staat. " +
+      "Het scherm, het pad en de klant gaan automatisch mee, dus die hoef je niet te beschrijven, en een " +
+      "schermafbeelding plak je er zo in. Alles komt op `/admin/tweaks` te staan. Als jij vindt dat het er " +
+      "genoeg zijn, zet één knop de startregel op je klembord en werkt één werksessie de hele stapel af: " +
+      "één keer inlezen, één bouw, één keer live.\n\n" +
+      "**De regel die de tijdwinst maakt: een tweak is klaar als de tweak klaar is.** Binnen zo'n ronde " +
+      "geen refactor, geen nieuwe proef, geen tweede bestand dat niet stuk was, en geen bijgewerkt " +
+      "uitleghoofdstuk; een tweak is een correctie, geen uitbreiding. Blijkt er onderweg een melding groter " +
+      "dan hij leek (een nieuw veld in de database, een nieuwe koppeling, gedrag dat meerdere schermen " +
+      "tegelijk raakt), dan gaat die op **apart** met één regel uitleg en loopt de rest gewoon door. Zonder " +
+      "die grens dijt de ronde uit en is precies de winst weg waar hij voor bedoeld is.\n\n" +
+      "**Er is bewust geen drempel.** Geen \"vanaf tien meldingen\". Wanneer een stapel groot genoeg is " +
+      "hangt af van waar je mee bezig bent, niet van een getal; het scherm toont de stand en jij drukt " +
+      "wanneer het uitkomt.",
+  },
 
   // ── Golf 1 ──
 ];
