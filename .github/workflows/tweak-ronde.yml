@@ -1,0 +1,60 @@
+# ═══════════════════════════════════════════════════════════
+# EEN TWEAK-RONDE, GESTART VANAF DE KNOP IN HET DASHBOARD
+# ═══════════════════════════════════════════════════════════
+# Maarten drukt op "Nu draaien" op /admin/tweaks. Het dashboard klopt bij GitHub
+# aan (app/api/admin/tweaks/draaien/route.ts) en dan draait dit. Wat hier gebeurt
+# is precies wat er in een chat gebeurt als hij /tweaks plakt: de wachtrij wordt
+# geclaimd, afgewerkt, gebouwd en in één keer live gezet.
+#
+# Bewust GEEN eigen uurschema hier. Dat loopt al via een Routine op claude.ai, en
+# twee dingen die allebei elk uur een ronde starten is precies de botsing die de
+# wachtrij moet voorkomen. Het slot in de database vangt het op, maar een tweede
+# ronde die elk uur voor niets opstart kost wel geld.
+#
+# Twee sleutels, allebei ergens anders:
+#  - ANTHROPIC_API_KEY staat als repo-secret in GitHub (Settings, Secrets and
+#    variables, Actions). Alleen deze werkstroom komt erbij.
+#  - GITHUB_TWEAK_TOKEN staat in Vercel en is waarmee het dashboard dit hier mag
+#    starten. Die komt in dit bestand dus niet voor.
+# ═══════════════════════════════════════════════════════════
+
+name: Tweak-ronde
+
+on:
+  workflow_dispatch:
+
+# Eén ronde tegelijk, ook als er twee keer op de knop gedrukt wordt. Het slot in
+# de database bewaakt dit al; dit is de tweede sluiting, hier bij de bron.
+concurrency:
+  group: tweak-ronde
+  cancel-in-progress: false
+
+jobs:
+  ronde:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - name: De laatste code ophalen
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Node klaarzetten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Pakketten installeren
+        run: npm ci
+
+      - name: De stapel afwerken
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Dezelfde opdracht als in een chat: .claude/commands/tweaks.md.
+          # Werkt dit niet meer na een nieuwe versie van de actie, dan zit het
+          # verschil in de namen van deze twee velden; de rest staat los.
+          prompt: "/tweaks"
+          claude_args: "--allowedTools Bash,Edit,Write,Read,Glob,Grep"

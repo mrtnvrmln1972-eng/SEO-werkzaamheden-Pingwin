@@ -7431,3 +7431,59 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 .tw-draad-wie { flex: 0 0 auto; font-weight: 700; color: var(--gray); }
 .tw-draad-tekst { color: var(--body-text); }
 .tw-rondes { background: var(--red-light); color: var(--red); }
+
+/* Tweaks: de wachtrij als echte rij (slepen, voorrang, parkeren) en de ronde
+   die loopt. De volgorde op het scherm is de volgorde waarin het gebeurt, dus
+   de greep hoort zichtbaar bij de melding te staan en niet ergens verstopt. */
+.tw-item-kop { display: flex; align-items: flex-start; gap: var(--s-3); }
+.tw-item-kop .tw-tekst { flex: 1 1 auto; min-width: 0; }
+.tw-greep { flex: 0 0 auto; cursor: grab; color: var(--gray); line-height: var(--lh-md); }
+.tw-greep:active { cursor: grabbing; }
+.tw-item-nu { border-color: var(--orange); box-shadow: var(--shadow-md); }
+.tw-item-sleept { opacity: 0.5; }
+.tw-chip-nu { background: var(--brand-orange-faint); color: var(--orange-dark); }
+.tw-chip-punt { background: var(--brand-teal-light); color: var(--brand-teal); }
+.tw-ronde-loopt {
+  margin-bottom: var(--s-3); padding: var(--s-3) var(--s-4);
+  background: var(--brand-teal-light); color: var(--brand-teal);
+  border-radius: var(--r-md); font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+
+/* Tweaks: de nulmeting. Standaard dichtgeklapt, want het is een lijst van
+   dertig regels die je één keer per periode doorloopt, niet iets waar je elke
+   dag langs scrollt. De meter erboven is wat je wél elke keer wilt zien. */
+.tw-nul-balk { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-3); }
+.tw-nul-meter {
+  flex: 1 1 auto; height: var(--s-2); border-radius: var(--r-full);
+  background: var(--brand-taupe-light); overflow: hidden;
+}
+.tw-nul-vulling { display: block; height: 100%; background: var(--orange); }
+.tw-nul-groep { margin-top: var(--s-4); }
+.tw-nul-kop {
+  margin: 0 0 var(--s-2); font-size: var(--fs-sm); line-height: var(--lh-sm);
+  font-weight: 700; color: var(--gray);
+}
+.tw-nul-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
+.tw-nul-rij {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap;
+  padding: var(--s-2) var(--s-3);
+  background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-md);
+}
+.tw-nul-af { background: var(--brand-orange-faint); }
+.tw-nul-tekst { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; flex: 1 1 20rem; }
+.tw-nul-naam { font-weight: 700; color: var(--orange-dark); }
+.tw-nul-waarvoor { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.tw-nul-acties { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.tw-nul-datum { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+
+/* Routekaart: de wachtkamer met ideeën die nog geen R-nummer hebben. */
+.rk-idee {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap;
+  padding: var(--s-3) var(--s-4);
+  background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-md);
+}
+.rk-idee-tekst {
+  flex: 1 1 24rem; min-width: 0; color: var(--body-text);
+  font-size: var(--fs-sm); line-height: var(--lh-md);
+}
+.rk-idee-acties { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }

@@ -9,6 +9,7 @@ import {
 } from "../../../lib/routekaart";
 import { beschrijvingen } from "../../../lib/routekaart-tekst";
 import { controleerAlles } from "../../../lib/routekaart-bewijs";
+import { haalRoutekaartIdeeen } from "../../../lib/tweaks";
 import RoutekaartClient, { type PuntWeergave } from "./RoutekaartClient";
 
 // ═══════════════════════════════════════════════════════════
@@ -63,8 +64,16 @@ export default async function RoutekaartPage() {
 
   const advies = nuDoen();
 
+  // De brug vanaf het Tweak-knopje: een idee dat te groot was voor een ronde en
+  // waar Maarten ja tegen zei, hoort hier te landen in plaats van tussen de
+  // aanpassingen van twee minuten te blijven staan.
+  const ideeen = (await haalRoutekaartIdeeen()).map((t) => ({
+    id: t.id, tekst: t.tekst, punt: t.punt,
+  }));
+
   return (
     <RoutekaartClient
+      ideeen={ideeen}
       punten={punten}
       golven={GOLVEN}
       voortgang={voortgang()}

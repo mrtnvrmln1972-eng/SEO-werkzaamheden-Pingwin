@@ -194,7 +194,7 @@ function PuntKaart({ p }: { p: PuntWeergave }) {
 }
 
 export default function RoutekaartClient({
-  punten, golven, voortgang, advies, reden, parallel,
+  punten, golven, voortgang, advies, reden, parallel, ideeen,
 }: {
   punten: PuntWeergave[];
   golven: Golf[];
@@ -202,6 +202,8 @@ export default function RoutekaartClient({
   advies: { code: string; titel: string; prompt: string } | null;
   reden: "leeg" | "botst" | null;
   parallel: { code: string; titel: string; prompt: string }[];
+  /** Ideeën van de tweak-stapel waar Maarten ja tegen zei; nog zonder R-nummer. */
+  ideeen: { id: number; tekst: string; punt: string | null }[];
 }) {
   const lopend = punten.filter((p) => p.stand === "loopt");
   const twijfel = punten.filter((p) => p.stand === "af" && p.bewijs.stand === "niet-aangetoond");
@@ -311,6 +313,37 @@ export default function RoutekaartClient({
             <strong>Bezig in een andere chat:</strong>{" "}
             {lopend.map((p) => `${p.code} (${p.titel.toLowerCase()})`).join(", ")}. Begin daar geen tweede chat voor.
           </div>
+        )}
+
+        {/* ── Uit de ideeënstapel ──
+            De brug tussen het Tweak-knopje en deze routekaart. Een idee dat te
+            groot is voor een ronde en waar Maarten ja tegen zei, hoort hier te
+            landen; anders blijft het op de tweak-stapel staan tussen dingen van
+            twee minuten en verdwijnt het uit beeld. Bewust nog zonder R-nummer:
+            de punten hierboven staan in de code (lib/routekaart.ts) en dat blijft
+            de ene waarheid. Dit is de wachtkamer ervoor. */}
+        {ideeen.length > 0 && (
+          <section className="card rk-ideeen">
+            <h2 className="rk-golf-titel">Uit de ideeënstapel ({ideeen.length})</h2>
+            <p className="rk-golf-regel">
+              Hier zei je ja tegen, maar het heeft nog geen nummer. Kopieer de regel en plak hem in
+              een verse chat; dan wordt het een echt punt hierboven, met een beschrijving en een
+              plek in een golf.
+            </p>
+            <div className="rk-punten">
+              {ideeen.map((i) => (
+                <div key={i.id} className="rk-idee">
+                  <div className="rk-idee-tekst">{i.tekst}</div>
+                  <div className="rk-idee-acties">
+                    {i.punt
+                      ? <span className="rk-code">{i.punt}</span>
+                      : <Kopieer klein tekst={`Maak van idee ${i.id} op /admin/tweaks een punt op de routekaart.`} label="Kopieer startregel" />}
+                    <a className="rk-parallel-link" href="/admin/tweaks">Naar de stapel</a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* ── Hoe je dit gebruikt ── */}

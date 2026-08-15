@@ -161,8 +161,29 @@ export const BLOKKEN: Uitklapper[] = [
       "bouwen.\n\n" +
       "**Kleine aanpassing of groter idee, hetzelfde knopje.** Kies je \"groter idee\", dan gaat het " +
       "niet mee in een ronde maar komt er eerst een voorstel: wat het oplevert, hoe het gebouwd zou " +
-      "worden, wat het raakt. Zeg je ja, dan wordt het een punt op de routekaart. Zo is er één plek om " +
-      "alles kwijt te kunnen, terwijl klein en groot toch verschillend behandeld worden.",
+      "worden, wat het raakt. Zeg je ja, dan druk je op **Wordt een routekaartpunt** en verhuist de " +
+      "melding naar `/admin/routekaart`, naar het blok \"Uit de ideeënstapel\". Daar staat hij zichtbaar " +
+      "te wachten op een nummer, met een startregel om er een echt punt van te maken. De routekaart zelf " +
+      "blijft dus één bron, met een wachtkamer ervoor in plaats van een idee dat blijft hangen tussen de " +
+      "aanpassingen van twee minuten.\n\n" +
+      "**De stapel is een wachtrij, geen bak.** De volgorde op het scherm is de volgorde waarin de " +
+      "eerstvolgende ronde ze doet, en die volgorde sleep je zelf. Per melding kun je twee dingen: " +
+      "**direct doorvoeren** (hij springt vooraan) of **parkeren** (hij blijft staan maar gaat nergens " +
+      "in mee, tot je hem terugzet). Parkeren is bewust iets anders dan weggooien: iets dat nu niet " +
+      "uitkomt is niet hetzelfde als iets dat niet hoeft.\n\n" +
+      "**De wachtrij bewaakt zichzelf, en dat moest wel.** Een ronde start nu op drie manieren: uit een " +
+      "chat, elk uur vanzelf, en met de knop **Nu draaien** op het scherm zelf. Die kunnen op dezelfde " +
+      "minuut afgaan, en twee rondes die tegelijk in dezelfde bestanden schrijven is de bekendste manier " +
+      "om werk kwijt te raken. Daarom is er één slot: een ronde begint door dat slot te pakken, en wie " +
+      "het niet krijgt bouwt niets. Valt een ronde halverwege dood, dan valt het slot na drie kwartier " +
+      "vanzelf vrij en staan de meldingen gewoon weer in de rij. Geen afspraak dus, maar een sluiting; " +
+      "een afspraak wordt gebroken zodra iemand haast heeft, en een cron heeft altijd haast.\n\n" +
+      "**En de nulmeting, tegen het gat in dit alles.** De stapel vult zich met wat je toevallig " +
+      "tegenkomt, dus een scherm waar je zelden komt levert nooit een melding op, ook niet als er van " +
+      "alles aan mankeert. Onderaan `/admin/tweaks` staat daarom een afvinklijst van álle schermen: het " +
+      "Intern-menu plus de tabbladen van een klant, zodat de lijst nooit achterloopt. Je loopt ze één " +
+      "keer langs, meldt wat je ziet, en vinkt het scherm af met een datum. Daarna weet je van elk " +
+      "scherm of het goed is of alleen ongezien, en dat verschil telt zodra er iemand anders meekijkt.",
   },
 
   // ── Golf 1 ──

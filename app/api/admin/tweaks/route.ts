@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardDev, isMeekijker } from "../../../../lib/admin-scope";
 import { meldingToevoegen, meldingIntrekken } from "../../../../lib/meldingen";
 import {
-  haalTweaks, haalBeeld, nieuweTweak, zetStand, verwijderTweak, telOpen,
-  MAX_BEELD, type Stand, type Soort,
+  haalTweaks, haalBeeld, nieuweTweak, zetStand, zetPrioriteit, verwijderTweak, telOpen,
+  MAX_BEELD, type Stand, type Soort, type Prioriteit,
 } from "../../../../lib/tweaks";
+import { rondeStand } from "../../../../lib/tweak-ronde";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,8 +33,9 @@ export const dynamic = "force-dynamic";
 // anders in het dashboard. Klantgegevens komen er niet aan te pas.
 // ═══════════════════════════════════════════════════════════
 
-const STANDEN: Stand[] = ["wachtrij", "bezig", "controleer", "klaar", "apart"];
+const STANDEN: Stand[] = ["wachtrij", "bezig", "controleer", "klaar", "apart", "routekaart"];
 const SOORTEN: Soort[] = ["tweak", "idee"];
+const PRIORITEITEN: Prioriteit[] = ["nu", "gewoon", "geparkeerd"];
 
 /** De melding in de kopbalk: het seintje dat er iets klaarstaat om te bekijken. */
 const MELDING_BRON = "tweaks";
@@ -50,7 +52,10 @@ export async function GET(req: NextRequest) {
   }
 
   const tweaks = await haalTweaks(p.get("alles") === "1");
-  return NextResponse.json({ ok: true, tweaks, tellers: await telOpen() });
+  // De stand van de ronde hoort bij de lijst: staat er iets op "bezig" terwijl er
+  // geen ronde loopt, dan klopt het beeld niet. rondeStand() ruimt een
+  // vastgelopen ronde meteen op, dus die vraag repareert zichzelf.
+  return NextResponse.json({ ok: true, tweaks, tellers: await telOpen(), ronde: await rondeStand() });
 }
 
 export async function POST(req: NextRequest) {
@@ -87,9 +92,26 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const id = Number(body?.id);
+  if (!id) return NextResponse.json({ ok: false, error: "Onbekende melding." }, { status: 400 });
+
+  // Direct doorvoeren of parkeren is een keuze van Maarten, geen stand die een
+  // ronde zet. De meekijk-sessie komt hier dus niet aan: die mag alleen melden
+  // hoe ver hij is, niet bepalen wat er voorrang krijgt.
+  const prioriteit = String(body?.prioriteit ?? "") as Prioriteit;
+  if (prioriteit) {
+    if (meekijker) {
+      return NextResponse.json({ ok: false, error: "Alleen jij bepaalt de voorrang." }, { status: 403 });
+    }
+    if (!PRIORITEITEN.includes(prioriteit)) {
+      return NextResponse.json({ ok: false, error: "Onbekende voorrang." }, { status: 400 });
+    }
+    await zetPrioriteit(id, prioriteit);
+    if (!body?.stand) return NextResponse.json({ ok: true, tellers: await telOpen() });
+  }
+
   const stand = String(body?.stand ?? "") as Stand;
-  if (!id || !STANDEN.includes(stand)) {
-    return NextResponse.json({ ok: false, error: "Onbekende melding of stand." }, { status: 400 });
+  if (!STANDEN.includes(stand)) {
+    return NextResponse.json({ ok: false, error: "Onbekende stand." }, { status: 400 });
   }
 
   const reactieTekst = String(body?.reactie ?? "").slice(0, 2000).trim();
@@ -97,6 +119,7 @@ export async function PATCH(req: NextRequest) {
 
   await zetStand(id, stand, {
     notitie: typeof body?.notitie === "string" ? body.notitie.slice(0, 500) : undefined,
+    punt: typeof body?.punt === "string" ? body.punt.slice(0, 10).trim() || null : undefined,
     reactie: reactieTekst
       ? { van: vanClaude ? "claude" : "maarten", tekst: reactieTekst, wanneer: new Date().toISOString() }
       : undefined,
