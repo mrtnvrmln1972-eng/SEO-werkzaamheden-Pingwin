@@ -432,12 +432,13 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
     );
   }
 
-  function blok(titel: string, uitleg: string, lijst: Tweak[], opties: Parameters<typeof kaart>[1] = {}) {
+  // Alleen de kop met het aantal. De uitleg eronder is er bewust uit: dit scherm
+  // gebruik je elke dag, en dan is een alinea per blok geen hulp maar ruis.
+  function blok(titel: string, lijst: Tweak[], opties: Parameters<typeof kaart>[1] = {}) {
     if (lijst.length === 0) return null;
     return (
       <div className="beheer-blok">
         <h2 className="beheer-h2">{titel} ({lijst.length})</h2>
-        <p className="beheer-uitleg">{uitleg}</p>
         <ul className="tw-lijst">{lijst.map((t) => kaart(t, opties))}</ul>
       </div>
     );
@@ -447,20 +448,6 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
     <>
       <AdminKop titel="Tweaks" />
       <div className="beheer-container">
-        <div className="beheer-kop">
-          <h1 className="beheer-h1">De stapel kleine aanpassingen</h1>
-          <p className="beheer-uitleg">
-            Alles wat je onderweg meldt met het knopje <strong>Tweak</strong> komt hier terecht.
-            Eén ronde werkt de hele stapel af: één keer inlezen, één bouw, één keer live. De
-            volgorde hieronder is de volgorde waarin het gebeurt, en er kan er altijd maar één
-            ronde tegelijk lopen.
-          </p>
-          <p className="beheer-klein">
-            Iets groters dan een kleine aanpassing hoort niet hier maar bij de{" "}
-            <a href="/admin/grote-punten"><strong>grote punten</strong></a>: daar maak ik er eerst
-            een plan van, keur jij het goed, en wordt het &apos;s nachts gebouwd.
-          </p>
-        </div>
 
         <div className="tw-balk">
           <div className="tw-stand">
@@ -477,9 +464,10 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
               {draait ? "Bezig met starten…" : "Nu draaien"}
             </button>
             <Kopieer tekst={startregel} label="Startregel kopiëren" />
-            <button type="button" className="btn btn-quiet btn-klein pnl-acties-info" onClick={() => setToonAf(!toonAf)}>
+            <button type="button" className="btn btn-quiet btn-klein" onClick={() => setToonAf(!toonAf)}>
               {toonAf ? "Alleen wat loopt" : `Ook de afgeronde (${afgerond.length})`}
             </button>
+            <a className="btn btn-quiet btn-klein pnl-acties-info" href="/admin/grote-punten">Grote punten</a>
           </div>
         </div>
 
@@ -537,11 +525,19 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
             </button>
           </div>
         ) : (
-          <p className="beheer-klein">
-            <strong>Nu draaien</strong> start de ronde zonder chat. Wil je het liever zelf in een
-            verse chat doen, dan zet <strong>Startregel kopiëren</strong> <code>{startregel}</code> op
-            je klembord. Er draait sowieso elk uur een ronde als er iets klaarstaat.
-          </p>
+          <div className="gp-nu gp-nu-stil">
+            <div className="gp-nu-kop">
+              <span className="gp-nu-label">Er loopt geen ronde</span>
+            </div>
+            <p className="gp-venster">
+              {wachtrij.length === 0 && controleer.length === 0
+                ? "Niets open. Zie je iets dat anders moet, druk dan op het Tweak-knopje rechtsonder."
+                : [
+                  wachtrij.length > 0 ? `${wachtrij.length} ${wachtrij.length === 1 ? "staat" : "staan"} in de wachtrij` : "",
+                  controleer.length > 0 ? `${controleer.length} ${controleer.length === 1 ? "wacht" : "wachten"} op je oordeel` : "",
+                ].filter(Boolean).join(", ") + ". Er start niets vanzelf; druk op Nu draaien."}
+            </p>
+          </div>
         )}
 
         {bericht && <div className={bericht.soort === "ok" ? "tw-ok" : "tw-fout"}>{bericht.tekst}</div>}
@@ -552,17 +548,17 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
           </div>
         )}
 
-        {blok("Klaar, klopt het?", "Dit staat live. Zeg of het goed is; klopt het niet, dan gaat het met jouw correctie terug de wachtrij in.", controleer, { controle: true })}
-        {blok("In de wachtrij", "Van boven naar beneden de volgorde waarin de eerstvolgende ronde ze doet. Sleep aan het greepje om die volgorde te veranderen.", wachtrij, { sleepbaar: true, voorrang: true })}
-        {blok("Geparkeerd", "Blijft staan, gaat nergens in mee. Terugzetten kan altijd.", geparkeerd, { voorrang: true })}
+        {blok("Klaar, klopt het?", controleer, { controle: true })}
+        {blok("In de wachtrij", wachtrij, { sleepbaar: true, voorrang: true })}
+        {blok("Geparkeerd", geparkeerd, { voorrang: true })}
         {/* Bewust géén voorrang-knoppen bij een idee. "Direct doorvoeren" en
             "parkeren" gaan over de volgorde van de eerstvolgende ronde, en een
             idee gaat nooit mee in een ronde. Ze stonden er wél, en dan lijkt het
             of je een idee vandaag nog kunt laten bouwen; dat kan niet, en het
             maakte de kaart bovendien onnodig druk. */}
-        {blok("Grotere ideeën", "Wordt niet in een ronde weggewerkt. Dit soort werk gaat naar de wachtrij voor grote punten: daar maak ik er eerst een plan van, jij keurt het goed, en dan wordt het 's nachts gebouwd.", ideeen, { idee: true })}
-        {blok("Verhuisd naar de grote punten", "Jij zei ja. Deze staan nu op /admin/grote-punten; daar zie je het plan en geef je akkoord.", naarRoutekaart)}
-        {toonAf && blok("Afgerond", "Klaar of apart gezet.", afgerond)}
+        {blok("Grotere ideeën", ideeen, { idee: true })}
+        {blok("Verhuisd naar de grote punten", naarRoutekaart)}
+        {toonAf && blok("Afgerond", afgerond)}
 
         {controleer.length + wachtrij.length + ideeen.length + geparkeerd.length === 0 && (
           <div className="tw-leeg">

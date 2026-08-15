@@ -207,7 +207,8 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
    * vraagt, niet omdat de klok verspringt.
    */
   async function planNu(id: number) {
-    if (!(await stuur({ id, stand: "plan-maken" }))) return;
+    const punt = punten.find((x) => x.id === id);
+    if (punt?.stand !== "plan-maken" && !(await stuur({ id, stand: "plan-maken" }))) return;
     setBericht({ soort: "ok", tekst: "Ik ga er nu een plan van maken; je ziet hierboven hoe ver het is." });
     const r = await fetch("/api/admin/punten/draaien", { method: "POST" }).catch(() => null);
     const j = await r?.json().catch(() => null);
@@ -304,6 +305,9 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
           {p.routekaart && <span className="tw-stand-chip tw-chip-punt">{p.routekaart}</span>}
           {p.goedgekeurd && <span className="tw-stand-chip gp-chip-akkoord">Door jou goedgekeurd</span>}
           {start && <span className="tw-stand-chip gp-tijd">Begint {wanneer(start.begint)}, ongeveer {minuten(start.minuten)}</span>}
+          {p.stand === "plan-maken" && !p.ronde && (
+            <span className="tw-stand-chip tw-rondes">Nog niet begonnen</span>
+          )}
           {p.rondes > 1 && <span className="tw-stand-chip tw-rondes">{p.rondes} bouwrondes</span>}
         </div>
 
@@ -384,9 +388,19 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
               </div>
             )}
             {opties.sparren && (
-              <button type="button" className="btn btn-ghost btn-klein" onClick={() => setAntwoordVoor(p.id)}>
-                Iets meegeven voor het plan
-              </button>
+              <div className="pnl-acties-groep">
+                {/* Een punt op "plan wordt gemaakt" zonder lopende ronde is niet
+                    bezig, hij wacht. Dat stond er eerst niet bij, en dan lijkt
+                    het of er nagedacht wordt terwijl er niets draait. */}
+                {!p.ronde && (
+                  <button type="button" className="btn btn-primary btn-klein" onClick={() => void planNu(p.id)}>
+                    Begin nu met het plan
+                  </button>
+                )}
+                <button type="button" className="btn btn-ghost btn-klein" onClick={() => setAntwoordVoor(p.id)}>
+                  Iets meegeven voor het plan
+                </button>
+              </div>
             )}
             {p.stand === "wachtrij" && (
               <button type="button" className="btn btn-ghost btn-klein" onClick={() => void stuur({ id: p.id, stand: "plan-klaar" })}>
@@ -405,12 +419,12 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
     );
   }
 
-  function blok(titel: string, uitleg: string, lijst: Punt[], opties: Parameters<typeof kaart>[1] = {}) {
+  // Alleen de kop met het aantal; de uitleg-alinea's eronder zijn er bewust uit.
+  function blok(titel: string, lijst: Punt[], opties: Parameters<typeof kaart>[1] = {}) {
     if (lijst.length === 0) return null;
     return (
       <div className="beheer-blok">
         <h2 className="beheer-h2">{titel} ({lijst.length})</h2>
-        <p className="beheer-uitleg">{uitleg}</p>
         <ul className="tw-lijst">{lijst.map((p) => kaart(p, opties))}</ul>
       </div>
     );
@@ -420,20 +434,6 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
     <>
       <AdminKop titel="Grote punten" />
       <div className="beheer-container">
-        <div className="beheer-kop">
-          <h1 className="beheer-h1">De wachtrij voor grote punten</h1>
-          <p className="beheer-uitleg">
-            Een groot punt gaat niet zomaar de bouw in. Eerst denken we samen het plan uit in het
-            draadje bij het punt zelf, dan keur jij het goed, en pas dan komt het in de
-            bouwwachtrij. &apos;s Nachts wordt er één tegelijk gebouwd, van boven naar beneden.
-          </p>
-          <p className="beheer-klein">
-            Kleine aanpassingen van twee minuten horen niet hier maar op de{" "}
-            <a href="/admin/tweaks"><strong>tweak-stapel</strong></a>: die worden in één ronde
-            doorgevoerd zonder plan. De twee kunnen elkaar niet kruisen; er draait er altijd maar
-            één tegelijk.
-          </p>
-        </div>
 
         {nu && restNu && v ? (
           <div className={"gp-nu" + (v.duurtLang ? " gp-balk-traag" : "")}>
@@ -487,11 +487,13 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
             <p className="gp-venster">
               {stand.slot.baan === "tweak"
                 ? "Er loopt een tweak-ronde. Grote punten wachten daarop; ze bouwen nooit tegelijk."
-                : wachtrij.length === 0
-                  ? "De bouwwachtrij is leeg. Keur een plan goed, dan gaat het vannacht mee."
-                  : `${wachtrij.length === 1 ? "Eén punt staat" : `${wachtrij.length} punten staan`} klaar. De eerste begint ${
-                    startVan(wachtrij[0].id) ? wanneer(startVan(wachtrij[0].id)!.begint) : "zodra het nacht is"
-                  }.`}
+                : planMaken.some((p) => !p.ronde)
+                  ? "Er wacht een plan om geschreven te worden. Druk bij dat punt op \"Begin nu met het plan\"; dat gebeurt niet vanzelf."
+                  : wachtrij.length === 0
+                    ? "De bouwwachtrij is leeg. Keur een plan goed, dan gaat het vannacht mee."
+                    : `${wachtrij.length === 1 ? "Eén punt staat" : `${wachtrij.length} punten staan`} klaar. De eerste begint ${
+                      startVan(wachtrij[0].id) ? wanneer(startVan(wachtrij[0].id)!.begint) : "zodra het nacht is"
+                    }.`}
             </p>
           </div>
         )}
@@ -511,9 +513,10 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
               {draait ? "Bezig met starten…" : "Nu draaien"}
             </button>
             <Kopieer tekst={startregel} label="Startregel kopiëren" />
-            <button type="button" className="btn btn-quiet btn-klein pnl-acties-info" onClick={() => setToonAf(!toonAf)}>
+            <button type="button" className="btn btn-quiet btn-klein" onClick={() => setToonAf(!toonAf)}>
               {toonAf ? "Alleen wat loopt" : `Ook de afgeronde (${afgerond.length})`}
             </button>
+            <a className="btn btn-quiet btn-klein pnl-acties-info" href="/admin/tweaks">Tweak-stapel</a>
           </div>
         </div>
 
@@ -526,33 +529,25 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
         )}
 
         {blok("Klaar, klopt het?",
-          "Dit is vannacht gebouwd en staat live. Zeg of het goed is; klopt het niet, dan gaat het met jouw opmerking terug naar de tekentafel.",
           controleer, { controle: true })}
 
         {blok("Plan klaar, jouw akkoord",
-          "Lees het plan en zeg ja. Alleen wat jij goedkeurt komt in de bouwwachtrij; zonder akkoord bouwt de nacht niets.",
           planKlaar, { akkoord: true })}
 
         {blok("In de bouwwachtrij",
-          "Van boven naar beneden de volgorde waarin ze gebouwd worden, één per keer. Sleep aan het greepje om die volgorde te veranderen.",
           wachtrij, { sleepbaar: true })}
 
         {blok("Plan wordt gemaakt",
-          "Hier wordt over nagedacht. Alles wat je meegeeft komt in het draadje bij het punt zelf te staan, dus het gesprek raakt niet kwijt als een chat sluit.",
           planMaken, { sparren: true })}
 
         {blok("Ideeën, nog geen plan",
-          "Losse gedachten. Zeg 'maak er een plan van', dan komt er een uitgewerkt voorstel terug om te beoordelen.",
           ideeen, { idee: true })}
 
-        {toonAf && blok("Afgerond", "Klaar of afgewezen.", afgerond)}
+        {toonAf && blok("Afgerond",
+          afgerond)}
 
         <div className="beheer-blok">
           <h2 className="beheer-h2">Een groot punt erbij</h2>
-          <p className="beheer-uitleg">
-            Eén regel is genoeg; het plan komt later. Kleine aanpassingen horen niet hier maar op
-            de <a href="/admin/tweaks">tweak-stapel</a>.
-          </p>
           <div className="gp-nieuw">
             <div className="gp-nieuw-rij">
               <input

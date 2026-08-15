@@ -96,11 +96,6 @@ export default function Nulmeting({ begin, voorbeeldSlug, tweaks }: {
   return (
     <div className="beheer-blok">
       <h2 className="beheer-h2">Nulmeting van alle schermen ({klaar} van {lijst.length})</h2>
-      <p className="beheer-uitleg">
-        Eén keer langs elk scherm, zodat je van alles weet of het goed is en niet alleen of je er
-        toevallig geweest bent. Open een scherm, meld wat je ziet met het Tweak-knopje, en vink het
-        hier af. Het getal erachter is hoeveel meldingen er ooit van dat scherm kwamen.
-      </p>
 
       <div className="tw-nul-balk">
         <div className="tw-nul-meter" role="img" aria-label={`${klaar} van ${lijst.length} schermen nagelopen`}>
@@ -121,8 +116,11 @@ export default function Nulmeting({ begin, voorbeeldSlug, tweaks }: {
               return (
                 <li key={r.sleutel} className={"tw-nul-rij" + (gezien ? " tw-nul-af" : "")}>
                   <div className="tw-nul-tekst">
+                    {/* In een nieuw tabblad, zodat je deze lijst niet kwijtraakt
+                        zodra je een scherm bekijkt. Zonder dat moest je na elk
+                        scherm terug en de lijst opnieuw openklappen. */}
                     {r.href
-                      ? <a className="tw-nul-naam" href={r.href}>{r.naam}</a>
+                      ? <a className="tw-nul-naam" href={r.href} target="_blank" rel="noreferrer">{r.naam}</a>
                       : <span className="tw-nul-naam">{r.naam}</span>}
                     <span className="tw-nul-waarvoor">{r.waarvoor}</span>
                   </div>
@@ -133,6 +131,11 @@ export default function Nulmeting({ begin, voorbeeldSlug, tweaks }: {
                       </span>
                     )}
                     {gezien && <span className="tw-nul-datum">{datum(gezien.nagelopen)}</span>}
+                    {r.href && (
+                      <a className="btn btn-ghost btn-klein" href={r.href} target="_blank" rel="noreferrer">
+                        Open scherm
+                      </a>
+                    )}
                     <button
                       type="button"
                       className={"btn btn-klein" + (gezien ? " btn-quiet" : " btn-ghost")}
