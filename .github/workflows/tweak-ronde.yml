@@ -71,6 +71,31 @@ jobs:
 
     steps:
       # ═══════════════════════════════════════════════════════
+      # HET TOKEN SCHOONVEGEN VOOR GEBRUIK
+      # ═══════════════════════════════════════════════════════
+      # Op 15-08-2026 werd elke ronde binnen honderd milliseconden geweigerd met:
+      # "Invalid Authorization header value from CLAUDE_CODE_OAUTH_TOKEN: it
+      # contains a line break at character 81". Het token is 109 tekens, en de
+      # Terminal brak die regel af bij het afdrukken; bij het kopiëren ging die
+      # afbreking mee de GitHub-secret in. Onzichtbaar, en niet iets waar iemand
+      # aan denkt.
+      #
+      # Dus wordt hij hier ontdaan van spaties en regeleindes. `add-mask` gaat er
+      # vóór: GitHub verbergt de opgeslagen waarde automatisch in logboeken, maar
+      # een waarde die wij hier zelf maken kent hij niet, en die zou dus leesbaar
+      # in het logboek kunnen belanden.
+      - name: Token schoonvegen
+        env:
+          RUW_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          SCHOON="$(printf '%s' "$RUW_TOKEN" | tr -d '[:space:]')"
+          echo "::add-mask::$SCHOON"
+          echo "CLAUDE_TOKEN=$SCHOON" >> "$GITHUB_ENV"
+          if [ "${#SCHOON}" -ne "${#RUW_TOKEN}" ]; then
+            echo "Let op: er zaten spaties of regeleindes in het token; die zijn eruit gehaald."
+          fi
+
+      # ═══════════════════════════════════════════════════════
       # WIE BETAALT DEZE RONDE
       # ═══════════════════════════════════════════════════════
       # Staat hier bovenaan en draait altijd, ook als er verder niets te doen is,
@@ -142,7 +167,7 @@ jobs:
           # Nu is er één weg. Ontbreekt het token, dan mislukt de ronde zichtbaar,
           # en dat is met opzet beter dan stilletjes terugvallen op de betaalde
           # sleutel: een rekening hoort nooit een verrassing te zijn.
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_code_oauth_token: ${{ env.CLAUDE_TOKEN }}
           # Dezelfde opdracht als in een chat: .claude/commands/tweaks.md.
           prompt: "/tweaks"
           # HET MODEL HOORT BIJ HET SOORT WERK, EN DAT IS HIER VASTGEZET.
