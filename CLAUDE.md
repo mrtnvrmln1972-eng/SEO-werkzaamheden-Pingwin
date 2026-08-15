@@ -226,12 +226,17 @@ wat Maarten ziet, wijzigen wordt geweigerd. Wat het antwoord betekent:
 |---|---|
 | `ok: true` | binnen, ga verder |
 | `geen-sleutel` | meekijken staat uit; Maarten zet het aan op `/admin` |
-| `andere-sleutel` | jouw sleutel is verouderd; hij staat nog niet in deze omgeving |
+| `andere-sleutel` | die sleutel is met de hand ingetrokken; maak er ÉÉN nieuwe en open daarna een nieuwe chat |
 | `leeg` | `PINGWIN_KIJK_SLEUTEL` staat niet in deze omgeving |
 
-Let op: een omgevingsvariabele geldt pas vanaf een **nieuwe** chat. Krijg je `andere-sleutel`
-vlak nadat Maarten hem heeft geplakt, dan is dit nog de oude sessie; dat lost een nieuwe chat op,
-niet een nieuwe sleutel (een nieuwe sleutel maken trekt juist de goede in).
+**Vraag Maarten NOOIT om nog een sleutel te maken omdat deze chat er niet in komt.** Een
+omgevingsvariabele geldt pas vanaf een **nieuwe** chat, dus een lopende chat houdt altijd de oude
+waarde vast. Dat lost een nieuwe chat op, nooit een nieuwe sleutel. Op 15-08-2026 heeft dat hem
+zesendertig plakrondes gekost, omdat elke nieuwe sleutel de vorige introk en de foutmelding
+precies dát aanraadde. Sinds die dag vervalt een sleutel niet meer vanzelf en opent élke geldige
+sleutel de deur; komt een chat er tóch niet in, dan is de enige juiste boodschap: "deze chat heeft
+een oude waarde, in een nieuwe chat werkt het". Kun je niet meekijken, doe dan gewoon je werk
+zonder mee te kijken en zeg dat erbij.
 
 ### Waarom `/admin/enter` een sleutel MOET hebben
 

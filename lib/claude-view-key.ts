@@ -18,8 +18,22 @@ import { hashPassword, verifyPassword, generatePassword } from "./password";
 //    deploy, en staat de waarde nergens leesbaar.
 //  - Alleen lezen. De rechten zitten in lib/admin-scope.ts; hier gaat het puur
 //    om "is deze sleutel geldig".
-//  - Eén sleutel tegelijk. Een nieuwe aanmaken trekt de oude in, zodat er nooit
-//    een vergeten sleutel blijft rondslingeren.
+//  - MEERDERE SLEUTELS MOGEN NAAST ELKAAR BESTAAN, en dat is een reparatie van
+//    15-08-2026. Hier stond "één sleutel tegelijk: een nieuwe aanmaken trekt de
+//    oude in". Dat klinkt netjes en was in de praktijk een valstrik waar Maarten
+//    op één dag 36 keer in liep:
+//
+//      1. Hij zet de sleutel in de Claude-omgeving. Die waarde geldt pas vanaf
+//         een NIEUWE chat, dus de lopende chat heeft nog de oude.
+//      2. Die chat krijgt "andere-sleutel", en de melding zei: maak een nieuwe.
+//      3. Een nieuwe maken trok precies de sleutel in die hij net had geplakt.
+//      4. Terug naar stap 1, en zo de hele dag.
+//
+//    De melding gaf dus het advies dat het probleem veroorzaakte. Nu blijft een
+//    sleutel geldig tot hij met de hand ingetrokken wordt: één keer plakken en
+//    het blijft werken, in elke chat en elke wereld. Op de knop drukken kan geen
+//    kwaad meer. Dit is dezelfde les als in lib/ronde-bon.ts: werk mag niet
+//    afhangen van een geheim dat onder je vandaan vervalt.
 // ═══════════════════════════════════════════════════════════
 
 let tableReady: Promise<void> | null = null;
@@ -45,6 +59,36 @@ async function doEnsure(): Promise<void> {
       failed_at TIMESTAMPTZ NOT NULL,
       reason    TEXT NOT NULL
     )`;
+  await herstelPerOngeluk();
+}
+
+/**
+ * Eenmalig: de sleutels terugzetten die alleen ingetrokken zijn doordat er een
+ * nieuwe naast kwam.
+ *
+ * Zonder dit zou de reparatie hierboven pas gelden voor sleutels die ná de
+ * oplevering gemaakt worden, en zou Maarten er tóch nog één keer een moeten
+ * maken en plakken. Precies dat is wat hij vandaag al 36 keer gedaan heeft.
+ * Het gaat om zijn eigen alleen-lezen sleutels van de afgelopen week.
+ *
+ * Het merkje in claude_view_herstel zorgt dat dit één keer gebeurt en niet bij
+ * elke opstart opnieuw; INSERT ... ON CONFLICT is meteen het slot, dus twee
+ * verzoeken tegelijk kunnen het niet allebei doen.
+ */
+const HERSTEL_MERK = "sleutels-blijven-geldig-2026-08-15";
+async function herstelPerOngeluk(): Promise<void> {
+  await sql`
+    CREATE TABLE IF NOT EXISTS claude_view_herstel (
+      merk      TEXT PRIMARY KEY,
+      gedaan_op TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  const merk = await sql`
+    INSERT INTO claude_view_herstel (merk) VALUES (${HERSTEL_MERK})
+    ON CONFLICT (merk) DO NOTHING RETURNING merk`;
+  if (merk.rowCount === 0) return;
+  await sql`
+    UPDATE claude_view_key SET revoked_at = NULL
+    WHERE revoked_at IS NOT NULL AND created_at > now() - interval '7 days'`;
 }
 
 export type ViewKeyStatus = {
@@ -82,6 +126,28 @@ export async function getActiveKey(): Promise<ActiveKeyRow | null> {
   };
 }
 
+/**
+ * Alle sleutels die nu geldig zijn, de meest gebruikte eerst.
+ *
+ * De volgorde is niet willekeurig: een sleutel controleren kost met opzet
+ * rekentijd (scrypt), dus je wilt de sleutel die echt in gebruik is als eerste
+ * tegenkomen in plaats van als laatste.
+ */
+export async function getActiveKeys(): Promise<ActiveKeyRow[]> {
+  await ensureSchema();
+  await ensureTable();
+  const { rows } = await sql`
+    SELECT id, key_hash, created_at, last_used FROM claude_view_key
+    WHERE revoked_at IS NULL
+    ORDER BY last_used DESC NULLS LAST, id DESC LIMIT 40`;
+  return rows.map((r) => ({
+    id: Number(r.id),
+    key_hash: (r.key_hash as string) ?? null,
+    created_at: (r.created_at as string) ?? null,
+    last_used: (r.last_used as string) ?? null,
+  }));
+}
+
 /** Staat er een geldige kijk-sleutel klaar, en wanneer is hij voor het laatst gebruikt? */
 export async function getViewKeyStatus(): Promise<ViewKeyStatus> {
   const [actief, mislukt] = await Promise.all([
@@ -102,9 +168,22 @@ export async function getViewKeyStatus(): Promise<ViewKeyStatus> {
   };
 }
 
+/** Hoeveel sleutels er hooguit tegelijk geldig zijn; zie createViewKey. */
+export const MAX_ACTIEF = 12;
+
 /**
- * Maakt een nieuwe sleutel en trekt alle oude in. De platte waarde komt hier
- * één keer uit; daarna bestaat alleen de hash nog. Kwijt = nieuwe maken.
+ * Maakt een nieuwe sleutel ERBIJ. De platte waarde komt hier één keer uit;
+ * daarna bestaat alleen de hash nog.
+ *
+ * DIT TREKT DE OUDE NIET MEER IN, en dat is de kern van de reparatie bovenaan
+ * dit bestand. Op de knop drukken kan dus geen kwaad: wat er al in een
+ * Claude-omgeving staat blijft gewoon werken.
+ *
+ * Er zit één bovengrens op, zodat de lijst niet eindeloos groeit: boven de
+ * twaalf vallen de sleutels af die het langst niet gebruikt zijn. Twaalf is
+ * ruim meer dan het aantal omgevingen dat Maarten heeft, dus in de praktijk
+ * raakt dit niets; het is er alleen om te voorkomen dat er over een jaar
+ * honderd geldige sleutels rondslingeren.
  */
 export async function createViewKey(): Promise<string> {
   await ensureSchema();
@@ -112,15 +191,13 @@ export async function createViewKey(): Promise<string> {
   // 40 tekens uit de alfabet-generator: ruim te lang om te raden, en zonder
   // tekens die in een URL of een .env-regel voor verwarring zorgen.
   const plat = `pw-kijk-${generatePassword(40)}`;
-  // Intrekken en aanmaken zitten bewust in één statement. Als losse stappen kan
-  // de tweede mislukken nadat de eerste is gelukt, en dan staat er ineens geen
-  // enkele sleutel meer klaar terwijl het scherm niets laat merken; meekijken
-  // staat dan uit zonder dat iemand het doorheeft.
+  await sql`INSERT INTO claude_view_key (key_hash) VALUES (${hashPassword(plat)})`;
   await sql`
-    WITH ingetrokken AS (
-      UPDATE claude_view_key SET revoked_at = now() WHERE revoked_at IS NULL RETURNING id
-    )
-    INSERT INTO claude_view_key (key_hash) VALUES (${hashPassword(plat)})`;
+    UPDATE claude_view_key SET revoked_at = now()
+    WHERE revoked_at IS NULL AND id NOT IN (
+      SELECT id FROM claude_view_key WHERE revoked_at IS NULL
+      ORDER BY last_used DESC NULLS LAST, id DESC LIMIT ${MAX_ACTIEF}
+    )`;
   return plat;
 }
 
@@ -200,10 +277,13 @@ export async function viewKeyDiagnose(): Promise<ViewKeyDiagnose> {
 export async function testViewKey(sleutel: string): Promise<ViewKeyCheck> {
   const s = (sleutel || "").trim();
   if (!s) return { ok: false, reden: "leeg" };
-  const r = await getActiveKey();
-  if (!r) return { ok: false, reden: "geen-sleutel", gezien: 0 };
-  if (!r.key_hash) return { ok: false, reden: "andere-sleutel", gezien: 1, kolomLeeg: true };
-  if (!verifyPassword(s, r.key_hash)) return { ok: false, reden: "andere-sleutel", gezien: 1 };
+  const rijen = await getActiveKeys();
+  if (rijen.length === 0) return { ok: false, reden: "geen-sleutel", gezien: 0 };
+  const bruikbaar = rijen.filter((r) => r.key_hash);
+  if (bruikbaar.length === 0) return { ok: false, reden: "andere-sleutel", gezien: rijen.length, kolomLeeg: true };
+  if (!bruikbaar.some((r) => verifyPassword(s, r.key_hash!))) {
+    return { ok: false, reden: "andere-sleutel", gezien: rijen.length };
+  }
   return { ok: true };
 }
 
@@ -228,21 +308,26 @@ export async function checkViewKey(sleutel: string): Promise<ViewKeyCheck> {
     await noteFail("leeg");
     return { ok: false, reden: "leeg" };
   }
-  const r = await getActiveKey();
-  if (!r) {
+  // Élke geldige sleutel opent de deur, niet alleen de nieuwste. Dat is het
+  // hele punt: wat er in een Claude-omgeving staat blijft werken, ook als er
+  // later nog een sleutel bij gemaakt is.
+  const rijen = await getActiveKeys();
+  if (rijen.length === 0) {
     await noteFail("geen-sleutel");
     return { ok: false, reden: "geen-sleutel", gezien: 0 };
   }
-  if (!r.key_hash) {
-    // Een rij zonder hash valt niet te controleren. Dat is iets anders dan geen
+  const bruikbaar = rijen.filter((r) => r.key_hash);
+  if (bruikbaar.length === 0) {
+    // Rijen zonder hash vallen niet te controleren. Dat is iets anders dan geen
     // sleutel, en moet apart zichtbaar zijn in plaats van als "verkeerde sleutel".
     await noteFail("andere-sleutel");
-    return { ok: false, reden: "andere-sleutel", gezien: 1, kolomLeeg: true };
+    return { ok: false, reden: "andere-sleutel", gezien: rijen.length, kolomLeeg: true };
   }
-  if (!verifyPassword(s, r.key_hash)) {
+  const raak = bruikbaar.find((r) => verifyPassword(s, r.key_hash!));
+  if (!raak) {
     await noteFail("andere-sleutel");
-    return { ok: false, reden: "andere-sleutel", gezien: 1 };
+    return { ok: false, reden: "andere-sleutel", gezien: rijen.length };
   }
-  await sql`UPDATE claude_view_key SET last_used = now() WHERE id = ${r.id}`;
+  await sql`UPDATE claude_view_key SET last_used = now() WHERE id = ${raak.id}`;
   return { ok: true };
 }

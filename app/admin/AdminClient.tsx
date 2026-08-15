@@ -49,7 +49,6 @@ function KijkSleutel() {
   useEffect(() => { void laad(); }, []);
 
   async function maak() {
-    if (status?.actief && !window.confirm("Er is al een sleutel. Een nieuwe maken trekt de oude in; Claude komt er dan pas weer bij als je de nieuwe in je Claude-omgeving zet.\n\nDoorgaan?")) return;
     setBezig(true);
     setFout(null);
     setGetest(false);
@@ -95,7 +94,10 @@ function KijkSleutel() {
     mislukt && (!status?.laatstGebruikt || new Date(mislukt) > new Date(status.laatstGebruikt)) ? mislukt : null;
   const waaromNiet: Record<NonNullable<KijkStatus["mislukteReden"]>, string> = {
     "geen-sleutel": "er stond toen geen sleutel klaar. Zet meekijken hieronder aan.",
-    "andere-sleutel": "hij gebruikte een oudere sleutel. Maak hieronder een nieuwe en zet die in je Claude-omgeving.",
+    "andere-sleutel":
+      "hij gebruikte een ingetrokken sleutel. Maak hieronder één nieuwe, zet hem in je Claude-omgeving en open " +
+      "daarna een nieuwe chat. Een chat die al openstond blijft dit melden; dat is normaal en geen reden om er " +
+      "nóg een te maken.",
     leeg: "er kwam geen sleutel mee. Controleer of PINGWIN_KIJK_SLEUTEL in je Claude-omgeving staat.",
   };
 
@@ -149,7 +151,7 @@ function KijkSleutel() {
                 <li>Ga met je muis over die omgeving en klik het tandwieltje</li>
                 <li>Plak de regel hierboven in het veld <strong>Environment variables</strong></li>
                 <li>Zet <strong>Network access</strong> op <strong>Custom</strong> en voeg <code>pingwin-seo-dashboard.vercel.app</code> toe. Vink ook &ldquo;Also include default list of common package managers&rdquo; aan.</li>
-                <li>Opslaan. Het geldt vanaf je volgende sessie.</li>
+                <li>Opslaan, en dan een <strong>nieuwe</strong> chat openen. Een chat die al openstond blijft de oude waarde gebruiken; dat is normaal, en nooit een reden om nog een sleutel te maken.</li>
               </ol>
             </div>
           )}

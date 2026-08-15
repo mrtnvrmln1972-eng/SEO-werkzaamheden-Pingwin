@@ -57,9 +57,18 @@ export async function GET(req: NextRequest) {
   if (!uitkomst.ok) {
     const uitleg: Record<typeof uitkomst.reden, string> = {
       "geen-sleutel":
-        "Er staat geen kijk-sleutel klaar. Zet meekijken aan op /admin en zet de nieuwe sleutel in de Claude-omgeving.",
+        "Er staat geen kijk-sleutel klaar. Zet meekijken aan op /admin, zet die ene sleutel in de Claude-omgeving " +
+        "en open daarna een nieuwe chat.",
+      // LET OP, DIT ANTWOORD HEEFT EEN DAG ELLENDE VEROORZAAKT.
+      // Hier stond: "maak op /admin een nieuwe sleutel". Dat was precies de
+      // handeling die de zojuist geplakte sleutel introk, waarna dezelfde
+      // melding weer verscheen. Maarten liep daar op 15-08-2026 zesendertig
+      // keer doorheen. Sinds die dag vervalt een sleutel niet meer vanzelf,
+      // dus een nieuwe maken is nooit meer het antwoord op deze melding.
       "andere-sleutel":
-        "Deze sleutel is verlopen: er staat een nieuwere klaar. Maak op /admin een nieuwe sleutel en zet die in de Claude-omgeving.",
+        "Deze sleutel is met de hand ingetrokken (of is van vóór 15-08-2026). Sleutels vervallen niet meer vanzelf. " +
+        "Maak op /admin ÉÉN nieuwe, zet hem in de Claude-omgeving en open daarna een nieuwe chat. Blijft deze chat " +
+        "dit melden, dan is dat normaal: een lopende chat houdt de oude waarde. Maak dus géén tweede sleutel.",
       leeg: "Er kwam geen sleutel mee in het verzoek.",
     };
     // De telling die hier tijdens het uitzoeken bij zat hoort niet op een open
