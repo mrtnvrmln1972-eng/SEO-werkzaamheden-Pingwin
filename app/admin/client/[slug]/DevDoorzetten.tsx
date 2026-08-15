@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 // ═══════════════════════════════════════════════════════════
 // DOORZETTEN NAAR DE DEVELOPER
@@ -99,7 +100,12 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
 
   const aantal = docs.filter((d) => gekozen[d.url]).length;
 
-  return (
+  // Buiten de kaart om, rechtstreeks in de pagina gehangen. Dit venster hing in de
+  // kaart zelf en kroop daardoor net wel, net niet onder de kopbalk vandaan; los
+  // van de kaart zweeft het altijd netjes midden op het scherm.
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div className="wp-mail-overlay" onClick={(e) => { if (e.target === e.currentTarget) onSluit(); }}>
       <div className="wp-mail-modal dev-doorzet">
         <div className="wp-mail-head">
@@ -180,6 +186,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

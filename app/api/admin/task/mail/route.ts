@@ -3,6 +3,7 @@ import { guardSlug } from "../../../../../lib/admin-scope";
 import { msSendMail, msStatus } from "../../../../../lib/ms-graph";
 import { getClientBySlug } from "../../../../../lib/clients";
 import { planOpvolging } from "../../../../../lib/mail-opvolg";
+import { bouwMailHtml } from "../../../../../lib/mail-body";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -18,53 +19,6 @@ export const maxDuration = 60;
 // Mens aan het stuur blijft gelden: er gaat alleen iets weg als Maarten op
 // Versturen klikt, met de tekst die hij op dat moment ziet.
 
-// Documentnamen worden echte links. De assistent noemt het document bij naam
-// ("het copy-document"); hier hangen we de link eraan, zodat er nooit een kale
-// URL van honderd tekens in de mail staat.
-// Geeft naast de tekst terug WELKE links er niet in pasten. Die mogen nooit stil
-// verdwijnen: op 03-08-2026 stuurde Maarten een mail met "kun je deze tekst op de
-// bijgevoegde link plaatsen?" terwijl de aangevinkte link nergens stond. De
-// ontvanger verwijst dan naar iets wat er niet is.
-function linkify(html: string, links: { label: string; url: string }[]): { html: string; ongeplaatst: { label: string; url: string }[] } {
-  let uit = html;
-  const ongeplaatst: { label: string; url: string }[] = [];
-  for (const l of links) {
-    if (!l.url || !l.label) continue;
-    // Alleen de eerste vermelding linken: een mail met drie keer dezelfde link
-    // erin leest rommelig.
-    const woord = l.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(^|[\\s(>])(${woord})(?=[\\s).,:;!?<]|$)`, "i");
-    if (re.test(uit)) {
-      uit = uit.replace(re, (_m, pre, tekst) => `${pre}<a href="${l.url}">${tekst}</a>`);
-      continue;
-    }
-    // Staat de naam niet in de tekst, dan een kale URL vervangen door de naam.
-    if (uit.includes(l.url)) { uit = uit.split(l.url).join(`<a href="${l.url}">${l.label}</a>`); continue; }
-    ongeplaatst.push(l);
-  }
-  return { html: uit, ongeplaatst };
-}
-
-// Wat niet in de lopende tekst paste, komt er onderaan alsnog bij. Simpel, zoals
-// een mail hoort: een regel per link, geen tabel en geen kopjes.
-function plakOnderaan(html: string, links: { label: string; url: string }[]): string {
-  if (!links.length) return html;
-  const regels = links.map((l) => `<p><a href="${l.url}">${l.label}</a></p>`).join("\n");
-  return `${html}\n${regels}`;
-}
-
-// Meegestuurde screenshots (geplakt of gesleept in het bewerkbare vak) gaan
-// als losse <img>-blokken onderaan de mail, na de links. Zelfde plek en vorm
-// als in MailPopup, dat andere mailvenster in het dashboard.
-function plakAfbeeldingen(html: string, afbeeldingen: string[]): string {
-  if (!afbeeldingen.length) return html;
-  const imgs = afbeeldingen
-    .filter((a) => /^data:image\//i.test(a))
-    .map((a) => `<img src="${a}" alt="Bijgevoegde afbeelding" style="max-width:100%;margin-top:8px;display:block;border-radius:8px;">`)
-    .join("\n");
-  return `${html}\n${imgs}`;
-}
-
 // Adressen opschonen. Microsoft weigerde "maarten@pingwin.nl," omdat de komma als
 // onderdeel van het adres meeging: "Recipient is not resolved". Splitsen op komma en
 // puntkomma lost dat op en maakt meerdere ontvangers meteen mogelijk.
@@ -75,48 +29,6 @@ function adressen(ruw: string): string[] {
     .filter(Boolean);
 }
 const ADRES_OK = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-// Paden naar de live site worden echte links, zodat de sitebouwer overal kan
-// doorklikken zonder een URL over te typen.
-function linkifyPaden(html: string, domein: string): string {
-  const basis = (domein || "").replace(/^https?:\/\//i, "").replace(/\/+$/, "");
-  if (!basis) return html;
-  const delen = html.split(/(<a\b[^>]*>[\s\S]*?<\/a>|<[^>]+>)/gi);
-  return delen.map((seg, i) => {
-    if (i % 2 === 1 || !seg) return seg;   // een tag of bestaande link: niet aanraken
-    return seg.replace(/(^|[\s(>])(\/[a-z][a-z0-9-]*(?:\/[a-z0-9-]+)*\/?)(?=[\s).,:;!?]|$)/gi,
-      (_m, pre, pad) => `${pre}<a href="https://${basis}${pad}">${pad}</a>`);
-  }).join("");
-}
-
-function naarHtml(tekst: string, links: { label: string; url: string }[]): { html: string; ongeplaatst: { label: string; url: string }[] } {
-  const veilig = (tekst || "")
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  // Een enkel vet woord en een genummerd lijstje mogen wel. Dat doet Maarten in
-  // zijn eigen mails ook en het leest prettiger; het is iets anders dan een mail
-  // volplempen met kopjes en kaders. Sterretjes die niets omsluiten blijven staan
-  // zoals ze staan, zodat "5 * 3" geen opmaak wordt.
-  const vet = (s: string) => s.replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g, "<strong>$1</strong>");
-  const regels = veilig.split("\n").map((r) => r.trimEnd());
-  const uit: string[] = [];
-  let inLijst: "ul" | "ol" | null = null;
-  const sluit = () => { if (inLijst) { uit.push(`</${inLijst}>`); inLijst = null; } };
-  for (const r of regels) {
-    const bullet = /^\s*[-*]\s+(.*)$/.exec(r);
-    const genummerd = /^\s*\d+[.)]\s+(.*)$/.exec(r);
-    if (bullet || genummerd) {
-      const soort = bullet ? "ul" : "ol";
-      if (inLijst !== soort) { sluit(); uit.push(`<${soort}>`); inLijst = soort; }
-      uit.push(`<li>${vet((bullet || genummerd)![1])}</li>`);
-      continue;
-    }
-    sluit();
-    if (!r.trim()) { uit.push(""); continue; }
-    uit.push(`<p>${vet(r)}</p>`);
-  }
-  sluit();
-  return linkify(uit.filter((x) => x !== "").join("\n"), links);
-}
 
 export async function POST(req: NextRequest) {
   let body: { slug?: string; to?: string; onderwerp?: string; tekst?: string; links?: { label: string; url: string }[];
@@ -152,8 +64,7 @@ export async function POST(req: NextRequest) {
   // Max 6, zelfde grens als het venster zelf hanteert bij het toevoegen.
   const afbeeldingen = (Array.isArray(body.afbeeldingen) ? body.afbeeldingen : []).filter((a) => typeof a === "string").slice(0, 6);
   const klant = await getClientBySlug(slug).catch(() => null);
-  const { html: metLinks, ongeplaatst } = naarHtml(tekst, links);
-  const html = plakAfbeeldingen(linkifyPaden(plakOnderaan(metLinks, ongeplaatst), klant?.domain || ""), afbeeldingen);
+  const html = bouwMailHtml(tekst, links, klant?.domain || "", afbeeldingen);
   const r = await msSendMail(ontvangers, onderwerp || "Bericht van Pingwin", html);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error || "Versturen mislukte." }, { status: 502 });
 

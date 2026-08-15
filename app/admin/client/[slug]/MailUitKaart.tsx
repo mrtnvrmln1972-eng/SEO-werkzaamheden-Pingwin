@@ -16,7 +16,9 @@
 // sluit.
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { herzetAanhef } from "../../../../lib/aanhef";
+import { linkRegel } from "../../../../lib/mail-body";
 import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
 import { type WpTask, type WpPageInfo } from "./WeekplanCard";
 
@@ -127,7 +129,7 @@ export default function MailUitKaart({
     if (c) {
       setAud(c.aud); setTo(c.to); setOnderwerp(c.onderwerp);
       setInstr(c.instr || ""); setLinks(c.links || {});
-      setTimeout(() => { if (ref.current) ref.current.innerText = c!.tekst || ""; }, 0);
+      if (ref.current) ref.current.innerText = c.tekst || "";
       return;
     }
     // De pagina staat standaard aangevinkt: bij elke mail hierover wil je weten
@@ -139,10 +141,18 @@ export default function MailUitKaart({
     const concept = mailUitTekst((t.toelichting || "").replace(/<[^>]*>/g, ""));
     if (concept) {
       if (concept.onderwerp) setOnderwerp(concept.onderwerp);
-      setTimeout(() => { if (ref.current) ref.current.innerText = concept.body; }, 0);
+      if (ref.current) ref.current.innerText = concept.body;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, t.id]);
+
+  // Vink je iets aan of uit bij "Meesturen", of komt de documentenlijst binnen,
+  // dan staan de linkregels onderaan de mail meteen goed. Dit reageert alleen op
+  // die twee dingen, dus tijdens het typen gebeurt er niets met je tekst.
+  useEffect(() => {
+    zetLinksInTekst(links);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [links, docs]);
 
   // Alles wat je vanuit deze kaart kunt meesturen, inclusief de pagina zelf: de
   // developer moet weten wáár de tekst naartoe moet.
@@ -168,6 +178,31 @@ export default function MailUitKaart({
     return uit;
   }
 
+  // ── De links staan zichtbaar in de mail, niet pas na het versturen ──────────
+  // Wat je aanvinkt bij "Meesturen" werd stil aan de mail geplakt op het moment
+  // dat je op Versturen drukte. Onderweg zag je hem dus niet en kon je hem ook
+  // niet in een zin verwerken ("de nieuwe tekst staat in <link>, hij moet op
+  // <link>"). Nu verschijnt elke aangevinkte link meteen onderaan de mail, als
+  // losse regel met de volledige URL erbij, zodat je hem kunt zien, kopiëren of
+  // in een zin zetten. Zet je hem zelf in een zin, dan blijft hij daar: we zien
+  // dat de URL al in de tekst staat en plakken hem niet nog een keer onderaan.
+  // De vorm van zo'n regel staat in lib/mail-body.ts, want de verstuurroute moet
+  // hem daar precies zo herkennen en tot één nette link maken.
+  function zetLinksInTekst(gekozen: Record<string, boolean>) {
+    const el = ref.current;
+    if (!el) return;
+    const alle = docLinks();
+    if (!alle.length) return;
+    // Alleen onze eigen, onveranderde regels halen we weg. Heb je zo'n regel
+    // omgeschreven tot een zin, dan is het jouw tekst en blijft hij staan.
+    const eigen = new Set(alle.map(linkRegel));
+    const romp = (el.innerText || "").split("\n")
+      .filter((r) => !eigen.has(r.trim())).join("\n").replace(/\s+$/, "");
+    const nog = alle.filter((l) => gekozen[l.key] && !romp.includes(l.url));
+    const nieuw = nog.length ? `${romp ? `${romp}\n\n` : ""}${nog.map(linkRegel).join("\n")}` : romp;
+    if (nieuw !== el.innerText) el.innerText = nieuw;
+  }
+
   function sluit() { bewaarConcept(); onClose(); }
 
   async function schrijf(gekozen: Record<string, boolean>, adres: string) {
@@ -187,6 +222,9 @@ export default function MailUitKaart({
         if (m) { setOnderwerp(m[1].trim()); regels.shift(); while (regels[0] !== undefined && !regels[0].trim()) regels.shift(); }
         else setOnderwerp("");
         if (ref.current) ref.current.innerText = regels.join("\n").trim();
+        // De assistent schrijft de namen van de documenten in de tekst; de links
+        // zelf zet dit venster eronder, zodat je ze ziet staan.
+        zetLinksInTekst(gekozen);
       } else setErr(d?.error || "Uitleg maken mislukt.");
     } catch { setErr("De assistent is niet bereikbaar."); } finally { setBusy(false); }
   }
@@ -222,7 +260,9 @@ export default function MailUitKaart({
 
   const lijst = docLinks();
 
-  return (
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
     <div className="wp-mail-overlay" onClick={(e) => { if (e.target === e.currentTarget) sluit(); }}>
       <div className="wp-mail-modal">
         <div className="wp-mail-head">
@@ -312,6 +352,7 @@ export default function MailUitKaart({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

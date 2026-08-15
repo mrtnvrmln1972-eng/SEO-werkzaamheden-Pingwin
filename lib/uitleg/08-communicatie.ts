@@ -48,6 +48,12 @@ export const HOOFDSTUK: Hoofdstuk = {
         "de mail mee. Ditzelfde geldt overal in het dashboard waar dit mailvenster verschijnt, niet alleen bij " +
         "de sitebouwer. Het andere mailvenster, \"Mail vanuit deze kaart\" (de Mail-knop op een projectkaart in " +
         "de weekplanning), is een los scherm en heeft dezelfde plak-of-sleep-knop nu ook.\n\n" +
+        "Wat je aanvinkt bij \"Meesturen\" (de pagina, de copy, de blauwdruk) verschijnt meteen onderaan de " +
+        "mail, met de volledige webadressen erbij. Vroeger werden die pas bij het versturen onzichtbaar " +
+        "aangeplakt, dus je zag ze niet en kon ze niet in een zin verwerken. Nu kun je ze gewoon oppakken en " +
+        "in je tekst zetten (\"de nieuwe tekst staat hier, hij moet op deze pagina\"); de ontvanger krijgt " +
+        "netjes de naam van het document als link, niet een adres van honderd tekens. Vink je iets uit, dan " +
+        "verdwijnt de regel weer.\n\n" +
         "Daarnaast staat er bij een taak die van een projectkaart komt de knop \"Is dit doorgevoerd?\": dezelfde " +
         "meting als op de kaart zelf, maar dan met één klik vanuit de lijst, zodat je bij een terugkoppeling van " +
         "de sitebouwer niet eerst de kaart hoeft op te zoeken.",
