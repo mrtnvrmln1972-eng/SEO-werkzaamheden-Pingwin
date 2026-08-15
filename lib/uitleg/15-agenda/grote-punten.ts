@@ -75,6 +75,17 @@ export const BLOKKEN: Uitklapper[] = [
       "gemiddelde, want één ronde die vastliep zou een gemiddelde blijvend scheeftrekken. Duurt iets " +
       "merkbaar langer dan gewoonlijk, dan zegt het scherm dat, in plaats van een balk te tonen die niet " +
       "opschiet.\n\n" +
+      "**Een ronde die draait maar niets doet, kan niet meer stil voorbijgaan.** Op 15 augustus las de " +
+      "ronde bij het dashboard op wat er klaarstond, en pakte daarbij het verkeerde woord: hij las wat er " +
+      "op dát moment liep in plaats van wat er te doen was. Die twee heten toevallig hetzelfde en " +
+      "verschillen één letter, dus het viel niemand op. Gevolg: elke ronde startte netjes, sloeg zowel " +
+      "bouwen als een plan schrijven over, en meldde \"geslaagd\". Op het scherm bleef het punt op \"nog " +
+      "niet begonnen\" staan en leek de knop \"Begin nu met het plan\" kapot, terwijl er in werkelijkheid " +
+      "wél iets draaide dat alleen niets deed. Twee dingen zijn er nu anders: de ronde leest dat woord op " +
+      "zijn eigen plek in plaats van ernaar te zoeken, en een antwoord dat hij niet herkent laat hem " +
+      "mislukken in plaats van doorgaan. Een proef rekent bij élke bouw na dat het zo blijft, en legt " +
+      "daarbij de woorden die de ronde kent naast de woorden die het dashboard teruggeeft; lopen die uit " +
+      "elkaar, dan komt het niet live.\n\n" +
       "**En bij elk punt in de wachtrij staat wanneer het aan de beurt is.** Vannacht om 22:00, of de nacht " +
       "erna als het er niet meer bij past. Vijf grote punten zijn geen één nacht, en dat hoor je te zien " +
       "voordat je gaat wachten, niet 's ochtends te merken. De volgorde sleep je zelf; die volgorde ís de " +

@@ -94,6 +94,8 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
   const [sleep, setSleep] = useState<number | null>(null);
   const [bericht, setBericht] = useState<{ soort: "ok" | "fout"; tekst: string } | null>(null);
   const [draait, setDraait] = useState(false);
+  /** Het punt waarvan het plan nu opgestart wordt; zolang dat loopt geen tweede klik. */
+  const [startBezig, setStartBezig] = useState<number | null>(null);
   const [nieuwTitel, setNieuwTitel] = useState("");
   const [nieuwOmvang, setNieuwOmvang] = useState<Omvang>("middel");
   const [knopKlaar, setKnopKlaar] = useState<{ klaar: boolean; reden?: string } | null>(null);
@@ -205,15 +207,38 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
    * langskwam dat het oppakte. Dat is precies het soort automatisch-elk-uur dat
    * er niet moet zijn: denkwerk kost geld en hoort te beginnen omdat jij het
    * vraagt, niet omdat de klok verspringt.
+   *
+   * TWEE DINGEN HIER ZIJN EEN REPARATIE VAN 15-08-2026.
+   * De melding "ik ga er nu een plan van maken" werd gezet vóórdat het starten
+   * gelukt was, en een start die halverwege stukliep (geen antwoord, of een
+   * antwoord dat geen JSON was) werd stilzwijgend genegeerd. Je kreeg dus een
+   * geruststellende zin te zien terwijl er niets gebeurde. Nu komt de melding
+   * pas als het echt gestart is, en zegt hij het als dat niet lukte.
+   *
+   * En zolang het starten loopt, staat de knop op slot. Zonder dat klik je bij
+   * twijfel nog een keer, en dan staan er twee rondes in de rij voor werk dat
+   * er maar één keer is; op 15 augustus stonden er zo vier tegelijk.
    */
   async function planNu(id: number) {
-    const punt = punten.find((x) => x.id === id);
-    if (punt?.stand !== "plan-maken" && !(await stuur({ id, stand: "plan-maken" }))) return;
-    setBericht({ soort: "ok", tekst: "Ik ga er nu een plan van maken; je ziet hierboven hoe ver het is." });
-    const r = await fetch("/api/admin/punten/draaien", { method: "POST" }).catch(() => null);
-    const j = await r?.json().catch(() => null);
-    if (j && !j.ok) setBericht({ soort: "fout", tekst: j.error || "Starten lukte niet." });
-    setTimeout(() => void ververs(), 8000);
+    if (startBezig !== null) return;
+    setStartBezig(id);
+    try {
+      const punt = punten.find((x) => x.id === id);
+      if (punt?.stand !== "plan-maken" && !(await stuur({ id, stand: "plan-maken" }))) return;
+      const r = await fetch("/api/admin/punten/draaien", { method: "POST" }).catch(() => null);
+      const j = await r?.json().catch(() => null);
+      if (!j?.ok) {
+        setBericht({
+          soort: "fout",
+          tekst: j?.error || "Het plan is niet gestart; er kwam geen antwoord terug. Probeer het zo nog eens.",
+        });
+        return;
+      }
+      setBericht({ soort: "ok", tekst: "Ik ga er nu een plan van maken; je ziet hierboven hoe ver het is." });
+      setTimeout(() => void ververs(), 8000);
+    } finally {
+      setStartBezig(null);
+    }
   }
 
   async function draaiNu() {
@@ -379,8 +404,13 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
             )}
             {opties.idee && (
               <div className="pnl-acties-groep">
-                <button type="button" className="btn btn-primary btn-klein" onClick={() => void planNu(p.id)}>
-                  Maak er nu een plan van
+                <button
+                  type="button"
+                  className="btn btn-primary btn-klein"
+                  onClick={() => void planNu(p.id)}
+                  disabled={startBezig !== null}
+                >
+                  {startBezig === p.id ? "Bezig met starten…" : "Maak er nu een plan van"}
                 </button>
                 <button type="button" className="btn btn-ghost btn-klein" onClick={() => setAntwoordVoor(p.id)}>
                   Eerst wat meegeven
@@ -393,8 +423,13 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
                     bezig, hij wacht. Dat stond er eerst niet bij, en dan lijkt
                     het of er nagedacht wordt terwijl er niets draait. */}
                 {!p.ronde && (
-                  <button type="button" className="btn btn-primary btn-klein" onClick={() => void planNu(p.id)}>
-                    Begin nu met het plan
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-klein"
+                    onClick={() => void planNu(p.id)}
+                    disabled={startBezig !== null}
+                  >
+                    {startBezig === p.id ? "Bezig met starten…" : "Begin nu met het plan"}
                   </button>
                 )}
                 <button type="button" className="btn btn-ghost btn-klein" onClick={() => setAntwoordVoor(p.id)}>

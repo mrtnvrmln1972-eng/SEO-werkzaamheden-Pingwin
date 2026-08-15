@@ -82,13 +82,38 @@ jobs:
             *) echo "::error::De ronde kan niet bij het dashboard. Hij bouwt dus niets; dit is expres een mislukking en geen stille afloop."; exit 1 ;;
           esac
 
+      # ═══════════════════════════════════════════════════════
+      # WAT ER KLAARSTAAT, GELEZEN OP DE JUISTE PLEK
+      # ═══════════════════════════════════════════════════════
+      # Hier stond `grep -o '"werk":"[a-z]*"' | head -1`, en dat is naar één
+      # woord vissen in plaats van het op zijn eigen plek lezen. Het antwoord
+      # bevat "werk" namelijk twee keer:
+      #
+      #   stand.werk     wat er NU loopt          "bouw" of "plan"
+      #   volgende.werk  wat er KLAARSTAAT        "bouwen" of "plan"
+      #
+      # `stand` staat vooraan, dus de eerste treffer was altijd stand.werk, en
+      # die is "bouw" zolang er niets loopt. Dat is niet "bouwen" en niet
+      # "plan", dus beide stappen hieronder werden élke keer overgeslagen. De
+      # ronde startte, kleurde groen en deed niets; op het scherm bleef het punt
+      # op "nog niet begonnen" staan en leek de knop "Begin nu met het plan"
+      # kapot. Dit gold ook voor het bouwen, dus de hele nacht liep leeg.
+      # Live aangetroffen op 15-08-2026.
+      #
+      # Nu wordt het pad expliciet gelezen (jq staat op elke runner), en een
+      # antwoord dat we niet kennen laat de ronde hard mislukken. Dezelfde regel
+      # als bij de toegangsstap hierboven: liever zichtbaar stuk dan stil niets.
       - name: Wat staat er klaar?
         id: kijk
         run: |
           ANTWOORD="$(curl -s --max-time 20 -b "$RONDE_JAR" "$DASHBOARD/api/admin/punten/ronde" || echo '{}')"
-          WERK="$(printf '%s' "$ANTWOORD" | grep -o '"werk":"[a-z]*"' | head -1 | cut -d'"' -f4)"
-          echo "werk=${WERK:-geen}" >> "$GITHUB_OUTPUT"
-          echo "Wat er klaarstaat: ${WERK:-niets te doen}"
+          WERK="$(printf '%s' "$ANTWOORD" | jq -r '.volgende.werk // "geen"' 2>/dev/null || echo onleesbaar)"
+          echo "werk=$WERK" >> "$GITHUB_OUTPUT"
+          echo "Wat er klaarstaat: $WERK"
+          case "$WERK" in
+            bouwen|plan|geen) ;;
+            *) echo "::error::Het dashboard gaf iets onverwachts terug over wat er klaarstaat ($WERK). De ronde stopt hier, want doorgaan zou betekenen: draaien en niets doen."; exit 1 ;;
+          esac
 
       - name: De laatste code ophalen
         if: steps.kijk.outputs.werk != 'geen'
