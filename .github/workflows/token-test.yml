@@ -1,0 +1,61 @@
+# ═══════════════════════════════════════════════════════════
+# WERKT MIJN TOKEN? EEN TEST DIE ÉÉN WOORD KOST
+# ═══════════════════════════════════════════════════════════
+# Aanleiding (15-08-2026): na het omzetten naar het Claude-abonnement viel elke
+# ronde binnen honderd milliseconden om, met kosten nul en zonder leesbare
+# reden. Het logboek meldde alleen "is_error: true". Uitzoeken kon alleen door
+# Maarten steeds opnieuw op een knop te laten drukken, en elke poging sleepte de
+# hele bouwronde mee: code ophalen, pakketten installeren, wachten.
+#
+# Deze werkstroom doet één ding: hij laat Claude het woord "ok" zeggen en drukt
+# af wat er misging als dat niet lukt. Geen repo, geen pakketten, geen wachtrij,
+# geen toegangsbon. Draait in een halve minuut en kost hooguit een paar woorden.
+#
+# Gebruik hem als een ronde onverklaarbaar omvalt, of nadat je een nieuw token
+# hebt neergezet. Startknop: Actions, "Werkt mijn token", Run workflow.
+
+name: Werkt mijn token
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # De actie haalt zijn eigen GitHub-toegang op via een OIDC-token.
+      id-token: write
+
+    steps:
+      - name: Welke rekening staat klaar
+        run: |
+          echo "Rekening: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' && 'jouw Claude-abonnement' || 'GEEN token gevonden' }}"
+
+      # `continue-on-error` is hier het hele punt: mislukt dit, dan moet de stap
+      # hieronder nog kunnen vertellen waaróm. Zonder dat stopt de werkstroom
+      # precies vóór de enige stap die het antwoord geeft.
+      - name: Laat Claude één woord zeggen
+        id: proef
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: "Antwoord met precies dit ene woord, meer niet: ok"
+          claude_args: "--model claude-sonnet-5"
+
+      - name: Wat kwam eruit
+        if: always()
+        run: |
+          echo "Uitkomst van de proef: ${{ steps.proef.outcome }}"
+          F="$RUNNER_TEMP/claude-execution-output.json"
+          if [ ! -f "$F" ]; then
+            echo "Geen uitvoerbestand; het liep mis nog vóór het denkwerk begon."
+            exit 0
+          fi
+          echo "── Meldingen uit het uitvoerbestand ──"
+          jq -r '[.. | objects | (.error? // .message? // .result? // empty)]
+                 | map(select(type == "string" and length > 0)) | unique | .[]' "$F" 2>/dev/null | head -40
+          echo "── Ruwe staart, voor het geval er niets bruikbaars boven stond ──"
+          tail -c 1200 "$F"
