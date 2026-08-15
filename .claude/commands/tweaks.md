@@ -19,9 +19,14 @@ hele reden dat dit sneller is.
 
 **Een tweak is klaar als de tweak klaar is.**
 
-- Geen refactor. Geen gedeelde component eruit trekken omdat je twee keer hetzelfde ziet.
+- Geen refactor "omdat het toch open ligt".
 - Geen nieuwe proef. Geen bestaande proef uitbreiden.
 - Geen tweede bestand aanraken dat niet stuk was.
+
+**Let op wat die laatste regel NIET betekent.** Vraagt de tweak zelf om een aanpassing op een
+gedeelde plek (een tooltip die overal moet komen, een knopstijl, iets in `globals.css` of in een
+gedeeld component), dan is dát de tweak en bouw je hem daar. Dat is geen uitdijen, dat is de
+kortste weg. Wat verboden blijft is er ongevraagd dingen bij doen.
 - Geen uitleghoofdstuk bijwerken, geen regel in `lib/wat-is-nieuw.ts`. Een tweak is geen
   uitbreiding van het dashboard, het is een correctie erop.
 - Zie je onderweg iets dat écht beter zou moeten: **niet doen, wel noemen**, in één regel in de
@@ -91,8 +96,9 @@ er iets gebeurd is; een ronde die er niet in komt hoort te mislukken, niet te sl
      in gewone taal. Die regel komt onder zijn melding te staan, dus schrijf hem voor hem, niet
      voor jezelf. Zodra er iets op `controleer` staat verschijnt er vanzelf een melding in zijn
      kopbalk; dat is het seintje, jij hoeft niets extra's te doen.
-   - Blijkt een tweak groter dan hij leek: `stand: "apart"` met één regel in `notitie` waarom,
-     en ga door met de rest. **Nooit stilletjes laten uitlopen en de rest ophouden.**
+   - Alleen als je een tweak écht niet kúnt doen: `stand: "apart"`, met in `notitie` in één zin
+     wat je van Maarten nodig hebt. Zie "Wanneer een tweak géén tweak is"; dat hoort zeldzaam te
+     zijn. Veel werk is geen reden, meerdere schermen is geen reden.
 
    Je mag deze standen zetten vanuit de meekijk-sessie; dat is de enige plek in het dashboard
    waar dat mag. `PATCH /api/admin/tweaks` met `{ id, stand, reactie }`. Wat je daar níet mag: de
@@ -137,15 +143,36 @@ Zo blijft de routekaart zelf één bron (de code), met een zichtbare wachtkamer 
 
 ## Wanneer een tweak géén tweak is
 
-Zet hem op `apart` als hij een van deze dingen raakt:
+**Bijna nooit. In geval van twijfel: bouwen.**
 
-- een nieuwe tabel of een nieuw veld in de database;
-- een nieuwe koppeling met een dienst buiten het dashboard;
-- gedrag dat over meerdere schermen tegelijk verandert;
-- iets waarvan je niet binnen een paar minuten ziet hoe het moet.
+Deze lijst stond eerst veel te ruim, en dat brak de hele opzet. Op 15-08-2026 zette een ronde
+drie van de vier meldingen op `apart` omdat ze "gedrag over meerdere schermen" raakten. Eén
+ervan was "laat overal een klein tooltipje zien bij een knop of link". Dat is precies het soort
+werk waarvoor deze stapel bestaat: het is één gedeelde aanpassing, geen project. Maarten wilde
+zijn aanpassingen; hij kreeg een lijstje afwijzingen terug. Een stapel die dingen teruggeeft in
+plaats van ze te doen, kost hem meer tijd dan geen stapel.
 
-Dat is geen falen, dat is de stapel schoon houden. Eén te grote tweak die je toch probeert,
-kost de hele ronde zijn snelheid.
+**Iets dat meerdere schermen tegelijk raakt is dus GEEN reden om te parkeren.** Vaak is het
+juist de goede soort tweak: je bouwt hem één keer op een gedeelde plek en overal werkt het.
+"Groot" is ook geen reden; je hebt veertig minuten, en een tweak van een half uur die af is, is
+beter dan een tweak van twee minuten die niet gedaan wordt.
+
+Er zijn nog maar drie redenen om te parkeren, en ze gaan alle drie over iets dat jij niet kúnt,
+niet over iets dat veel werk is:
+
+- **Maarten moet kiezen.** Er zijn twee verdedigbare uitwerkingen en de melding zegt niet welke.
+  Zet je vraag in `notitie` als een keuze met twee opties.
+- **Er is iets nodig van buiten.** Een nieuwe koppeling met een dienst, een sleutel, een account.
+- **Het is niet te doen zonder iets te slopen.** Je ziet dat het bestaand gedrag breekt en je
+  kunt dat niet opvangen binnen deze ronde.
+
+Een nieuwe kolom in de database is géén reden meer; die zet je er gewoon bij (zie de zelfhelende
+opzet in `CLAUDE.md`). Loopt een tweak uit, dan mag de ronde langer duren; hij houdt de rest niet
+op, want er is er maar één tegelijk.
+
+**Parkeer je er toch een, schrijf dan in `notitie` wat je nodig hebt van Maarten, in één zin.**
+Niet "te groot", want daar kan hij niets mee. Ze komen op zijn scherm te staan onder "Te groot
+gebleken, wat wil je ermee?", en dat blok hoort in de praktijk leeg te zijn.
 
 ## Automatisch draaien
 

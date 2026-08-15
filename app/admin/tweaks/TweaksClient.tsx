@@ -315,7 +315,7 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
     }
   }
 
-  function kaart(t: Tweak, opties: { controle?: boolean; sleepbaar?: boolean; voorrang?: boolean; idee?: boolean } = {}) {
+  function kaart(t: Tweak, opties: { controle?: boolean; sleepbaar?: boolean; voorrang?: boolean; idee?: boolean; terugKnop?: boolean } = {}) {
     return (
       <li
         key={t.id}
@@ -438,11 +438,22 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
 
   // Alleen de kop met het aantal. De uitleg eronder is er bewust uit: dit scherm
   // gebruik je elke dag, en dan is een alinea per blok geen hulp maar ruis.
+  /** Alles in één keer terug de wachtrij in; bij drie meldingen is drie keer klikken onzin. */
+  async function allesTerug(lijst: Tweak[]) {
+    for (const t of lijst) await zet(t.id, "wachtrij");
+    setBericht({ soort: "ok", tekst: `${lijst.length} terug in de wachtrij. Druk op Nu draaien.` });
+  }
+
   function blok(titel: string, lijst: Tweak[], opties: Parameters<typeof kaart>[1] = {}) {
     if (lijst.length === 0) return null;
     return (
       <div className="beheer-blok">
         <h2 className="beheer-h2">{titel} ({lijst.length})</h2>
+        {opties.terugKnop && (
+          <button type="button" className="btn btn-primary btn-klein" onClick={() => void allesTerug(lijst)}>
+            Allemaal terug in de wachtrij
+          </button>
+        )}
         <ul className="tw-lijst">{lijst.map((t) => kaart(t, opties))}</ul>
       </div>
     );
@@ -561,7 +572,7 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
             idee gaat nooit mee in een ronde. Ze stonden er wél, en dan lijkt het
             of je een idee vandaag nog kunt laten bouwen; dat kan niet, en het
             maakte de kaart bovendien onnodig druk. */}
-        {blok("Te groot gebleken, wat wil je ermee?", apart, { idee: true })}
+        {blok("Te groot gebleken, wat wil je ermee?", apart, { idee: true, terugKnop: true })}
         {blok("Grotere ideeën", ideeen, { idee: true })}
         {toonAf && blok("Afgerond", afgerond)}
 
