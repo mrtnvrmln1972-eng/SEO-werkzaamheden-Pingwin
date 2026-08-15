@@ -22,7 +22,7 @@
 // scherm niet meer, en dan is de hele stapel waardeloos.
 // ═══════════════════════════════════════════════════════════
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AdminKop from "../AdminKop";
 import Kopieer from "../Kopieer";
 import Nulmeting from "./Nulmeting";
@@ -69,6 +69,16 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
   const [sleep, setSleep] = useState<number | null>(null);
   const [bericht, setBericht] = useState<{ soort: "ok" | "fout"; tekst: string } | null>(null);
   const [draait, setDraait] = useState(false);
+  // Werkt de knop, zonder erop te drukken? Anders merk je pas dat een sleutel
+  // ontbreekt op het moment dat je hem nodig hebt, en dan werkt hij dus niet.
+  const [knopKlaar, setKnopKlaar] = useState<{ klaar: boolean; reden?: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/admin/tweaks/draaien")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j?.ok) setKnopKlaar({ klaar: Boolean(j.klaar), reden: j.reden }); })
+      .catch(() => {});
+  }, []);
 
   const opVolgorde = (l: Tweak[]) => [...l].sort((a, b) => a.volgorde - b.volgorde || a.id - b.id);
   const lopend = (t: Tweak) => t.stand === "wachtrij" || t.stand === "bezig";
@@ -354,6 +364,12 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
         )}
 
         {bericht && <div className={bericht.soort === "ok" ? "tw-ok" : "tw-fout"}>{bericht.tekst}</div>}
+
+        {knopKlaar && !knopKlaar.klaar && (
+          <div className="tw-fout">
+            <strong>Nu draaien werkt nog niet.</strong> {knopKlaar.reden}
+          </div>
+        )}
 
         {blok("Klaar, klopt het?", "Dit staat live. Zeg of het goed is; klopt het niet, dan gaat het met jouw correctie terug de wachtrij in.", controleer, { controle: true })}
         {blok("In de wachtrij", "Van boven naar beneden de volgorde waarin de eerstvolgende ronde ze doet. Sleep aan het greepje om die volgorde te veranderen.", wachtrij, { sleepbaar: true, voorrang: true })}

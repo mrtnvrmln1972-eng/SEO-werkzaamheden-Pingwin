@@ -35,6 +35,58 @@ export const dynamic = "force-dynamic";
 const REPO = process.env.GITHUB_TWEAK_REPO || "mrtnvrmln1972-eng/SEO-werkzaamheden-Pingwin";
 const WERKSTROOM = "tweak-ronde.yml";
 
+/**
+ * Werkt de knop, zonder hem in te drukken?
+ *
+ * Bestaat omdat de enige manier om dat te weten anders was: erop drukken en
+ * kijken wat er misgaat. Deze vraag haalt de werkstroom op bij GitHub met
+ * hetzelfde token en dezelfde naam als de knop gebruikt, dus lukt dit, dan lukt
+ * de knop ook. Er wordt niets mee gestart en er gaat geen ronde lopen.
+ *
+ * Wat hij NIET kan zien: of ANTHROPIC_API_KEY in GitHub goed staat. Die sleutel
+ * hoort niet in dit dashboard thuis, dus dit dashboard kan er ook niet bij. Dat
+ * blijkt pas bij de eerste echte ronde, en dan staat het in het GitHub-logboek.
+ */
+export async function GET(req: NextRequest) {
+  const g = await guardDev(req); if (!g.ok) return g.res;
+
+  const token = process.env.GITHUB_TWEAK_TOKEN;
+  if (!token) {
+    return NextResponse.json({
+      ok: true, klaar: false,
+      reden: "De sleutel GITHUB_TWEAK_TOKEN staat nog niet in Vercel, dus de knop kan GitHub niet bereiken.",
+    });
+  }
+
+  const antwoord = await fetch(
+    `https://api.github.com/repos/${REPO}/actions/workflows/${WERKSTROOM}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+      cache: "no-store",
+    },
+  ).catch(() => null);
+
+  if (!antwoord) {
+    return NextResponse.json({ ok: true, klaar: false, reden: "GitHub was even niet bereikbaar." });
+  }
+  if (antwoord.status === 200) {
+    return NextResponse.json({ ok: true, klaar: true });
+  }
+  const uitleg: Record<number, string> = {
+    401: "GitHub weigert het token. Waarschijnlijk verlopen of verkeerd overgenomen; maak een nieuw fijnmazig token en zet het opnieuw in Vercel.",
+    403: "Het token mag dit niet. Het heeft het recht Actions: read and write nodig op deze repo.",
+    404: "Het token ziet deze repo of de werkstroom niet. Controleer of hij op repository SEO-werkzaamheden-Pingwin staat, en niet op alle repo's van een ander account.",
+  };
+  return NextResponse.json({
+    ok: true, klaar: false,
+    reden: uitleg[antwoord.status] || `GitHub gaf een fout terug (${antwoord.status}).`,
+  });
+}
+
 export async function POST(req: NextRequest) {
   const g = await guardDev(req); if (!g.ok) return g.res;
 
