@@ -156,6 +156,19 @@ export async function guardSlug(
   return { ok: true, scope };
 }
 
+/**
+ * Is dit de meekijk-sessie van Claude (de sleutel uit /api/kijk)?
+ *
+ * Bestaat zodat één route bewust een uitzondering kan maken op "alleen lezen":
+ * de tweak-stapel. Claude moet daar een stand kunnen bijwerken ("wordt gebouwd",
+ * "klaar, controleer even"), anders kan hij het seintje niet geven en moet
+ * Maarten zelf bijhouden wat er gedaan is. Die uitzondering geldt uitsluitend
+ * voor de standen van de tweak-stapel; overal elders blijft meekijken kijken.
+ */
+export function isMeekijker(req: NextRequest): boolean {
+  return getAdminPrincipal(req.cookies.get(ADMIN_COOKIE)?.value)?.kind === "viewer";
+}
+
 // Poort voor het developer-overzicht (alle klanten, alleen de dev-taken).
 // Lezen mag de eigenaar en iedere gast met het dev-recht. Schrijven (afvinken,
 // terugkoppeling, een taak bijstellen) mag de eigenaar en een ECHTE gast met dat

@@ -7413,3 +7413,21 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
    zien welk document er hing, en dat is precies waarvoor je die kolom leest. */
 td .dev-task-docs { display: flex; flex-direction: column; gap: var(--s-1); align-items: flex-start; }
 td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; }
+
+/* Tweaks: de keuze klein/groot, het draadje per melding en de tweede teller. */
+.tw-teller-kijk { background: var(--brand-teal-light); color: var(--brand-teal); }
+.tw-soort { display: flex; gap: var(--s-2); flex-wrap: wrap; }
+.tw-soort-uitleg { margin: var(--s-2) 0 var(--s-3); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+.tw-veld-klein { min-height: 90px; margin-top: var(--s-2); }
+.tw-correctie { margin-top: var(--s-3); }
+.tw-draad { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.tw-draad li {
+  display: flex; gap: var(--s-3); align-items: baseline;
+  padding: var(--s-2) var(--s-3); border-radius: var(--r-md);
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+.tw-draad-maarten { background: var(--brand-orange-faint); }
+.tw-draad-claude { background: var(--brand-taupe-light); }
+.tw-draad-wie { flex: 0 0 auto; font-weight: 700; color: var(--gray); }
+.tw-draad-tekst { color: var(--body-text); }
+.tw-rondes { background: var(--red-light); color: var(--red); }

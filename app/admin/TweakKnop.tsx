@@ -71,8 +71,11 @@ export default function TweakKnop() {
   const [beeld, setBeeld] = useState<string>("");
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState("");
-  const [aantal, setAantal] = useState<number | null>(null);
+  const [tellers, setTellers] = useState<{ wachtrij: number; controleer: number } | null>(null);
   const [klaar, setKlaar] = useState(false);
+  // Kleine aanpassing of een groter idee: hetzelfde knopje, twee bakken. Een
+  // idee gaat niet mee in een ronde maar krijgt eerst een voorstel van mij.
+  const [soort, setSoort] = useState<"tweak" | "idee">("tweak");
   const veldRef = useRef<HTMLTextAreaElement>(null);
 
   const scherm = schermNaam(pad, zoek?.get("tab") ?? null);
@@ -82,7 +85,7 @@ export default function TweakKnop() {
   const telOpnieuw = useCallback(() => {
     fetch("/api/admin/tweaks?tel=1")
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (j?.ok) setAantal(j.open); })
+      .then((j) => { if (j?.ok) setTellers(j.tellers); })
       .catch(() => {});
   }, []);
 
@@ -108,13 +111,13 @@ export default function TweakKnop() {
       const r = await fetch("/api/admin/tweaks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tekst, pad, scherm, klant: klantUitPad(pad), beeld }),
+        body: JSON.stringify({ tekst, pad, scherm, klant: klantUitPad(pad), beeld, soort }),
       });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j?.ok) { setFout(j?.error || "Opslaan lukte niet."); return; }
-      setAantal(j.open);
+      setTellers(j.tellers);
       setKlaar(true);
-      setTekst(""); setBeeld("");
+      setTekst(""); setBeeld(""); setSoort("tweak");
       // Even laten staan zodat je de bevestiging ziet, dan vanzelf dicht.
       setTimeout(() => { setKlaar(false); setOpen(false); }, 1200);
     } catch {
@@ -133,7 +136,8 @@ export default function TweakKnop() {
         title="Iets dat anders moet op dit scherm? Meld het hier."
       >
         Tweak
-        {aantal ? <span className="tw-teller">{aantal}</span> : null}
+        {tellers?.wachtrij ? <span className="tw-teller">{tellers.wachtrij}</span> : null}
+        {tellers?.controleer ? <span className="tw-teller tw-teller-kijk" title="Staat live, wacht op jouw controle">{tellers.controleer}</span> : null}
       </button>
 
       {open && (
@@ -151,6 +155,27 @@ export default function TweakKnop() {
             </div>
 
             <div className="tw-body">
+              <div className="tw-soort">
+                <button
+                  type="button"
+                  className={"btn btn-klein" + (soort === "tweak" ? " btn-primary" : " btn-ghost")}
+                  onClick={() => setSoort("tweak")}
+                >
+                  Kleine aanpassing
+                </button>
+                <button
+                  type="button"
+                  className={"btn btn-klein" + (soort === "idee" ? " btn-primary" : " btn-ghost")}
+                  onClick={() => setSoort("idee")}
+                >
+                  Groter idee
+                </button>
+              </div>
+              <p className="tw-soort-uitleg">
+                {soort === "tweak"
+                  ? "Gaat mee in de eerstvolgende ronde en staat vandaag nog live."
+                  : "Wordt niet meteen gebouwd. Ik maak er eerst een voorstel van dat jij goed- of afkeurt."}
+              </p>
               <textarea
                 ref={veldRef}
                 className="tw-veld"
@@ -193,7 +218,7 @@ export default function TweakKnop() {
               </button>
               <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>Annuleren</button>
               <a className="btn btn-quiet tw-naar-stapel" href="/admin/tweaks">
-                Bekijk de stapel{aantal ? ` (${aantal})` : ""}
+                Bekijk de stapel{tellers?.wachtrij ? ` (${tellers.wachtrij})` : ""}
               </a>
             </div>
           </div>

@@ -32,20 +32,46 @@ buiten een tweak-ronde iets nieuws, dan gelden de gewone regels uit `CLAUDE.md` 
 
 ## Hoe je werkt
 
-1. **Haal de stapel op.** `GET /api/admin/tweaks` geeft de openstaande meldingen, met per stuk
-   de tekst, het scherm waar Maarten stond, de klant, en of er een schermafbeelding bij zit
-   (die haal je los op met `?beeld=<id>`). Bekijk het beeld als de tweak over vormgeving gaat;
-   dat scheelt de vraag "welk venster bedoel je".
+1. **Haal de stapel op.** `GET /api/admin/tweaks` geeft de lopende meldingen, met per stuk de
+   tekst, het scherm waar Maarten stond, de klant, het draadje met eerdere correcties, en of er
+   een schermafbeelding bij zit (die haal je los op met `?beeld=<id>`). Bekijk het beeld als de
+   tweak over vormgeving gaat; dat scheelt de vraag "welk venster bedoel je".
+
+   **Pak alleen `soort: "tweak"` met stand `wachtrij`.** Een melding met `soort: "idee"` hoort
+   niet in een ronde: die krijgt eerst een voorstel, zie onderaan.
+
+   **Heeft een melding al reacties, lees ze dan eerst.** Dan is dit een tweede of derde ronde en
+   staat er precies in wat er de vorige keer niet klopte. Opnieuw hetzelfde bouwen is de ergste
+   uitkomst die er is.
 2. **Begin met de laatste code.** `git fetch origin main && git rebase origin/main`. Vaste
    regel, geen uitzondering: er wordt uit meerdere chats naar `main` gepusht.
 3. **Sorteer op bestand, niet op volgorde van melden.** Drie tweaks in hetzelfde scherm doe je
    in één keer open. Dat is waar de tijdwinst zit.
 4. **Doe ze allemaal, dan één keer bouwen.** `npm run proef`, daarna commit en push naar `main`,
    daarna `scripts/wacht-op-deploy.sh`. Eén ronde, één deploy.
-5. **Zet de stand bij.** Per tweak `PATCH /api/admin/tweaks` met `stand: "gedaan"`. Blijkt een
-   tweak groter dan hij leek, zet hem dan op `"apart"` met één regel in `notitie` waarom, en
-   ga door met de rest. **Nooit stilletjes laten uitlopen en de rest van de stapel ophouden.**
-6. **Kijk of het klopt** via het meekijk-recept uit `CLAUDE.md`, en koppel dan pas terug.
+5. **Zet de standen bij.** Dit is geen administratie, dit is het seintje aan Maarten.
+   - Bij de start van de ronde: elke tweak die je oppakt op `stand: "bezig"`. Dan weet een
+     tweede ronde dat hij bezet is.
+   - Na de deploy: op `stand: "controleer"`, met in `reactie` één regel over wat je gedaan hebt,
+     in gewone taal. Die regel komt onder zijn melding te staan, dus schrijf hem voor hem, niet
+     voor jezelf. Zodra er iets op `controleer` staat verschijnt er vanzelf een melding in zijn
+     kopbalk; dat is het seintje, jij hoeft niets extra's te doen.
+   - Blijkt een tweak groter dan hij leek: `stand: "apart"` met één regel in `notitie` waarom,
+     en ga door met de rest. **Nooit stilletjes laten uitlopen en de rest ophouden.**
+
+   Je mag deze standen zetten vanuit de meekijk-sessie; dat is de enige plek in het dashboard
+   waar dat mag. `PATCH /api/admin/tweaks` met `{ id, stand, reactie }`.
+6. **Kijk of het klopt met eigen ogen** vóór je iets op `controleer` zet. Zie
+   "Meekijken" in `CLAUDE.md`; een schermafbeelding maken kan, dus doe dat bij alles wat over
+   vormgeving gaat. Iets op `controleer` zetten dat je niet gezien hebt is precies de
+   heen-en-weer die deze hele opzet moet weghalen.
+
+## Een melding met soort "idee"
+
+Die werk je niet af. Je maakt er een voorstel van in gewone taal (wat het oplevert, hoe je het
+zou bouwen, wat het raakt, waaraan je ziet dat het af is), zet dat in `reactie`, en laat de
+melding op `wachtrij` staan zodat Maarten hem beantwoordt. Zegt hij ja, dan wordt het een punt
+op de routekaart (`lib/routekaart.ts`), niet een tweak.
 
 ## Wanneer een tweak géén tweak is
 
@@ -58,6 +84,14 @@ Zet hem op `apart` als hij een van deze dingen raakt:
 
 Dat is geen falen, dat is de stapel schoon houden. Eén te grote tweak die je toch probeert,
 kost de hele ronde zijn snelheid.
+
+## Automatisch draaien
+
+Er staat een uurlijkse Routine die deze opdracht zelf start. Draait de ronde zonder dat Maarten
+erbij is, dan geldt precies hetzelfde, met één verschil: er is niemand om iets aan te vragen.
+Twijfel je bij een melding wat hij bedoelt, bouw dan niet iets dat er half naast zit, maar zet
+hem op `apart` met je vraag in `notitie`. Staat er niets in de wachtrij, doe dan niets en stop
+meteen; een lege ronde hoort geen bericht op te leveren.
 
 ## Terugkoppelen
 

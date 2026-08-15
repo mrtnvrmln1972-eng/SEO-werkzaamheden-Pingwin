@@ -3,12 +3,16 @@
 // ═══════════════════════════════════════════════════════════
 // DE STAPEL IN BEELD
 // ═══════════════════════════════════════════════════════════
-// Eén scherm met één vraag: staat er genoeg klaar om een ronde te draaien? Dus
-// bovenaan het aantal en de startregel, daaronder de meldingen zelf.
+// Drie vragen die dit scherm beantwoordt, in deze volgorde:
+//   1. staat er iets klaar dat ík moet bekijken?
+//   2. wat staat er in de wachtrij?
+//   3. welke grotere ideeën liggen er nog?
 //
-// Er is bewust geen drempel ("vanaf tien"): wanneer een stapel groot genoeg is
-// hangt af van waar Maarten mee bezig is, niet van een getal. Het scherm toont
-// de stand, hij drukt wanneer het hem uitkomt.
+// Vandaar de volgorde van de blokken hieronder. "Controleer even" staat
+// bovenaan, want dat is het enige waar Maarten iets mee moet; de rest is
+// informatie. Klopt het niet, dan gaat dezelfde melding terug de wachtrij in
+// mét zijn correctie eronder, in plaats van dat er een tweede briefje ontstaat
+// dat niemand meer aan het eerste knoopt.
 // ═══════════════════════════════════════════════════════════
 
 import { useState } from "react";
@@ -18,9 +22,11 @@ import { mdToHtml } from "../../../lib/markdown";
 import type { Tweak, Stand } from "../../../lib/tweaks";
 
 const STAND_LABEL: Record<Stand, string> = {
-  open: "Staat klaar",
-  gedaan: "Doorgevoerd",
-  apart: "Apart gezet, te groot voor een tweak",
+  wachtrij: "In de wachtrij",
+  bezig: "Wordt nu gebouwd",
+  controleer: "Staat live, klopt het?",
+  klaar: "Klaar",
+  apart: "Apart gezet, te groot voor een ronde",
 };
 
 function datum(iso: string): string {
@@ -33,10 +39,13 @@ export default function TweaksClient({ begin, startregel }: { begin: Tweak[]; st
   const [toonAf, setToonAf] = useState(false);
   const [beelden, setBeelden] = useState<Record<number, string>>({});
   const [groot, setGroot] = useState<number | null>(null);
+  const [correctieVoor, setCorrectieVoor] = useState<number | null>(null);
+  const [correctie, setCorrectie] = useState("");
 
-  const open = tweaks.filter((t) => t.stand === "open");
-  const afgerond = tweaks.filter((t) => t.stand !== "open");
-  const zichtbaar = toonAf ? tweaks : open;
+  const controleer = tweaks.filter((t) => t.stand === "controleer");
+  const wachtrij = tweaks.filter((t) => (t.stand === "wachtrij" || t.stand === "bezig") && t.soort === "tweak");
+  const ideeen = tweaks.filter((t) => (t.stand === "wachtrij" || t.stand === "bezig") && t.soort === "idee");
+  const afgerond = tweaks.filter((t) => t.stand === "klaar" || t.stand === "apart");
 
   async function haalBeeld(id: number) {
     if (beelden[id]) { setGroot(id); return; }
@@ -50,13 +59,105 @@ export default function TweaksClient({ begin, startregel }: { begin: Tweak[]; st
     if (r.ok) setTweaks((lijst) => lijst.filter((t) => t.id !== id));
   }
 
-  async function zet(id: number, stand: Stand) {
+  async function zet(id: number, stand: Stand, reactie = "") {
+    const vorige = tweaks.find((t) => t.id === id)?.stand;
     const r = await fetch("/api/admin/tweaks", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, stand }),
+      body: JSON.stringify({ id, stand, reactie, vorige }),
     });
-    if (r.ok) setTweaks((lijst) => lijst.map((t) => (t.id === id ? { ...t, stand } : t)));
+    if (!r.ok) return;
+    setTweaks((lijst) => lijst.map((t) => (t.id === id
+      ? {
+        ...t,
+        stand,
+        rondes: stand === "wachtrij" && vorige === "controleer" ? t.rondes + 1 : t.rondes,
+        reacties: reactie
+          ? [...t.reacties, { van: "maarten" as const, tekst: reactie, wanneer: new Date().toISOString() }]
+          : t.reacties,
+      }
+      : t)));
+  }
+
+  async function stuurCorrectie(id: number) {
+    if (!correctie.trim()) return;
+    await zet(id, "wachtrij", correctie.trim());
+    setCorrectieVoor(null);
+    setCorrectie("");
+  }
+
+  function kaart(t: Tweak, metControle: boolean) {
+    return (
+      <li key={t.id} className={"tw-item" + (t.stand === "klaar" || t.stand === "apart" ? " tw-item-af" : "")}>
+        <div className="tw-tekst md" dangerouslySetInnerHTML={{ __html: mdToHtml(t.tekst) }} />
+
+        {t.reacties.length > 0 && (
+          <ul className="tw-draad">
+            {t.reacties.map((r, i) => (
+              <li key={i} className={r.van === "claude" ? "tw-draad-claude" : "tw-draad-maarten"}>
+                <span className="tw-draad-wie">{r.van === "claude" ? "Gebouwd" : "Jouw correctie"}</span>
+                <span className="tw-draad-tekst">{r.tekst}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="tw-meta">
+          {t.pad ? <a className="tw-scherm" href={t.pad}>{t.scherm || t.pad}</a> : <span className="tw-scherm">{t.scherm}</span>}
+          <span className="tw-datum">{datum(t.aangemaakt)}</span>
+          <span className="tw-stand-chip">{STAND_LABEL[t.stand]}</span>
+          {t.rondes > 1 && <span className="tw-stand-chip tw-rondes">{t.rondes} rondes</span>}
+        </div>
+        {t.notitie && <div className="tw-notitie">{t.notitie}</div>}
+
+        {correctieVoor === t.id ? (
+          <div className="tw-correctie">
+            <textarea
+              className="tw-veld tw-veld-klein"
+              value={correctie}
+              onChange={(e) => setCorrectie(e.target.value)}
+              placeholder="Wat klopt er nog niet? Dit komt onder dezelfde melding te staan."
+              autoFocus
+            />
+            <div className="tw-item-acties">
+              <button type="button" className="btn btn-primary btn-klein" onClick={() => void stuurCorrectie(t.id)}>
+                Terug op de stapel
+              </button>
+              <button type="button" className="btn btn-ghost btn-klein" onClick={() => { setCorrectieVoor(null); setCorrectie(""); }}>
+                Annuleren
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="tw-item-acties">
+            {metControle && (
+              <>
+                <button type="button" className="btn btn-primary btn-klein" onClick={() => void zet(t.id, "klaar")}>Klopt</button>
+                <button type="button" className="btn btn-ghost btn-klein" onClick={() => setCorrectieVoor(t.id)}>Nog niet goed</button>
+              </>
+            )}
+            {t.beeld !== null && (
+              <button type="button" className="btn btn-ghost btn-klein" onClick={() => void haalBeeld(t.id)}>Bekijk beeld</button>
+            )}
+            {(t.stand === "klaar" || t.stand === "apart") && (
+              <button type="button" className="btn btn-quiet btn-klein" onClick={() => void zet(t.id, "wachtrij")}>Terug op de stapel</button>
+            )}
+            <button type="button" className="btn btn-danger btn-klein" onClick={() => void weg(t.id)}>Weg</button>
+          </div>
+        )}
+      </li>
+    );
+  }
+
+  function blok(titel: string, uitleg: string, lijst: Tweak[], metControle = false) {
+    if (lijst.length === 0) return null;
+    return (
+      <div className="beheer-blok">
+        <h2 className="beheer-h2">{titel} ({lijst.length})</h2>
+        <p className="beheer-uitleg">{uitleg}</p>
+        <ul className="tw-lijst">{lijst.map((t) => kaart(t, metControle))}</ul>
+      </div>
+    );
   }
 
   return (
@@ -67,67 +168,38 @@ export default function TweaksClient({ begin, startregel }: { begin: Tweak[]; st
           <h1 className="beheer-h1">De stapel kleine aanpassingen</h1>
           <p className="beheer-uitleg">
             Alles wat je onderweg meldt met het knopje <strong>Tweak</strong> komt hier terecht.
-            Eén ronde werkt de hele stapel af: één keer inlezen, één bouw, één keer live. Dat is de
-            reden dat losse tweaks samen minder kosten dan los van elkaar.
+            Eén ronde werkt de hele stapel af: één keer inlezen, één bouw, één keer live. Elk uur
+            draait er vanzelf een ronde als er iets klaarstaat, en je kunt hem ook zelf starten.
           </p>
         </div>
 
         <div className="tw-balk">
           <div className="tw-stand">
-            <span className="tw-getal">{open.length}</span>
-            <span className="tw-getal-bij">{open.length === 1 ? "melding staat klaar" : "meldingen staan klaar"}</span>
+            <span className="tw-getal">{wachtrij.length}</span>
+            <span className="tw-getal-bij">{wachtrij.length === 1 ? "staat in de wachtrij" : "staan in de wachtrij"}</span>
           </div>
           <div className="tw-balk-acties">
-            <Kopieer tekst={startregel} label="Stapel afwerken" primair />
+            <Kopieer tekst={startregel} label="Stapel nu afwerken" primair />
             <button type="button" className="btn btn-quiet btn-klein" onClick={() => setToonAf(!toonAf)}>
-              {toonAf ? "Alleen de stapel" : `Ook de afgeronde (${afgerond.length})`}
+              {toonAf ? "Alleen wat loopt" : `Ook de afgeronde (${afgerond.length})`}
             </button>
           </div>
         </div>
         <p className="beheer-klein">
-          Die knop zet <code>{startregel}</code> op je klembord. Plak hem in een verse chat, dan
-          worden ze in één ronde doorgevoerd.
+          Die knop zet <code>{startregel}</code> op je klembord, voor als je niet tot het volgende
+          hele uur wilt wachten.
         </p>
 
-        {zichtbaar.length === 0 ? (
+        {blok("Klaar, klopt het?", "Dit staat live. Zeg of het goed is; klopt het niet, dan gaat het met jouw correctie terug de wachtrij in.", controleer, true)}
+        {blok("In de wachtrij", "Gaat mee in de eerstvolgende ronde.", wachtrij)}
+        {blok("Grotere ideeën", "Wordt niet in een ronde weggewerkt. Hier maak ik eerst een voorstel van.", ideeen)}
+        {toonAf && blok("Afgerond", "Klaar of apart gezet.", afgerond)}
+
+        {controleer.length + wachtrij.length + ideeen.length === 0 && (
           <div className="tw-leeg">
-            Nog niets gemeld. Zie je iets dat anders moet, druk dan op het knopje rechtsonder op
-            het scherm waar je op dat moment staat.
+            Niets open. Zie je iets dat anders moet, druk dan op het knopje rechtsonder op het
+            scherm waar je op dat moment staat.
           </div>
-        ) : (
-          <ul className="tw-lijst">
-            {zichtbaar.map((t) => (
-              <li key={t.id} className={"tw-item" + (t.stand === "open" ? "" : " tw-item-af")}>
-                <div
-                  className="tw-tekst md"
-                  dangerouslySetInnerHTML={{ __html: mdToHtml(t.tekst) }}
-                />
-                <div className="tw-meta">
-                  {t.pad ? <a className="tw-scherm" href={t.pad}>{t.scherm || t.pad}</a> : <span className="tw-scherm">{t.scherm}</span>}
-                  <span className="tw-datum">{datum(t.aangemaakt)}</span>
-                  {t.stand !== "open" && <span className="tw-stand-chip">{STAND_LABEL[t.stand]}</span>}
-                </div>
-                {t.notitie && <div className="tw-notitie">{t.notitie}</div>}
-                <div className="tw-item-acties">
-                  {t.beeld !== null && (
-                    <button type="button" className="btn btn-ghost btn-klein" onClick={() => void haalBeeld(t.id)}>
-                      Bekijk beeld
-                    </button>
-                  )}
-                  {t.stand === "open" ? (
-                    <button type="button" className="btn btn-quiet btn-klein" onClick={() => void zet(t.id, "gedaan")}>
-                      Afvinken
-                    </button>
-                  ) : (
-                    <button type="button" className="btn btn-quiet btn-klein" onClick={() => void zet(t.id, "open")}>
-                      Terug op de stapel
-                    </button>
-                  )}
-                  <button type="button" className="btn btn-danger btn-klein" onClick={() => void weg(t.id)}>Weg</button>
-                </div>
-              </li>
-            ))}
-          </ul>
         )}
       </div>
 

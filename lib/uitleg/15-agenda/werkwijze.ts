@@ -149,7 +149,20 @@ export const BLOKKEN: Uitklapper[] = [
       "die grens dijt de ronde uit en is precies de winst weg waar hij voor bedoeld is.\n\n" +
       "**Er is bewust geen drempel.** Geen \"vanaf tien meldingen\". Wanneer een stapel groot genoeg is " +
       "hangt af van waar je mee bezig bent, niet van een getal; het scherm toont de stand en jij drukt " +
-      "wanneer het uitkomt.",
+      "wanneer het uitkomt. Daarnaast draait er elk uur vanzelf een ronde als er iets klaarstaat, dus in " +
+      "de praktijk hoef je meestal niets te doen.\n\n" +
+      "**De lus is rond, en dat is het punt.** Elke melding heeft een stand: in de wachtrij, wordt " +
+      "gebouwd, staat live (controleer het), klaar. Zodra er iets live staat verschijnt er een melding in " +
+      "de kopbalk, op de plek waar toch al gekeken wordt. Klopt het niet, dan druk je op \"Nog niet " +
+      "goed\" en typ je erbij wat er mis is; diezelfde melding gaat dan met jouw correctie eronder terug " +
+      "de wachtrij in. Dus geen tweede briefje dat niemand meer aan het eerste knoopt, maar één draadje " +
+      "per onderwerp, met een teller die laat zien hoeveel rondes het gekost heeft. Die teller is geen " +
+      "sier: als iets drie rondes kost, dan is de beschrijving of de controle het probleem, niet het " +
+      "bouwen.\n\n" +
+      "**Kleine aanpassing of groter idee, hetzelfde knopje.** Kies je \"groter idee\", dan gaat het " +
+      "niet mee in een ronde maar komt er eerst een voorstel: wat het oplevert, hoe het gebouwd zou " +
+      "worden, wat het raakt. Zeg je ja, dan wordt het een punt op de routekaart. Zo is er één plek om " +
+      "alles kwijt te kunnen, terwijl klein en groot toch verschillend behandeld worden.",
   },
 
   // ── Golf 1 ──
