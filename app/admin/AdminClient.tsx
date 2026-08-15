@@ -203,6 +203,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
   // Onboarding-signaal per klant: hoeveel stappen staan er, en wat loopt achter.
   // Wordt ná het tonen van de lijst opgehaald, dus het scherm wacht er nooit op.
   const [onb, setOnb] = useState<Record<string, { af: number; totaal: number; mist: string[]; klaar: boolean }>>({});
+  // Welke rij wordt op dit moment gesleept, voor de eigen volgorde van de lijst.
+  const [sleep, setSleep] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isOwner) return;
@@ -405,6 +407,30 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     router.push(`/admin/client/${c.slug}`);
   }
 
+  // Slepen: de hele nieuwe volgorde van deze lijst (leads, of klanten) in één
+  // keer naar de server, niet één verplaatsing. Zelfde patroon als de
+  // tweak-wachtrij (TweaksClient.laatVallen).
+  async function sleepVolgorde(lijst: ClientConfig[], doelId: number) {
+    if (sleep === null || sleep === doelId) { setSleep(null); return; }
+    const ids = lijst.map((c) => c.id);
+    if (!ids.includes(sleep)) { setSleep(null); return; }
+    const zonder = ids.filter((id) => id !== sleep);
+    const plek = zonder.indexOf(doelId);
+    zonder.splice(plek < 0 ? zonder.length : plek, 0, sleep);
+    setSleep(null);
+    setClients((all) => {
+      const idSet = new Set(ids);
+      const plekken = all.map((c, i) => (idSet.has(c.id) ? i : -1)).filter((i) => i >= 0);
+      const nieuw = [...all];
+      zonder.forEach((id, i) => { nieuw[plekken[i]] = all.find((c) => c.id === id)!; });
+      return nieuw;
+    });
+    await fetch("/api/admin/clients/volgorde", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: zonder }),
+    }).catch(() => {});
+  }
+
   function copy(text: string) {
     navigator.clipboard?.writeText(text);
   }
@@ -421,16 +447,36 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     <div className="task-table-wrap">
       <table>
         <thead>
-          <tr><th>Bedrijf</th><th>Website</th><th>E-mail</th><th></th></tr>
+          <tr>{isOwner && <th></th>}<th>Bedrijf</th><th>Website</th><th>E-mail</th><th></th></tr>
         </thead>
         <tbody>
           {leads.length === 0 && (
-            <tr><td colSpan={4} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
+            <tr><td colSpan={isOwner ? 5 : 4} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
               Nog geen leads. Maak er een aan met alleen een naam en een website.
             </td></tr>
           )}
           {leads.map((c) => (
-            <tr key={c.slug} className="clickable-row" onClick={() => openDashboard(c)} title="Open de leadomgeving">
+            <tr
+              key={c.slug}
+              className={"clickable-row" + (sleep === c.id ? " tw-item-sleept" : "")}
+              onClick={() => openDashboard(c)}
+              title="Open de leadomgeving"
+              onDragOver={isOwner ? (e) => e.preventDefault() : undefined}
+              onDrop={isOwner ? (e) => { e.preventDefault(); void sleepVolgorde(leads, c.id); } : undefined}
+            >
+              {isOwner && (
+                <td onClick={(e) => e.stopPropagation()}>
+                  <span
+                    className="drag-handle tw-greep"
+                    draggable
+                    onDragStart={() => setSleep(c.id)}
+                    onDragEnd={() => setSleep(null)}
+                    title="Sleep om de volgorde te veranderen"
+                  >
+                    ⠿
+                  </span>
+                </td>
+              )}
               <td><strong>{c.name}</strong> <span className="row-arrow">&rarr;</span></td>
               <td>
                 {c.domain
@@ -459,6 +505,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
       <table>
         <thead>
           <tr>
+            {isOwner && <th></th>}
             <th>Bedrijf</th>
             <th>Inlognaam</th>
             <th>E-mail</th>
@@ -469,11 +516,30 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         </thead>
         <tbody>
           {list.length === 0 && (
-            <tr><td colSpan={6} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
+            <tr><td colSpan={isOwner ? 7 : 6} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
           )}
           {list.map((c) => (
             <Fragment key={c.slug}>
-              <tr className="clickable-row" onClick={() => openDashboard(c)} title="Open de cockpit van deze klant">
+              <tr
+                className={"clickable-row" + (sleep === c.id ? " tw-item-sleept" : "")}
+                onClick={() => openDashboard(c)}
+                title="Open de cockpit van deze klant"
+                onDragOver={isOwner ? (e) => e.preventDefault() : undefined}
+                onDrop={isOwner ? (e) => { e.preventDefault(); void sleepVolgorde(list, c.id); } : undefined}
+              >
+                {isOwner && (
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <span
+                      className="drag-handle tw-greep"
+                      draggable
+                      onDragStart={() => setSleep(c.id)}
+                      onDragEnd={() => setSleep(null)}
+                      title="Sleep om de volgorde te veranderen"
+                    >
+                      ⠿
+                    </span>
+                  </td>
+                )}
                 <td>
                   <strong>{c.name}</strong>
                   {overdue[c.slug] && (
@@ -513,7 +579,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               </tr>
               {editSlug === c.slug && (
                 <tr onClick={(e) => e.stopPropagation()}>
-                  <td colSpan={6} style={{ background: "var(--gray-light)" }}>
+                  <td colSpan={7} style={{ background: "var(--gray-light)" }}>
                     <div className="budget-edit">
                       <div className="budget-edit-title">Budget aanpassen voor {c.name}</div>
                       <div className="budget-edit-grid">

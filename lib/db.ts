@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "k1-42448837";
+export const KERN_SCHEMA_VERSIE = "k1-f39bd19e";
 
 async function init(): Promise<void> {
   await sql`
@@ -88,6 +88,9 @@ async function init(): Promise<void> {
   // hier" en nooit "we hebben het geverifieerd".
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS huisstijl_url TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ads_account_url TEXT`;
+  // Eigen volgorde in de klanten-/leadlijst op /admin (los van alfabetisch).
+  // Leeg = nog niet gesleept, valt terug op de naam.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS sort_order INTEGER`;
 
   // Doorgevoerde 301-redirects per pagina (uit de cannibalisatie-analyse): welke
   // redirect is wanneer in de website gezet en is hij live geverifieerd (echte 301

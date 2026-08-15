@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import HoverHint from "./_ui/HoverHint";
 
 // Zelfde code, drie werelden: het Vercel-project bepaalt het merk. De NOC-cockpit
 // (project noc-seo-cockpit) krijgt het oog van het Nationaal Oogcentrum als favicon,
@@ -26,7 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <HoverHint />
+      </body>
     </html>
   );
 }

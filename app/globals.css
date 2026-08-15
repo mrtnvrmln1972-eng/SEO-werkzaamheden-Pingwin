@@ -1600,6 +1600,20 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .ck-section-head .ck-updated, .ck-collapse-head .ck-updated,
 .month-card-count, .dev-client-count, .month-card-caret { color: var(--gray); }
 
+/* Eén donker hover-bolletje voor de hele omgeving, over ieder element met een
+   title-attribuut (zie app/_ui/HoverHint.tsx). Vervangt de tooltip van de
+   browser zelf door één vaste, nette stijl, ook bij alles wat nieuw gebouwd
+   wordt: elke nieuwe title="" krijgt hem automatisch. */
+.hh-bubble {
+  position: fixed; z-index: 9999; max-width: 280px;
+  background: var(--dark); color: var(--white);
+  font-size: var(--fs-xs); line-height: var(--lh-sm); font-weight: 500;
+  padding: var(--s-2) var(--s-3); border-radius: var(--r-sm);
+  box-shadow: var(--shadow-lg); pointer-events: none; white-space: normal; text-align: center;
+}
+.hh-boven { transform: translate(-50%, calc(-100% - 8px)); }
+.hh-onder { transform: translate(-50%, 8px); }
+
 /* "?"-uitlegbolletje met tooltip bij hover/focus. */
 .help-hint { position: relative; display: inline-flex; align-items: center; margin-left: 6px; cursor: help; vertical-align: middle; }
 .help-hint-q { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: var(--orange-light); color: var(--orange-dark); border: 1px solid var(--orange); font-size: var(--fs-xs); font-weight: 700; line-height: 1; }

@@ -211,8 +211,18 @@ export async function getClientForLogin(
 
 export async function listClients(): Promise<ClientConfig[]> {
   await ensureSchema();
-  const { rows } = await sql<ClientRow>`SELECT * FROM clients ORDER BY name ASC`;
+  const { rows } = await sql<ClientRow>`SELECT * FROM clients ORDER BY sort_order NULLS LAST, name ASC`;
   return rows.map(rowToConfig);
+}
+
+// Eigen sleepvolgorde voor de klanten-/leadlijst op /admin. De hele nieuwe
+// volgorde komt in één keer binnen (net als bij de tweak-wachtrij), niet één
+// verplaatsing; zo kan de volgorde op het scherm niet uiteenlopen met de
+// database.
+export async function setClientsVolgorde(ids: number[]): Promise<void> {
+  await ensureSchema();
+  await Promise.all(ids.map((id, i) =>
+    sql`UPDATE clients SET sort_order = ${(i + 1) * 10} WHERE id = ${id}`));
 }
 
 export type NewClientInput = {
