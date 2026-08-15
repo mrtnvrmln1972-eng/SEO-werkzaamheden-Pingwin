@@ -71,6 +71,19 @@ jobs:
 
     steps:
       # ═══════════════════════════════════════════════════════
+      # WIE BETAALT DEZE RONDE
+      # ═══════════════════════════════════════════════════════
+      # Staat hier bovenaan en draait altijd, ook als er verder niets te doen is,
+      # zodat in élk logboek zwart op wit staat welke rekening het denkwerk van
+      # deze ronde betaalt. Reden: op 15-08-2026 bleek één plan 7,24 dollar te
+      # hebben gekost, en dat was nergens te zien; je moest het uit het logboek
+      # peuteren. Er wordt hier nooit een sleutel afgedrukt, alleen welke van de
+      # twee gebruikt wordt.
+      - name: Wie betaalt deze ronde
+        run: |
+          echo "Rekening: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' && 'jouw Claude-abonnement (geen losse rekening)' || 'de betaalde API-sleutel, per verwerkt woord' }}"
+
+      # ═══════════════════════════════════════════════════════
       # TOEGANG EERST, EN HARD STOPPEN ALS HET NIET LUKT
       # ═══════════════════════════════════════════════════════
       # Dit is de stap die er op 15 augustus niet was. De ronde kwam er niet in,

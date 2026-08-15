@@ -21,7 +21,7 @@
 // foutcode en dit component tekent niets. Er lekt dus niets naar een gast.
 // ═══════════════════════════════════════════════════════════
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Kopieer from "./Kopieer";
 
 type Advies = { code: string; titel: string; prompt: string };
@@ -41,22 +41,33 @@ type Data = {
  * Dit is de enige lijst; `proeven/opmaak.proef.ts` legt hem naast de mappen onder
  * `app/admin` en wordt rood zodra er een scherm bijkomt dat hier niet in staat.
  */
-export const SCHERMEN: { pad: string; naam: string; waarvoor: string }[] = [
-  { pad: "/admin", naam: "Klanten", waarvoor: "Het overzicht: alle klanten en leads, en hier maak je er een aan." },
-  { pad: "/admin/schrijfstijl", naam: "Hoe jij schrijft", waarvoor: "Het schrijfprofiel dat in elke klantmail meegaat, afgeleid uit je eigen mails." },
-  { pad: "/admin/beheer", naam: "Beheer", waarvoor: "Instellingen van het dashboard zelf: koppelingen, team en toegang." },
-  { pad: "/admin/financien", naam: "Financiën", waarvoor: "Facturen en budgetten over alle klanten heen." },
-  { pad: "/admin/developer", naam: "Developer", waarvoor: "Alles wat naar een sitebouwer moet, over alle klanten heen." },
-  { pad: "/admin/usage", naam: "Verbruik", waarvoor: "Wat het dashboard aan denkwerk verbruikt, per soort taak." },
-  { pad: "/admin/fundament", naam: "Fundament", waarvoor: "Per klant in één oogopslag: tone of voice, structured data, concurrenten, bedrijfsprofiel en positionering." },
-  { pad: "/admin/routekaart", naam: "Routekaart", waarvoor: "De ontwikkeling van dit dashboard, punt voor punt." },
-  { pad: "/admin/tweaks", naam: "Tweaks", waarvoor: "De stapel kleine aanpassingen die je onderweg meldt, klaar om in één ronde door te voeren." },
-  { pad: "/admin/grote-punten", naam: "Grote punten", waarvoor: "Wat te groot is voor een tweak: eerst samen een plan, jij keurt goed, en 's nachts wordt het één voor één gebouwd." },
-  { pad: "/admin/bronnen-gezondheid", naam: "Bronnen-gezondheid", waarvoor: "Per koppeling (Ahrefs, Google, Microsoft, Moneybird, WordPress): werkt hij, en sinds wanneer niet meer." },
-  { pad: "/admin/agenda", naam: "Agenda", waarvoor: "Maartens eigen weekagenda: tijdblokken en taken, los van klantwerk." },
-  { pad: "/admin/schermafbeeldingen", naam: "Schermafbeeldingen", waarvoor: "De beelden die /uitleg gebruikt: het dashboard fotografeert zichzelf, anoniem." },
-  { pad: "/admin/veld-herstel", naam: "Veld terugzetten", waarvoor: "Eerdere versies van 'Zoekwoorden & links' en 'Top Prio's', met één klik terug te zetten." },
-  { pad: "/admin/claude-werkwijze", naam: "Claude-werkwijze", waarvoor: "Geheugensteun voor het werken met Claude zelf: repo's aanhaken, model en denkstand, traagheid herkennen, kosten laag houden." },
+/**
+ * De groepen waarin het menu de schermen zet.
+ *
+ * Waarom dit er kwam (15-08-2026): dit was één lijst van vijftien, met daarboven
+ * en daaronder nog losse blokken, waarvan er drie hetzelfde deden. Vijftien
+ * gelijke regels lees je niet, die scan je en dan geef je het op. Drie kopjes
+ * die zeggen wanneer je er moet zijn, doen wat een lijst niet kan.
+ */
+export const GROEPEN = ["Dagelijks werk", "Ontwikkeling van het dashboard", "Beheer en controle"] as const;
+export type Groep = (typeof GROEPEN)[number];
+
+export const SCHERMEN: { pad: string; naam: string; waarvoor: string; groep: Groep }[] = [
+  { pad: "/admin", naam: "Klanten", waarvoor: "Het overzicht: alle klanten en leads, en hier maak je er een aan.", groep: "Dagelijks werk" },
+  { pad: "/admin/schrijfstijl", naam: "Hoe jij schrijft", waarvoor: "Het schrijfprofiel dat in elke klantmail meegaat, afgeleid uit je eigen mails.", groep: "Dagelijks werk" },
+  { pad: "/admin/beheer", naam: "Beheer", waarvoor: "Instellingen van het dashboard zelf: koppelingen, team en toegang.", groep: "Beheer en controle" },
+  { pad: "/admin/financien", naam: "Financiën", waarvoor: "Facturen en budgetten over alle klanten heen.", groep: "Dagelijks werk" },
+  { pad: "/admin/developer", naam: "Developer", waarvoor: "Alles wat naar een sitebouwer moet, over alle klanten heen.", groep: "Dagelijks werk" },
+  { pad: "/admin/usage", naam: "Verbruik", waarvoor: "Wat het dashboard aan denkwerk verbruikt, per soort taak.", groep: "Beheer en controle" },
+  { pad: "/admin/fundament", naam: "Fundament", waarvoor: "Per klant in één oogopslag: tone of voice, structured data, concurrenten, bedrijfsprofiel en positionering.", groep: "Dagelijks werk" },
+  { pad: "/admin/routekaart", naam: "Routekaart", waarvoor: "De ontwikkeling van dit dashboard, punt voor punt.", groep: "Ontwikkeling van het dashboard" },
+  { pad: "/admin/tweaks", naam: "Tweaks", waarvoor: "De stapel kleine aanpassingen die je onderweg meldt, klaar om in één ronde door te voeren.", groep: "Ontwikkeling van het dashboard" },
+  { pad: "/admin/grote-punten", naam: "Grote punten", waarvoor: "Wat te groot is voor een tweak: eerst samen een plan, jij keurt goed, en 's nachts wordt het één voor één gebouwd.", groep: "Ontwikkeling van het dashboard" },
+  { pad: "/admin/bronnen-gezondheid", naam: "Bronnen-gezondheid", waarvoor: "Per koppeling (Ahrefs, Google, Microsoft, Moneybird, WordPress): werkt hij, en sinds wanneer niet meer.", groep: "Beheer en controle" },
+  { pad: "/admin/agenda", naam: "Agenda", waarvoor: "Maartens eigen weekagenda: tijdblokken en taken, los van klantwerk.", groep: "Dagelijks werk" },
+  { pad: "/admin/schermafbeeldingen", naam: "Schermafbeeldingen", waarvoor: "De beelden die /uitleg gebruikt: het dashboard fotografeert zichzelf, anoniem.", groep: "Beheer en controle" },
+  { pad: "/admin/veld-herstel", naam: "Veld terugzetten", waarvoor: "Eerdere versies van 'Zoekwoorden & links' en 'Top Prio's', met één klik terug te zetten.", groep: "Beheer en controle" },
+  { pad: "/admin/claude-werkwijze", naam: "Claude-werkwijze", waarvoor: "Geheugensteun voor het werken met Claude zelf: repo's aanhaken, model en denkstand, traagheid herkennen, kosten laag houden.", groep: "Ontwikkeling van het dashboard" },
 ];
 
 export default function OntwikkelMenu() {
@@ -136,46 +147,34 @@ export default function OntwikkelMenu() {
             </div>
           )}
 
-          <div className="om-kop">Ontwikkeling</div>
-          <a role="menuitem" className="hm-item" href="/admin/routekaart">
-            <span className="hm-item-label">De hele routekaart</span>
-            <span className="hm-item-hint">
-              Alle {data.voortgang.totaal} punten, met per punt de beschrijving en de startregel.
-            </span>
-          </a>
-
           {/*
-            Alle vaste schermen op één plek. Er komen er steeds meer bij en ze waren
-            alleen te vinden als je het adres uit je hoofd wist; een scherm dat je
-            niet terugvindt bestaat in de praktijk niet. Nieuw scherm erbij betekent
-            één regel hier, en `proeven/opmaak.proef.ts` wordt rood als een scherm
-            wel bestaat maar hier niet in staat.
+            Drie groepen in plaats van één lijst van vijftien, en de dubbele
+            ingangen zijn eruit. Hier stond bovenaan nog een los blok
+            "Ontwikkeling" met een tweede link naar de routekaart (die ook in de
+            lijst staat), en onderaan drie losse links naar dezelfde uitlegpagina.
+            Negentien regels waarvan er drie hetzelfde deden. Nieuw scherm erbij
+            betekent nog steeds één regel in SCHERMEN, nu met zijn groep erbij;
+            `proeven/opmaak.proef.ts` wordt rood als een scherm hier ontbreekt.
           */}
-          <div className="om-kop">Schermen</div>
-          {SCHERMEN.map((s) => (
-            <a role="menuitem" className="hm-item" key={s.pad} href={s.pad}>
-              <span className="hm-item-label">{s.naam}</span>
-              <span className="hm-item-hint">{s.waarvoor}</span>
-            </a>
+          {GROEPEN.map((groep) => (
+            <Fragment key={groep}>
+              <div className="om-kop">{groep}</div>
+              {SCHERMEN.filter((x) => x.groep === groep).map((s) => (
+                <a role="menuitem" className="hm-item" key={s.pad} href={s.pad}>
+                  <span className="hm-item-label">{s.naam}</span>
+                  <span className="hm-item-hint">{s.waarvoor}</span>
+                </a>
+              ))}
+            </Fragment>
           ))}
 
-          <div className="om-kop">Uitleg en verkoop</div>
+          <div className="om-kop">Uitleg</div>
           <a role="menuitem" className="hm-item" href="/uitleg">
             <span className="hm-item-label">Zo werkt het dashboard</span>
             <span className="hm-item-hint">
-              Het hele verhaal in gewone taal. Openbaar leesbaar, dus deelbaar met een klant of een lead.
-            </span>
-          </a>
-          <a role="menuitem" className="hm-item" href="/uitleg#onderscheid">
-            <span className="hm-item-label">Wat dit onderscheidt</span>
-            <span className="hm-item-hint">
-              Het korte stuk voor een lead of investeerder: waarom dit moeilijk na te maken is.
-            </span>
-          </a>
-          <a role="menuitem" className="hm-item" href="/uitleg#agenda">
-            <span className="hm-item-label">Eerlijke agenda</span>
-            <span className="hm-item-hint">
-              De gaten en de risico&rsquo;s. Alleen zichtbaar met jouw sessie, niet voor een buitenstaander.
+              Het hele verhaal in gewone taal, deelbaar met een klant of een lead. Wat dit
+              onderscheidt en de eerlijke agenda met de gaten en risico&rsquo;s staan erin; die
+              laatste alleen met jouw sessie.
             </span>
           </a>
         </div>
