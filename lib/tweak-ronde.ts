@@ -1,6 +1,7 @@
 import { sql } from "@vercel/postgres";
 import { ensureTweaks, haalTweaks, type Tweak } from "./tweaks";
 import { bevrijdSlot, geefSlot, pakSlot, slotStand, VERVAL_MINUTEN } from "./bouwslot";
+import { noteerRonde, schatting, type Schatting } from "./bouw-historie";
 
 // ═══════════════════════════════════════════════════════════
 // DE WACHTRIJ BEWAAKT ZICHZELF: ÉÉN RONDE TEGELIJK, OP VOLGORDE
@@ -51,6 +52,8 @@ export type RondeStand = {
   bezig: number;
   /** In welke baan de lopende ronde werkt: de tweaks, of een groot punt. */
   baan: "tweak" | "punt" | null;
+  /** Hoe lang een ronde kost, uitgerekend uit de vorige rondes. */
+  tempo: Schatting;
   /** Hoeveel meldingen van déze ronde al gewijzigd zijn (nog niet live). */
   gebouwd: number;
   /** Hoeveel meldingen van déze ronde al doorgevoerd zijn en klaarstaan. */
@@ -102,6 +105,7 @@ export async function rondeStand(): Promise<RondeStand> {
     ronde: slot.ronde,
     gestart: slot.gestart,
     baan: slot.baan,
+    tempo: await schatting("tweak"),
     bezig,
     gebouwd: Number(r.rows[0]?.gebouwd ?? 0) + klaar,
     klaar,
@@ -187,6 +191,19 @@ export async function breekRondeAf(): Promise<number> {
  */
 export async function geefRondeTerug(ronde: string): Promise<void> {
   await ensureTweaks();
+
+  // Eerst meten, dan pas loslaten: hierna is niet meer te zien hoe lang deze
+  // ronde duurde. Alleen meldingen die het gehaald hebben tellen mee; een ronde
+  // die niets vond zegt niets over hoe lang bouwen kost.
+  const voor = await slotStand();
+  if (voor.ronde === ronde && voor.gestart) {
+    const gedaan = await sql`
+      SELECT count(*)::int AS n FROM tweaks WHERE ronde = ${ronde} AND stand = 'controleer'`;
+    const aantal = Number(gedaan.rows[0]?.n ?? 0);
+    const minuten = Math.round((Date.now() - new Date(voor.gestart).getTime()) / 60000);
+    if (aantal > 0) await noteerRonde("tweak", aantal, minuten);
+  }
+
   await geefSlot(ronde);
   await sql`
     UPDATE tweaks SET stand = 'wachtrij', ronde = NULL, bezig_sinds = NULL

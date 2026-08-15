@@ -54,6 +54,8 @@ export type RondeStand = {
   baan?: "tweak" | "punt" | null;
   /** Hoeveel er al gewijzigd zijn (nog niet live), hoeveel er live staan, en het totaal. */
   gebouwd?: number; klaar?: number; totaal?: number;
+  /** De gemeten tijd van eerdere rondes: vaste kosten plus tijd per aanpassing. */
+  tempo?: { vast: number; perStuk: number; metingen: number };
 };
 
 /**
@@ -72,8 +74,8 @@ export type RondeStand = {
  * aanpassingen kwamen daardoor op achttien minuten uit terwijl het er negen zijn.
  * Een schatting die er twee keer naast zit, is geen schatting maar ruis.
  */
-const VASTE_MINUTEN = 5;
-const MINUTEN_PER_TWEAK = 1.5;
+const START_VAST = 5;
+const START_PER_STUK = 2;
 
 function minuten(n: number): string {
   // Nederlandse komma bij een halve minuut; "1.5 minuten" leest als een fout.
@@ -154,6 +156,13 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
    * tijdsverwachting komt uit het tempo van déze ronde zelf zodra er één melding
    * klaar is; daarvoor uit een startwaarde.
    */
+  // De gemeten tijd van eerdere rondes; zolang er te weinig gemeten is staan hier
+  // de startwaarden. Niets wordt meer geraden zodra er drie rondes achter de rug
+  // zijn: dan komt de verwachting uit de cijfers van dit dashboard zelf.
+  const vast = rondeNu.tempo?.vast ?? START_VAST;
+  const perStuk = rondeNu.tempo?.perStuk ?? START_PER_STUK;
+  const metingen = rondeNu.tempo?.metingen ?? 0;
+
   const voortgang = (() => {
     if (!rondeNu.ronde || !rondeNu.gestart) return null;
     const totaal = rondeNu.totaal ?? rondeNu.bezig;
@@ -166,9 +175,9 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
     // De verwachting vooraf, en zodra er meldingen klaar zijn het echte tempo van
     // déze ronde erbij. Dat tempo telt alleen voor wat er nog over is; de vaste
     // kosten zitten dan immers al in de verstreken tijd.
-    const vooraf = VASTE_MINUTEN + totaal * MINUTEN_PER_TWEAK;
+    const vooraf = vast + totaal * perStuk;
     const rest = gebouwd > 0
-      ? Math.max(1, Math.round(over * (verstreken / gebouwd)) + (klaar < totaal ? VASTE_MINUTEN / 2 : 0))
+      ? Math.max(1, Math.round(over * (verstreken / gebouwd)) + (klaar < totaal ? vast / 2 : 0))
       : Math.max(1, Math.round(vooraf - verstreken));
     return {
       totaal, klaar, gebouwd, over, rest,
@@ -389,7 +398,7 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
           {t.prioriteit === "geparkeerd" && <span className="tw-stand-chip">Geparkeerd</span>}
           {t.punt && <span className="tw-stand-chip tw-chip-punt">{t.punt}</span>}
           {/* Per melding wat hij ongeveer kost, zodat de optelsom navolgbaar is. */}
-          {opties.sleepbaar && <span className="tw-stand-chip gp-tijd">± {minuten(MINUTEN_PER_TWEAK)}</span>}
+          {opties.sleepbaar && <span className="tw-stand-chip gp-tijd">± {minuten(perStuk)}</span>}
           {t.rondes > 1 && <span className="tw-stand-chip tw-rondes">{t.rondes} rondes</span>}
         </div>
         {t.notitie && <div className="tw-notitie">{t.notitie}</div>}
@@ -553,10 +562,13 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
               </div>
             )}
             <p className="gp-venster">
-              Ongeveer {minuten(VASTE_MINUTEN)} gaat op aan opstarten, proeven en live zetten, en
-              dat is even lang voor één aanpassing als voor tien. De rest is het echte werk:
-              ongeveer anderhalve minuut per aanpassing. Eén ronde met tien tweaks is dus veel
-              goedkoper dan tien losse rondes.
+              Ongeveer {minuten(vast)} gaat op aan opstarten, proeven en live zetten, en dat is
+              even lang voor één aanpassing als voor tien. De rest is het echte werk: ongeveer
+              {" "}{minuten(perStuk)} per aanpassing. Eén ronde met tien tweaks is dus veel
+              goedkoper dan tien losse rondes.{" "}
+              {metingen >= 3
+                ? `Deze twee getallen zijn gemeten aan je laatste ${metingen} rondes, niet geschat.`
+                : `Nog een startwaarde: na drie afgeronde rondes rekent hij met je eigen cijfers (nu ${metingen}).`}
             </p>
           </div>
         ) : rondeNu.ronde ? (

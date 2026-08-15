@@ -69,6 +69,13 @@ const BLOKKEN: Blok[] = [
     merk: "tw1",
   },
   {
+    bestand: "lib/bouw-historie.ts",
+    vanaf: "async function doeBouw(): Promise<void> {",
+    tot: "\nexport function ensureBouwHistorie",
+    constante: "BOUW_HISTORIE_SCHEMA_VERSIE",
+    merk: "bh1",
+  },
+  {
     bestand: "lib/grote-punten.ts",
     vanaf: "async function doeBouw(): Promise<void> {",
     tot: "\nexport function ensureGrotePunten",
