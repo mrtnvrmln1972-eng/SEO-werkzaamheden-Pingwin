@@ -48,12 +48,16 @@ export const HOOFDSTUK: Hoofdstuk = {
         "de mail mee. Ditzelfde geldt overal in het dashboard waar dit mailvenster verschijnt, niet alleen bij " +
         "de sitebouwer. Het andere mailvenster, \"Mail vanuit deze kaart\" (de Mail-knop op een projectkaart in " +
         "de weekplanning), is een los scherm en heeft dezelfde plak-of-sleep-knop nu ook.\n\n" +
-        "Wat je aanvinkt bij \"Meesturen\" (de pagina, de copy, de blauwdruk) verschijnt meteen onderaan de " +
-        "mail, met de volledige webadressen erbij. Vroeger werden die pas bij het versturen onzichtbaar " +
-        "aangeplakt, dus je zag ze niet en kon ze niet in een zin verwerken. Nu kun je ze gewoon oppakken en " +
-        "in je tekst zetten (\"de nieuwe tekst staat hier, hij moet op deze pagina\"); de ontvanger krijgt " +
-        "netjes de naam van het document als link, niet een adres van honderd tekens. Vink je iets uit, dan " +
-        "verdwijnt de regel weer.\n\n" +
+        "Wat je aanvinkt bij \"Meesturen\" (de pagina, de copy, de blauwdruk) staat meteen als klikbare link in " +
+        "de mail, met de naam van het document erop, niet met een Google Docs-adres van honderd tekens. Noemt " +
+        "de tekst die naam al, dan wordt díe naam de link; anders komt er onderaan een regel bij. Wat je in het " +
+        "schrijfvenster ziet is dus precies wat de ontvanger krijgt, en klikken op zo'n link opent het document " +
+        "zodat je nog even kunt controleren of het de goede tekst is. Vink je iets uit, dan verdwijnt de link " +
+        "weer. Vroeger werden die links pas bij het versturen onzichtbaar aangeplakt, dus je kon ze niet zien " +
+        "en niet in een zin verwerken.\n\n" +
+        "Het adresveld stelt namen voor uit je eigen contacten: typ \"ma\" en Maarten wordt voorgesteld, kiezen " +
+        "met de pijltjes of een klik. Dat zat alleen in het mailvenster van het Werkzaamheden-tabblad; het is nu " +
+        "één veld dat elk mailvenster gebruikt.\n\n" +
         "Daarnaast staat er bij een taak die van een projectkaart komt de knop \"Is dit doorgevoerd?\": dezelfde " +
         "meting als op de kaart zelf, maar dan met één klik vanuit de lijst, zodat je bij een terugkoppeling van " +
         "de sitebouwer niet eerst de kaart hoeft op te zoeken.",

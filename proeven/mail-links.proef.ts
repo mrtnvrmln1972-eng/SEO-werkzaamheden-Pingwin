@@ -16,6 +16,8 @@
 //
 // Deze proef legt allebei vast.
 
+import { readFileSync } from "fs";
+import { join } from "path";
 import { bouwMailHtml, linkRegel } from "../lib/mail-body";
 
 let fouten = 0;
@@ -71,6 +73,29 @@ const DOMEIN = "paulhoevenaars.nl";
     html.includes(`<a href="${PAGINA.url}">De pagina</a>`), html);
 }
 
+// ── 4b. Élke vermelding van de naam wordt een link ──
+// Het schrijfvenster toont die namen zelf al klikbaar. Zou de mail alleen de
+// eerste linken, dan staat er in de verstuurde mail een dode naam onderaan
+// terwijl hij in beeld nog een link was.
+{
+  const tekst = "Hoi Paul,\n\nZet de tekst uit De pagina erop.\n\nDe pagina";
+  const html = bouwMailHtml(tekst, [PAGINA], DOMEIN);
+  const aantal = (html.match(/<a href="https:\/\/paulhoevenaars\.nl\/hovenier-uden\/">De pagina<\/a>/g) || []).length;
+  checkWaar("beide vermeldingen zijn een link", aantal === 2, `${aantal} gevonden in ${html}`);
+}
+
+// ── 4c. De naam van het document is de linktekst, nooit het Google Docs-adres ──
+// Zo ziet de ontvanger "Copy: Paul-Hoevenaars-copy-hovenier-uden" en niet een
+// adres met /document/d/… erin. Dit is wat het schrijfvenster ook toont.
+{
+  const tekst = `Hoi,\n\nDe tekst staat in ${COPY.label}.`;
+  const html = bouwMailHtml(tekst, [COPY], DOMEIN);
+  checkWaar("de naam staat als linktekst in de mail",
+    html.includes(`>${COPY.label}</a>`), html);
+  checkWaar("het kale documentadres staat nergens als tekst in beeld",
+    !html.replace(/href="[^"]*"/g, "").includes("docs.google.com"), html);
+}
+
 // ── 5. REGRESSIE: een pad naar de site blijft klikbaar ──
 {
   const html = bouwMailHtml("Hoi,\n\nHet gaat om /hovenier-uden/ op de site.", [], DOMEIN);
@@ -90,6 +115,22 @@ const DOMEIN = "paulhoevenaars.nl";
   const html = bouwMailHtml(`Zie ${PAGINA.url}.`, [], DOMEIN);
   checkWaar("de punt valt buiten de link",
     html.includes(`<a href="${PAGINA.url}">${PAGINA.url}</a>.`), html);
+}
+
+// ── 8. Het schrijfvenster en de mail blijven op elkaar afgestemd ──
+// De preview in "Mail vanuit deze kaart" zet de NAAM van het document in de
+// tekst als klikbare link, en stuurt alleen die tekst mee; de mail hangt hier
+// de adressen weer aan diezelfde namen. Zet het venster ooit weer een kaal
+// adres in het tekstvak, dan klopt dat rijtje niet meer en ziet Maarten iets
+// anders dan de ontvanger. Vandaar deze twee bewakingen op de bron.
+{
+  const venster = readFileSync(join(__dirname, "..", "app/admin/client/[slug]/MailUitKaart.tsx"), "utf8");
+  checkWaar("het venster zet de naam van het document als linktekst",
+    venster.includes("maakLink(l, l.label)"),
+    "Zonder dit staat er weer een kaal Google Docs-adres in het schrijfvenster.");
+  checkWaar("het venster stuurt de tekst mee, niet de opmaak",
+    venster.includes("ref.current?.innerText"),
+    "De mail wordt uit innerText opgebouwd; gaat dat naar innerHTML, pas dan lib/mail-body.ts mee aan.");
 }
 
 console.log(fouten === 0 ? "\nAlles goed." : `\n${fouten} fout(en).`);

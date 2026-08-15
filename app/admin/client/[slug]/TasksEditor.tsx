@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import AdresVeld from "./AdresVeld";
 import type { TaskRow } from "../../../../lib/tasks";
 import { cleanPastedHtml, linkifyPlainText } from "../../../../lib/rich-paste";
 import { openMailProgramma } from "../../../../lib/mailto-openen";
@@ -242,30 +243,6 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
   // klant-mail. Wordt opgehaald zodra het mailvenster in klant-modus opent.
   const [shareUrl, setShareUrl] = useState("");
   const [devTo, setDevTo] = useState("");
-  // Autocomplete voor het adresveld op basis van M365-contacten (alleen Pingwin).
-  const [emailSug, setEmailSug] = useState<{ name: string; email: string }[]>([]);
-  const [emailSugOpen, setEmailSugOpen] = useState(false);
-  const emailSugTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  function onDevToChange(v: string) {
-    setDevTo(v);
-    const token = v.split(/[,;]/).pop()?.trim() || "";
-    if (emailSugTimer.current) clearTimeout(emailSugTimer.current);
-    if (token.length < 2) { setEmailSug([]); setEmailSugOpen(false); return; }
-    emailSugTimer.current = setTimeout(async () => {
-      try {
-        const r = await fetch(`/api/admin/mail/people?q=${encodeURIComponent(token)}`);
-        const d = await r.json();
-        if (d.ok && Array.isArray(d.people) && d.people.length) { setEmailSug(d.people); setEmailSugOpen(true); }
-        else { setEmailSug([]); setEmailSugOpen(false); }
-      } catch { setEmailSug([]); setEmailSugOpen(false); }
-    }, 220);
-  }
-  function pickEmail(email: string) {
-    const parts = devTo.split(/[,;]/).map((s) => s.trim());
-    parts[parts.length - 1] = email;
-    setDevTo(parts.filter(Boolean).join(", ") + ", ");
-    setEmailSug([]); setEmailSugOpen(false);
-  }
   const [devNote, setDevNote] = useState("");
   const [devSel, setDevSel] = useState<Set<number>>(new Set());
   const [devBusy, setDevBusy] = useState(false);
@@ -701,21 +678,10 @@ export default function TasksEditor({ slug, initialTasks, initialStrategySession
                 <button type="button" className={"mini-btn" + (composeMode === "dev" ? " active" : "")} onClick={() => { setComposeMode("dev"); try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); } }}>Naar de developer</button>
               </div>
               <label className="compose-label">{composeMode === "klant" ? "Aan (e-mail klant)" : "Aan (e-mail developer)"}</label>
-              <div className="compose-autocomplete">
-                <input className="compose-input" value={devTo} onChange={(e) => onDevToChange(e.target.value)} onFocus={() => { if (emailSug.length) setEmailSugOpen(true); }} onBlur={() => setTimeout(() => setEmailSugOpen(false), 150)} placeholder={composeMode === "klant" ? "klant@bedrijf.nl" : "Begin te typen, bijv. de naam van de sitebouwer…"} autoComplete="off" />
-                {emailSugOpen && emailSug.length > 0 && (
-                  <ul className="compose-suggest">
-                    {emailSug.map((p) => (
-                      <li key={p.email}>
-                        <button type="button" onMouseDown={(e) => { e.preventDefault(); pickEmail(p.email); }}>
-                          <span className="cs-name">{p.name}</span>
-                          <span className="cs-email">{p.email}</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              {/* Hetzelfde adresveld als in de andere mailvensters: typ "ma" en
+                  Maarten wordt voorgesteld. Stond hier ooit als eigen kopie. */}
+              <AdresVeld waarde={devTo} onChange={setDevTo} className="compose-input"
+                placeholder={composeMode === "klant" ? "klant@bedrijf.nl" : "Begin te typen, bijv. de naam van de sitebouwer…"} />
               <label className="compose-label">Bericht / toelichting (optioneel)</label>
               <div className="compose-rich"><RichField key={composeMode} html={devNote} onChange={setDevNote} grow /></div>
               <label className="compose-label">Taken (vink aan wat mee moet)</label>

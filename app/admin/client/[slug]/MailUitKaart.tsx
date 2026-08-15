@@ -18,7 +18,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { herzetAanhef } from "../../../../lib/aanhef";
-import { linkRegel } from "../../../../lib/mail-body";
+import AdresVeld from "./AdresVeld";
 import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
 import { type WpTask, type WpPageInfo } from "./WeekplanCard";
 
@@ -181,26 +181,107 @@ export default function MailUitKaart({
   // ── De links staan zichtbaar in de mail, niet pas na het versturen ──────────
   // Wat je aanvinkt bij "Meesturen" werd stil aan de mail geplakt op het moment
   // dat je op Versturen drukte. Onderweg zag je hem dus niet en kon je hem ook
-  // niet in een zin verwerken ("de nieuwe tekst staat in <link>, hij moet op
-  // <link>"). Nu verschijnt elke aangevinkte link meteen onderaan de mail, als
-  // losse regel met de volledige URL erbij, zodat je hem kunt zien, kopiëren of
-  // in een zin zetten. Zet je hem zelf in een zin, dan blijft hij daar: we zien
-  // dat de URL al in de tekst staat en plakken hem niet nog een keer onderaan.
-  // De vorm van zo'n regel staat in lib/mail-body.ts, want de verstuurroute moet
-  // hem daar precies zo herkennen en tot één nette link maken.
+  // niet in een zin verwerken ("de nieuwe tekst staat in <naam>, hij moet op
+  // <pagina>").
+  //
+  // Wat je nu ziet is precies wat de ontvanger krijgt: een klikbare link met de
+  // NAAM van het document erop, niet een Google Docs-adres van honderd tekens.
+  // Noemt de tekst die naam al (de assistent schrijft hem letterlijk), dan wordt
+  // díe naam de link; wordt hij nergens genoemd, dan komt er onderaan een regel
+  // bij. Sleep of knip zo'n link gerust je zin in, hij blijft werken.
+  //
+  // Bij het versturen gaat alleen de tekst mee (de namen dus), en hangt
+  // lib/mail-body.ts de adressen weer aan diezelfde namen. Zo kan de link in de
+  // mail nooit iets anders zijn dan wat je in beeld zag.
+  const LINKBLOK = "wp-mail-linkblok";
+  const ONS = "data-pingwin-link";
+
+  function maakLink(l: { label: string; url: string }, tekst: string): HTMLAnchorElement {
+    const a = document.createElement("a");
+    a.setAttribute(ONS, "1");
+    a.href = l.url;
+    a.target = "_blank";
+    a.rel = "noreferrer";
+    a.textContent = tekst;
+    return a;
+  }
+
+  // Hangt de link aan élke plek waar de naam van het document staat. Dezelfde
+  // regel als in lib/mail-body.ts: alle vermeldingen, niet alleen de eerste, want
+  // een naam die in de zin klikbaar is en onderaan niet leest als een foutje.
+  function linkNaamInTekst(el: HTMLElement, l: { label: string; url: string }): boolean {
+    const naam = l.label.toLowerCase();
+    if (naam.length < 3) return false;
+    const knippen: Text[] = [];
+    const wandel = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    for (let n = wandel.nextNode(); n; n = wandel.nextNode()) {
+      if (!n.parentElement?.closest("a")) knippen.push(n as Text);
+    }
+    let gezet = false;
+    for (const node of knippen) {
+      let rest: Text | null = node;
+      while (rest) {
+        const i = rest.data.toLowerCase().indexOf(naam);
+        if (i < 0) break;
+        // Midden in een woord is het geen vermelding maar toeval.
+        const voor = rest.data[i - 1] || " ";
+        const na = rest.data[i + naam.length] || " ";
+        if (/[\w-]/.test(voor) || /[\w-]/.test(na)) { rest = rest.splitText(i + naam.length); continue; }
+        const stuk = rest.splitText(i);
+        const staart = stuk.splitText(l.label.length);
+        stuk.replaceWith(maakLink(l, stuk.data));
+        gezet = true;
+        rest = staart;
+      }
+    }
+    return gezet;
+  }
+
   function zetLinksInTekst(gekozen: Record<string, boolean>) {
     const el = ref.current;
     if (!el) return;
     const alle = docLinks();
     if (!alle.length) return;
-    // Alleen onze eigen, onveranderde regels halen we weg. Heb je zo'n regel
-    // omgeschreven tot een zin, dan is het jouw tekst en blijft hij staan.
-    const eigen = new Set(alle.map(linkRegel));
-    const romp = (el.innerText || "").split("\n")
-      .filter((r) => !eigen.has(r.trim())).join("\n").replace(/\s+$/, "");
-    const nog = alle.filter((l) => gekozen[l.key] && !romp.includes(l.url));
-    const nieuw = nog.length ? `${romp ? `${romp}\n\n` : ""}${nog.map(linkRegel).join("\n")}` : romp;
-    if (nieuw !== el.innerText) el.innerText = nieuw;
+    // Eerst alles wat wij eerder zetten weer plat maken; jouw eigen tekst en je
+    // eigen links blijven ongemoeid.
+    el.querySelectorAll(`.${LINKBLOK}`).forEach((n) => n.remove());
+    el.querySelectorAll(`a[${ONS}]`).forEach((a) => a.replaceWith(document.createTextNode(a.textContent || "")));
+    el.normalize();
+
+    // Wat overblijft aan links: die je zelf al ergens in de tekst hebt gezet
+    // (blijven staan waar ze staan), die als naam genoemd worden (daar hangt de
+    // link nu aan), en die nergens voorkomen (die komen onderaan erbij).
+    const zelfGezet = new Set(Array.from(el.querySelectorAll("a[href]")).map((a) => a.getAttribute("href") || ""));
+    const nog: { key: string; label: string; url: string }[] = [];
+    for (const l of alle) {
+      if (!gekozen[l.key]) continue;
+      if (zelfGezet.has(l.url)) continue;
+      if (linkNaamInTekst(el, l)) continue;
+      nog.push(l);
+    }
+    if (!nog.length) return;
+
+    const blok = document.createElement("div");
+    blok.className = LINKBLOK;
+    if ((el.innerText || "").trim()) blok.appendChild(document.createElement("br"));
+    for (const l of nog) {
+      const regel = document.createElement("div");
+      regel.appendChild(maakLink(l, l.label));
+      blok.appendChild(regel);
+    }
+    el.appendChild(blok);
+  }
+
+  // De aanhef bijwerken zonder de links te slopen. Vroeger ging dit via innerText
+  // over het hele vak; dat maakte van elke link weer platte tekst.
+  function zetAanhef(adres: string) {
+    const el = ref.current;
+    if (!el) return;
+    const wandel = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const eerste = wandel.nextNode() as Text | null;
+    if (!eerste) return;
+    const nieuw = herzetAanhef(eerste.data, adres);
+    if (nieuw !== eerste.data) eerste.data = nieuw;
   }
 
   function sluit() { bewaarConcept(); onClose(); }
@@ -280,15 +361,12 @@ export default function MailUitKaart({
                 // Bewust geen herschrijving: dat zou ingesproken tekst wissen.
               }}>{label}</button>
           ))}
-          {/* Typ je zelf een ander adres, dan verandert de aanhef mee zodra je het
-              veld verlaat. Zo verstuur je nooit "Hoi," terwijl er een naam bij hoort. */}
-          <input className="wp-mail-to" type="email" value={to} placeholder="E-mailadres ontvanger"
-            onChange={(e) => setTo(e.target.value)}
-            onBlur={(e) => {
-              if (!ref.current) return;
-              const nieuw = herzetAanhef(ref.current.innerText || "", e.target.value);
-              if (nieuw !== ref.current.innerText) ref.current.innerText = nieuw;
-            }} />
+          {/* Typ je zelf een adres, dan stelt hij namen voor uit je eigen contacten
+              ("ma" geeft Maarten), en verandert de aanhef mee zodra je klaar bent.
+              Zo verstuur je nooit "Hoi," terwijl er een naam bij hoort. */}
+          <AdresVeld waarde={to} onChange={setTo} onKlaar={zetAanhef}
+            className="wp-mail-to" wrapClassName="wp-mail-toveld"
+            placeholder="E-mailadres ontvanger" />
         </div>
         {lijst.length > 0 && (
           <div className="wp-mail-links">
@@ -318,6 +396,14 @@ export default function MailUitKaart({
         <div className={"wp-mail-edit" + (dragOver ? " chat-dropping" : "")} contentEditable suppressContentEditableWarning ref={ref}
           data-placeholder="De mail verschijnt hier… (een screenshot erin plakken of slepen mag)" style={{ opacity: busy ? 0.5 : 1 }}
           onBlur={bewaarConcept} onPaste={onPasteImage}
+          // Klikken op een meegestuurd document opent het, zodat je nog even kunt
+          // controleren of het de goede tekst is voordat je op Versturen drukt.
+          onClick={(e) => {
+            const a = (e.target as HTMLElement).closest?.("a[href]") as HTMLAnchorElement | null;
+            if (!a) return;
+            e.preventDefault();
+            window.open(a.href, "_blank", "noopener,noreferrer");
+          }}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDropImage} />

@@ -56,14 +56,19 @@ function linkify(html: string, links: MailLink[]): { html: string; ongeplaatst: 
       uit = uit.split(regel).join(`<a href="${l.url}">${esc(l.label)}</a>`);
       continue;
     }
-    // 2. Noemt de tekst de naam van het document, dan hangt de link daaraan.
-    //    Alleen de eerste vermelding: drie keer dezelfde link leest rommelig.
+    // 2. Noemt de tekst de naam van het document, dan hangt de link daaraan, op
+    //    élke plek waar die naam staat. Dat was eerder alleen de eerste keer,
+    //    omdat drie dezelfde links rommelig lezen. Maar sinds het schrijfvenster
+    //    diezelfde namen zelf al klikbaar toont, moet de mail dat ook doen: een
+    //    naam die in de zin een link is en onderaan niet, leest als een foutje.
     const woord = esc(l.label).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(^|[\\s(>])(${woord})(?=[\\s).,:;!?<]|$)`, "i");
+    const re = new RegExp(`(^|[\\s(>])(${woord})(?=[\\s).,:;!?<]|$)`, "gi");
     let gezet = false;
     uit = overTekst(uit, (seg) => {
-      if (gezet || !re.test(seg)) return seg;
+      re.lastIndex = 0;
+      if (!re.test(seg)) return seg;
       gezet = true;
+      re.lastIndex = 0;
       return seg.replace(re, (_m, pre, tekst) => `${pre}<a href="${l.url}">${tekst}</a>`);
     });
     if (gezet) continue;

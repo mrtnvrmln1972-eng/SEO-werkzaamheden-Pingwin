@@ -2238,11 +2238,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .compose-input { width: 100%; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 6px; }
 .compose-input:focus { outline: none; border-color: var(--orange); }
 /* Autocomplete-suggesties uit de M365-contacten onder het adresveld. */
-.compose-autocomplete { position: relative; }
+.compose-autocomplete { position: relative; display: block; }
 .compose-suggest { position: absolute; top: calc(100% + 2px); left: 0; right: 0; z-index: 30; margin: 0; padding: 4px; list-style: none; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.14); max-height: 240px; overflow-y: auto; }
 .compose-suggest li { margin: 0; }
 .compose-suggest button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; text-align: left; background: none; border: none; padding: 6px 9px; border-radius: 6px; cursor: pointer; }
-.compose-suggest button:hover { background: var(--brand-orange-faint); }
+.compose-suggest button:hover,
+.compose-suggest button.cs-actief { background: var(--brand-orange-faint); }
 .compose-suggest .cs-name { font-size: 13px; font-weight: 600; color: var(--dark); }
 .compose-suggest .cs-email { font-size: 11px; color: var(--gray); }
 .compose-dashlink-opt { display: flex; align-items: baseline; gap: 7px; margin-top: 8px; font-size: 12.5px; color: var(--dark); cursor: pointer; }
@@ -3789,6 +3790,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-mail-aud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
 .wp-aud-pill { font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 3px 11px; cursor: pointer; color: var(--dark); }
 .wp-aud-pill.wp-aud-actief { color: var(--orange-dark); background: var(--orange-light); border-color: var(--orange); }
+/* Het adresveld met naamvoorstellen: de lijst hangt onder het invulvak, dus het
+   omhulsel moet de breedte van het vak innemen en het ankerpunt zijn. */
+.wp-mail-toveld { flex: 1; min-width: 180px; }
+.wp-mail-toveld .wp-mail-to { flex: none; width: 100%; }
 .wp-mail-to { flex: 1; min-width: 180px; border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
 .wp-mail-to:focus { outline: none; border-color: var(--orange); }
 .wp-mail-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
@@ -3898,6 +3903,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-mail-hint { font-size: 12px; margin: 6px 0 10px; }
 .wp-mail-edit { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; background: #fffdfb; outline: none; }
 .wp-mail-edit:focus { border-color: var(--orange); }
+/* Een meegestuurd document staat in de mail als klikbare naam, niet als een
+   Google Docs-adres van honderd tekens. Wat je hier ziet is wat de ontvanger
+   krijgt, dus het hoort er ook als link uit te zien. */
+.wp-mail-edit a { color: var(--link); text-decoration: underline; cursor: pointer; }
+.wp-mail-linkblok div { margin-top: 2px; }
 .wp-mail-edit:empty::before { content: attr(data-placeholder); color: var(--gray); }
 .wp-mail-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-3); flex-wrap: wrap; }
 /* Herinnering om achter een reactie aan te gaan: links in de voet, zodat de
