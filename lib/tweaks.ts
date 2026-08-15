@@ -299,7 +299,12 @@ export async function zetStand(
   const punt = opties.punt !== undefined ? opties.punt : (huidig.rows[0]?.punt ?? null);
   // Terug de wachtrij in betekent: hij is niet meer van een lopende ronde. Zou de
   // claim blijven staan, dan houdt een vastgelopen ronde hem eeuwig bezet.
-  const losGeclaimd = stand !== "bezig";
+  //
+  // "controleer" houdt zijn ronde WEL vast. Dat is nodig om te kunnen zeggen
+  // hoeveel van de meldingen van déze ronde al doorgevoerd zijn; zonder dat
+  // toont het scherm alleen "er loopt een ronde" en verder niets, en dan zie je
+  // een uur lang niet of er iets opschiet.
+  const losGeclaimd = stand !== "bezig" && stand !== "controleer";
   await sql`
     UPDATE tweaks
     SET stand = ${stand},

@@ -51,6 +51,10 @@ export type RondeStand = {
   bezig: number;
   /** In welke baan de lopende ronde werkt: de tweaks, of een groot punt. */
   baan: "tweak" | "punt" | null;
+  /** Hoeveel meldingen van déze ronde al doorgevoerd zijn en klaarstaan. */
+  klaar: number;
+  /** Hoeveel meldingen deze ronde in totaal onder handen heeft (bezig + klaar). */
+  totaal: number;
 };
 
 /**
@@ -71,16 +75,33 @@ export async function bevrijdVastgelopen(): Promise<number> {
   return vrij.baan === "tweak" ? Number(terug.rows[0]?.n ?? 0) : 0;
 }
 
-/** Loopt er een ronde, en zo ja sinds wanneer en in welke baan? */
+/**
+ * Loopt er een ronde, en zo ja sinds wanneer, in welke baan, en hoe ver is hij?
+ *
+ * `klaar` en `totaal` gaan over de meldingen van precies déze ronde. Ze bestaan
+ * omdat het scherm anders alleen "er loopt een ronde" kan zeggen en verder
+ * niets: dan zie je een uur lang niet of er iets opschiet, en dat is precies wat
+ * er op 15-08-2026 gebeurde. Een melding houdt zijn rondenaam vast tot hij
+ * goedgekeurd is (zie zetStand in lib/tweaks.ts), dus dit is gewoon te tellen.
+ */
 export async function rondeStand(): Promise<RondeStand> {
   await ensureTweaks();
   const slot = await slotStand();
-  const r = await sql`SELECT count(*) FILTER (WHERE stand = 'bezig')::int AS bezig FROM tweaks`;
+  const naam = slot.ronde ?? "";
+  const r = await sql`
+    SELECT
+      count(*) FILTER (WHERE stand = 'bezig')::int                              AS bezig,
+      count(*) FILTER (WHERE stand = 'controleer' AND ronde = ${naam})::int     AS klaar
+    FROM tweaks`;
+  const bezig = Number(r.rows[0]?.bezig ?? 0);
+  const klaar = Number(r.rows[0]?.klaar ?? 0);
   return {
     ronde: slot.ronde,
     gestart: slot.gestart,
     baan: slot.baan,
-    bezig: Number(r.rows[0]?.bezig ?? 0),
+    bezig,
+    klaar,
+    totaal: bezig + klaar,
   };
 }
 

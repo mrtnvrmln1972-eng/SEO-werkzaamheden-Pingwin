@@ -49,7 +49,26 @@ function klok(iso: string | null): string {
   return new Date(iso).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 }
 
-export type RondeStand = { ronde: string | null; gestart: string | null; bezig: number; baan?: "tweak" | "punt" | null };
+export type RondeStand = {
+  ronde: string | null; gestart: string | null; bezig: number;
+  baan?: "tweak" | "punt" | null;
+  /** Hoeveel meldingen van deze ronde al doorgevoerd zijn, en hoeveel er in totaal in zitten. */
+  klaar?: number; totaal?: number;
+};
+
+/**
+ * Hoeveel minuten één tweak ongeveer kost, zolang deze ronde er nog geen enkele
+ * heeft afgerond. Zodra er één klaar is rekent het scherm met het echte tempo
+ * van déze ronde, dus dit getal telt alleen de eerste paar minuten mee.
+ */
+const MINUTEN_PER_TWEAK = 6;
+
+function minuten(n: number): string {
+  if (n < 60) return `${n} ${n === 1 ? "minuut" : "minuten"}`;
+  const u = Math.floor(n / 60);
+  const r = n % 60;
+  return r ? `${u} uur en ${r} min` : `${u} uur`;
+}
 
 export default function TweaksClient({ begin, startregel, nulmeting, ronde, voorbeeldSlug }: {
   begin: Tweak[];
@@ -72,6 +91,7 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
   // Werkt de knop, zonder erop te drukken? Anders merk je pas dat een sleutel
   // ontbreekt op het moment dat je hem nodig hebt, en dan werkt hij dus niet.
   const [knopKlaar, setKnopKlaar] = useState<{ klaar: boolean; reden?: string } | null>(null);
+  const [tikker, setTikker] = useState(0);
 
   useEffect(() => {
     fetch("/api/admin/tweaks/draaien")
@@ -99,6 +119,42 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
     const t = setInterval(() => void ververs(), bezig ? 15000 : 120000);
     return () => clearInterval(t);
   }, [rondeNu.ronde, ververs]);
+
+  // De klok loopt door tussen twee verversingen, zodat "nog ongeveer acht
+  // minuten" ook echt afloopt in plaats van elke kwartier een sprong te maken.
+  useEffect(() => {
+    if (!rondeNu.ronde) return;
+    const t = setInterval(() => setTikker((n) => n + 1), 20000);
+    return () => clearInterval(t);
+  }, [rondeNu.ronde]);
+  void tikker;
+
+  /**
+   * Hoe ver is deze ronde, en hoe lang duurt hij nog?
+   *
+   * De balk loopt op het aantal meldingen dat écht doorgevoerd is, niet op de
+   * klok: een balk op tijd staat stil zodra iets langer duurt dan verwacht, en
+   * dat is precies het moment waarop je wilt zien dat er nog iets gebeurt. De
+   * tijdsverwachting komt uit het tempo van déze ronde zelf zodra er één melding
+   * klaar is; daarvoor uit een startwaarde.
+   */
+  const voortgang = (() => {
+    if (!rondeNu.ronde || !rondeNu.gestart) return null;
+    const totaal = rondeNu.totaal ?? rondeNu.bezig;
+    const klaar = rondeNu.klaar ?? 0;
+    const over = Math.max(0, totaal - klaar);
+    const verstreken = Math.max(0, (Date.now() - new Date(rondeNu.gestart).getTime()) / 60000);
+    const perStuk = klaar > 0 ? verstreken / klaar : MINUTEN_PER_TWEAK;
+    return {
+      totaal, klaar, over,
+      verstreken: Math.round(verstreken),
+      rest: Math.max(1, Math.round(perStuk * over)),
+      deel: totaal > 0 ? klaar / totaal : 0,
+      // Twee keer zo lang als verwacht en nog niets afgerond: dan is er iets mis
+      // en hoort het scherm dat te zeggen in plaats van te blijven draaien.
+      traag: klaar === 0 && verstreken > MINUTEN_PER_TWEAK * 2,
+    };
+  })();
 
   const opVolgorde = (l: Tweak[]) => [...l].sort((a, b) => a.volgorde - b.volgorde || a.id - b.id);
   const lopend = (t: Tweak) => t.stand === "wachtrij" || t.stand === "bezig";
@@ -399,6 +455,11 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
             volgorde hieronder is de volgorde waarin het gebeurt, en er kan er altijd maar één
             ronde tegelijk lopen.
           </p>
+          <p className="beheer-klein">
+            Iets groters dan een kleine aanpassing hoort niet hier maar bij de{" "}
+            <a href="/admin/grote-punten"><strong>grote punten</strong></a>: daar maak ik er eerst
+            een plan van, keur jij het goed, en wordt het &apos;s nachts gebouwd.
+          </p>
         </div>
 
         <div className="tw-balk">
@@ -422,7 +483,48 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
           </div>
         </div>
 
-        {rondeNu.ronde ? (
+        {rondeNu.ronde && voortgang ? (
+          <div className={"gp-nu" + (voortgang.traag ? " gp-balk-traag" : "")}>
+            <div className="gp-nu-kop">
+              <span className="gp-nu-label">
+                {rondeNu.baan === "punt" ? "Er wordt een groot punt gebouwd" : "Ronde bezig"}
+              </span>
+              <span className="gp-nu-titel">
+                {rondeNu.baan === "punt"
+                  ? "Tweaks wachten daarop; ze bouwen nooit tegelijk"
+                  : `${voortgang.klaar} van ${voortgang.totaal} doorgevoerd`}
+              </span>
+            </div>
+            {rondeNu.baan !== "punt" && (
+              <>
+                <div className="gp-balk">
+                  <div className="gp-balk-vul" style={{ width: `${Math.round(Math.max(0.04, voortgang.deel) * 100)}%` }} />
+                </div>
+                <div className="gp-nu-regel">
+                  <span className="gp-nu-stap">
+                    {voortgang.over === 0
+                      ? "Alles doorgevoerd, bezig met live zetten"
+                      : `Nog ${voortgang.over} te gaan`}
+                  </span>
+                  <span className="gp-nu-tijd">
+                    Begonnen om {klok(rondeNu.gestart)}, {minuten(voortgang.verstreken)} bezig
+                    {voortgang.over > 0 ? `, nog ongeveer ${minuten(voortgang.rest)}` : ""}
+                  </span>
+                </div>
+              </>
+            )}
+            {voortgang.traag && (
+              <div className="gp-traag">
+                Er is nog niets doorgevoerd en het duurt al langer dan gewoonlijk. Meestal is dat
+                een taaie aanpassing; blijft het hangen, dan kun je de ronde hieronder afbreken.
+              </div>
+            )}
+            <p className="gp-venster">
+              Een tweede ronde kan er niet naast; die zou in dezelfde bestanden schrijven. Dit
+              scherm kijkt elke vijftien seconden zelf of hij nog loopt.
+            </p>
+          </div>
+        ) : rondeNu.ronde ? (
           <div className="tw-ronde-loopt">
             <span>
               Er loopt een ronde{rondeNu.gestart ? `, begonnen om ${klok(rondeNu.gestart)}` : ""}

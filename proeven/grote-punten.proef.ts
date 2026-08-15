@@ -165,11 +165,23 @@ proef("de nacht eindigt om 07:00", uurHier(eindeVanDeNacht(zomerNacht)) === NACH
 // dashboard weet of er werk is, want het is zijn eigen wachtrij, en het geeft de
 // bon meteen mee.
 const vercelCrons = JSON.parse(lees("vercel.json")).crons as { path: string; schedule: string }[];
-const uurwerk = vercelCrons.find((c) => c.path === "/api/cron/bouwrondes");
-proef("het uurwerk van de wachtrijen staat in vercel.json", Boolean(uurwerk),
-  "Zonder deze cron start er niets vanzelf: geen nachtronde en geen uurlijkse tweak-ronde.");
-proef("het uurwerk loopt elk uur", /^\S+ \* \* \* \*$/.test(uurwerk?.schedule ?? ""),
-  `Gevonden: ${uurwerk?.schedule}. Elk uur is nodig, want een punt duurt langer dan een uur en de volgende moet daarna verder.`);
+const nachttik = vercelCrons.find((c) => c.path === "/api/cron/nachtronde");
+proef("er is één nachtelijke tik die de bouw op gang brengt", Boolean(nachttik),
+  "Zonder die tik begint de nacht nooit, en dan wordt een goedgekeurd punt alleen met de knop gebouwd.");
+
+// ── NIETS DRAAIT ELK UUR, EN DAT IS EEN BESLUIT VAN MAARTEN ──
+// Er stond even een cron die elk uur beide wachtrijen afging. Dat kost geld op
+// elk uur dat er niets is, en het haalt de controle weg bij degene die hem hoort
+// te hebben. Tweaks start hij zelf; een plan begint op zijn klik; alleen het
+// bouwen van goedgekeurde punten begint 's nachts vanzelf, en dat gaat door
+// DOORGEVEN (een klare ronde start de volgende) in plaats van door te pollen.
+proef("er draait geen uurwerk dat elk uur kijkt of er werk is",
+  !vercelCrons.some((c) => /nachtronde|bouwronde/.test(c.path) && /^\S+ \* \* \* \*$/.test(c.schedule)),
+  `Gevonden: ${JSON.stringify(vercelCrons.filter((c) => /ronde/.test(c.path)))}. Eén tik per nacht is genoeg; de rest geeft door.`);
+proef("een klare bouwronde geeft door aan de volgende",
+  /volgendeTaak\(\)/.test(lees("app/api/admin/punten/ronde/route.ts"))
+  && /startWerkstroom/.test(lees("app/api/admin/punten/ronde/route.ts")),
+  "Zonder doorgeven bouwt de nacht één punt en staat de rest tot de volgende nacht stil.");
 proef("de werkstromen hebben geen eigen schema meer",
   !/^\s*schedule:/m.test(puntStroom) && !/^\s*schedule:/m.test(tweakStroom),
   "Twee uurwerken naast elkaar starten rondes die elkaar alleen maar op het slot vinden.");

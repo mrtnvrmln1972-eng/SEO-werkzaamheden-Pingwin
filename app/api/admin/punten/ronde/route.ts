@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardDev, isMeekijker } from "../../../../../lib/admin-scope";
 import { claimPunt, geefPuntRondeTerug, puntStand, rondeNaam, volgendeTaak } from "../../../../../lib/punt-ronde";
+import { isNacht } from "../../../../../lib/punt-tempo";
+import { startWerkstroom } from "../../../../../lib/werkstroom";
 import { haalPunt, stappenVoor, zetStap, PLAN_STAPPEN, STAPPEN } from "../../../../../lib/grote-punten";
 
 export const runtime = "nodejs";
@@ -51,7 +53,22 @@ export async function POST(req: NextRequest) {
     const ronde = String(body?.ronde ?? "").trim();
     if (!ronde) return NextResponse.json({ ok: false, error: "Welke ronde?" }, { status: 400 });
     await geefPuntRondeTerug(ronde);
-    return NextResponse.json({ ok: true, stand: await puntStand() });
+
+    // ── HET DOORGEVEN, IN PLAATS VAN ELK UUR KIJKEN ──
+    // Is deze ronde klaar, is het nog nacht, en staat er nóg een goedgekeurd
+    // punt? Dan start die volgende ronde meteen. Zo werkt de nacht de wachtrij
+    // van boven naar beneden af zonder dat er ook maar één keer voor niets
+    // wakker wordt geworden. Een uurwerk dat elk uur kijkt of er werk is, kost
+    // geld op de uren dat er niets is; dit kost alleen iets als er werk is.
+    let volgende: string | null = null;
+    if (isNacht(new Date())) {
+      const taak = await volgendeTaak();
+      if (taak.werk === "bouwen" && taak.punt) {
+        const uit = await startWerkstroom("punt-nacht.yml", "punt", "nacht");
+        if (uit.ok) volgende = taak.punt.code;
+      }
+    }
+    return NextResponse.json({ ok: true, stand: await puntStand(), volgende });
   }
 
   if (actie === "stap") {

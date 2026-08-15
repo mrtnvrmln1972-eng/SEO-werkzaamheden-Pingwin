@@ -57,9 +57,14 @@ export const BLOKKEN: Uitklapper[] = [
       "meldingen gewoon in de wachtrij bleven staan. Nu geeft het dashboard elke ronde op het moment van " +
       "starten een eigen ondertekende toegangsbon mee, die een paar uur geldig is en alleen voor die ene " +
       "ronde werkt. Er valt dus niets meer te kopiëren, en een nieuwe meekijk-sleutel raakt de rondes niet. " +
-      "Het uurwerk verhuisde om dezelfde reden mee naar het dashboard zelf: dat wéét of er werk is, want " +
-      "het is zijn eigen wachtrij. En een ronde die er tóch niet in komt, mislukt nu zichtbaar in plaats " +
-      "van groen te kleuren zonder iets te doen.\n\n" +
+      "En een ronde die er tóch niet in komt, mislukt nu zichtbaar in plaats van groen te kleuren zonder " +
+      "iets te doen.\n\n" +
+      "**Er draait niets elk uur, en dat is met opzet.** Een uurwerk dat steeds kijkt of er werk is, kost " +
+      "geld op elk uur dat er niets is. Dus: tweaks start je zelf met de knop, een plan begint zodra je op " +
+      "\"maak er nu een plan van\" drukt, en alleen het bouwen van goedgekeurde punten begint 's nachts " +
+      "vanzelf, met één tik aan het begin van de nacht. Daarna wordt er doorgegeven in plaats van gekeken: " +
+      "een ronde die klaar is start zelf de volgende als het nog nacht is en er nog een goedgekeurd punt " +
+      "staat. Zo kost de nacht precies zoveel als er werk is.\n\n" +
       "**Je ziet wat er loopt en hoe lang het nog duurt.** Bovenaan het scherm staat welk punt op dit " +
       "moment gebouwd wordt, bij welke van de vijf stappen hij is (plan gelezen, aan het bouwen, proeven, " +
       "live zetten, zelf nagekeken) en hoeveel minuten het naar verwachting nog kost. Bij het schrijven " +

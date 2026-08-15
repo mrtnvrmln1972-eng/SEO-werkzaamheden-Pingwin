@@ -43,8 +43,8 @@
       "schedule": "0 6 1 * *"
     },
     {
-      "path": "/api/cron/bouwrondes",
-      "schedule": "5 * * * *"
+      "path": "/api/cron/nachtronde",
+      "schedule": "5 21 * * *"
     }
   ]
 }

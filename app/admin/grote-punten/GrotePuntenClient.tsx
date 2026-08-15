@@ -198,6 +198,23 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
     if (j?.ok) setStarts((j.starts ?? []) as Start[]);
   }
 
+  /**
+   * Een plan laten schrijven begint meteen, op jouw klik.
+   *
+   * Het stond eerst alleen op "plan wordt gemaakt" en wachtte tot er iets
+   * langskwam dat het oppakte. Dat is precies het soort automatisch-elk-uur dat
+   * er niet moet zijn: denkwerk kost geld en hoort te beginnen omdat jij het
+   * vraagt, niet omdat de klok verspringt.
+   */
+  async function planNu(id: number) {
+    if (!(await stuur({ id, stand: "plan-maken" }))) return;
+    setBericht({ soort: "ok", tekst: "Ik ga er nu een plan van maken; je ziet hierboven hoe ver het is." });
+    const r = await fetch("/api/admin/punten/draaien", { method: "POST" }).catch(() => null);
+    const j = await r?.json().catch(() => null);
+    if (j && !j.ok) setBericht({ soort: "fout", tekst: j.error || "Starten lukte niet." });
+    setTimeout(() => void ververs(), 8000);
+  }
+
   async function draaiNu() {
     setDraait(true);
     setBericht(null);
@@ -358,8 +375,8 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
             )}
             {opties.idee && (
               <div className="pnl-acties-groep">
-                <button type="button" className="btn btn-primary btn-klein" onClick={() => void stuur({ id: p.id, stand: "plan-maken" })}>
-                  Maak er een plan van
+                <button type="button" className="btn btn-primary btn-klein" onClick={() => void planNu(p.id)}>
+                  Maak er nu een plan van
                 </button>
                 <button type="button" className="btn btn-ghost btn-klein" onClick={() => setAntwoordVoor(p.id)}>
                   Eerst wat meegeven
@@ -409,7 +426,12 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
             Een groot punt gaat niet zomaar de bouw in. Eerst denken we samen het plan uit in het
             draadje bij het punt zelf, dan keur jij het goed, en pas dan komt het in de
             bouwwachtrij. &apos;s Nachts wordt er één tegelijk gebouwd, van boven naar beneden.
-            Overdag zijn de tweaks aan de beurt; de twee kunnen elkaar niet kruisen.
+          </p>
+          <p className="beheer-klein">
+            Kleine aanpassingen van twee minuten horen niet hier maar op de{" "}
+            <a href="/admin/tweaks"><strong>tweak-stapel</strong></a>: die worden in één ronde
+            doorgevoerd zonder plan. De twee kunnen elkaar niet kruisen; er draait er altijd maar
+            één tegelijk.
           </p>
         </div>
 
