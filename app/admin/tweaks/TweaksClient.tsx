@@ -374,7 +374,12 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
         {blok("Klaar, klopt het?", "Dit staat live. Zeg of het goed is; klopt het niet, dan gaat het met jouw correctie terug de wachtrij in.", controleer, { controle: true })}
         {blok("In de wachtrij", "Van boven naar beneden de volgorde waarin de eerstvolgende ronde ze doet. Sleep aan het greepje om die volgorde te veranderen.", wachtrij, { sleepbaar: true, voorrang: true })}
         {blok("Geparkeerd", "Blijft staan, gaat nergens in mee. Terugzetten kan altijd.", geparkeerd, { voorrang: true })}
-        {blok("Grotere ideeën", "Wordt niet in een ronde weggewerkt. Hier maak ik eerst een voorstel van; zeg je ja, dan wordt het een punt op de routekaart.", ideeen, { idee: true, voorrang: true })}
+        {/* Bewust géén voorrang-knoppen bij een idee. "Direct doorvoeren" en
+            "parkeren" gaan over de volgorde van de eerstvolgende ronde, en een
+            idee gaat nooit mee in een ronde. Ze stonden er wél, en dan lijkt het
+            of je een idee vandaag nog kunt laten bouwen; dat kan niet, en het
+            maakte de kaart bovendien onnodig druk. */}
+        {blok("Grotere ideeën", "Wordt niet in een ronde weggewerkt. Hier maak ik eerst een voorstel van; zeg je ja, dan wordt het een punt op de routekaart.", ideeen, { idee: true })}
         {blok("Wordt een routekaartpunt", "Jij zei ja. Deze komen op de routekaart te staan en worden daar als ontwikkelpunt opgepakt, niet in een tweak-ronde.", naarRoutekaart)}
         {toonAf && blok("Afgerond", "Klaar of apart gezet.", afgerond)}
 
