@@ -72,4 +72,18 @@ jobs:
           # Werkt dit niet meer na een nieuwe versie van de actie, dan zit het
           # verschil in de namen van deze twee velden; de rest staat los.
           prompt: "/tweaks"
-          claude_args: "--allowedTools Bash,Edit,Write,Read,Glob,Grep"
+          # HET MODEL HOORT BIJ HET SOORT WERK, EN DAT IS HIER VASTGEZET.
+          # Pingwins eigen regel (brein/12-zuinig-werken.md): het middelste model
+          # voor bouwen, opmaken, teksten en mechanisch werk, het zwaarste alleen
+          # voor strategie en beoordelen. Een tweak-ronde is per definitie het
+          # eerste: kleine, scherp omschreven correcties op één scherm.
+          #
+          # De eerste proefronde draaide op het zwaarste model, want dat is de
+          # standaard van de omgeving. Dat is precies de fout die deze regel moet
+          # voorkomen, en hij is hier nu niet meer te vergeten: Maarten kiest geen
+          # model, de werkstroom weet welk werk hij doet.
+          #
+          # Wordt een ronde structureel te dom voor zijn werk, dan is dat een
+          # signaal dat er te grote dingen in de wachtrij komen; die horen op
+          # "apart" en daarna op de routekaart, niet op een zwaarder model hier.
+          claude_args: "--model claude-sonnet-5 --allowedTools Bash,Edit,Write,Read,Glob,Grep"
