@@ -30,7 +30,7 @@ import { eenmalig } from "./schema-stand";
 
 // Vingerafdruk van `doeBouw()` hieronder; `proeven/schema-versie.proef.ts`
 // rekent hem na en noemt zelf de waarde die hier hoort te staan.
-export const TWEAKS_SCHEMA_VERSIE = "tw1-4cd18496";
+export const TWEAKS_SCHEMA_VERSIE = "tw1-2b87bbf1";
 
 async function doeBouw(): Promise<void> {
   await sql`
@@ -68,6 +68,14 @@ async function doeBouw(): Promise<void> {
   await sql`ALTER TABLE tweaks ADD COLUMN IF NOT EXISTS bezig_sinds TIMESTAMPTZ`;
   // De brug naar de routekaart: het R-nummer dat uit dit idee is voortgekomen.
   await sql`ALTER TABLE tweaks ADD COLUMN IF NOT EXISTS punt TEXT`;
+  // De standaardwaarde van `stand` moet mee met de hernoeming, en dat gebeurt
+  // NIET vanzelf: CREATE TABLE IF NOT EXISTS doet niets aan een tabel die al
+  // bestaat, dus de kolom hield de oude standaard 'open'. Gevolg, live
+  // aangetroffen op 15-08-2026: elke nieuwe melding kwam binnen op een stand die
+  // in geen enkel filter voorkomt. Hij stond niet in de wachtrij, niet bij de
+  // ideeën, niet op de teller, en een ronde pakte hem nooit op. Hij was
+  // opgeslagen en onzichtbaar tegelijk, wat erger is dan een foutmelding.
+  await sql`ALTER TABLE tweaks ALTER COLUMN stand SET DEFAULT 'wachtrij'`;
   // De oude standen omzetten naar de nieuwe namen (open/gedaan bestonden één dag).
   await sql`UPDATE tweaks SET stand = 'wachtrij' WHERE stand = 'open'`;
   await sql`UPDATE tweaks SET stand = 'klaar' WHERE stand = 'gedaan'`;
@@ -210,11 +218,14 @@ export async function nieuweTweak(t: {
   const beeld = t.beeld && t.beeld.length <= MAX_BEELD ? t.beeld : null;
   // Achteraan in de wachtrij. Wie voorrang wil geeft die zelf, met "direct
   // doorvoeren" of door hem naar boven te slepen; niet doordat hij nieuw is.
+  // De stand staat er met de hand bij, ook al heeft de kolom een standaard. Zo'n
+  // standaard leeft in de database en niet in de code, dus je ziet hier niet als
+  // hij iets anders zegt dan je denkt. Precies dat is misgegaan (zie doeBouw).
   const r = await sql`
-    INSERT INTO tweaks (tekst, pad, scherm, klant, beeld, soort, volgorde)
+    INSERT INTO tweaks (tekst, pad, scherm, klant, beeld, soort, stand, volgorde)
     VALUES (
       ${t.tekst.trim()}, ${t.pad}, ${t.scherm}, ${t.klant}, ${beeld}, ${t.soort || "tweak"},
-      (SELECT COALESCE(MAX(volgorde), 0) + 10 FROM tweaks)
+      'wachtrij', (SELECT COALESCE(MAX(volgorde), 0) + 10 FROM tweaks)
     )
     RETURNING *`;
   return rij(r.rows[0]);
