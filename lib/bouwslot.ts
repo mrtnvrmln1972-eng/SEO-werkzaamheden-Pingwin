@@ -45,7 +45,26 @@ export type SlotStand = {
   /** In welke baan die ronde werkt. */
   baan: Baan | null;
   gestart: string | null;
+  /**
+   * Een ronde die gestart is maar zich nog niet gemeld heeft.
+   *
+   * Tussen de knopdruk en de eerste melding zit ongeveer een minuut: de
+   * werkstroom moet opgestart worden, de code ophalen en de pakketten
+   * installeren. In die minuut stond er "er wordt nu niets gebouwd", en dat is
+   * niet alleen onaardig maar ook onwaar; het is precies het moment waarop je
+   * juist wilt zien dat je klik is aangekomen. Live gemeld op 15-08-2026.
+   */
+  opstarten: { baan: Baan; sinds: string } | null;
 };
+
+/**
+ * Hoe lang "hij start op" een geldig antwoord blijft.
+ *
+ * Ruim boven de minuut die het normaal kost, en ruim onder "voor altijd": komt
+ * een ronde binnen deze tijd niet opdagen, dan is hij niet opgekomen en hoort
+ * het scherm dát te zeggen in plaats van te blijven hangen op opstarten.
+ */
+export const OPSTART_MINUTEN = 4;
 
 async function klaar(): Promise<void> {
   await Promise.all([ensureTweaks(), ensureGrotePunten()]);
@@ -154,6 +173,18 @@ async function loopthijEcht(ronde: string): Promise<boolean> {
   return String(gegevens?.status ?? "") !== "completed";
 }
 
+/**
+ * Melden dat er een werkstroom gestart is, vóór hij zich zelf meldt.
+ *
+ * Wordt aangeroepen door lib/werkstroom.ts, dus élke start telt mee, uit welke
+ * baan of welke knop dan ook. Eén plek, zodat een nieuwe startknop dit niet kan
+ * vergeten.
+ */
+export async function meldOpstart(baan: Baan): Promise<void> {
+  await klaar();
+  await sql`UPDATE tweak_ronde SET opstart_baan = ${baan}, opstart_sinds = now() WHERE id = 1`;
+}
+
 /** Loopt er een ronde, in welke baan, en sinds wanneer? */
 export async function slotStand(): Promise<SlotStand> {
   await klaar();
@@ -165,12 +196,23 @@ export async function slotStand(): Promise<SlotStand> {
   const naam = houder.rows[0]?.ronde ? String(houder.rows[0].ronde) : null;
   if (naam && !(await loopthijEcht(naam))) await geefSlot(naam);
 
-  const r = await sql`SELECT ronde, baan, gestart FROM tweak_ronde WHERE id = 1`;
+  const r = await sql`SELECT ronde, baan, gestart, opstart_baan, opstart_sinds FROM tweak_ronde WHERE id = 1`;
   const ronde = r.rows[0]?.ronde ? String(r.rows[0].ronde) : null;
+
+  // Opstarten geldt alleen zolang er nog niets geclaimd is en het kort geleden
+  // is. Heeft de ronde zich gemeld, dan is de echte stand interessanter; is het
+  // te lang geleden, dan is hij niet opgekomen en moet het scherm dat zeggen.
+  const sinds = r.rows[0]?.opstart_sinds ? new Date(String(r.rows[0].opstart_sinds)) : null;
+  const vers = sinds ? Date.now() - sinds.getTime() < OPSTART_MINUTEN * 60_000 : false;
+  const opstarten = !ronde && sinds && vers
+    ? { baan: (String(r.rows[0]?.opstart_baan || "tweak") as Baan), sinds: sinds.toISOString() }
+    : null;
+
   return {
     ronde,
     baan: ronde ? ((String(r.rows[0]?.baan || "tweak")) as Baan) : null,
     gestart: ronde && r.rows[0]?.gestart ? new Date(String(r.rows[0].gestart)).toISOString() : null,
+    opstarten,
   };
 }
 
@@ -186,7 +228,8 @@ export async function pakSlot(ronde: string, baan: Baan): Promise<boolean> {
   await bevrijdSlot();
   const slot = await sql`
     UPDATE tweak_ronde
-    SET ronde = ${ronde}, baan = ${baan}, gestart = now()
+    SET ronde = ${ronde}, baan = ${baan}, gestart = now(),
+        opstart_baan = NULL, opstart_sinds = NULL
     WHERE id = 1 AND ronde IS NULL
     RETURNING ronde`;
   return (slot.rowCount ?? 0) > 0;

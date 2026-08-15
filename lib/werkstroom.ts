@@ -1,4 +1,5 @@
 import { maakBon } from "./ronde-bon";
+import { meldOpstart } from "./bouwslot";
 
 // ═══════════════════════════════════════════════════════════
 // ÉÉN PLEK DIE EEN RONDE START BIJ GITHUB
@@ -113,7 +114,14 @@ export async function startWerkstroom(
   ).catch(() => null);
 
   if (!antwoord) return { ok: false, status: 502, error: "GitHub was niet bereikbaar. Probeer het zo nog eens." };
-  if (antwoord.status === 204) return { ok: true, ronde };
+  if (antwoord.status === 204) {
+    // Onthouden dát er iets gestart is. Tussen deze regel en het moment waarop
+    // de ronde zich meldt zit ongeveer een minuut, en in die minuut zei het
+    // scherm "er wordt nu niets gebouwd". Dit staat hier en niet bij de knoppen,
+    // zodat een nieuwe startknop het niet kan vergeten.
+    await meldOpstart(baan).catch(() => {});
+    return { ok: true, ronde };
+  }
   return {
     ok: false,
     status: 502,

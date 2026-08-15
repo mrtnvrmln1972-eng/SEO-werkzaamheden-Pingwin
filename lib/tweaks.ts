@@ -30,7 +30,7 @@ import { eenmalig } from "./schema-stand";
 
 // Vingerafdruk van `doeBouw()` hieronder; `proeven/schema-versie.proef.ts`
 // rekent hem na en noemt zelf de waarde die hier hoort te staan.
-export const TWEAKS_SCHEMA_VERSIE = "tw1-72de9abd";
+export const TWEAKS_SCHEMA_VERSIE = "tw1-b449b689";
 
 async function doeBouw(): Promise<void> {
   await sql`
@@ -108,6 +108,12 @@ async function doeBouw(): Promise<void> {
   // "er loopt een tweak-ronde" kan onderscheiden van "punt G3 wordt gebouwd", en
   // zodat de vervaltijd per baan kan verschillen. Zie lib/bouwslot.ts.
   await sql`ALTER TABLE tweak_ronde ADD COLUMN IF NOT EXISTS baan TEXT NOT NULL DEFAULT 'tweak'`;
+  // Het moment waarop het dashboard een werkstroom heeft gestart, vóórdat die
+  // zich meldt. Daar zit ongeveer een minuut tussen (opstarten, code ophalen,
+  // pakketten), en in die minuut zei het scherm "er wordt nu niets gebouwd"
+  // terwijl er wel degelijk iets aankwam. Zie lib/bouwslot.ts, meldOpstart.
+  await sql`ALTER TABLE tweak_ronde ADD COLUMN IF NOT EXISTS opstart_baan TEXT`;
+  await sql`ALTER TABLE tweak_ronde ADD COLUMN IF NOT EXISTS opstart_sinds TIMESTAMPTZ`;
   // De nulmeting: welk scherm is één keer helemaal nagelopen, en wanneer. Alleen
   // de uitkomst staat hier; de lijst schermen zelf komt uit het Intern-menu en de
   // tabbalk van een klant, want die lijsten bestaan al.

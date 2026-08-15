@@ -32,7 +32,13 @@ type Voortgang = {
   stapNr: number; stappen: number; stap: string; duurtLang: boolean;
 };
 export type PuntStandUI = {
-  slot: { ronde: string | null; baan: "tweak" | "punt" | null; gestart: string | null };
+  slot: {
+    ronde: string | null;
+    baan: "tweak" | "punt" | null;
+    gestart: string | null;
+    /** Gestart, maar heeft zich nog niet gemeld. Duurt normaal een minuut. */
+    opstarten: { baan: "tweak" | "punt"; sinds: string } | null;
+  };
   /** Wordt er gebouwd, of wordt er een plan geschreven? */
   werk: "bouw" | "plan";
   bezig: Punt | null;
@@ -128,10 +134,16 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
   // minuten. Een scherm dat de hele dag elke seconde vraagt is duur en levert
   // niets op, want dan gebeurt er niets.
   useEffect(() => {
+    // Drie tempo's, en het middelste is de reparatie. Tijdens het opstarten
+    // gebeurt er elke seconde iets wat je wilt zien (hij meldt zich), dus dan
+    // kijken we vaak. Loopt er iets, dan is elke vijftien seconden genoeg. Ligt
+    // alles stil, dan is elke twee minuten al royaal.
+    const opstart = Boolean(stand.slot.opstarten);
     const bezig = Boolean(stand.slot.ronde);
-    const t = setInterval(() => void ververs(), bezig ? 15000 : 120000);
+    const tempo = opstart ? 5000 : bezig ? 15000 : 120000;
+    const t = setInterval(() => void ververs(), tempo);
     return () => clearInterval(t);
-  }, [stand.slot.ronde, ververs]);
+  }, [stand.slot.ronde, stand.slot.opstarten, ververs]);
 
   // De seconden-teller voor de aftelling. Draait alleen als er iets loopt.
   useEffect(() => {
@@ -150,6 +162,16 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
     return { verstreken: Math.round(verstreken), rest: Math.max(1, Math.round(totaal - verstreken)) };
   })();
   void tikker; // de teller bestaat om te hertekenen, niet om gelezen te worden
+
+  // Hoe lang het opstarten al duurt. Loopt mee op de klok, want stilstaande
+  // seconden zijn precies waarom niemand gelooft dat er iets gebeurt.
+  const opstartTekst = (() => {
+    const o = stand.slot.opstarten;
+    if (!o) return "";
+    const sec = Math.max(0, Math.round((Date.now() - new Date(o.sinds).getTime()) / 1000));
+    if (sec < 90) return `${sec} seconden bezig`;
+    return "duurt langer dan gewoonlijk";
+  })();
 
   const opVolgorde = (l: Punt[]) => [...l].sort((a, b) => a.volgorde - b.volgorde || a.id - b.id);
   const per = (s: Stand) => opVolgorde(punten.filter((p) => p.stand === s));
@@ -531,6 +553,31 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
               hooguit een minuut; blijft het hier staan, dan is hij niet goed opgekomen en geeft
               hij de wachtrij vanzelf weer vrij.
             </p>
+          </div>
+        ) : stand.slot.opstarten ? (
+          /* ── DE MINUUT TUSSEN JOUW KLIK EN ZIJN EERSTE MELDING ──
+             Hier stond "er wordt nu niets gebouwd", en dat was onwaar op precies
+             het moment dat je wilt weten of je klik is aangekomen. Een ronde moet
+             eerst opgestart worden, de code ophalen en de pakketten installeren;
+             dat duurt ongeveer een minuut en daarna meldt hij zich vanzelf. */
+          <div className="gp-nu">
+            <div className="gp-nu-kop">
+              <span className="gp-nu-label">Aan het opstarten</span>
+              <span className="gp-nu-titel">
+                {stand.slot.opstarten.baan === "tweak" ? "Een tweak-ronde" : "Een grote-puntenronde"} is gestart
+              </span>
+            </div>
+            <div className="gp-balk">
+              <div className="gp-balk-vul gp-balk-onbekend" />
+            </div>
+            <div className="gp-nu-regel">
+              <span className="gp-nu-stap">Klaarzetten: code ophalen en pakketten installeren</span>
+              <span className="gp-nu-tijd">{opstartTekst}</span>
+            </div>
+            <div className="gp-venster">
+              Dit duurt ongeveer een minuut. Zodra hij zich meldt verschijnt hier de eerste stap met
+              een tijdsverwachting. Je hoeft niets te doen en niet nog een keer te drukken.
+            </div>
           </div>
         ) : (
           <div className="gp-nu gp-nu-stil">

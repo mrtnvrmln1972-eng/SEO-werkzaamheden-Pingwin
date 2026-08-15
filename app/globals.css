@@ -7567,6 +7567,20 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   transition: width 0.6s ease;
 }
 .gp-balk-traag .gp-balk-vul { background: var(--brand-teal); }
+/* Opstarten: er is wél iets aan de gang, maar niemand weet hoe ver. Een balk die
+   heen en weer loopt zegt precies dat, waar een balk op 0% "er gebeurt niets"
+   zegt en een balk op een verzonnen percentage liegt. */
+.gp-balk-onbekend {
+  width: 35%;
+  animation: gp-schuif 1.4s ease-in-out infinite;
+}
+@keyframes gp-schuif {
+  0%   { left: -35%; }
+  100% { left: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gp-balk-onbekend { animation: none; left: 0; width: 100%; opacity: 0.35; }
+}
 .gp-nu-regel {
   display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3);
   flex-wrap: wrap; font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--body-text);
