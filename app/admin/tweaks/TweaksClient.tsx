@@ -163,8 +163,12 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
   const wachtrij = opVolgorde(tweaks.filter((t) => lopend(t) && t.soort === "tweak" && t.prioriteit !== "geparkeerd"));
   const geparkeerd = opVolgorde(tweaks.filter((t) => lopend(t) && t.prioriteit === "geparkeerd"));
   const ideeen = opVolgorde(tweaks.filter((t) => lopend(t) && t.soort === "idee" && t.prioriteit !== "geparkeerd"));
-  const naarRoutekaart = tweaks.filter((t) => t.stand === "routekaart");
-  const afgerond = [...tweaks.filter((t) => t.stand === "klaar" || t.stand === "apart")].sort((a, b) => b.id - a.id);
+  // "Apart gezet" hoorde bij de afgeronde en zat dus achter een schakelaar. Dat
+  // was fout: een melding die te groot bleek is niet klaar, hij wacht op een
+  // beslissing van Maarten. Op 15-08 verdwenen er zo drie meldingen uit beeld en
+  // leek het of ze weg waren. Ze staan nu gewoon in het zicht.
+  const apart = [...tweaks.filter((t) => t.stand === "apart")].sort((a, b) => b.id - a.id);
+  const afgerond = [...tweaks.filter((t) => t.stand === "klaar")].sort((a, b) => b.id - a.id);
 
   async function haalBeeld(id: number) {
     if (beelden[id]) { setGroot(id); return; }
@@ -530,11 +534,12 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
               <span className="gp-nu-label">Er loopt geen ronde</span>
             </div>
             <p className="gp-venster">
-              {wachtrij.length === 0 && controleer.length === 0
+              {wachtrij.length === 0 && controleer.length === 0 && apart.length === 0
                 ? "Niets open. Zie je iets dat anders moet, druk dan op het Tweak-knopje rechtsonder."
                 : [
                   wachtrij.length > 0 ? `${wachtrij.length} ${wachtrij.length === 1 ? "staat" : "staan"} in de wachtrij` : "",
                   controleer.length > 0 ? `${controleer.length} ${controleer.length === 1 ? "wacht" : "wachten"} op je oordeel` : "",
+                  apart.length > 0 ? `${apart.length} ${apart.length === 1 ? "bleek" : "bleken"} te groot voor een ronde` : "",
                 ].filter(Boolean).join(", ") + ". Er start niets vanzelf; druk op Nu draaien."}
             </p>
           </div>
@@ -556,8 +561,8 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
             idee gaat nooit mee in een ronde. Ze stonden er wél, en dan lijkt het
             of je een idee vandaag nog kunt laten bouwen; dat kan niet, en het
             maakte de kaart bovendien onnodig druk. */}
+        {blok("Te groot gebleken, wat wil je ermee?", apart, { idee: true })}
         {blok("Grotere ideeën", ideeen, { idee: true })}
-        {blok("Verhuisd naar de grote punten", naarRoutekaart)}
         {toonAf && blok("Afgerond", afgerond)}
 
         {controleer.length + wachtrij.length + ideeen.length + geparkeerd.length === 0 && (

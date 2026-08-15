@@ -4,7 +4,7 @@ import {
   ensureGrotePunten, gemetenDuur, haalPunt, magNaarWachtrij, STAPPEN,
   type Omvang, type Punt,
 } from "./grote-punten";
-import { baanNu, eindeVanDeNacht, isNacht, verwachteStarts, voortgang, volgendeNacht, type Voortgang } from "./punt-tempo";
+import { eindeVanDeNacht, isNacht, verwachteStarts, voortgang, volgendeNacht, type Voortgang } from "./punt-tempo";
 
 // ═══════════════════════════════════════════════════════════
 // DE NACHTELIJKE RONDE: ÉÉN PUNT TEGELIJK, EN NOOIT ZONDER AKKOORD
@@ -38,7 +38,7 @@ export type Werk = "bouwen" | "plan";
 
 export type PuntClaim =
   | { ok: true; ronde: string; werk: Werk; punt: Punt }
-  | { ok: false; reden: "bezet" | "leeg" | "overdag"; uitleg: string; stand: PuntStand };
+  | { ok: false; reden: "bezet" | "leeg"; uitleg: string; stand: PuntStand };
 
 export type PuntStand = {
   slot: SlotStand;
@@ -136,22 +136,24 @@ export async function wachtrijMetTijden(nu: Date = new Date()): Promise<{
 /**
  * Het begin van een ronde: pak het slot en het punt dat erbij hoort.
  *
- * `handmatig` betekent: Maarten drukte zelf op de knop. Dan geldt het
- * nachtvenster niet, want hij zit erbij en kan zien wat er gebeurt. Het slot
- * geldt wél, altijd: dat is de enige reden dat een tweak-ronde en een
+ * Het slot geldt altijd: dat is de enige reden dat een tweak-ronde en een
  * bouwronde elkaar niet in dezelfde bestanden kunnen tegenkomen.
  */
-export async function claimPunt(ronde: string, opties: { handmatig?: boolean } = {}): Promise<PuntClaim> {
+export async function claimPunt(ronde: string): Promise<PuntClaim> {
   await ensureGrotePunten();
   const nu = new Date();
 
-  if (!opties.handmatig && baanNu(nu) !== "punt") {
-    return {
-      ok: false, reden: "overdag",
-      uitleg: "Overdag zijn de tweaks aan de beurt; grote punten worden 's nachts gebouwd.",
-      stand: await puntStand(nu),
-    };
-  }
+  // GEEN NACHTCONTROLE MEER HIER, EN DAT IS EEN REPARATIE.
+  // Er stond een weigering "overdag" op deze plek. Gevolg: druk je overdag op
+  // "Begin nu met het plan", dan startte de werkstroom keurig en weigerde die
+  // zichzelf vervolgens bij het claimen. De knop deed dus zichtbaar niets, en
+  // het punt bleef op "nog niet begonnen" staan. Live aangetroffen op 15-08-2026.
+  //
+  // De nacht hoort ook niet hier thuis. Een ronde start alleen nog doordat
+  // Maarten op een knop drukt of doordat de tik van 's nachts hem start, en die
+  // tik kijkt zelf al of het nacht is. Twee poorten voor dezelfde vraag lopen
+  // uit elkaar; deze kon alleen maar tegenwerken. Het slot blijft wél gelden:
+  // dat is wat een tweak-ronde en een bouwronde uit elkaar houdt.
 
   const taak = await volgendeTaak();
   if (!taak.werk || !taak.punt) {

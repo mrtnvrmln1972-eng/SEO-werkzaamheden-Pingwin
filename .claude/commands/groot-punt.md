@@ -39,7 +39,7 @@ er iets gebeurd is.
 ## Stap 1, altijd als eerste: claim de ronde
 
 ```
-POST /api/admin/punten/ronde  { "actie": "claim", "ronde": "<$PUNT_RONDE, of laat weg>", "handmatig": false }
+POST /api/admin/punten/ronde  { "actie": "claim", "ronde": "<$PUNT_RONDE, of laat weg>" }
 ```
 
 Staat de omgevingsvariabele `PUNT_RONDE` er (dat is zo als de ronde vanaf de knop of vanuit de
@@ -50,7 +50,6 @@ nacht draait), gebruik die naam dan; anders verzint de route er zelf een. Je kri
 - `reden: "bezet"` (409) — er loopt al een ronde, in welke baan dan ook. **Stop meteen en bouw
   niets.** Twee rondes in dezelfde bestanden is precies wat hier eerder is misgegaan.
 - `reden: "leeg"` — er staat niets klaar. Stop, zonder bericht.
-- `reden: "overdag"` — het is geen nacht en niemand drukte op de knop. Stop.
 
 Lees daarna **het hele draadje** van het punt (`punt.draad`). Daar staat wat Maarten al gezegd
 heeft. Opnieuw iets voorstellen dat hij twee regels eerder heeft afgewezen, is de slechtste

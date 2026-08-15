@@ -95,9 +95,6 @@ export async function POST(req: NextRequest) {
 
   const uitslag = await claimPunt(
     String(body?.ronde ?? "").trim() || rondeNaam(meekijker ? "claude" : "handmatig"),
-    // Alleen Maarten zelf mag buiten het nachtvenster starten; een ronde die
-    // zichzelf "handmatig" noemt zou het venster kunnen omzeilen.
-    { handmatig: !meekijker && Boolean(body?.handmatig) },
   );
 
   if (!uitslag.ok) {

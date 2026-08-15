@@ -96,6 +96,11 @@ export default function Nulmeting({ begin, voorbeeldSlug, tweaks }: {
   return (
     <div className="beheer-blok">
       <h2 className="beheer-h2">Nulmeting van alle schermen ({klaar} van {lijst.length})</h2>
+      <p className="beheer-uitleg">
+        Open elk scherm één keer, meld met het Tweak-knopje wat je ziet, en vink het hier af.
+        Daarna weet je van élk scherm of het goed is, in plaats van alleen of je er toevallig
+        geweest bent.
+      </p>
 
       <div className="tw-nul-balk">
         <div className="tw-nul-meter" role="img" aria-label={`${klaar} van ${lijst.length} schermen nagelopen`}>
@@ -125,9 +130,11 @@ export default function Nulmeting({ begin, voorbeeldSlug, tweaks }: {
                     <span className="tw-nul-waarvoor">{r.waarvoor}</span>
                   </div>
                   <div className="tw-nul-acties">
+                    {/* Het kale getal zei niemand iets: is dat een score, een aantal
+                        fouten, een volgnummer? Nu staat erbij wat het is. */}
                     {meldingen > 0 && (
-                      <span className="tw-stand-chip" title="Zoveel meldingen kwamen er van dit scherm">
-                        {meldingen}
+                      <span className="tw-stand-chip">
+                        {meldingen} {meldingen === 1 ? "melding" : "meldingen"}
                       </span>
                     )}
                     {gezien && <span className="tw-nul-datum">{datum(gezien.nagelopen)}</span>}
