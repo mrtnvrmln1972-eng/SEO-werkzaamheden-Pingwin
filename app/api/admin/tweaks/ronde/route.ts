@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardDev, isMeekijker } from "../../../../../lib/admin-scope";
-import { claimRonde, geefRondeTerug, rondeStand, MAX_PER_RONDE } from "../../../../../lib/tweak-ronde";
+import { claimRonde, geefRondeTerug, breekRondeAf, rondeStand, MAX_PER_RONDE } from "../../../../../lib/tweak-ronde";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,6 +39,18 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const actie = String(body?.actie ?? "claim");
+
+  // De noodrem hoort bij Maarten, niet bij een ronde. Zou de meekijk-sessie hem
+  // ook hebben, dan kan een ronde zichzelf of een ander losbreken en is het slot
+  // geen slot meer.
+  if (actie === "afbreken") {
+    if (meekijker) {
+      return NextResponse.json({ ok: false, error: "Alleen jij kunt een ronde afbreken." }, { status: 403 });
+    }
+    const g = await guardDev(req); if (!g.ok) return g.res;
+    const terug = await breekRondeAf();
+    return NextResponse.json({ ok: true, terug, ronde: await rondeStand() });
+  }
 
   if (actie === "terug") {
     const ronde = String(body?.ronde ?? "").trim();

@@ -162,6 +162,29 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
     }).catch(() => {});
   }
 
+  /**
+   * De noodrem. Een ronde die aantoonbaar dood is hield de wachtrij anders drie
+   * kwartier dicht, en dan sta je op een klok te wachten terwijl je weet dat er
+   * niets meer komt. De meldingen gaan gewoon terug de rij in, niets raakt weg.
+   */
+  async function breekAf() {
+    const r = await fetch("/api/admin/tweaks/ronde", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actie: "afbreken" }),
+    });
+    const j = await r.json().catch(() => null);
+    if (!j?.ok) { setBericht({ soort: "fout", tekst: j?.error || "Afbreken lukte niet." }); return; }
+    setRondeNu(j.ronde);
+    setTweaks((lijst) => lijst.map((t) => (t.stand === "bezig" ? { ...t, stand: "wachtrij" as Stand } : t)));
+    setBericht({
+      soort: "ok",
+      tekst: j.terug > 0
+        ? `De ronde is afgebroken. ${j.terug === 1 ? "Eén melding staat" : `${j.terug} meldingen staan`} weer in de wachtrij; je kunt meteen opnieuw draaien.`
+        : "De ronde is afgebroken. De wachtrij is weer vrij.",
+    });
+  }
+
   async function draaiNu() {
     setDraait(true);
     setBericht(null);
@@ -351,9 +374,15 @@ export default function TweaksClient({ begin, startregel, nulmeting, ronde, voor
 
         {rondeNu.ronde ? (
           <div className="tw-ronde-loopt">
-            Er loopt een ronde{rondeNu.gestart ? `, begonnen om ${klok(rondeNu.gestart)}` : ""}
-            {rondeNu.bezig > 0 ? ` met ${rondeNu.bezig} ${rondeNu.bezig === 1 ? "melding" : "meldingen"}` : ""}.
-            Een tweede ronde kan er niet naast; die zou in dezelfde bestanden schrijven.
+            <span>
+              Er loopt een ronde{rondeNu.gestart ? `, begonnen om ${klok(rondeNu.gestart)}` : ""}
+              {rondeNu.bezig > 0 ? ` met ${rondeNu.bezig} ${rondeNu.bezig === 1 ? "melding" : "meldingen"}` : ""}.
+              Een tweede ronde kan er niet naast; die zou in dezelfde bestanden schrijven. Is hij
+              vastgelopen, breek hem dan af in plaats van te wachten.
+            </span>
+            <button type="button" className="btn btn-ghost btn-klein" onClick={() => void breekAf()}>
+              Ronde afbreken
+            </button>
           </div>
         ) : (
           <p className="beheer-klein">

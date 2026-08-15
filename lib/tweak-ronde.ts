@@ -69,10 +69,49 @@ export async function bevrijdVastgelopen(): Promise<number> {
   return terug.rowCount ?? 0;
 }
 
+/**
+ * Loopt de ronde van de knop nog écht, of is hij allang klaar?
+ *
+ * Dit is het verschil tussen een wachtrij die vrijkomt als het werk klaar is, en
+ * een wachtrij die vrijkomt als de klok het zegt. Dat tweede is wat het was, en
+ * dat is precies verkeerd: op 15-08-2026 stond het scherm drie kwartier "er
+ * loopt een ronde" te zeggen terwijl de werkstroom na 79 seconden klaar was.
+ *
+ * Een ronde die vanaf de knop start heet `gh-<nummer van de draaibeurt>`, en dat
+ * nummer is precies wat je bij GitHub kunt navragen. Zegt GitHub dat hij klaar
+ * is, dan is het slot van niemand meer en gaat het meteen open. Lukt navragen
+ * niet (geen sleutel, GitHub plat), dan verandert er niets en blijft de
+ * vervaltijd het vangnet; hij mag alleen nooit meer de gewone weg zijn.
+ */
+async function loopthijEcht(ronde: string): Promise<boolean> {
+  const nummer = /^gh-(\d+)$/.exec(ronde)?.[1];
+  if (!nummer) return true; // Een ronde uit een chat kunnen we niet navragen.
+  const token = process.env.GITHUB_TWEAK_TOKEN;
+  if (!token) return true;
+  const repo = process.env.GITHUB_TWEAK_REPO || "mrtnvrmln1972-eng/SEO-werkzaamheden-Pingwin";
+  const antwoord = await fetch(`https://api.github.com/repos/${repo}/actions/runs/${nummer}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+    cache: "no-store",
+  }).catch(() => null);
+  if (!antwoord || antwoord.status !== 200) return true;
+  const gegevens = await antwoord.json().catch(() => null);
+  return String(gegevens?.status ?? "") !== "completed";
+}
+
 /** Loopt er een ronde, en zo ja sinds wanneer? */
 export async function rondeStand(): Promise<RondeStand> {
   await ensureTweaks();
   await bevrijdVastgelopen();
+
+  // Eerst navragen of de ronde van de knop nog leeft. Zo niet, dan gaat het slot
+  // meteen open in plaats van na de vervaltijd.
+  const houder = await sql`SELECT ronde FROM tweak_ronde WHERE id = 1`;
+  const naam = houder.rows[0]?.ronde ? String(houder.rows[0].ronde) : null;
+  if (naam && !(await loopthijEcht(naam))) await geefRondeTerug(naam);
   const r = await sql`
     SELECT (SELECT ronde FROM tweak_ronde WHERE id = 1)                        AS ronde,
            (SELECT gestart FROM tweak_ronde WHERE id = 1)                      AS gestart,
@@ -133,6 +172,27 @@ export async function claimRonde(ronde: string): Promise<ClaimUitslag> {
     .map((id) => alles.find((t) => t.id === id))
     .filter((t): t is Tweak => Boolean(t));
   return { ok: true, ronde, tweaks: gepakt };
+}
+
+/**
+ * De noodrem: breek af wat er ook loopt, ongeacht de naam.
+ *
+ * De vervaltijd hierboven is een vangnet, geen bediening. Een ronde die
+ * aantoonbaar dood is (de werkstroom staat op "klaar" bij GitHub, er is niets
+ * gebeurd) hield de wachtrij drie kwartier dicht, en dan sta je te wachten op
+ * een klok terwijl je weet dat er niets meer komt. Dat is precies het soort
+ * machteloosheid waar dit dashboard vanaf moet.
+ *
+ * Alleen Maarten mag dit; de meekijk-sessie niet. Anders kan een ronde zichzelf
+ * of een ander losbreken en is het slot geen slot meer.
+ */
+export async function breekRondeAf(): Promise<number> {
+  await ensureTweaks();
+  await sql`UPDATE tweak_ronde SET ronde = NULL WHERE id = 1`;
+  const terug = await sql`
+    UPDATE tweaks SET stand = 'wachtrij', ronde = NULL, bezig_sinds = NULL
+    WHERE stand = 'bezig' RETURNING id`;
+  return terug.rowCount ?? 0;
 }
 
 /**

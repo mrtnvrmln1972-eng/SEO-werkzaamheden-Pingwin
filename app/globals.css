@@ -7444,10 +7444,12 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 .tw-chip-nu { background: var(--brand-orange-faint); color: var(--orange-dark); }
 .tw-chip-punt { background: var(--brand-teal-light); color: var(--brand-teal); }
 .tw-ronde-loopt {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap;
   margin-bottom: var(--s-3); padding: var(--s-3) var(--s-4);
   background: var(--brand-teal-light); color: var(--brand-teal);
   border-radius: var(--r-md); font-size: var(--fs-sm); line-height: var(--lh-sm);
 }
+.tw-ronde-loopt span { flex: 1 1 24rem; min-width: 0; }
 
 /* Tweaks: de nulmeting. Standaard dichtgeklapt, want het is een lijst van
    dertig regels die je één keer per periode doorloopt, niet iets waar je elke
