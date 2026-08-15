@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { herzetAanhef } from "../../../../lib/aanhef";
+import AdresVeld from "./AdresVeld";
 import { mailUitTekst, zonderControleblok } from "../../../../lib/mail-uit-gesprek";
 import { analyseNaarMailHtml, htmlNaarMailHtml } from "../../../../lib/mail-opmaak";
 import { mdToHtml } from "../../../../lib/markdown";
@@ -250,11 +251,13 @@ export default function MailVenster({
                 // Bewust geen herschrijving: dat zou ingesproken tekst wissen.
               }}>{label}</button>
           ))}
-          <input className="wp-mail-to" type="email" value={to} placeholder="E-mailadres ontvanger"
-            onChange={(e) => setTo(e.target.value)}
-            onBlur={(e) => {
+          {/* Zelfde adresveld als in de andere mailvensters: typ "ma" en Maarten
+              wordt voorgesteld. De aanhef loopt mee met het gekozen adres. */}
+          <AdresVeld waarde={to} onChange={setTo} className="wp-mail-to" wrapClassName="wp-mail-toveld"
+            placeholder="E-mailadres ontvanger"
+            onKlaar={(adres) => {
               if (!bodyRef.current) return;
-              const nieuw = herzetAanhef(bodyRef.current.innerText || "", e.target.value);
+              const nieuw = herzetAanhef(bodyRef.current.innerText || "", adres);
               if (nieuw !== bodyRef.current.innerText) bodyRef.current.innerText = nieuw;
             }} />
         </div>

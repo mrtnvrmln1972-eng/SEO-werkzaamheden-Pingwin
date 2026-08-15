@@ -10,6 +10,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import AdresVeld from "./AdresVeld";
 import { openMailProgramma } from "../../../../lib/mailto-openen";
 
 function stripHtml(html: string): string {
@@ -129,7 +130,8 @@ export default function MailPopup({
         <div className="compose-head"><span>{titel}</span><button type="button" className="chat-float-close" onClick={onClose} aria-label="Sluiten">&times;</button></div>
         <div className="compose-body">
           <label className="compose-label">Aan</label>
-          <input className="compose-input" value={to} onChange={(e) => setTo(e.target.value)} placeholder="naam@bedrijf.nl" autoComplete="off" />
+          {/* Zelfde adresveld als in de andere mailvensters: typ "ma" en Maarten wordt voorgesteld. */}
+          <AdresVeld waarde={to} onChange={setTo} className="compose-input" placeholder="naam@bedrijf.nl" />
           {extra && <div style={{ marginTop: "var(--s-3)" }}>{extra}</div>}
           <label className="compose-label">Bericht <span className="muted">(een screenshot erin plakken of slepen mag)</span></label>
           <div className="compose-rich">

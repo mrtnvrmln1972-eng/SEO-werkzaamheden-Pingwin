@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import AdresVeld from "./AdresVeld";
 
 // ═══════════════════════════════════════════════════════════
 // SELECTIE-ACTIES: selecteer tekst in de cockpit → klein zwevend knopje met
@@ -11,7 +12,6 @@ import { createPortal } from "react-dom";
 // verzamelen).
 // ═══════════════════════════════════════════════════════════
 
-type Person = { name: string; email: string };
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -33,8 +33,6 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  const [sug, setSug] = useState<Person[]>([]);
-  const [sugOpen, setSugOpen] = useState(false);
 
   useEffect(() => {
     function onSelChange() {
@@ -87,22 +85,6 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
     setTimeout(() => { if (bodyRef.current) bodyRef.current.innerHTML = textToHtml(selText); }, 0);
   }
 
-  async function onToChange(v: string) {
-    setTo(v);
-    const q = v.split(/[,;]/).pop()?.trim() || "";
-    if (q.length < 2) { setSug([]); setSugOpen(false); return; }
-    try {
-      const d = await fetch(`/api/admin/mail/people?q=${encodeURIComponent(q)}`).then((r) => r.json());
-      if (d.ok && Array.isArray(d.people) && d.people.length) { setSug(d.people); setSugOpen(true); }
-      else { setSug([]); setSugOpen(false); }
-    } catch { setSug([]); setSugOpen(false); }
-  }
-  function pickSug(p: Person) {
-    const parts = to.split(/[,;]/); parts.pop();
-    setTo([...parts.map((s) => s.trim()).filter(Boolean), p.email].join(", "));
-    setSugOpen(false);
-  }
-
   async function send() {
     const html = (bodyRef.current?.innerHTML || "").trim();
     if (!to.trim() || !html) { setMsg("Ontvanger en bericht zijn verplicht."); return; }
@@ -135,16 +117,8 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
             <div className="compose-body" style={{ padding: "var(--s-4)", overflowY: "auto" }}>
               <div className="field" style={{ marginBottom: "var(--s-3)", position: "relative" }}>
                 <label>Aan</label>
-                <input className="compose-input" value={to} onChange={(e) => onToChange(e.target.value)} onFocus={() => { if (sug.length) setSugOpen(true); }} onBlur={() => setTimeout(() => setSugOpen(false), 150)} placeholder="naam@bedrijf.nl" autoComplete="off" />
-                {sugOpen && sug.length > 0 && (
-                  <div className="selection-sug">
-                    {sug.map((p) => (
-                      <button key={p.email} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => pickSug(p)}>
-                        {p.name ? `${p.name} — ${p.email}` : p.email}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {/* Zelfde adresveld als in de andere mailvensters: typ "ma" en Maarten wordt voorgesteld. */}
+                <AdresVeld waarde={to} onChange={setTo} className="compose-input" placeholder="naam@bedrijf.nl" />
               </div>
               <div className="field" style={{ marginBottom: "var(--s-3)" }}>
                 <label>Onderwerp</label>

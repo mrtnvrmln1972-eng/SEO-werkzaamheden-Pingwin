@@ -2226,9 +2226,6 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .selection-pop button { border: none; background: none; color: var(--white); font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
 .selection-pop button:hover { background: var(--orange); }
 .selection-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 400; background: var(--dark); color: var(--white); font-size: 13px; padding: 10px 18px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); max-width: 90vw; }
-.selection-sug { position: absolute; top: 100%; left: 0; right: 0; background: var(--white); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.12); z-index: 10; overflow: hidden; }
-.selection-sug button { display: block; width: 100%; text-align: left; border: none; background: none; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 8px 12px; cursor: pointer; }
-.selection-sug button:hover { background: var(--orange-light); }
 .selection-body { min-height: 140px; max-height: 40vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 13px; }
 .selection-body:focus { outline: none; border-color: var(--orange); }
 .compose-body { padding: 16px 18px; overflow-y: auto; }

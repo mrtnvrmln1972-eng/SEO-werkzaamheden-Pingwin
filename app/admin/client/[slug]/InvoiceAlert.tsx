@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import AdresVeld from "./AdresVeld";
 
 // Waarschuwingsbalk in de klant-cockpit: verschijnt alleen als deze klant een
 // factuur heeft die langer dan 30 dagen na verzending openstaat. De data komt
@@ -115,7 +116,7 @@ export default function InvoiceAlert({ slug, clientName }: { slug: string; clien
             <div className="compose-head"><span>Openstaande facturen naar de administratie</span><button type="button" className="chat-float-close" onClick={() => setShowCompose(false)}>&times;</button></div>
             <div className="compose-body">
               <label className="compose-label">Aan (administratie-adres)</label>
-              <input className="compose-input" value={to} onChange={(e) => setTo(e.target.value)} placeholder="administratie@bedrijf.nl" autoComplete="off" />
+              <AdresVeld waarde={to} onChange={setTo} className="compose-input" placeholder="administratie@bedrijf.nl" />
               <label className="compose-label">Bericht (bewerkbaar)</label>
               <div className="compose-rich"><div ref={noteRef} className="mail-edit md" contentEditable suppressContentEditableWarning style={{ minHeight: 110 }} /></div>
               <label className="compose-label">Deze facturen gaan mee</label>
