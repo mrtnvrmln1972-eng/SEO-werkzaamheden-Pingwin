@@ -88,6 +88,14 @@ buiten een tweak-ronde iets nieuws, dan gelden de gewone regels uit `CLAUDE.md` 
    starten. Vergeet je het, dan valt het na 45 minuten vanzelf vrij en gaat alles wat nog op
    `bezig` staat terug de wachtrij in. Stop je halverwege, geef hem dan meteen terug; dan staat de
    wachtrij weer klaar in plaats van drie kwartier stil.
+
+   **Stop je zonder iets te bouwen, dan laat je alsnog een spoor achter. Altijd.** Zet bij élke
+   melding die je had opgepakt één regel in `reactie` waarom er niets mee gebeurd is: te
+   onduidelijk, te groot, raakt te veel schermen, of wat het ook was. Anders ziet Maarten alleen
+   dat er een ronde geweest is en dat er niets veranderd is, en dan moet hij het aan iemand gaan
+   vragen. Precies dat gebeurde op 15-08-2026 bij de eerste echte ronde vanaf de knop: hij eindigde
+   netjes, bouwde niets, en liet geen woord achter. Een ronde die niets doet is prima; een ronde
+   die niet zegt waarom, is een storing.
 7. **Kijk of het klopt met eigen ogen** vóór je iets op `controleer` zet. Zie
    "Meekijken" in `CLAUDE.md`; een schermafbeelding maken kan, dus doe dat bij alles wat over
    vormgeving gaat. Iets op `controleer` zetten dat je niet gezien hebt is precies de
