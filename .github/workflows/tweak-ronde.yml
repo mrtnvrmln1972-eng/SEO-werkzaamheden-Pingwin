@@ -37,7 +37,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
+      # Schrijven, want een ronde eindigt met een commit naar main.
       contents: write
+      # De actie haalt zijn eigen GitHub-toegang op via een OIDC-token. Zonder
+      # dit recht mislukt hij na drie pogingen met "Could not fetch an OIDC
+      # token", nog vóór er ook maar iets gebouwd wordt. Aangetroffen bij de
+      # allereerste proefronde op 15-08-2026; weghalen is dus hetzelfde als de
+      # werkstroom uitzetten.
+      id-token: write
     steps:
       - name: De laatste code ophalen
         uses: actions/checkout@v4
