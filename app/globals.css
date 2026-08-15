@@ -7407,3 +7407,9 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .dev-rij-acties { flex-wrap: nowrap; align-items: center; justify-content: flex-end; white-space: nowrap; }
 .dev-rij-acties .btn { align-self: center; }
 .dev-task-actions .btn { align-self: center; }
+
+/* De documentnamen bij een developer-taak staan onder elkaar en voluit, in
+   plaats van naast elkaar afgekapt op 11rem. Je moest anders hoveren om te
+   zien welk document er hing, en dat is precies waarvoor je die kolom leest. */
+td .dev-task-docs { display: flex; flex-direction: column; gap: var(--s-1); align-items: flex-start; }
+td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; }

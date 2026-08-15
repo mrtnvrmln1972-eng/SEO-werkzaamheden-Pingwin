@@ -340,7 +340,10 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       <colgroup>
         <col style={{ width: "22px" }} />
         <col />
-        <col style={{ width: "150px" }} />
+        {/* Documenten: breed genoeg om de hele bestandsnaam te lezen. Stond op
+            150px met een afkap op 11rem, dus je zag "Copy: Paul-Hoeve…" en moest
+            hoveren om te weten welk document het was. */}
+        <col style={{ width: "260px" }} />
         <col style={{ width: "72px" }} />
         <col style={{ width: "80px" }} />
         <col style={{ width: "150px" }} />
