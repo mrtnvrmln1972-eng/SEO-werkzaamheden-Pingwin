@@ -7608,3 +7608,139 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
   font: inherit; font-size: var(--fs-sm); color: var(--body-text); background: var(--white);
 }
+
+/* ── Prognose op /admin/financien ────────────────────────────────
+   De vooruitblik: wat verdienen we per maand, en wanneer staan we op het doel.
+   Alles op de schaal-tokens; geen losse pixels, zodat de opmaakpoort groen
+   blijft en het scherm meebeweegt met het fundament. */
+
+.prog-kop { display: flex; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-3); }
+.prog-kop-titel { font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700; color: var(--label-muted); }
+.prog-kop-uitleg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--text-secondary); }
+.prog-kop-acties { margin-left: auto; display: flex; gap: var(--s-2); flex-wrap: wrap; }
+
+/* Helikopterkaarten: doel, deze maand, wanneer gehaald */
+.prog-kaarten { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--s-3); margin-bottom: var(--s-5); }
+.prog-kaart {
+  border: 1px solid var(--card-border); border-radius: var(--r-lg); background: var(--white);
+  padding: var(--s-4); box-shadow: var(--shadow-sm);
+}
+.prog-kaart-label { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--label-muted); }
+.prog-kaart-cijfer { font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: 700; color: var(--brand-charcoal); font-variant-numeric: tabular-nums; }
+.prog-kaart-cijfer.goed { color: var(--good); }
+.prog-kaart-cijfer.slecht { color: var(--bad); }
+.prog-kaart-cijfer.accent { color: var(--accent-warm); }
+.prog-kaart-onder { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--text-secondary); margin-top: var(--s-1); }
+
+/* De maandlijst: één rij per maand, klikbaar om de opbouw te zien */
+.prog-maanden { display: flex; flex-direction: column; }
+.prog-maand {
+  display: grid; grid-template-columns: var(--s-4) 5.5em 1fr 7em 7em 7em;
+  align-items: center; gap: var(--s-3); width: 100%;
+  background: none; border: none; border-bottom: 1px solid var(--card-border);
+  padding: var(--s-3) var(--s-1); cursor: pointer; text-align: left;
+  font: inherit; font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text);
+}
+.prog-maand:hover { background: var(--orange-light); }
+.prog-maand.nu { background: var(--brand-orange-faint); }
+.prog-maand-pijl { color: var(--accent-warm); font-size: var(--fs-xs); line-height: var(--lh-xs); }
+.prog-maand-naam { font-weight: 600; white-space: nowrap; }
+.prog-maand-bedrag { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.prog-maand-bedrag.netto { font-weight: 700; }
+.prog-maand-bedrag.goed { color: var(--good); }
+.prog-maand-bedrag.slecht { color: var(--bad); }
+.prog-maand-kop {
+  display: grid; grid-template-columns: var(--s-4) 5.5em 1fr 7em 7em 7em;
+  gap: var(--s-3); padding: var(--s-2) var(--s-1);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--label-muted); font-weight: 600;
+}
+.prog-maand-kop span { text-align: right; }
+.prog-maand-kop span:nth-child(-n+3) { text-align: left; }
+
+/* De balk laat zien hoe ver deze maand van het doel af staat */
+.prog-balk { position: relative; height: var(--s-3); border-radius: var(--r-full); background: var(--gray-light); overflow: hidden; }
+.prog-balk-vul { position: absolute; inset: 0 auto 0 0; border-radius: var(--r-full); background: var(--accent-warm); }
+.prog-balk-vul.zeker { background: var(--brand-teal); }
+.prog-balk-vul.gehaald { background: var(--good); }
+
+/* De opbouw van één maand: waar het resultaat vandaan komt */
+.prog-opbouw { padding: var(--s-3) var(--s-1) var(--s-5) var(--s-6); border-bottom: 1px solid var(--card-border); background: var(--brand-taupe-light); }
+.prog-opbouw-titel { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--label-muted); margin-bottom: var(--s-2); }
+.prog-post {
+  display: grid; grid-template-columns: 1fr 5.5em 7em 7em 7em; gap: var(--s-3); align-items: center;
+  padding: var(--s-2) var(--s-1); border-bottom: 1px dashed var(--card-border);
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+.prog-post-naam { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.prog-post-naam a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+.prog-post-bedrag { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.prog-post-bedrag.goed { color: var(--good); }
+.prog-post-bedrag.slecht { color: var(--bad); }
+.prog-post-totaal { font-weight: 700; border-bottom: none; border-top: 1px solid var(--border); }
+
+/* Chips voor het soort regel en de temperatuur van een lead */
+.prog-chip {
+  display: inline-block; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  border-radius: var(--r-full); padding: var(--s-1) var(--s-2); white-space: nowrap;
+}
+.prog-chip.klant { background: var(--brand-teal-light); color: var(--brand-blue); }
+.prog-chip.heet { background: var(--brand-orange-soft); color: var(--orange-dark); }
+.prog-chip.warm { background: var(--highlight-manual); color: var(--warn-dark); }
+.prog-chip.koel { background: var(--gray-light); color: var(--gray); }
+.prog-chip.post { background: var(--brand-taupe-light); color: var(--brand-taupe); }
+
+/* De bewerkbare regels: klanten en leads met kans, start en kosten */
+.prog-regels { display: flex; flex-direction: column; }
+.prog-regel {
+  display: grid; grid-template-columns: 1fr 6.5em 5em 7em 7em 7em; gap: var(--s-3); align-items: center;
+  padding: var(--s-2) var(--s-1); border-bottom: 1px solid var(--card-border);
+  font-size: var(--fs-sm); line-height: var(--lh-sm);
+}
+.prog-regel-kop {
+  display: grid; grid-template-columns: 1fr 6.5em 5em 7em 7em 7em; gap: var(--s-3);
+  padding: var(--s-2) var(--s-1); border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--label-muted); font-weight: 600;
+}
+.prog-regel-kop span { text-align: right; }
+.prog-regel-kop span:first-child { text-align: left; }
+.prog-regel-naam { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.prog-regel-naam a { color: var(--link); text-decoration: none; font-weight: 600; overflow-wrap: break-word; }
+.prog-regel-naam a:hover { text-decoration: underline; }
+.prog-gat { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--warn-dark); }
+.prog-veld {
+  width: 100%; text-align: right; font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm);
+  padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--white); color: var(--body-text); font-variant-numeric: tabular-nums;
+}
+.prog-veld:focus { outline: none; border-color: var(--orange); }
+.prog-veld.vast { border-color: transparent; background: transparent; }
+
+/* Instellingenrij: doel, waarop gemeten, vaste lasten, hoeveel maanden */
+.prog-instel { display: flex; flex-wrap: wrap; gap: var(--s-4); align-items: flex-end; }
+.prog-instel-veld { display: flex; flex-direction: column; gap: var(--s-1); }
+.prog-instel-veld label { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--label-muted); font-weight: 600; }
+.prog-instel-veld input, .prog-instel-veld select {
+  font: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--white); color: var(--body-text);
+}
+.prog-instel-veld input:focus, .prog-instel-veld select:focus { outline: none; border-color: var(--orange); }
+
+/* Weergavekeuze bovenaan de financiënpagina */
+.prog-blik { display: flex; gap: var(--s-2); margin-bottom: var(--s-5); flex-wrap: wrap; }
+.prog-blik a {
+  padding: var(--s-2) var(--s-4); border-radius: var(--r-full); text-decoration: none;
+  border: 1px solid var(--card-border); background: var(--white); color: var(--text-secondary);
+  font-size: var(--fs-base); line-height: var(--lh-base);
+}
+.prog-blik a.aan { border-color: var(--accent-warm); background: var(--accent-warm); color: var(--white); font-weight: 600; }
+
+@media (max-width: 720px) {
+  .prog-maand, .prog-maand-kop { grid-template-columns: var(--s-4) 4.5em 1fr 6em; }
+  .prog-maand-bedrag.verberg-klein, .prog-maand-kop span.verberg-klein { display: none; }
+  .prog-post { grid-template-columns: 1fr 6em 6em; }
+  .prog-post-bedrag.verberg-klein { display: none; }
+  .prog-regel, .prog-regel-kop { grid-template-columns: 1fr 5em 6em; }
+  .prog-regel > .verberg-klein, .prog-regel-kop > .verberg-klein { display: none; }
+}

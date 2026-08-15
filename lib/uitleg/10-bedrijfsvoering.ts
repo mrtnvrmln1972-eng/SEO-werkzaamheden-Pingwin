@@ -18,6 +18,37 @@ export const HOOFDSTUK: Hoofdstuk = {
         "dat je die klant toch al open hebt.",
     },
     {
+      titel: "Prognose: wat gaat er de komende maanden verdiend worden",
+      kern: "Lopende klanten plus leads naar kans, min de kosten, maand voor maand richting een doelbedrag.",
+      tekst:
+        "Het financiënscherm heeft twee blikken op hetzelfde geld. De boekhouding kijkt terug: wat is er " +
+        "werkelijk binnengekomen. De prognose kijkt vooruit: wat gaat er verdiend worden, en wanneer staat " +
+        "de teller op het doel.\n\n" +
+        "De rekensom is expres simpel genoeg om te vertrouwen. Een lopende klant telt vol mee: zijn " +
+        "maandbedrag min zijn linkbuilding en overige kosten. Een lead telt mee naar de kans dat hij " +
+        "doorgaat, en dan **inclusief zijn kosten**: een lead van 1.500 met 40% kans telt voor 600 aan " +
+        "omzet én voor 40% van zijn linkbuilding. Daaronder gaan de eigen vaste lasten er één keer per " +
+        "maand af, niet per klant.\n\n" +
+        "Die weging is het hele punt. Een lijst met alle leads erin op vol bedrag is een wensenlijst; een " +
+        "lijst zonder leads doet alsof er niets aankomt. Met een kans erbij is het een verwachting waar je " +
+        "een besluit op kunt nemen.\n\n" +
+        "**Klik een maand open en je ziet waar het bedrag vandaan komt**: elke klant, elke lead met zijn " +
+        "percentage, de losse posten en de vaste lasten, met per regel de omzet, de kosten en wat er netto " +
+        "overblijft. Geen totaal zonder onderbouwing.\n\n" +
+        "Losse posten zijn alles wat niet aan een vaste klant hangt: een website die in oktober wordt " +
+        "opgeleverd, een tool die vanaf januari geld kost. Eenmalig telt in die ene maand, terugkerend " +
+        "vanaf die maand elke maand.\n\n" +
+        "Bovenaan staan vier cijfers: waar je deze maand staat, wat het doel is, hoeveel er nog te gaan is " +
+        "(ook uitgedrukt in hoeveel klanten dat ongeveer zijn) en in welke maand het doel gehaald wordt. " +
+        "Het doel is instelbaar, en of het op de omzet of op het netto gemeten wordt ook.\n\n" +
+        "Twee dingen die het eerlijk houden. Het maandbedrag en de linkbuilding staan maar op één plek, " +
+        "namelijk in de klantrij zelf; wijzig je ze op het prognosescherm, dan wijzigen ze in de cockpit " +
+        "mee, zodat er nooit twee bedragen naast elkaar bestaan. En wat niet ingevuld is wordt niet " +
+        "geschat: een lead zonder maandbedrag telt voor nul mee en krijgt de melding dat er nog een " +
+        "bedrag mist.\n\n" +
+        "*Wat er nog niet is:* de leads komen uit het dashboard zelf, nog niet automatisch uit HubSpot.",
+    },
+    {
       titel: "Verbruik en kosten per actie",
       kern: "Wat kost welke knop, per klant en per periode, met AI en Ahrefs samengeteld.",
       tekst:

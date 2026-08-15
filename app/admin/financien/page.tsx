@@ -5,13 +5,25 @@ import { ADMIN_COOKIE } from "../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
 import { moneybirdConfigured, getProfitLoss, getLedgerAccounts, type ProfitLoss, type LedgerAccount } from "../../../lib/moneybird";
+import { listClients } from "../../../lib/clients";
+import { getPrognose } from "../../../lib/prognose";
 import FinancienClient from "./FinancienClient";
+import PrognosePaneel from "./PrognosePaneel";
 import AdminKop from "../AdminKop";
 
 export const dynamic = "force-dynamic";
 
-// Begrotingspagina (alleen Maarten): helikopterview van alle opbrengsten en
-// kosten uit Moneybird, per jaar en per maand, met uitklapbare posten.
+// De financiënpagina (alleen Maarten) heeft twee blikken op hetzelfde geld:
+//
+//   VOORUIT (prognose)  wat gaan we verdienen, maand voor maand, van lopende
+//                       klanten plus leads naar kans, richting het maanddoel.
+//   TERUG (boekhouding) wat is er werkelijk binnengekomen en uitgegeven, live
+//                       uit Moneybird, met uitklapbare posten tot de factuur.
+//
+// Vooruit staat vooraan, want daar wordt op gestuurd; terugkijken doe je als je
+// wilt weten of het klopte. De twee delen halen bewust ELK hun eigen data op:
+// de boekhouding kost twaalf Moneybird-rapporten, en die wil je niet ophalen
+// voor iemand die alleen naar de prognose komt kijken.
 
 const MONTH_NAMES = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "sep", "okt", "nov", "dec"];
 
@@ -19,13 +31,18 @@ function euro(n: number): string {
   return "€ " + n.toLocaleString("nl-NL", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
-export default async function FinancienPage({ searchParams }: { searchParams: { periode?: string } }) {
+export default async function FinancienPage({ searchParams }: { searchParams: { periode?: string; blik?: string } }) {
   const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
   if (!scope.isOwner) redirect("/admin");
   // Zonder Moneybird-koppeling bestaat deze pagina niet: Maartens privé-
   // administratie hoort alleen in de wereld waar de sleutel staat (Pingwin).
   if (!moneybirdConfigured()) redirect("/admin");
+
+  // Vraagt hij om een losse maand uit de boekhouding, dan is dat de bedoeling,
+  // ook zonder ?blik erbij: anders komt een oude bladwijzer op de prognose uit.
+  const blik = (searchParams.blik || (searchParams.periode ? "boekhouding" : "prognose")) === "boekhouding"
+    ? "boekhouding" : "prognose";
 
   const now = new Date();
   const thisYear = now.getFullYear();
@@ -36,11 +53,25 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
   const year = isMonth ? Number(p.slice(0, 4)) : p === "vorigjaar" ? thisYear - 1 : thisYear;
   const lastMonth = year < thisYear ? 12 : now.getMonth() + 1;
 
+  // De prognose: alle klanten en leads uit de database, met hun kans en hun
+  // kosten, doorgerekend naar de komende maanden. Loopt dit stuk (database
+  // even weg), dan blijft de boekhouding gewoon werken.
+  let prognose = null;
+  let prognoseFout = "";
+  if (blik === "prognose") {
+    try {
+      const klanten = await listClients();
+      prognose = await getPrognose(klanten.map((k) => ({ slug: k.slug, name: k.name, fase: k.fase, budget: k.budget })));
+    } catch (e) {
+      prognoseFout = (e as Error).message;
+    }
+  }
+
   let months: ProfitLoss[] = [];
   let ledger: LedgerAccount[] = [];
   let loadError = "";
   const configured = moneybirdConfigured();
-  if (configured) {
+  if (configured && blik === "boekhouding") {
     try {
       // Eén rapport per maand (gecachet, 6 uur). De jaartotalen zijn de som van
       // de maanden; zo is de maandtabel altijd consistent met de kaarten.
@@ -87,12 +118,27 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
         <Link href="/admin" style={{ color: "var(--label-muted)", fontSize: "var(--fs-base)", textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
       </div>
       <p style={{ color: "var(--text-secondary)", maxWidth: 640, lineHeight: "var(--lh-base)", marginTop: "var(--s-2)" }}>
-        Alle opbrengsten en kosten, live uit Moneybird. Klik een post open om te zien waar het
-        geld vandaan komt of naartoe gaat, tot en met de losse facturen. Alles is alleen-lezen:
-        er verandert hier nooit iets in de boekhouding.
+        {blik === "prognose"
+          ? "Wat gaat er de komende maanden verdiend worden: de klanten die al lopen, plus de leads naar de kans dat ze doorgaan, min de kosten die eraan vastzitten. Klik een maand open en je ziet precies waar dat bedrag vandaan komt."
+          : "Alle opbrengsten en kosten, live uit Moneybird. Klik een post open om te zien waar het geld vandaan komt of naartoe gaat, tot en met de losse facturen. Alles is alleen-lezen: er verandert hier nooit iets in de boekhouding."}
       </p>
 
-      {!configured ? (
+      {/* Vooruitkijken of terugkijken. Twee heel verschillende vragen, dus twee
+          weergaven in plaats van één scherm dat allebei half doet. */}
+      <nav className="prog-blik">
+        <Link href="/admin/financien?blik=prognose" className={blik === "prognose" ? "aan" : ""}>Prognose</Link>
+        <Link href="/admin/financien?blik=boekhouding" className={blik === "boekhouding" ? "aan" : ""}>Boekhouding</Link>
+      </nav>
+
+      {blik === "prognose" ? (
+        prognoseFout ? (
+          <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
+            Kon de prognose niet laden: {prognoseFout}
+          </div>
+        ) : prognose ? (
+          <PrognosePaneel begin={prognose} />
+        ) : null
+      ) : !configured ? (
         <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
           Moneybird is nog niet gekoppeld (MONEYBIRD_API_TOKEN / MONEYBIRD_ADMINISTRATION_ID ontbreken).
         </div>
