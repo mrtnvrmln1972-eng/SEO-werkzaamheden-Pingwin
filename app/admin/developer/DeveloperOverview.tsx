@@ -325,10 +325,10 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       <div className="dev-task-actions" onClick={(e) => e.stopPropagation()}>
         <label className="dev-check-label"><input type="checkbox" checked={r.devDone} onChange={(e) => toggleDone(idx, e.target.checked)} /> Klaar</label>
         <label className="dev-check-label dev-check-afgerond"><input type="checkbox" checked={r.ownerDone} onChange={(e) => toggleAfgerond(idx, e.target.checked)} /> Afgerond</label>
-        <button type="button" className="ghost-btn small" onClick={() => setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName })} title="Bekijk de hele taak: opmerking, documenten en (met het juiste recht) aanpassen">👁 Bekijk</button>
-        <button type="button" className="ghost-btn small dev-mail-btn" onClick={() => mailVenster(r, r.devNote)} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
+        <button type="button" className="btn btn-ghost btn-klein" onClick={() => setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName })} title="Bekijk de hele taak: opmerking, documenten en (met het juiste recht) aanpassen">Bekijk</button>
+        <button type="button" className="btn btn-ghost btn-klein dev-mail-btn" onClick={() => mailVenster(r, r.devNote)} title="Mail deze taak, met de pagina en de documenten er al in">Mail</button>
         {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
-          <button type="button" className="btn btn-ghost btn-klein" onClick={() => void controleer(r)} title="Meet de live pagina op wat er is afgesproken">🔍 Is dit doorgevoerd?</button>
+          <button type="button" className="btn btn-ghost btn-klein" onClick={() => void controleer(r)} title="Meet de live pagina op wat er is afgesproken">Is dit doorgevoerd?</button>
         )}
       </div>
     </div>
@@ -384,10 +384,10 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       <td className="col-center"><button type="button" className={"dev-done-toggle dev-afgerond-toggle-cell" + (r.ownerDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleAfgerond(idx, !r.ownerDone); }} title={r.ownerDone ? "Afgerond (klik om terug naar open te zetten)" : "Zelf afronden"}>{r.ownerDone ? "☑" : "☐"}</button></td>
       <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
       <td className="dev-rij-acties">
-        <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Bekijk de hele taak: opmerking, documenten en (met het juiste recht) aanpassen">👁 Bekijk</button>
-        <button type="button" className="ghost-btn small dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailVenster(r, r.devNote); }} title="Mail deze taak, met de pagina en de documenten er al in">✉ Mail</button>
+        <button type="button" className="btn btn-ghost btn-klein" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Bekijk de hele taak: opmerking, documenten en (met het juiste recht) aanpassen">Bekijk</button>
+        <button type="button" className="btn btn-ghost btn-klein dev-mail-btn" onClick={(e) => { e.stopPropagation(); mailVenster(r, r.devNote); }} title="Mail deze taak, met de pagina en de documenten er al in">Mail</button>
         {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
-          <button type="button" className="btn btn-ghost btn-klein" onClick={(e) => { e.stopPropagation(); void controleer(r); }} title="Meet de live pagina op wat er is afgesproken">🔍 Controleer</button>
+          <button type="button" className="btn btn-ghost btn-klein" onClick={(e) => { e.stopPropagation(); void controleer(r); }} title="Meet de live pagina op wat er is afgesproken">Controleer</button>
         )}
       </td>
     </tr>
@@ -577,7 +577,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
               </div>
               <div className="compose-foot">
                 <button type="button" className="logout-btn" onClick={() => setFeedbackFor(null)}>Annuleren</button>
-                <button type="button" className="ghost-btn small" onClick={() => confirmDone(true)}>Opslaan + ook mailen</button>
+                <button type="button" className="btn btn-ghost btn-klein" onClick={() => confirmDone(true)}>Opslaan + ook mailen</button>
                 <button type="button" className="primary-btn small" onClick={() => confirmDone(false)}>Opslaan als klaar</button>
               </div>
             </div>
@@ -776,7 +776,7 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
                 <div className="dev-doc-toevoegen">
                   <input className="compose-input" value={docLabel} onChange={(e) => setDocLabel(e.target.value)} placeholder="Naam (bijv. Nieuwe copy)" />
                   <input className="compose-input" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void docToevoegen(); }} placeholder="https://… (Drive, Docs, waar dan ook)" />
-                  <button type="button" className="ghost-btn small" onClick={() => void docToevoegen()} disabled={!docUrl.trim() || !!busy}>Link koppelen</button>
+                  <button type="button" className="btn btn-ghost btn-klein" onClick={() => void docToevoegen()} disabled={!docUrl.trim() || !!busy}>Link koppelen</button>
                 </div>
                 <div className="dev-doc-upload">
                   <input ref={bestandRef} type="file" onChange={(e) => void bestandKiezen(e.target.files?.[0] || null)} />
@@ -804,7 +804,7 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
             </button>
           )}
           <button type="button" className="logout-btn" onClick={onSluiten}>Sluiten</button>
-          <button type="button" className="ghost-btn small" onClick={() => void bewaar(false)} disabled={!!busy}>Bewaren</button>
+          <button type="button" className="btn btn-ghost btn-klein" onClick={() => void bewaar(false)} disabled={!!busy}>Bewaren</button>
           <button type="button" className="primary-btn small" onClick={() => void bewaar(true)} disabled={!!busy}>
             {busy === "bewaren" ? "Bezig…" : "Bewaren en sluiten"}
           </button>

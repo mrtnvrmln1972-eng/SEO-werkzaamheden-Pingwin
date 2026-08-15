@@ -7279,8 +7279,12 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
    nooit half onder de kopbalk) en scrolt vanbinnen, zodat de kop met het
    kruisje altijd staat waar je hem zoekt. */
 
+/* Rechtsonder staat op de klantschermen al de knop van de SEO-assistent
+   (.chat-fab-wrap, right 28px / bottom 28px). Deze knop gaat er dus BOVEN staan
+   in plaats van eroverheen. Vaste plek op élk scherm, ook waar die andere knop
+   niet staat: een knop die per scherm verspringt vind je niet terug. */
 .tw-knop {
-  position: fixed; right: var(--s-5); bottom: var(--s-5); z-index: 10003;
+  position: fixed; right: 28px; bottom: 84px; z-index: 10003;
   display: inline-flex; align-items: center; gap: var(--s-2);
   font-family: 'Montserrat', sans-serif; font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700;
   padding: var(--s-2) var(--s-4); border-radius: var(--r-full); cursor: pointer;
@@ -7395,3 +7399,11 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray);
 }
 .tw-item-acties { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: var(--s-3); }
+
+/* De knoppen bij een developer-taak staan op één regelhoogte, niet uitgesmeerd
+   over drie regels. De kolom was smal en de rij mocht omslaan, dus kwam elke
+   knop op een eigen regel te staan. Ze horen bij elkaar, dus ze blijven bij
+   elkaar; de kolom wordt zo breed als de rij nodig heeft. */
+.dev-rij-acties { flex-wrap: nowrap; align-items: center; justify-content: flex-end; white-space: nowrap; }
+.dev-rij-acties .btn { align-self: center; }
+.dev-task-actions .btn { align-self: center; }
