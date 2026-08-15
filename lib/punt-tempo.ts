@@ -50,6 +50,19 @@ export const START_MINUTEN: Record<Omvang, number> = { klein: 25, middel: 50, gr
 export const PLAN_MINUTEN = 20;
 
 /**
+ * Hetzelfde, maar dan gemeten in plaats van geraden.
+ *
+ * Het getal hierboven is een startwaarde en werd tot 15-08-2026 altijd gebruikt:
+ * het scherm zei "nog ongeveer 13 minuten" terwijl er nooit iets gemeten was.
+ * Zodra er drie plannen geschreven zijn rekent dit met de mediaan daarvan. De
+ * mediaan en niet het gemiddelde, want één ronde die vastliep zou een gemiddelde
+ * blijvend scheeftrekken.
+ */
+export function planMinuten(gemeten: number[] = []): number {
+  return gemeten.length >= 3 ? (mediaan(gemeten) ?? PLAN_MINUTEN) : PLAN_MINUTEN;
+}
+
+/**
  * Hoeveel minuten Nederland op dit moment vóór UTC ligt (60 in de winter, 120
  * in de zomer). Zonder bibliotheek uitgerekend: de klok in Amsterdam uitlezen
  * en vergelijken met dezelfde klok in UTC.
@@ -145,6 +158,8 @@ export function voortgang(
   nu: Date = new Date(),
   /** "plan" telt met de kortere stappenlijst en een vaste verwachting. */
   soort: "bouw" | "plan" = "bouw",
+  /** De gemeten schrijftijden van eerdere plannen; leeg = nog niets gemeten. */
+  planGemeten: number[] = [],
 ): Voortgang {
   const lijst = soort === "plan" ? PLAN_STAPPEN : STAPPEN;
   const stappen = lijst.length;
@@ -153,7 +168,7 @@ export function voortgang(
     ? Math.max(0, (nu.getTime() - new Date(punt.gestart).getTime()) / 60000)
     : 0;
 
-  const vooraf = soort === "plan" ? PLAN_MINUTEN : verwachteMinuten(punt.omvang, gemeten);
+  const vooraf = soort === "plan" ? planMinuten(planGemeten) : verwachteMinuten(punt.omvang, gemeten);
   // Hoe verder de ronde is, hoe zwaarder zijn eigen tempo meeweegt en hoe
   // minder de verwachting vooraf. Bij stap 0 weten we alleen het gemiddelde,
   // bij de laatste stap weten we het bijna zeker.

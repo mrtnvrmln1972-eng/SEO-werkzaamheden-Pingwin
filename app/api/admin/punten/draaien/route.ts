@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardDev } from "../../../../../lib/admin-scope";
 import { puntStand, volgendeTaak } from "../../../../../lib/punt-ronde";
 import { startWerkstroom, werkstroomKlaar } from "../../../../../lib/werkstroom";
+import { modelVoor } from "../../../../../lib/punt-model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -59,7 +60,14 @@ export async function POST(req: NextRequest) {
 
   // `handmatig` zet het nachtvenster opzij: Maarten drukt zelf, dus hij zit
   // erbij. Het slot blijft gewoon gelden.
-  const uit = await startWerkstroom(WERKSTROOM, "punt", "knop", { handmatig: "ja" });
+  //
+  // Het model gaat hier mee in plaats van vast in de werkstroom te staan: een
+  // plan voor een klein of middelgroot punt hoeft niet op het zwaarste model,
+  // en dat scheelt zowel wachttijd als geld. Zie lib/punt-model.ts.
+  const uit = await startWerkstroom(WERKSTROOM, "punt", "knop", {
+    handmatig: "ja",
+    model: modelVoor(taak.werk, taak.punt.omvang),
+  });
   if (!uit.ok) {
     return NextResponse.json({ ok: false, error: uit.error, klaarzetten: uit.klaarzetten }, { status: uit.status });
   }

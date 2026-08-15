@@ -86,6 +86,21 @@ export const BLOKKEN: Uitklapper[] = [
       "mislukken in plaats van doorgaan. Een proef rekent bij élke bouw na dat het zo blijft, en legt " +
       "daarbij de woorden die de ronde kent naast de woorden die het dashboard teruggeeft; lopen die uit " +
       "elkaar, dan komt het niet live.\n\n" +
+      "**Wat je meegeeft gaat mee, en het model past bij het werk.** Twee dingen die op 15 augustus " +
+      "misgingen bij hetzelfde punt. Ten eerste: een punt dat ontstaat uit een melding op de tweak-stapel " +
+      "hield alleen de getypte tekst over, terwijl bij die melding al stond op welk scherm je was en er " +
+      "vaak een schermafbeelding bij zat. Die werden weggegooid, dus de ronde moest zelf raden waar het " +
+      "over ging; hij zocht veertien minuten, liep vast, en er kwam geen plan uit. Nu gaan het scherm en " +
+      "het beeld mee, staat bij het punt welk scherm het raakt, en kun je het beeld met een knop bekijken. " +
+      "Ten tweede: élk plan ging op het zwaarste model, ook een vraag als \"kan dit venster niet gewoon " +
+      "weg?\". Dat kostte die ene mislukte poging 7,24 dollar. Een plan voor een klein of middelgroot punt " +
+      "gaat nu op het snelle model; alleen een groot punt krijgt het zware, want daar hangt een hele nacht " +
+      "bouwen aan een verkeerde keuze. Wat je bij het punt als omvang kiest bepaalt dat, dus je ziet het " +
+      "zelf aankomen.\n\n" +
+      "**En een ronde die vastloopt zegt dat nu.** Hij zette het punt terug op \"nog niet begonnen\", precies " +
+      "alsof er nooit iets geprobeerd was, en dan lijkt de knop kapot terwijl er veertien minuten aan " +
+      "gewerkt is. Er komt nu een regel in het draadje bij het punt: hoe lang hij bezig was en dat je het " +
+      "opnieuw kunt laten proberen.\n\n" +
       "**En bij elk punt in de wachtrij staat wanneer het aan de beurt is.** Vannacht om 22:00, of de nacht " +
       "erna als het er niet meer bij past. Vijf grote punten zijn geen één nacht, en dat hoor je te zien " +
       "voordat je gaat wachten, niet 's ochtends te merken. De volgorde sleep je zelf; die volgorde ís de " +

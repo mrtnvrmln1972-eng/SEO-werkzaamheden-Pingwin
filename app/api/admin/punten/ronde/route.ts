@@ -3,6 +3,7 @@ import { guardDev, isMeekijker } from "../../../../../lib/admin-scope";
 import { claimPunt, geefPuntRondeTerug, puntStand, rondeNaam, volgendeTaak } from "../../../../../lib/punt-ronde";
 import { isNacht } from "../../../../../lib/punt-tempo";
 import { startWerkstroom } from "../../../../../lib/werkstroom";
+import { modelVoor } from "../../../../../lib/punt-model";
 import { haalPunt, stappenVoor, zetStap, PLAN_STAPPEN, STAPPEN } from "../../../../../lib/grote-punten";
 
 export const runtime = "nodejs";
@@ -64,7 +65,9 @@ export async function POST(req: NextRequest) {
     if (isNacht(new Date())) {
       const taak = await volgendeTaak();
       if (taak.werk === "bouwen" && taak.punt) {
-        const uit = await startWerkstroom("punt-nacht.yml", "punt", "nacht");
+        const uit = await startWerkstroom("punt-nacht.yml", "punt", "nacht", {
+          model: modelVoor(taak.werk, taak.punt.omvang),
+        });
         if (uit.ok) volgende = taak.punt.code;
       }
     }

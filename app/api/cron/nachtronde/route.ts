@@ -3,6 +3,7 @@ import { rondeStand } from "../../../../lib/tweak-ronde";
 import { volgendeTaak } from "../../../../lib/punt-ronde";
 import { isNacht } from "../../../../lib/punt-tempo";
 import { startWerkstroom } from "../../../../lib/werkstroom";
+import { modelVoor } from "../../../../lib/punt-model";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,7 +58,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: true, gedaan: "niets", reden: "geen goedgekeurd punt in de bouwwachtrij" });
     }
 
-    const uit = await startWerkstroom("punt-nacht.yml", "punt", "nacht");
+    const uit = await startWerkstroom("punt-nacht.yml", "punt", "nacht", {
+      model: modelVoor(taak.werk, taak.punt.omvang),
+    });
     return NextResponse.json(
       uit.ok
         ? { ok: true, gedaan: "bouwronde gestart", punt: taak.punt.code, ronde: uit.ronde }

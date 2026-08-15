@@ -96,6 +96,8 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
   const [draait, setDraait] = useState(false);
   /** Het punt waarvan het plan nu opgestart wordt; zolang dat loopt geen tweede klik. */
   const [startBezig, setStartBezig] = useState<number | null>(null);
+  const [beelden, setBeelden] = useState<Record<number, string>>({});
+  const [grootBeeld, setGrootBeeld] = useState<number | null>(null);
   const [nieuwTitel, setNieuwTitel] = useState("");
   const [nieuwOmvang, setNieuwOmvang] = useState<Omvang>("middel");
   const [knopKlaar, setKnopKlaar] = useState<{ klaar: boolean; reden?: string } | null>(null);
@@ -174,6 +176,12 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
     }
     await ververs();
     return true;
+  }
+
+  async function haalBeeld(id: number) {
+    if (beelden[id]) { setGrootBeeld(id); return; }
+    const j = await fetch(`/api/admin/punten?beeld=${id}`).then((r) => r.json()).catch(() => null);
+    if (j?.ok && j.beeld) { setBeelden((b) => ({ ...b, [id]: j.beeld })); setGrootBeeld(id); }
   }
 
   async function weg(id: number) {
@@ -328,6 +336,11 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
           <span className="tw-stand-chip">{STAND_LABEL[p.stand]}</span>
           <span className="tw-datum">{OMVANG_LABEL[p.omvang]}</span>
           {p.routekaart && <span className="tw-stand-chip tw-chip-punt">{p.routekaart}</span>}
+          {/* Waar het over gaat. Zonder dit moest de ronde zelf raden welk scherm
+              je bedoelde, en dat kostte bij G1 veertien minuten en een mislukking. */}
+          {p.raakt.length > 0 && (
+            <span className="tw-stand-chip">Gaat over {p.raakt.join(", ")}</span>
+          )}
           {p.goedgekeurd && <span className="tw-stand-chip gp-chip-akkoord">Door jou goedgekeurd</span>}
           {start && <span className="tw-stand-chip gp-tijd">Begint {wanneer(start.begint)}, ongeveer {minuten(start.minuten)}</span>}
           {p.stand === "plan-maken" && !p.ronde && (
@@ -445,6 +458,11 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
             {(p.stand === "klaar" || p.stand === "afgewezen") && (
               <button type="button" className="btn btn-quiet btn-klein" onClick={() => void stuur({ id: p.id, stand: "idee" })}>
                 Terug op de lijst
+              </button>
+            )}
+            {p.heeftBeeld && (
+              <button type="button" className="btn btn-quiet btn-klein pnl-acties-info" onClick={() => void haalBeeld(p.id)}>
+                Bekijk het beeld
               </button>
             )}
             <button type="button" className="btn btn-danger btn-klein" onClick={() => void weg(p.id)}>Weg</button>
@@ -608,6 +626,21 @@ export default function GrotePuntenClient({ begin, beginStand, beginStarts, star
             </div>
           </div>
         </div>
+
+        {grootBeeld !== null && beelden[grootBeeld] && (
+          <div className="tw-overlay">
+            <div className="tw-venster tw-venster-beeld" role="dialog" aria-label="Schermafbeelding">
+              <div className="tw-kop">
+                <div className="tw-titel">Meegestuurd beeld</div>
+                <button type="button" className="tw-sluit" onClick={() => setGrootBeeld(null)} aria-label="Sluiten">×</button>
+              </div>
+              <div className="tw-body tw-body-beeld">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={beelden[grootBeeld]} alt="Meegestuurde schermafbeelding" />
+              </div>
+            </div>
+          </div>
+        )}
 
         {punten.filter((p) => p.stand !== "klaar" && p.stand !== "afgewezen").length === 0 && (
           <div className="tw-leeg">

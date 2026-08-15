@@ -39,7 +39,7 @@ import { eenmalig } from "./schema-stand";
 
 // Vingerafdruk van `doeBouw()` hieronder; `proeven/schema-versie.proef.ts`
 // rekent hem na en noemt zelf de waarde die hier hoort te staan.
-export const GROTE_PUNTEN_SCHEMA_VERSIE = "gp1-3b3f36a5";
+export const GROTE_PUNTEN_SCHEMA_VERSIE = "gp1-3d59dbce";
 
 async function doeBouw(): Promise<void> {
   await sql`
@@ -63,6 +63,8 @@ async function doeBouw(): Promise<void> {
       stap_nr     INTEGER NOT NULL DEFAULT 0,
       stap_sinds  TIMESTAMPTZ,
       duur        INTEGER,
+      plan_duur   INTEGER,
+      beeld       TEXT,
       rondes      INTEGER NOT NULL DEFAULT 0,
       aangemaakt  TIMESTAMPTZ NOT NULL DEFAULT now(),
       afgerond    TIMESTAMPTZ
@@ -72,6 +74,9 @@ async function doeBouw(): Promise<void> {
   // rust (zie lib/punt-tempo.ts). Een index erop houdt die vraag goedkoop, ook
   // als er straks honderden punten in staan.
   await sql`CREATE INDEX IF NOT EXISTS grote_punten_duur_idx ON grote_punten (omvang, duur)`;
+  // Een tabel die er al stond krijgt de kolom er alsnog bij.
+  await sql`ALTER TABLE grote_punten ADD COLUMN IF NOT EXISTS plan_duur INTEGER`;
+  await sql`ALTER TABLE grote_punten ADD COLUMN IF NOT EXISTS beeld TEXT`;
 }
 
 export function ensureGrotePunten(): Promise<void> {
@@ -137,6 +142,10 @@ export type Punt = {
   stapSinds: string | null;
   /** Gemeten bouwtijd in minuten, gevuld zodra het punt live stond. */
   duur: number | null;
+  /** Is er een schermafbeelding bij dit punt? De afbeelding zelf haal je apart op. */
+  heeftBeeld: boolean;
+  /** Hoe lang het schrijven van het plan duurde, in minuten. Null zolang er geen plan is. */
+  planDuur: number | null;
   /** Hoe vaak er een bouwronde overheen is gegaan. Meer dan 1 = het klopte niet meteen. */
   rondes: number;
   aangemaakt: string;
@@ -223,6 +232,8 @@ function rij(r: Record<string, unknown>): Punt {
     stapNr: Number(r.stap_nr ?? 0),
     stapSinds: tijd(r.stap_sinds),
     duur: r.duur === null || r.duur === undefined ? null : Number(r.duur),
+    planDuur: r.plan_duur === null || r.plan_duur === undefined ? null : Number(r.plan_duur),
+    heeftBeeld: Boolean(r.beeld),
     rondes: Number(r.rondes ?? 0),
     aangemaakt: tijd(r.aangemaakt) ?? "",
     afgerond: tijd(r.afgerond),
@@ -271,15 +282,17 @@ export async function nieuwPunt(p: {
   raakt?: string[];
   routekaart?: string | null;
   bronTweak?: number | null;
+  /** Schermafbeelding als data-URL; komt mee uit de tweak waar dit punt uit ontstond. */
+  beeld?: string | null;
 }): Promise<Punt> {
   await ensureGrotePunten();
   const code = await volgendeCode();
   const r = await sql`
-    INSERT INTO grote_punten (code, titel, tekst, omvang, raakt, routekaart, bron_tweak, stand, volgorde)
+    INSERT INTO grote_punten (code, titel, tekst, omvang, raakt, routekaart, bron_tweak, beeld, stand, volgorde)
     VALUES (
       ${code}, ${p.titel.trim().slice(0, 200)}, ${(p.tekst ?? "").trim()},
       ${p.omvang ?? "middel"}, ${JSON.stringify(p.raakt ?? [])},
-      ${p.routekaart ?? null}, ${p.bronTweak ?? null},
+      ${p.routekaart ?? null}, ${p.bronTweak ?? null}, ${p.beeld ?? null},
       'idee', (SELECT COALESCE(MAX(volgorde), 0) + 10 FROM grote_punten)
     )
     RETURNING *`;
@@ -354,6 +367,13 @@ export async function zetStand(
     ? Math.max(1, Math.round((Date.now() - new Date(huidig.gestart).getTime()) / 60000))
     : huidig.duur;
 
+  // En hetzelfde voor het schrijven van een plan. Dat stond eerst op een vast
+  // getal van twintig minuten, dus het scherm zei "nog ongeveer 13 minuten"
+  // zonder dat er ooit iets gemeten was. Nu telt elke afgeronde plan-ronde mee.
+  const planDuur = stand === "plan-klaar" && huidig.stand === "plan-maken" && huidig.gestart
+    ? Math.max(1, Math.round((Date.now() - new Date(huidig.gestart).getTime()) / 60000))
+    : huidig.planDuur;
+
   const af = stand === "klaar" || stand === "afgewezen" ? new Date().toISOString() : null;
   // Niet meer aan het bouwen betekent: de claim los. Zou die blijven staan, dan
   // houdt een vastgelopen ronde het punt eeuwig bezet.
@@ -368,6 +388,7 @@ export async function zetStand(
         omvang      = ${opties.omvang ?? huidig.omvang},
         routekaart  = ${opties.routekaart !== undefined ? opties.routekaart : huidig.routekaart},
         duur        = ${duur},
+        plan_duur   = ${planDuur},
         rondes      = rondes + ${opties.telRonde ? 1 : 0},
         ronde       = CASE WHEN ${bouwt} THEN ronde ELSE NULL END,
         gestart     = CASE WHEN ${bouwt} THEN gestart ELSE NULL END,
@@ -461,6 +482,29 @@ export async function telPunten(): Promise<{
     bouwt: Number(x.bouwt ?? 0),
     controleer: Number(x.controleer ?? 0),
   };
+}
+
+/**
+ * De gemeten schrijftijden van afgeronde plannen, in minuten.
+ *
+ * Eén lijst en niet per omvang, om dezelfde reden als bij PLAN_MINUTEN in
+ * lib/punt-tempo.ts: uitzoeken en opschrijven duurt niet drie keer zo lang
+ * omdat de bouw erna groter is.
+ */
+export async function gemetenPlanDuur(): Promise<number[]> {
+  await ensureGrotePunten();
+  const r = await sql`
+    SELECT plan_duur FROM grote_punten
+    WHERE plan_duur IS NOT NULL AND plan_duur > 0
+    ORDER BY id DESC LIMIT 40`;
+  return r.rows.map((x) => Number(x.plan_duur));
+}
+
+/** De schermafbeelding van één punt, los. Te groot om in elke lijst mee te sturen. */
+export async function haalPuntBeeld(id: number): Promise<string | null> {
+  await ensureGrotePunten();
+  const r = await sql`SELECT beeld FROM grote_punten WHERE id = ${id}`;
+  return r.rows[0]?.beeld ? String(r.rows[0].beeld) : null;
 }
 
 /** De gemeten bouwtijden per omvang; de basis onder de tijdsverwachting. */

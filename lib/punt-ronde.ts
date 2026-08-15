@@ -1,7 +1,7 @@
 import { sql } from "@vercel/postgres";
 import { geefSlot, pakSlot, slotStand, type SlotStand } from "./bouwslot";
 import {
-  ensureGrotePunten, gemetenDuur, haalPunt, magNaarWachtrij, STAPPEN,
+  ensureGrotePunten, gemetenDuur, gemetenPlanDuur, haalPunt, magNaarWachtrij, STAPPEN,
   type Omvang, type Punt,
 } from "./grote-punten";
 import { eindeVanDeNacht, isNacht, verwachteStarts, voortgang, volgendeNacht, type Voortgang } from "./punt-tempo";
@@ -97,6 +97,10 @@ export async function puntStand(nu: Date = new Date()): Promise<PuntStand> {
     ORDER BY id ASC LIMIT 1`;
   const bezig = r.rows[0] ? await haalPunt(Number(r.rows[0].id)) : null;
   const gemeten = bezig ? await gemetenDuur() : { klein: [], middel: [], groot: [] } as Record<Omvang, number[]>;
+  // De gemeten schrijftijden van eerdere plannen. Stond hier eerst niet, dus
+  // gold altijd de startwaarde van twintig minuten, ook nadat er al plannen
+  // geschreven waren.
+  const planGemeten = bezig ? await gemetenPlanDuur() : [];
   // Ook een plan-ronde krijgt een voortgang. Dat stond er eerst niet in, en dan
   // zag je bij het schrijven van een plan alleen "er wordt aan gewerkt": geen
   // stap, geen balk, geen tijd. Bij werk dat je niet ziet gebeuren is dat
@@ -107,7 +111,7 @@ export async function puntStand(nu: Date = new Date()): Promise<PuntStand> {
     slot,
     bezig,
     werk,
-    voortgang: bezig && loopt ? voortgang(bezig, gemeten, nu, werk) : null,
+    voortgang: bezig && loopt ? voortgang(bezig, gemeten, nu, werk, planGemeten) : null,
     nacht: isNacht(nu),
     volgendVenster: volgendeNacht(nu).toISOString(),
   };
@@ -217,6 +221,35 @@ export async function claimPunt(ronde: string): Promise<PuntClaim> {
  */
 export async function geefPuntRondeTerug(ronde: string): Promise<void> {
   await ensureGrotePunten();
+
+  // ── EERST KIJKEN OF ER IETS UIT GEKOMEN IS ──
+  // Een plan-ronde die het slot teruggeeft terwijl het punt nog op
+  // "plan wordt gemaakt" staat en er géén plan ligt, is vastgelopen. Dat gebeurde
+  // op 15-08-2026 bij G1: veertien minuten gedraaid, toen mislukt, en op het
+  // scherm sprong het punt terug naar "nog niet begonnen" alsof er nooit iets
+  // gebeurd was. Maarten kon daar alleen uit opmaken dat de knop stuk was.
+  //
+  // Een mislukking hoort een spoor achter te laten waar hij het kan zien, in het
+  // draadje bij het punt zelf. Anders is "er gebeurde niets" niet te
+  // onderscheiden van "er is niets geprobeerd".
+  const stuk = await sql`
+    SELECT id, gestart, draad FROM grote_punten
+    WHERE ronde = ${ronde} AND stand = 'plan-maken' AND (plan IS NULL OR plan = '')`;
+  for (const r of stuk.rows) {
+    const minuten = r.gestart
+      ? Math.max(1, Math.round((Date.now() - new Date(r.gestart as string).getTime()) / 60000))
+      : 0;
+    let draad: { van: string; tekst: string }[] = [];
+    try { draad = JSON.parse(String(r.draad || "[]")); } catch { draad = []; }
+    draad.push({
+      van: "claude",
+      tekst: `De ronde die dit plan moest schrijven is na ${minuten} ${minuten === 1 ? "minuut" : "minuten"} `
+        + "vastgelopen; er is geen plan uit gekomen. Het punt staat gewoon weer klaar, dus je kunt het "
+        + "opnieuw laten proberen. Helpt dat niet, geef er dan bij welk scherm het is.",
+    });
+    await sql`UPDATE grote_punten SET draad = ${JSON.stringify(draad)} WHERE id = ${r.id}`;
+  }
+
   await geefSlot(ronde);
   await sql`
     UPDATE grote_punten

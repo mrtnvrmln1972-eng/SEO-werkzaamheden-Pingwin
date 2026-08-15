@@ -70,6 +70,27 @@ POST /api/admin/punten/ronde  { "actie": "stap", "id": <id>, "nr": <1..3> }
 
 1. **Zoek het uit voor je schrijft** (`nr: 1`). Kijk in de code hoe het nu werkt, kijk met eigen
    ogen op het scherm, en controleer je aannames. Een plan op een aanname is een nacht weggegooid.
+
+   **Begin bij wat er in het punt staat, en zoek niet breder dan nodig.** Dit is de stap die op
+   15-08-2026 bij G1 veertien minuten kostte en toen vastliep, puur doordat de ronde zelf moest
+   raden over welk scherm het ging. Twee dingen staan er vaak al bij:
+
+   - `raakt`: het scherm of het pad waar het over gaat. Sta je daar, dan ben je er. Begin altijd
+     hier en ga pas breder zoeken als het echt ergens anders blijkt te zitten.
+   - `heeftBeeld: true`: er zit een schermafbeelding bij, meestal precies het venster waar Maarten
+     het over heeft. Haal hem op en kíjk ernaar; dat is sneller dan welke zoekactie ook:
+
+     ```bash
+     curl -s -b "$RONDE_JAR" "$DASHBOARD/api/admin/punten?beeld=<id>" \
+       | sed -n 's/.*"beeld":"data:image\/[a-z]*;base64,\([^"]*\)".*/\1/p' | base64 -d > /tmp/punt.png
+     ```
+
+     Daarna `/tmp/punt.png` met Read bekijken.
+
+   Staat er géén van beide bij en is uit de tekst niet op te maken welk scherm het is, ga dan
+   **niet** de hele codebase afzoeken. Schrijf het plan met de vraag erin ("over welk scherm gaat
+   dit?") en zet hem op `plan-klaar`. Een vraag terug kost Maarten tien seconden; blind zoeken
+   kost een kwartier en levert vaak niets op.
 2. **Schrijf het plan in gewone taal** (`nr: 2`), in de vorm hieronder. Geen bestandsnamen en geen jargon in
    de eerste vier kopjes; techniek hoort alleen onder het laatste.
 

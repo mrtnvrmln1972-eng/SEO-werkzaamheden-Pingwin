@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardDev, isMeekijker } from "../../../../lib/admin-scope";
 import { meldingToevoegen, meldingIntrekken } from "../../../../lib/meldingen";
 import {
-  haalPunten, haalPunt, nieuwPunt, zetStand, zetPlan, zetRegel, verwijderPunt, telPunten,
+  haalPunten, haalPunt, haalPuntBeeld, nieuwPunt, zetStand, zetPlan, zetRegel, verwijderPunt, telPunten,
   magNaarWachtrij, OMVANGEN, STANDEN, type Omvang, type Stand,
 } from "../../../../lib/grote-punten";
 import { puntStand, wachtrijMetTijden } from "../../../../lib/punt-ronde";
-import { zetStand as zetTweakStand } from "../../../../lib/tweaks";
+import { zetStand as zetTweakStand, haalTweaks, haalBeeld as haalTweakBeeld } from "../../../../lib/tweaks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +78,13 @@ async function werkMeldingenBij(): Promise<Awaited<ReturnType<typeof telPunten>>
 
 export async function GET(req: NextRequest) {
   const g = await guardDev(req); if (!g.ok) return g.res;
+
+  // Eén schermafbeelding los ophalen. Die gaat bewust niet mee in de lijst: dat
+  // zijn megabytes per punt en het scherm heeft ze pas nodig als je erop klikt.
+  const beeldId = req.nextUrl.searchParams.get("beeld");
+  if (beeldId) {
+    return NextResponse.json({ ok: true, beeld: await haalPuntBeeld(Number(beeldId)) });
+  }
   const alles = req.nextUrl.searchParams.get("alles") === "1";
   const [punten, tellers, stand, wachtrij] = await Promise.all([
     haalPunten(alles), telPunten(), puntStand(), wachtrijMetTijden(),
@@ -94,11 +101,31 @@ export async function POST(req: NextRequest) {
   }
   const omvang = OMVANGEN.includes(body?.omvang) ? (body.omvang as Omvang) : "middel";
   const bronTweak = body?.bronTweak ? Number(body.bronTweak) : null;
+
+  // ── WAT ER BIJ DE MELDING ZAT GAAT MEE, EN DAT IS EEN REPARATIE ──
+  // Kwam dit punt van de tweak-stapel, dan wist die melding al waar Maarten
+  // stond en had hij er vaak een schermafbeelding bij geplakt. Dat werd hier
+  // weggegooid: het punt hield alleen de getypte tekst over. Gevolg (15-08-2026,
+  // punt G1): de ronde die het plan moest schrijven wist niet over welk scherm
+  // het ging, ging veertien minuten zoeken en liep vast. Maarten dacht
+  // intussen dat hij het beeld allang had meegegeven, en dat klopte ook, alleen
+  // kwam het niet verder dan de melding.
+  let raakt = Array.isArray(body?.raakt) ? body.raakt.map((x: unknown) => String(x).slice(0, 60)).slice(0, 12) : [];
+  let beeld: string | null = typeof body?.beeld === "string" && body.beeld ? body.beeld : null;
+  if (bronTweak) {
+    const bron = (await haalTweaks(true).catch(() => [])).find((t) => t.id === bronTweak);
+    if (bron) {
+      if (raakt.length === 0) raakt = [bron.pad || bron.scherm].filter(Boolean).map((x) => String(x).slice(0, 60));
+      if (!beeld) beeld = await haalTweakBeeld(bronTweak).catch(() => null);
+    }
+  }
+
   const punt = await nieuwPunt({
     titel,
     tekst: String(body?.tekst ?? ""),
     omvang,
-    raakt: Array.isArray(body?.raakt) ? body.raakt.map((x: unknown) => String(x).slice(0, 60)).slice(0, 12) : [],
+    raakt,
+    beeld,
     routekaart: body?.routekaart ? String(body.routekaart).slice(0, 10) : null,
     bronTweak,
   });
