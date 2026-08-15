@@ -70,7 +70,11 @@ export default function Nulmeting({ begin, voorbeeldSlug, tweaks }: {
   tweaks: Tweak[];
 }) {
   const [gedaan, setGedaan] = useState<NulmetingRij[]>(begin);
-  const [open, setOpen] = useState(false);
+  // Zolang er nog niets is nagelopen staat de lijst open. Een dichtgeklapte
+  // lijst van nul afgevinkte schermen is onzichtbaar werk: je moet weten dat
+  // hij bestaat om hem te vinden, en dan bestaat hij dus niet. Zodra er iets is
+  // afgevinkt klapt hij vanzelf dicht, want dan is de meter genoeg.
+  const [open, setOpen] = useState(begin.length === 0);
 
   const lijst = schermen(voorbeeldSlug);
   const vinkje = (sleutel: string) => gedaan.find((n) => n.sleutel === sleutel) || null;
