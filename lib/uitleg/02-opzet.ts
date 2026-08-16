@@ -44,8 +44,19 @@ export const HOOFDSTUK: Hoofdstuk = {
         "In dat tekstveld kun je naast vet, bullets en links ook een **afvinklijstje** maken (selecteer een " +
         "rijtje regels en klik 'vinklijst', dan wordt elke regel een eigen vinkpunt) en een **uitklapper** " +
         "(een onderwerp met een driehoekje, met alles wat erbij hoort eronder). Elk onderdeel is te " +
-        "**verslepen**: zweef erover, pak het grijpvlekje aan de linkerkant en zet het boven of onder een " +
-        "andere regel neer.\n\n" +
+        "**verslepen**: zweef erover, pak het grijpvlekje in de strook links van het tekstvak en zet het boven " +
+        "of onder een andere regel neer.\n\n" +
+        "Op een vinkregel werkt Enter zoals je het van een lijstje verwacht: aan het eind krijg je een nieuw " +
+        "punt eronder, middenin splitst de regel (de tekst achter je cursor gaat mee), en op een lege regel " +
+        "stap je uit de lijst. Backspace helemaal vooraan haalt alleen het vinkje weg; je tekst blijft staan " +
+        "als gewone regel. Enter in het kopje van een uitklapper springt naar de inhoud eronder, en klapt hem " +
+        "eerst open als hij dicht stond.\n\n" +
+        "**De vorm van het veld wordt na elke bewerking nagelopen en zo nodig rechtgezet** (invoegen, slepen, " +
+        "plakken, Enter, en als je het veld verlaat). Die controle mag nooit iets weggooien: staat er iets op " +
+        "een plek waar het niet hoort, dan verhuist het naar de dichtstbijzijnde plek waar het wél hoort. Zo " +
+        "heelt oude, scheefgeraakte inhoud vanzelf zodra je het veld opent. Waarom dat nodig was: de browser " +
+        "maakt er zelf een potje van zodra je iets invoegt terwijl je cursor midden in een lijst of een kopje " +
+        "staat, en dat was de echte oorzaak van 'hij reageert raar als ik een enter doe'.\n\n" +
         "Het veld slaat tijdens het typen vanzelf op, en **bewaart bij elke wijziging de vorige versie**. Ging " +
         "er iets mis, dan zet je die met één klik terug via het scherm 'Veld terugzetten' in het Intern-menu. " +
         "Dat vangnet is er gekomen na 11 augustus 2026, toen een fout in het slepen inhoud buiten het tekstvak " +
