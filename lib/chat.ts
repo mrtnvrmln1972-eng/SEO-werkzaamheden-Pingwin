@@ -1003,6 +1003,7 @@ export async function trekConclusie(slug: string, thread = "overzicht"): Promise
     `## Waar we op uitkomen\n## Wat we nu weten\n## Wat nog open staat\n\n` +
     `REGELS:\n` +
     `- Nederlands, Markdown, geen emoji.\n` +
+    `- GEEN LOS LIGGEND LANG STREEPJE als zinsscheiding (geen em-dash, geen en-dash). Gebruik een komma, een dubbele punt, een puntkomma, haakjes of een nieuwe zin. Een koppelteken zonder spaties in een samenstelling (SEO-strategie, AI-tools, e-mail) is gewoon goed. Dit is een harde huisregel van Pingwin; hij wordt na afloop nagerekend, dus schrijf hem meteen goed.\n` +
     `- Korte bullets (-), één gedachte per bullet. Geen lange alinea's, geen muur.\n` +
     `- Begin DIRECT met het eerste kopje. Geen aankondigings- of vulzinnen ("Hier is de conclusie", "Nu heb ik het beeld compleet").\n` +
     `- Onder "Wat nog open staat" horen echte open punten: wat we niet weten, waar we op wachten, of waar Maarten of de klant nog over moet beslissen.\n` +
@@ -1277,6 +1278,7 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `- Meet uit jezelf voordat je antwoordt. Vraagt Maarten "hoe staat deze landingpagina ervoor", dan meet je hem en vertel je wat je zag; je stelt geen controlevragen die je zelf kunt beantwoorden.\n` +
       `- Denk mee als consultant, niet als uitvoerder: benoem wat je zou doen en waarom, in volgorde van impact.\n\n` +
       `OPMAAK (Nederlands, Markdown, geen emoji):\n` +
+      `- GEEN LOS LIGGEND LANG STREEPJE als zinsscheiding (geen em-dash, geen en-dash). Gebruik een komma, een dubbele punt, een puntkomma, haakjes of een nieuwe zin. Een koppelteken zonder spaties in een samenstelling (SEO-strategie, AI-tools, e-mail) is gewoon goed. Dit is een harde huisregel van Pingwin; hij wordt na afloop nagerekend, dus schrijf hem meteen goed.\n` +
       `- Begin direct met de inhoud. Geen aankondigingszinnen zoals "Ik ga even kijken" of "Hier is het resultaat".\n` +
       `- Korte kopjes (## Kop), korte bullets (-), **vet** voor kernfeiten (paginanaam, positie, bedrag, datum). Geen muur tekst.\n` +
       `- Pagina's en paden schrijf je KAAL (bijv. /kozijnen/), die worden automatisch klikbaar. Gebruik geen markdown-linksyntax voor paden.\n` +

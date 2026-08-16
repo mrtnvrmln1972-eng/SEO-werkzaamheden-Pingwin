@@ -1,5 +1,7 @@
 "use client";
 
+import { zonderLosStreepje } from "../../../../lib/streepjes";
+
 import { useEffect, useRef, useState } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { splitCardInfo, cardInfoHtml } from "../../../../lib/card-info";
@@ -271,7 +273,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
       {editable && !done && (
         <>
           <div className="act-edit-label muted">Voorstel (pas gerust aan vóór je goedkeurt):</div>
-          <div className="act-edit" contentEditable suppressContentEditableWarning ref={editRef}>{action.tekst}</div>
+          <div className="act-edit" contentEditable suppressContentEditableWarning ref={editRef}>{zonderLosStreepje(action.tekst || "")}</div>
         </>
       )}
 

@@ -1,3 +1,4 @@
+import { zonderLosStreepje } from "./streepjes";
 // Nette weergave van het info-blok op een projectkaart (weekplanning).
 // Werkt met terugwerkende kracht op ALLE bestaande kaarten (Pingwin én NOC):
 // de platte kaarttekst wordt gesplitst in het unieke verhaal (Doel, Afspraken en
@@ -339,6 +340,8 @@ export function splitCardInfo(toelichting: string, taak?: string, herkomst?: Her
   // elke kaart die er al staat, en komt zo'n naam ook niet meer in een mail
   // terecht die uit deze tekst wordt gemaakt. Zie lib/herkomst.ts voor het waarom.
   toelichting = striptToeschrijvingen(toelichting || "", herkomst || {});
+  // Vaste schrijfregel, in de weergave dus ook voor alle kaarten die er al staan.
+  toelichting = zonderLosStreepje(toelichting);
   const info: CardInfo = { achtergrond: [], afspraken: [], overig: [], perFase: {}, rest: [] };
   const seen = new Set<string>();
   // De titel van de kaart hoort niet als bullet IN de kaart. Bij het samenvoegen

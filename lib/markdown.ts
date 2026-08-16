@@ -1,3 +1,4 @@
+import { zonderLosStreepje } from "./streepjes";
 // Compacte markdown → HTML renderer voor alles wat Maarten op het scherm ziet
 // (kopjes, bullets, genummerde en geneste lijsten, tabellen, citaten,
 // codeblokken, vet/cursief, links). Bewust klein en zonder externe dependency.
@@ -80,7 +81,9 @@ export function mdToHtml(md: string, siteUrl?: string): string {
   const base = (siteUrl || "").trim()
     ? ((siteUrl || "").trim().match(/^https?:\/\//i) ? (siteUrl || "").trim() : `https://${(siteUrl || "").trim()}`).replace(/\/+$/, "")
     : "";
-  const lines = (md || "").replace(/\r/g, "").split("\n");
+  // Vaste schrijfregel: geen los liggend lang streepje als zinsscheiding. Hier,
+  // in de weergave, dus ook in alle tekst die er al staat (zie lib/streepjes.ts).
+  const lines = zonderLosStreepje((md || "").replace(/\r/g, "")).split("\n");
   const out: string[] = [];
   let i = 0;
 
