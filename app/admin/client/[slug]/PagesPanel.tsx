@@ -668,8 +668,11 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
       const achtergrond: string[] = [];
       if (opp?.label) achtergrond.push(`${opp.label}${kw ? ` op "${kw}"` : ""}${pos ? `, nu positie ${pos}` : ""}.`);
       if (opp && opp.impressions > 0) achtergrond.push(`${opp.impressions.toLocaleString("nl-NL")} vertoningen en ${opp.clicks.toLocaleString("nl-NL")} klikken in de laatste periode${opp.bestVolume != null ? `; zoekvolume ${opp.bestVolume.toLocaleString("nl-NL")} per maand` : ""}.`);
-      if (!achtergrond.length) achtergrond.push(`Opgepakt vanuit het pagina-overzicht; nog geen Search Console-data voor deze pagina.`);
-      achtergrond.push((plan || "").trim() ? "Er ligt al een vastgelegde strategie voor deze pagina; die is het vertrekpunt." : "Er ligt nog geen vastgelegde strategie voor deze pagina.");
+      // Bewust GEEN vulzin als er niets te melden is. "Nog geen Search
+      // Console-data" en "nog geen vastgelegde strategie" stonden hier als vaste
+      // regels, dus een kaart zonder cijfers kreeg gegarandeerd een blok
+      // "Waarom deze pagina" waar niets in stond wat je niet al wist. Geen
+      // reden betekent nu: geen blok.
       const toelichting = kaartTekst({
         achtergrond,
         fases: faseVoorstel({ zoekwoord: kw, positie: pos, doel: pos && pos > 3 ? 3 : null, pad }),

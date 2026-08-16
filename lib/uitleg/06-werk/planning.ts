@@ -57,6 +57,19 @@ export const BLOKKEN: Uitklapper[] = [
       "de juiste mails en voegde weinig toe naast wat er al stond: de link naar de pagina en naar analyse, " +
       "blauwdruk en copy staan bij de fases, en eigen punten om te onthouden horen in de aantekeningen. " +
       "\"Waarom deze pagina\" en \"Aanpak en afspraken\", de geschreven kant van de kaart, staan er nu daarom " +
-      "altijd, in plaats van pas als het mailblok niets had gevonden.",
+      "altijd, in plaats van pas als het mailblok niets had gevonden.\n\n" +
+      "**Een blok dat niets te zeggen heeft, is er niet.** \"Waarom deze pagina\" moest altijd gevuld worden, " +
+      "dus een kaart die zonder cijfers werd opgepakt kreeg gegarandeerd zinnen als \"nog geen Search " +
+      "Console-data\" en \"nog geen vastgelegde strategie\", plus de opdrachtregel waarmee de kaart was " +
+      "aangemaakt en het aantal fases dat toen af was. Dat is geen reden maar de afwezigheid van een reden, " +
+      "en dat aantal fases staat live in het fase-blok eronder. Die regels worden er nu uitgefilterd in de " +
+      "weergave, dus ook op alle kaarten die er al stonden. Is er een echte reden (een kans, een positie, " +
+      "cijfers, een afspraak), dan staat die er gewoon; is die er niet, dan is er geen blok.\n\n" +
+      "**De documenten staan onder een dichte uitklapper.** De analyse, de blauwdruk en de copy open je al " +
+      "vanuit de fase-rijen, dus als vaste lijst waren het regels die je op elke kaart voorbij scrolde. De " +
+      "lijst blijft compleet (hernoemen, voorvertonen, weggooien, aanwijzen welke versie geldt), maar hij " +
+      "staat dicht. Hij gaat vanzelf open als er meerdere versies van hetzelfde soort liggen en je nog niet " +
+      "hebt aangewezen welke geldt, want daar wachten de mail en de sitebouwer op. In dat geval staat het " +
+      "tijdstip erbij, anders zijn drie documenten van dezelfde dag niet uit elkaar te houden.",
   },
 ];

@@ -58,6 +58,10 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
   // jij moet kiezen, en dan pas verschijnt het vinkje.
   const aantalPerSoort: Record<string, number> = {};
   for (const v of versies) aantalPerSoort[v.kind] = (aantalPerSoort[v.kind] || 0) + 1;
+  // Ligt er van een soort meer dan één versie zonder dat er één is aangewezen?
+  // Dan wacht de mail en de sitebouwer op jouw keuze, en gaat het blok open.
+  const moetKiezen = Object.keys(aantalPerSoort).some((kind) =>
+    aantalPerSoort[kind] > 1 && !versies.some((v) => v.kind === kind && v.goedgekeurd));
 
   const laad = useCallback(async () => {
     const d = await fetch(`/api/admin/page-doc/upload?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
@@ -140,6 +144,13 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
   const dd = (d: string) => {
     try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return ""; }
   };
+  // Het tijdstip erbij, maar alleen waar het iets oplost: liggen er meerdere
+  // documenten van hetzelfde soort, dan stonden ze er alle drie als "Copy,
+  // 11 aug, copy (gegenereerd)". Precies gelijk, dus je kon niet zien welke
+  // welke was terwijl je er wel één moest aanwijzen als de geldende.
+  const tt = (d: string) => {
+    try { return new Date(d).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+  };
   const previewUrl = (v: Versie) => {
     const id = driveIdFromUrl(v.driveLink);
     return id ? `https://drive.google.com/file/d/${id}/preview` : "";
@@ -204,7 +215,23 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
 
       {fout && <div className="wp-doc-fout">{fout}</div>}
 
+      {/* Dicht, tenzij je hem opendoet. De documenten zelf bereik je al via de
+          fase-rijen eronder (die linken naar de analyse, de blauwdruk en de
+          copy), dus als vaste, altijd-open lijst was dit vier regels die je op
+          elke kaart voorbij scrolt. Hier binnen kun je ze wél hernoemen,
+          voorvertonen, weggooien en aanwijzen welke versie geldt; daarom blijft
+          de lijst compleet in plaats van dat er regels uit verdwijnen.
+
+          Eén uitzondering die zich vanzelf opent: liggen er meerdere versies van
+          hetzelfde soort en heb je nog niet aangewezen welke geldt, dan is dat
+          een openstaande keuze waar de mail en de sitebouwer op wachten. Die
+          hoort niet achter een dicht klepje te verdwijnen. */}
       {versies.length > 0 && (
+        <details className="wp-doc-vouw" open={moetKiezen}>
+          <summary>
+            Documenten ({versies.length})
+            {moetKiezen && <span className="wp-doc-vouw-let">kies welke versie geldt</span>}
+          </summary>
         <ul className="wp-doclijst">
           {/* Leesvolgorde = proces-volgorde (analyse, blauwdruk, copy), binnen een
               stap nieuwste eerst. Puur op datum stond copy bovenaan en las de
@@ -222,7 +249,7 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
               onClick={() => setGekozen(gekozen === v.id ? null : v.id)}
               onDoubleClick={() => setPreview(v)}
               title="Klik om te kiezen, spatiebalk voor een voorvertoning">
-              <span className="wp-docrij-datum">{dd(v.createdAt)}</span>
+              <span className="wp-docrij-datum">{dd(v.createdAt)}{aantalPerSoort[v.kind] > 1 ? ` ${tt(v.createdAt)}` : ""}</span>
               <span className={"wp-docversie-bron " + (v.source === "klant" ? "wp-bron-klant" : "wp-bron-pingwin")}>
                 {v.source === "klant" ? "Klant" : "Pingwin"}
               </span>
@@ -286,6 +313,7 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
             </li>
           ))}
         </ul>
+        </details>
       )}
 
       {versies.some((v) => v.kind === "copy" && v.goedgekeurd) && (

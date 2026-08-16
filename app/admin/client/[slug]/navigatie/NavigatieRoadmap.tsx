@@ -222,7 +222,9 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
       if (n.score !== null) achtergrond.push(`Score ${n.score}/100 (${n.scoreLabel})${n.woorden !== null ? `, ${n.woorden}${n.woordenGeschat ? " geschatte" : ""} woorden eigen tekst` : ""}.`);
       const zwak = (n.punten || []).filter((p) => p.max > 0 && p.behaald < p.max).map((p) => p.naam);
       if (zwak.length) achtergrond.push(`Zwakste onderdelen nu: ${zwak.slice(0, 4).join(", ")}.`);
-      achtergrond.push(`${n.fasesKlaar} van de 7 fases staan af.`);
+      // Hoeveel fases er af zijn stond hier ook als regel. Dat is bevroren op het
+      // moment van aanmaken, terwijl het fase-blok direct eronder de echte, actuele
+      // stand laat zien. Twee antwoorden op dezelfde vraag, waarvan er één veroudert.
       const toelichting = kaartTekst({
         achtergrond,
         afspraken: ["Bron: opgepakt vanuit de navigatie-roadmap."],

@@ -3228,6 +3228,23 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 /* ── Documenten bij een taak: één regel per versie, nieuwste bovenaan ──
    Vervangt de uitklapper met voorstellen. Klik kiest een regel, spatiebalk opent
    de voorvertoning; daarom heeft een gekozen regel een duidelijke rand. */
+/* De documentenlijst zit standaard dicht: de analyse, de blauwdruk en de copy
+   bereik je al via de fase-rijen eronder, dus als altijd-open lijst was dit
+   ruis op elke kaart. Zelfde vorm als de andere uitklappers op de kaart
+   (.wp-info-rest), zodat het één systeem blijft. */
+.wp-doc-vouw { margin-top: var(--s-3); }
+.wp-doc-vouw > summary {
+  cursor: pointer; font-size: var(--fs-xs); line-height: var(--lh-xs);
+  color: var(--gray); font-weight: 600; list-style: none;
+  display: flex; align-items: center; gap: var(--s-2);
+}
+.wp-doc-vouw > summary::-webkit-details-marker { display: none; }
+.wp-doc-vouw > summary::before { content: "▸"; color: var(--orange); }
+.wp-doc-vouw[open] > summary::before { content: "▾"; }
+.wp-doc-vouw > summary:hover { color: var(--orange-dark); }
+/* Er ligt meer dan één versie van hetzelfde soort en je hebt nog niet gekozen:
+   dan wacht de mail en de sitebouwer daarop, dus dat mag opvallen. */
+.wp-doc-vouw-let { color: var(--orange-dark); font-weight: 700; }
 .wp-doclijst { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
 .wp-docrij { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2);
   padding: var(--s-2) var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-md);

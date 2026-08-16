@@ -305,9 +305,32 @@ function isCommunicatie(regel: string): boolean {
 // Splitst de kaarttekst in het unieke verhaal en fase-sturing. Werkt op oude
 // platte bullets én op het nieuwe formaat met kopjes (Achtergrond/Afspraken/Aanpak).
 // Generieke nul-informatie-regels die alleen ruimte kosten (retroactief wegfilteren).
+// Regels die geen reden zijn, maar de afwezigheid van een reden. Ze ontstonden
+// doordat "Waarom deze pagina" altijd gevuld moest worden, ook als er niets te
+// melden viel: een kaart die vanuit het pagina-overzicht wordt opgepakt zonder
+// Search Console-data kreeg gegarandeerd twee zinnen die je niets vertellen
+// ("nog geen data", "nog geen strategie"), plus een derde die alleen de titel
+// van de kaart herhaalt. Drie regels lezen om te weten dat er niets bekend is.
+//
+// Ze staan hier in de WEERGAVE-laag en niet alleen bij het maken, zodat elke
+// kaart die er al staat er ook meteen vanaf is. Dat is de vaste regel: een
+// opmaakverbetering geldt met terugwerkende kracht.
 const RUIS: RegExp[] = [
   /^dev bouwt en publiceert de pagina/i,
   /^de aanpak staat hieronder/i,
+  /^opgepakt vanuit (het pagina-overzicht|de navigatie)/i,
+  /^er ligt (nog )?(geen|al een) vastgelegde strategie voor deze pagina/i,
+  /^nog geen search console-data/i,
+  // "Pagina oppakken: /hovenier/oosterhout/" en "Nieuwe pagina: /x/": dat is de
+  // opdrachtregel waarmee de kaart is aangemaakt, niet een reden. Hij belandde
+  // als bullet in de kaart bij het samenvoegen van een tweede klik op dezelfde
+  // pagina, en de titel-herhaalcontrole ving hem niet omdat de kaarttitel
+  // inmiddels alleen nog het pad is.
+  /^(pagina oppakken|nieuwe pagina)\s*:/i,
+  // Bevroren op het moment van aanmaken, terwijl het fase-blok eronder de echte
+  // stand toont. Twee antwoorden op dezelfde vraag, waarvan er één veroudert.
+  /^\d+ van de 7 fases staan af/i,
+  /^bron: opgepakt vanuit de navigatie-roadmap/i,
 ];
 
 export function splitCardInfo(toelichting: string, taak?: string, herkomst?: HerkomstContext): CardInfo {
