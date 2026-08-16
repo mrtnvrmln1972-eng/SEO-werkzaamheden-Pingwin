@@ -41,11 +41,13 @@ export const HOOFDSTUK: Hoofdstuk = {
         "zo\'n regel wordt elke plek een kwestie van wie er die dag iets bouwde, en zo belandde het " +
         "klantprofiel boven een lijst van 65 URL\'s. Komt er een scherm bij, dan is de vraag welke van de " +
         "vijf het beantwoordt, niet waar nog ruimte was.\n\n" +
-        "Daarnaast zit er aan de rechterrand één inschuifbaar zijpaneel, op elk tabblad bereikbaar: " +
-        "'Zoekwoorden & links' heeft de afgesproken strategie links in een vrij tekstveld en rechts een kolom " +
-        "met snel aan te klikken landingspagina's. Het losse 'Links'-zijpaneel (de koppelingen als " +
-        "uitklaplijstje) is vervallen; die koppelingen staan nu als tegels bovenaan de tab Klantgegevens, zie " +
-        "hieronder.\n\n" +
+        "**Het klantprofiel en de strategie staan bij Klantgegevens.** Het klantprofiel (met de tone of " +
+        "voice) stond boven de paginalijst, en 'Zoekwoorden & links' stond bij Taken. Allebei horen ze bij de " +
+        "vraag wie deze klant is: het profiel is de vaste briefing die bijna elke motor leest, en de " +
+        "zoekwoord- en linkstrategie is een afspraak die maanden meegaat, geen taak van deze week. Op Taken " +
+        "staat nu alleen nog de verwijzing ernaartoe, zodat het veld op precies één plek woont. De " +
+        "site-brede strategie-sessies blijven wél bij Taken, want daar maak je met één klik een taak van een " +
+        "actiepunt.\n\n" +
         "In dat tekstveld kun je naast vet, bullets en links ook een **afvinklijstje** maken (selecteer een " +
         "rijtje regels en klik 'vinklijst', dan wordt elke regel een eigen vinkpunt) en een **uitklapper** " +
         "(een onderwerp met een driehoekje, met alles wat erbij hoort eronder). Elk onderdeel is te " +

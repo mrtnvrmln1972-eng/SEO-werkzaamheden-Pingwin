@@ -70,6 +70,23 @@ check("het menu leest uit dezelfde lijst als de balk", /const tab = \(id: Tab\):
 const zonderHint = [...bron.matchAll(/\{ id: "([a-z-]+)", label: "[^"]+", hint: "(\s*)" \}/g)].map((m) => m[1]);
 check("elk scherm heeft een regel uitleg", zonderHint.length === 0, zonderHint.join(", "));
 
+// ── Het klantprofiel en de strategie staan bij "wie is deze klant" ──
+// Dit is de reden dat de hele herindeling begon: het klantprofiel stond boven een
+// lijst van 65 URL's op de tab Pagina's, terwijl de tab Klantgegevens in zijn
+// eigen omschrijving beloofde dat het daar stond. Zonder deze controle sluipt het
+// er zo weer in, want in PagesPanel is die code nog steeds thuis.
+const cockpit = fs.readFileSync(path.join(WORTEL, "app/admin/client/[slug]/ClientCockpit.tsx"), "utf8");
+const klantTab = cockpit.slice(cockpit.indexOf('{tab === "klant" &&'), cockpit.indexOf('{paginasVisited &&'));
+check("het klantprofiel staat op de tab Klantgegevens", /alleenProfiel/.test(klantTab),
+  "PagesPanel hoort daar met alleenProfiel te staan; anders is het profiel terug bij de paginalijst.");
+check("de zoekwoord- en linkstrategie staat op de tab Klantgegevens", /FocusBlock/.test(klantTab),
+  "Een afspraak die maanden meegaat hoort bij de klant, niet bij de taken van deze week.");
+
+const pages = fs.readFileSync(path.join(WORTEL, "app/admin/client/[slug]/PagesPanel.tsx"), "utf8");
+const keerGetoond = (pages.match(/\{profielBlok\}/g) || []).length;
+check("de paginalijst toont het profiel niet zelf meer", keerGetoond === 1,
+  `Het profielblok wordt ${keerGetoond} keer getoond; het hoort alleen in de alleenProfiel-stand te staan, anders zie je hem op twee tabbladen tegelijk.`);
+
 console.log(fouten === 0
   ? "\nElk scherm staat bij de vraag die het beantwoordt."
   : `\n${fouten} punt(en) mis.`);

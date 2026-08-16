@@ -168,7 +168,6 @@ export default function ClientCockpit({
   // Zoekwoorden & links stond als los tabje aan de rechterrand (op elk tabblad
   // bereikbaar); dat gaf twee plekken voor hetzelfde blok. Nu één plek: een
   // toggle onder Laatste mails, zelfde vormgeving, standaard dicht.
-  const [showZoekwoordenBox, setShowZoekwoordenBox] = useState(false);
 
   // Afzender-filter als klein popovertje in de Laatste mails-kop.
   const [showAfzenders, setShowAfzenders] = useState(false);
@@ -736,14 +735,15 @@ export default function ClientCockpit({
 
             {/* Zoekwoorden & links: zelfde vormgeving en inhoud als voorheen in het
                 losse zijpaneel-tabje, nu als toggle direct onder Laatste mails. */}
+            {/* Het veld zelf staat nu bij Klantgegevens, want het is een afspraak
+                over deze klant en geen taak van deze week. Hier blijft alleen de
+                weg ernaartoe staan: één plek waar het woont, geen tweede kopie
+                die na een maand iets anders zegt. */}
             <div className="cockpit-card strategy-card">
-              <button type="button" className="strategy-head" onClick={() => setShowZoekwoordenBox((v) => !v)}>
-                <span className="strategy-caret">{showZoekwoordenBox ? "▾" : "▸"}</span>
-                <span className="strategy-title">Zoekwoorden & links</span>
+              <button type="button" className="strategy-head" onClick={() => changeTab("klant")}>
+                <span className="strategy-caret">&rarr;</span>
+                <span className="strategy-title">Zoekwoorden &amp; links staan bij Klantgegevens</span>
               </button>
-              <div className="strategy-body" style={{ display: showZoekwoordenBox ? undefined : "none" }}>
-                <FocusBlock slug={client.slug} />
-              </div>
             </div>
 
             </div>
@@ -762,6 +762,10 @@ export default function ClientCockpit({
         {tab === "onboarding" && <OnboardingPanel slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />}
 
         {tab === "klant" && (<>
+          {/* Wie is deze klant: eerst de stand van het fundament, dan de vaste
+              briefing (profiel en tone of voice), dan de afgesproken strategie,
+              dan de harde gegevens en de concurrenten. Van "wie is dit bedrijf"
+              naar "wat spraken we af" naar "tegen wie nemen we het op". */}
           <FundamentPanel
             slug={client.slug}
             positioneringUrl={client.cockpit.positioneringUrl || ""}
@@ -769,6 +773,18 @@ export default function ClientCockpit({
             adsAccountUrl={client.cockpit.adsAccountUrl || ""}
             onGaNaar={(t) => changeTab(validTab(t))}
           />
+          {/* Het klantprofiel en de tone of voice stonden boven de paginalijst.
+              Ze gaan niet over pagina's maar over wie het bedrijf is, en bijna
+              elke motor leest ze. Zelfde code als daar, dus één bron. */}
+          <PagesPanel alleenProfiel slug={client.slug} initialProfile={client.seoProfile || ""} domain={client.domain || ""} />
+          {/* De afgesproken zoekwoorden en landingspagina's. Dit stond op Taken,
+              maar een afspraak die maanden meegaat is geen taak van deze week.
+              De site-brede strategie-sessies blijven wél op Taken: daar maak je
+              met één klik een taak van een actiepunt, dus die hangen echt aan de
+              takenlijst vast. */}
+          <div className="cockpit-card strategy-card">
+            <FocusBlock slug={client.slug} standalone titel="Zoekwoorden & links" />
+          </div>
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
           {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
               achter een knopje in een scan-blok. Zelfde component als daar. */}

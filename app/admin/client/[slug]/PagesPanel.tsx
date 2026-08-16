@@ -108,7 +108,12 @@ function FaseRail({ f }: { f?: Partial<Record<FaseKey, boolean>> }) {
   );
 }
 
-export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask, domain, openTarget }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void; domain?: string; openTarget?: { url: string; n: number } | null }) {
+export default function PagesPanel({ slug, initialProfile, clientEmail, clientName, onGoToTask, domain, openTarget, alleenProfiel }: { slug: string; initialProfile?: string; clientEmail?: string; clientName?: string; onGoToTask?: (taskId: number) => void; domain?: string; openTarget?: { url: string; n: number } | null;
+  /** Alleen het klantprofiel tonen, zonder de paginalijst. Zo staat het profiel op
+      de tab Klantgegevens (waar het hoort) zonder dat de code twee keer bestaat:
+      één bron, twee plekken waar hij te zien is. In deze stand wordt de
+      paginalijst ook niet opgehaald, want die is dan toch niet in beeld. */
+  alleenProfiel?: boolean }) {
   type Opp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
   const [opps, setOpps] = useState<Record<string, Opp>>({});
   // Sortering: "prio" (standaard) = sterretjes bovenaan, dan plan, dan kans.
@@ -136,7 +141,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       setGepland(new Set(open.map((t: { url: string }) => urlKey(t.url))));
     } catch { /* zonder deze lijst toont de knop gewoon "+ planning" */ }
   }
-  useEffect(() => { void laadPlanning(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
+  useEffect(() => { if (!alleenProfiel) void laadPlanning(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug, alleenProfiel]);
   // Nieuwe (nog niet bestaande) pagina handmatig toevoegen.
   const [newPageOpen, setNewPageOpen] = useState(false);
   const [newPath, setNewPath] = useState("");
@@ -149,7 +154,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   // geen invoerveld voor; wordt bij "Website inlezen" meegestuurd en opgeslagen.
   const [domainInput, setDomainInput] = useState(domain || "");
   const [profile, setProfile] = useState(initialProfile || "");
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(!!alleenProfiel);
   const [profileSaved, setProfileSaved] = useState(false);
   const profileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [genBusy, setGenBusy] = useState<"" | "profile" | "tov">("");
@@ -432,6 +437,92 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     }
   });
 
+  // Het klantprofiel als los blok. Het stond hier boven de paginalijst, maar het
+  // gaat niet over pagina's: het is de vaste briefing over wie de klant is, en
+  // bijna elke motor leest het. Het hoort dus bij Klantgegevens, en dat beloofde
+  // die tab in zijn eigen omschrijving trouwens al. Zie KlantTabs.tsx voor de
+  // regel: elk blok staat bij de vraag die het beantwoordt.
+  const profielBlok = (
+    <>
+      <div className="profile-search-row">
+        <button type="button" className="client-profile-toggle" onClick={() => setProfileOpen((v) => !v)}>
+        {profileOpen ? "▾" : "▸"} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
+        {profileSaved && <span className="focus-save-status" style={{ marginLeft: "var(--s-2)" }}>opgeslagen</span>}
+        </button>
+        <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
+        <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
+      </div>
+      {profileOpen && (
+      <div className="client-profile-body">
+      <div className="profile-gen-buttons">
+      <button type="button" className={"pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : made.profile ? "Klantprofiel gemaakt ✓" : "Klantprofiel opstellen"}</button>
+      <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Klantprofiel opstellen'?" text={"Deze knop laat de AI de LIVE website van de klant lezen (homepage plus de belangrijkste pagina's) en daaruit een compleet klantprofiel opstellen. Dat gaat in vier stappen:\n- De AI leest de site en destilleert daaruit: wie het bedrijf is, het aanbod en de diensten, de doelgroep en hun vragen of twijfels, het werkgebied en de positionering (waarin onderscheidt dit bedrijf zich).\n- Het resultaat komt als concept in het veld 'Uit klantprofiel' hieronder te staan. Je kunt het daar gewoon nalezen en aanpassen; het is een vertrekpunt, geen eindstation.\n- Er wordt een net opgemaakt Pingwin-document van gemaakt, dat in de gekozen Drive-klantmap komt (of als download als er geen map of Drive-koppeling is).\n- Het verschijnt als afgeronde werkzaamheid in de takenlijst én op het klantdashboard, zodat de klant ziet dat dit werk gedaan is.\nHet profiel wordt daarna automatisch gebruikt door alle chats, analyses en documenten voor deze klant (zie het vraagteken bij 'Klantprofiel' hierboven). Draait op de achtergrond en kost een klein beetje Claude-tegoed; je kunt hem later gewoon opnieuw draaien als de site wezenlijk verandert."} /></span>
+      <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : made.tov ? "Tone-of-voice gemaakt ✓" : "Tone-of-voice analyse"}</button>
+      <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Tone-of-voice analyse'?" text={"Deze knop laat de AI de bestaande teksten op de live website analyseren op schrijfstijl: hoe klinkt dit bedrijf?\n- De AI kijkt naar aanspreekvorm (je/u), toon (zakelijk, warm, nuchter, speels), zinslengte en woordkeuze, hoe claims worden onderbouwd, en wat het bedrijf juist NIET zegt.\n- Het resultaat komt als apart tone-of-voice-blok in het klantprofiel-veld te staan (onder de kop 'Tone of voice'), naast het inhoudelijke profiel; je kunt het nalezen en bijstellen.\n- Er wordt een Pingwin-document van gemaakt in de Drive-klantmap (of als download) en een afgeronde werkzaamheid in de takenlijst en het klantdashboard.\nWaarom dit belangrijk is: de copy-stap (stap 3) en alle andere teksten die de AI voor deze klant schrijft, volgen deze tone-of-voice. Zo klinken nieuwe teksten als de klant zelf en niet als een willekeurige tekstrobot, en blijft de site consistent als meerdere mensen eraan werken. Draait op de achtergrond; opnieuw draaien mag altijd."} /></span>
+      <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>Leest de live site, zet een concept in het veld en maakt er een Pingwin-document + taak van.</span>
+      </div>
+      <div className="page-chat-drive" style={{ marginBottom: "var(--s-2)" }}>
+      <span className="pcd-label">Documenten opslaan in:</span>
+      {driveFolder
+      ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
+      : <span className="pcd-folder muted">nog geen Drive-map (zonder map worden ze in je hoofdmap gezet)</span>}
+      <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Klantmap wijzigen" : "Kies klantmap"}</button>
+      </div>
+      {genErr && <div className="login-error" style={{ marginBottom: "var(--s-2)" }}>{genErr}</div>}
+      {genMsg && <div className="saved-msg" style={{ marginBottom: "var(--s-2)" }}>{genMsg}</div>}
+      {(["profile", "tov"] as const).map((k) => made[k] && (
+      <div key={k} className="profile-made-note">
+      {k === "profile" ? "Klantprofiel-document" : "Tone-of-voice-document"} gemaakt en als taak toegevoegd (zichtbaar in Werkzaamheden en de klantdash).
+      {made[k].link ? <> <a href={made[k].link} target="_blank" rel="noreferrer">Open document</a>.</> : made[k].driveError ? <> <span className="muted">Nog geen deelbare link: {made[k].driveError}</span></> : null}
+      </div>
+      ))}
+
+      {/* De twee gegenereerde delen als toggle, standaard dicht. */}
+      <div className="profile-part acc-teal">
+      <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-0)", cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, profile: !o.profile }))}>
+      <span>{genPartOpen.profile ? "▾" : "▸"}</span> Klantprofiel (automatisch gegenereerd)
+      {!parts.profileMd && <span className="plan-chip" style={{ marginLeft: "var(--s-2)" }}>leeg</span>}
+      </button>
+      {genPartOpen.profile && (parts.profileMd
+      ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd.replace(/^##[^\n]*\n?/, ""), domain) }} />
+      : <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>)}
+      </div>
+
+      <div className="profile-part acc-blue">
+      <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-0)", cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, tov: !o.tov }))}>
+      <span>{genPartOpen.tov ? "▾" : "▸"}</span> Tone of voice (automatisch gegenereerd)
+      {!parts.tovMd && <span className="plan-chip" style={{ marginLeft: "var(--s-2)" }}>leeg</span>}
+      </button>
+      {genPartOpen.tov && (parts.tovMd
+      ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd.replace(/^##[^\n]*\n?/, ""), domain) }} />
+      : <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>)}
+      </div>
+
+      <div className="profile-part acc-taupe">
+      <div className="profile-part-head">Jouw know-how over de klant</div>
+      <textarea
+      className="client-profile-area"
+      value={parts.knowhow}
+      onChange={(e) => changeKnowhow(e.target.value)}
+      placeholder="Wat weet jij zelf over deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten, afspraken. De chat gebruikt dit samen met de twee analyses hierboven als context."
+      />
+      </div>
+      </div>
+      )}
+    </>
+  );
+
+  // De tab Klantgegevens toont alleen dit blok. Bewust dezelfde code en niet een
+  // tweede scherm ernaast: twee versies van hetzelfde veld lopen gegarandeerd uit
+  // elkaar, en dat is in dit dashboard al vaker misgegaan.
+  if (alleenProfiel) {
+    return (
+      <div className="cockpit-card acc-teal client-profile-card">
+        {profielBlok}
+      </div>
+    );
+  }
+
   return (
     <div className="pages-panel">
       <div className="cockpit-card acc-orange">
@@ -479,74 +570,12 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
         )}
         {msg && <div className="saved-msg" style={{ marginBottom: "var(--s-3)" }}>{msg}</div>}
 
-        <div className="profile-search-row">
-          <button type="button" className="client-profile-toggle" onClick={() => setProfileOpen((v) => !v)}>
-            {profileOpen ? "▾" : "▸"} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
-            {profileSaved && <span className="focus-save-status" style={{ marginLeft: "var(--s-2)" }}>opgeslagen</span>}
-          </button>
-          <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
+        <div className="profile-search-row profile-search-row-zoek">
           <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
             {q.trim() && <span className="sov-sub" style={{ whiteSpace: "nowrap" }}>{filtered.length} van {urls.length}</span>}
             <input className="pages-search" placeholder="Zoek in URL of titel…" value={q} onChange={(e) => setQ(e.target.value)} />
           </span>
         </div>
-        {profileOpen && (
-          <div className="client-profile-body">
-            <div className="profile-gen-buttons">
-              <button type="button" className={"pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : made.profile ? "Klantprofiel gemaakt ✓" : "Klantprofiel opstellen"}</button>
-              <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Klantprofiel opstellen'?" text={"Deze knop laat de AI de LIVE website van de klant lezen (homepage plus de belangrijkste pagina's) en daaruit een compleet klantprofiel opstellen. Dat gaat in vier stappen:\n- De AI leest de site en destilleert daaruit: wie het bedrijf is, het aanbod en de diensten, de doelgroep en hun vragen of twijfels, het werkgebied en de positionering (waarin onderscheidt dit bedrijf zich).\n- Het resultaat komt als concept in het veld 'Uit klantprofiel' hieronder te staan. Je kunt het daar gewoon nalezen en aanpassen; het is een vertrekpunt, geen eindstation.\n- Er wordt een net opgemaakt Pingwin-document van gemaakt, dat in de gekozen Drive-klantmap komt (of als download als er geen map of Drive-koppeling is).\n- Het verschijnt als afgeronde werkzaamheid in de takenlijst én op het klantdashboard, zodat de klant ziet dat dit werk gedaan is.\nHet profiel wordt daarna automatisch gebruikt door alle chats, analyses en documenten voor deze klant (zie het vraagteken bij 'Klantprofiel' hierboven). Draait op de achtergrond en kost een klein beetje Claude-tegoed; je kunt hem later gewoon opnieuw draaien als de site wezenlijk verandert."} /></span>
-              <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : made.tov ? "Tone-of-voice gemaakt ✓" : "Tone-of-voice analyse"}</button>
-              <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Tone-of-voice analyse'?" text={"Deze knop laat de AI de bestaande teksten op de live website analyseren op schrijfstijl: hoe klinkt dit bedrijf?\n- De AI kijkt naar aanspreekvorm (je/u), toon (zakelijk, warm, nuchter, speels), zinslengte en woordkeuze, hoe claims worden onderbouwd, en wat het bedrijf juist NIET zegt.\n- Het resultaat komt als apart tone-of-voice-blok in het klantprofiel-veld te staan (onder de kop 'Tone of voice'), naast het inhoudelijke profiel; je kunt het nalezen en bijstellen.\n- Er wordt een Pingwin-document van gemaakt in de Drive-klantmap (of als download) en een afgeronde werkzaamheid in de takenlijst en het klantdashboard.\nWaarom dit belangrijk is: de copy-stap (stap 3) en alle andere teksten die de AI voor deze klant schrijft, volgen deze tone-of-voice. Zo klinken nieuwe teksten als de klant zelf en niet als een willekeurige tekstrobot, en blijft de site consistent als meerdere mensen eraan werken. Draait op de achtergrond; opnieuw draaien mag altijd."} /></span>
-              <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>Leest de live site, zet een concept in het veld en maakt er een Pingwin-document + taak van.</span>
-            </div>
-            <div className="page-chat-drive" style={{ marginBottom: "var(--s-2)" }}>
-              <span className="pcd-label">Documenten opslaan in:</span>
-              {driveFolder
-                ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
-                : <span className="pcd-folder muted">nog geen Drive-map (zonder map worden ze in je hoofdmap gezet)</span>}
-              <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Klantmap wijzigen" : "Kies klantmap"}</button>
-            </div>
-            {genErr && <div className="login-error" style={{ marginBottom: "var(--s-2)" }}>{genErr}</div>}
-            {genMsg && <div className="saved-msg" style={{ marginBottom: "var(--s-2)" }}>{genMsg}</div>}
-            {(["profile", "tov"] as const).map((k) => made[k] && (
-              <div key={k} className="profile-made-note">
-                {k === "profile" ? "Klantprofiel-document" : "Tone-of-voice-document"} gemaakt en als taak toegevoegd (zichtbaar in Werkzaamheden en de klantdash).
-                {made[k].link ? <> <a href={made[k].link} target="_blank" rel="noreferrer">Open document</a>.</> : made[k].driveError ? <> <span className="muted">Nog geen deelbare link: {made[k].driveError}</span></> : null}
-              </div>
-            ))}
-
-            {/* De twee gegenereerde delen als toggle, standaard dicht. */}
-            <div className="profile-part acc-teal">
-              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-0)", cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, profile: !o.profile }))}>
-                <span>{genPartOpen.profile ? "▾" : "▸"}</span> Klantprofiel (automatisch gegenereerd)
-                {!parts.profileMd && <span className="plan-chip" style={{ marginLeft: "var(--s-2)" }}>leeg</span>}
-              </button>
-              {genPartOpen.profile && (parts.profileMd
-                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.profileMd.replace(/^##[^\n]*\n?/, ""), domain) }} />
-                : <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog niet opgesteld. Klik &ldquo;Klantprofiel opstellen&rdquo; hierboven.</div>)}
-            </div>
-
-            <div className="profile-part acc-blue">
-              <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-0)", cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, tov: !o.tov }))}>
-                <span>{genPartOpen.tov ? "▾" : "▸"}</span> Tone of voice (automatisch gegenereerd)
-                {!parts.tovMd && <span className="plan-chip" style={{ marginLeft: "var(--s-2)" }}>leeg</span>}
-              </button>
-              {genPartOpen.tov && (parts.tovMd
-                ? <div className="md profile-part-body" dangerouslySetInnerHTML={{ __html: mdToHtml(parts.tovMd.replace(/^##[^\n]*\n?/, ""), domain) }} />
-                : <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog niet opgesteld. Klik &ldquo;Tone-of-voice analyse&rdquo; hierboven.</div>)}
-            </div>
-
-            <div className="profile-part acc-taupe">
-              <div className="profile-part-head">Jouw know-how over de klant</div>
-              <textarea
-                className="client-profile-area"
-                value={parts.knowhow}
-                onChange={(e) => changeKnowhow(e.target.value)}
-                placeholder="Wat weet jij zelf over deze klant? Bv. werkgebied (regionaal Uden/Oss/Den Bosch, of landelijk), positionering (prijs / exclusieve designtuinen / duurzaam), doelgroep, belangrijkste diensten, afspraken. De chat gebruikt dit samen met de twee analyses hierboven als context."
-              />
-            </div>
-          </div>
-        )}
 
         {loading && <div className="muted" style={{ marginTop: "var(--s-3)" }}>Pagina&rsquo;s laden…</div>}
         {!loading && urls.length === 0 && (
