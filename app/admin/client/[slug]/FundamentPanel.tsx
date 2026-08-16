@@ -25,10 +25,13 @@ const STAAT_TEKST: Record<StapStand["staat"], string> = {
   af: "Staat", bezig: "Draait", verouderd: "Loopt achter", open: "Nog te doen",
 };
 
-const BLOKKEN: Blok[] = ["aansluiten", "kennen"];
+// Alle vier de blokken. Er stonden er hier twee, en de andere twee stonden op
+// een eigen tabblad Onboarding, met dezelfde cijfers uit dezelfde bron. Twee
+// schermen voor dezelfde vraag betekent dat je altijd de verkeerde openhebt.
+const BLOKKEN: Blok[] = ["aansluiten", "kennen", "meten", "werken"];
 const BLOK_TITEL: Record<Blok, string> = {
   aansluiten: "Fundament: aansluiten", kennen: "Fundament: wie is de klant",
-  meten: "", werken: "",
+  meten: "Fundament: meten", werken: "Fundament: aan het werk",
 };
 
 // Stappen die het dashboard zelf op gang kan trekken, met dezelfde knop als

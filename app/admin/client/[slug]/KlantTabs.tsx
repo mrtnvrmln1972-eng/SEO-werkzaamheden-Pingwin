@@ -16,7 +16,7 @@
 import KlantMegaMenu from "./KlantMegaMenu";
 
 export type Tab =
-  | "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit"
+  | "lead" | "werkzaamheden" | "paginas" | "documenten" | "activiteit"
   | "resultaten" | "klant" | "klantweergave" | "developer" | "wijzigingen" | "cannibalisatie"
   | "interne-links" | "meta" | "prioriteiten" | "google-profiel";
 
@@ -44,7 +44,6 @@ export const TABS_KLANT: TabItem[] = [
   { id: "documenten", label: "Documenten", hint: "Alle analyses, blauwdrukken en copy per pagina en per maand, met of het al op de site staat" },
   { id: "activiteit", label: "Wat we doen", hint: "Alles wat we voor deze klant uitvoerden, per maand: copy, meta, alt-teksten, structured data en redirects" },
   { id: "wijzigingen", label: "Wijzigingen", hint: "Wat er op de site van de klant veranderd is sinds de vorige controle" },
-  { id: "onboarding", label: "Onboarding", hint: "De vaste volgorde bij de start: wat er al staat, wat er nog moet en wat er achterloopt" },
   { id: "klant", label: "Dossier", hint: "Alles wat je over deze klant weet: profiel en tone of voice, de afgesproken strategie, bedrijfsgegevens, kennisbank en concurrenten" },
   { id: "klantweergave", label: "Klantweergave", hint: "Precies wat de klant ziet na inloggen, met de deelbare link erbij" },
 ];
@@ -83,7 +82,7 @@ const tab = (id: Tab): TabItem => {
 export const MEGA_GROEPEN: MegaGroep[] = [
   {
     vraag: "Wat moet ik nu doen",
-    items: [tab("werkzaamheden"), tab("onboarding")],
+    items: [tab("werkzaamheden")],
   },
   {
     vraag: "Hoe staat de site ervoor",

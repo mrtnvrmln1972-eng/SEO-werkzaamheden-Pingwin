@@ -85,12 +85,16 @@ export const HOOFDSTUK: Hoofdstuk = {
       titel: "Fundament: wat er per klant gekoppeld en ingevuld is, in één oogopslag",
       kern: "Tegels in plaats van een lijst, live afgelezen uit dezelfde stand als de Onboarding-tab.",
       tekst:
-        "Bovenaan de tab **Dossier** staat het Fundament: alle koppelingen en klantkennis als " +
-        "tegels, gegroepeerd in 'Aansluiten' en 'Wie is de klant'. Dit stond eerder op twee plekken (deze " +
-        "kaart met zes punten, en een los 'Links'-zijpaneel met een uitklaplijstje) die soms een ander " +
-        "verhaal vertelden over dezelfde koppeling. Nu is er één bron: dezelfde live berekening als de " +
-        "Onboarding-tab (`lib/onboarding.ts`), hier als tegels getoond in plaats van als afvinklijst. Wat hier " +
-        "staat kan dus nooit meer afwijken van wat Onboarding zegt.\n\n" +
+        "Bovenaan de tab **Dossier** staat het Fundament: hoe ver deze klant staat, met de knop die aanvult " +
+        "wat nog zonder jou kan, en daaronder alle stappen als tegels in vier blokken: **aansluiten** (de " +
+        "koppelingen waar de data vandaan komt), **wie is de klant**, **meten** (de site-brede scans) en " +
+        "**aan het werk**. Die volgorde is niet vrijblijvend: wat hier niet staat kan niet gemeten worden, " +
+        "want geen enkele scan start voordat de inventarisatie erachter klopt.\n\n" +
+        "**Dit was tot 16 augustus 2026 verdeeld over twee schermen.** Het Fundament toonde twee van de vier " +
+        "blokken op het dossier, en een eigen tabblad Onboarding toonde alle vier plus de voortgangsbalk. " +
+        "Allebei rekenden ze met dezelfde bron (`lib/onboarding.ts`) en toonden ze dezelfde cijfers, dus het " +
+        "waren twee antwoorden op dezelfde vraag en had je altijd de verkeerde open. Nu is het één scherm. " +
+        "Oude links naar het tabblad Onboarding komen op het dossier uit.\n\n" +
         "**Aansluiten:** website-adres, Search Console, Ahrefs-project, pagina's ingelezen, beheeromgeving van " +
         "de site, Ads-account.\n\n" +
         "**Wie is de klant:** klantprofiel, tone of voice, bedrijfsgegevens (structured data), werkgebied, " +

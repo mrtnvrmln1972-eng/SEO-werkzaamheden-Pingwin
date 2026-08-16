@@ -137,8 +137,11 @@ export default function ClientCockpit({
     "prioriteiten scan": "prioriteiten",
     // Oude bookmarks en links naar "Klantgegevens" komen op het dossier uit.
     klantgegevens: "klant", dossier: "klant", preview: "klantweergave",
+    // Onboarding is geen eigen scherm meer: hij staat als de kop van het dossier,
+    // boven precies dezelfde stappen. Oude links komen daar dus gewoon uit.
+    onboarding: "klant",
   };
-  const GELDIGE_TABS: Tab[] = ["lead", "onboarding", "werkzaamheden", "paginas", "documenten", "activiteit",
+  const GELDIGE_TABS: Tab[] = ["lead", "werkzaamheden", "paginas", "documenten", "activiteit",
     "resultaten", "klant", "klantweergave", "developer", "wijzigingen", "meta", "cannibalisatie", "interne-links",
     "prioriteiten", "google-profiel"];
   const validTab = (t?: string): Tab => {
@@ -761,9 +764,13 @@ export default function ClientCockpit({
           </>
         )}
 
-        {tab === "onboarding" && <OnboardingPanel slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />}
 
         {tab === "klant" && (<>
+          {/* Hoe ver deze klant staat, met de knop die aanvult wat nog ontbreekt.
+              Dit stond op een eigen tabblad Onboarding, met dezelfde cijfers uit
+              dezelfde bron als het fundament eronder. Twee schermen voor dezelfde
+              vraag betekent dat je altijd de verkeerde openhebt. */}
+          <OnboardingPanel alleenKop slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />
           {/* Wie is deze klant: eerst de stand van het fundament, dan de vaste
               briefing (profiel en tone of voice), dan de afgesproken strategie,
               dan de harde gegevens en de concurrenten. Van "wie is dit bedrijf"

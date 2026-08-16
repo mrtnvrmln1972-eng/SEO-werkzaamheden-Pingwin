@@ -28,7 +28,13 @@ function Bolletje({ staat }: { staat: StapStand["staat"] }) {
   return <span className={`ob-bol ob-${staat}`} aria-hidden="true">{staat === "af" ? "✓" : staat === "bezig" ? "◍" : staat === "verouderd" ? "!" : ""}</span>;
 }
 
-export default function OnboardingPanel({ slug, onGaNaar }: { slug: string; onGaNaar: (tab: string) => void }) {
+export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: string; onGaNaar: (tab: string) => void;
+  /** Alleen de kop tonen: hoe ver deze klant staat, de knop die aanvult wat nog
+      ontbreekt, en het verslag van de laatste rit. De stappen zelf staan als
+      tegels in FundamentPanel eronder. Zo is er één scherm in plaats van twee
+      die dezelfde cijfers uit dezelfde bron halen en toch uit elkaar konden
+      lopen. Zelfde aanpak als `alleenProfiel` bij de paginalijst. */
+  alleenKop?: boolean }) {
   const [stand, setStand] = useState<Stand | null>(null);
   const [run, setRun] = useState<RunStand | null>(null);
   const [laden, setLaden] = useState(true);
@@ -141,7 +147,7 @@ export default function OnboardingPanel({ slug, onGaNaar }: { slug: string; onGa
       </div>
 
       {/* ── De vier blokken ── */}
-      {BLOKKEN.map((blok) => {
+      {!alleenKop && BLOKKEN.map((blok) => {
         const stappen = stand.stappen.filter((s) => s.blok === blok);
         if (!stappen.length) return null;
         return (
