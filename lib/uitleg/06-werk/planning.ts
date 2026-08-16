@@ -21,7 +21,7 @@ export const BLOKKEN: Uitklapper[] = [
       "geen knoppen. Afvinken hoort in de kaart waar het werk gebeurt, en dan kleuren ze hier vanzelf mee. " +
       "Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen.\n\n" +
       "Klap je een regel open, dan verschijnt de échte projectkaart: de fases met hun knoppen, de chat over " +
-      "deze pagina, de documenten en het mailvenster. Niet een tweede, magere samenvatting die kan achterlopen, " +
+      "deze pagina en de documenten. Niet een tweede, magere samenvatting die kan achterlopen, " +
       "maar dezelfde kaart. **De opengeklapte taak wordt daarbij uit de lijst gelicht**: een eigen blok met een " +
       "rand, een oranje streep ernaast en lucht eromheen, terwijl de andere regels in dezelfde kaart zolang op " +
       "de achtergrond stappen. Zonder dat onderscheid liep de open kaart visueel door in de taak eronder, en " +
@@ -52,10 +52,11 @@ export const BLOKKEN: Uitklapper[] = [
       "**Alles staat op één plek.** De vinkjes van de fases stonden ook nog als losse chips in het paginablok, " +
       "opgehaald via een tweede aanvraag, dus ze konden zelfs iets anders zeggen. Doorzetten naar de sitebouwer " +
       "stond op drie plekken. Dat is teruggebracht tot één.\n\n" +
-      "**Het verhaal komt niet meer dubbel te staan.** \"Waarom deze pagina\" en \"Aanpak en afspraken\" zijn de " +
-      "geschreven kant van een kaart; \"Waar deze pagina staat\" leest live mee met de mailbox. Zodra dat laatste " +
-      "blok echt iets gevonden heeft, is dat actueler dan de geschreven tekst, dus verdwijnen de eerste twee: " +
-      "hetzelfde verhaal twee keer, op een ander moment opgeschreven, is geen extra informatie. Bij een verse " +
-      "kaart zonder mailgeschiedenis, of een taak zonder pagina, blijft de geschreven tekst gewoon de enige bron.",
+      "**Het mail-dossier op de kaart is weg.** Er stond een apart blok \"Waar deze pagina staat\" dat live " +
+      "meelas met de mailbox, met een eigen \"Mail erbij zoeken\" en \"Ververs\". Dat matchte lang niet altijd " +
+      "de juiste mails en voegde weinig toe naast wat er al stond: de link naar de pagina en naar analyse, " +
+      "blauwdruk en copy staan bij de fases, en eigen punten om te onthouden horen in de aantekeningen. " +
+      "\"Waarom deze pagina\" en \"Aanpak en afspraken\", de geschreven kant van de kaart, staan er nu daarom " +
+      "altijd, in plaats van pas als het mailblok niets had gevonden.",
   },
 ];

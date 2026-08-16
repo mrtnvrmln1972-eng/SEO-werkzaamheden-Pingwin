@@ -10,7 +10,6 @@ import { useState } from "react";
 import { cardInfoHtml, eerdereNotitiesHtml, type MailLinks } from "../../../../../lib/card-info";
 import DocVersies from "../DocVersies";
 import KaartNotitie from "../KaartNotitie";
-import PaginaDossier from "../PaginaDossier";
 import type { WpTask, WpPageInfo } from "./types";
 
 const ARCHIEF_LABEL: Record<string, string> = {
@@ -43,18 +42,13 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
   // chipje van DocVersies via een portal in terechtkomt, zodat het daar fysiek
   // in die strip staat i.p.v. als eigen, altijd-open blok verderop.
   const [notitieDocSlot, setNotitieDocSlot] = useState<HTMLSpanElement | null>(null);
-  // Heeft het levende maildossier (het blok "Waar deze pagina staat") echt iets
-  // te vertellen? Zo ja, dan hoeven "Waarom deze pagina" en "Aanpak en
-  // afspraken" niet meer: dat is dan hetzelfde verhaal, alleen bevroren. Null
-  // zolang het dossier nog laadt; dan blijft de geschreven tekst gewoon staan.
-  const [dossierHeeftInhoud, setDossierHeeftInhoud] = useState<boolean | null>(null);
   // Het archief wordt pas opgehaald als je het openklapt: het staat er om iets
   // terug te kunnen zoeken, niet om te lezen.
   const [archief, setArchief] = useState<{ op: string; soort: string; tekst: string }[]>([]);
   const [archiefBezig, setArchiefBezig] = useState(false);
 
-  // De oude notities worden apart opgehaald zodat ze onderaan dit blok komen, bij
-  // het archief van het dossier, in plaats van als tweede archief midden op de kaart.
+  // De oude notities worden apart opgehaald zodat ze onderaan dit blok komen,
+  // in plaats van als tweede archief midden op de kaart.
   const ouder = hasInfo ? eerdereNotitiesHtml(t.toelichting, t.url, t.taak, mailLinks) : null;
   const eerdereNotities = ouder?.html || "";
   const eerdereAantal = ouder?.aantal || 0;
@@ -88,16 +82,8 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
               if (tekst) onLijstPunt(tekst);
             }
           }}
-          // Zonder pagina bestaat er geen dossier, dus meteen tonen. Mét
-          // pagina: verbergen zolang de dossier-check nog loopt (null) en
-          // zodra hij inhoud blijkt te hebben (true); alleen tonen als hij
-          // écht leeg is bevestigd (false). Zo gaat het nooit meer "eerst
-          // zichtbaar, dan meteen weer weg" (twee kaartjes die opflitsen en
-          // verdwijnen) zodra de dossier-check iets vindt: de overgang loopt
-          // alleen nog van verborgen naar zichtbaar, nooit andersom.
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw, t.url ? dossierHeeftInhoud !== false : false) }} />
+          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw) }} />
       )}
-      {t.url && <PaginaDossier slug={slug} url={t.url} zonderStand kaartTekst={t.toelichting} kaartTitel={t.taak} onHeeftInhoud={setDossierHeeftInhoud} />}
       {/* Je eigen aantekeningen. Los van de kaarttekst die de assistent
           schreef: geen automatische stap raakt dit veld aan. */}
       <KaartNotitie slug={slug} id={t.id} start={t.notitie || ""}
@@ -109,12 +95,10 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
           staat alleen nog het openklapbare blok (als je erop klikt) en de
           lijst met eerder toegevoegde documenten. */}
       <DocVersies slug={slug} url={t.url || `taak:${t.id}`} taakId={t.id} triggerSlot={notitieDocSlot} />
-      {/* Het archief. Twee dingen die er bijna hetzelfde uitzagen zijn nu uit
-          elkaar getrokken: "Wat er gebeurd is" (mails, documenten, gesprekken,
-          in het dossierblok hierboven) en dit, de geschreven tekst die van de
-          kaart af is geschoven. Hier landt alles wat wordt weggehaald: een
-          oude titel, een oude kaarttekst voordat hij werd herschreven, en
-          regels die niet meer pasten. Er wordt nooit iets uit verwijderd. */}
+      {/* Het archief: de geschreven tekst die van de kaart af is geschoven.
+          Hier landt alles wat wordt weggehaald: een oude titel, een oude
+          kaarttekst voordat hij werd herschreven, en regels die niet meer
+          pasten. Er wordt nooit iets uit verwijderd. */}
       {(eerdereNotities || archiefAantal > 0) && (
         <details className="wp-info-rest wp-overdeze-archief wp-card-info wp-info-net"
           onToggle={(e) => { if ((e.target as HTMLDetailsElement).open) void laadArchief(); }}>
