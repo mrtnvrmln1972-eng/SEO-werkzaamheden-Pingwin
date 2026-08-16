@@ -309,11 +309,6 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
     if (typeof window !== "undefined" && window.location.hash === "#fund-structured-data") setOpen(true);
   }, []);
 
-  // Portaal-plek in de knoppenrij waar Kennisbank zijn dropzone en knoppen
-  // ("In velden zetten", "Ontdubbelen") in rendert; zo blijft de logica in
-  // Kennisbank zelf staan, maar staan de knoppen fysiek in deze rij.
-  const [kbSlot, setKbSlot] = useState<HTMLSpanElement | null>(null);
-
   // Wat er in het formulier staat en wat er als laatste bewaard is. Zolang die
   // twee gelijk zijn valt er niets op te slaan; wijkt het af, dan slaan we het
   // vanzelf op. Zo kan een keuze (zoals het bedrijfstype) niet meer verdwijnen
@@ -518,7 +513,6 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               dezelfde knoppenrij. */}
           <div className="org-actions org-actions-kb">
             <span className="kb-groep-titel">Materiaal verwerken</span>
-            <span className="org-kb-workflow" ref={setKbSlot} />
           </div>
           {msg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{msg}</div>}
           <section className="org-sec org-verzameld">
@@ -536,7 +530,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
               </div>
             ) : <div className="muted">Laden…</div>)}
           </section>
-          <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} actiesSlot={kbSlot} />
+          <Kennisbank slug={slug} voorActie={() => save(true)} onVerwerkt={() => { void laadOrg(); }} />
         </div>
       )}
       <MailPopup

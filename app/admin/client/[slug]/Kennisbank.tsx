@@ -6,7 +6,7 @@
 // bevestigt. Het rode lijstje toont wat er voor dit soort bedrijf nog mist.
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import HelpHint from "./HelpHint";
 
 type Entiteit = { id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string };
 type Voorstel = { id: number; bron: string; samenvatting: string; entiteiten: { categorie: string; naam: string; velden: Record<string, string>; oordeel: string }[] };
@@ -15,11 +15,11 @@ const CAT_LABEL: Record<string, string> = { organisatie: "Organisatie", persoon:
 const CAT_VOLGORDE = ["organisatie", "persoon", "locatie", "dienst", "overig"];
 const OORDEEL: Record<string, string> = { nieuw: "nieuw", aanvulling: "aanvulling", ouder: "let op: ouder" };
 
-// `actiesSlot`: DOM-knoop uit de knoppenrij van OrgDataPanel (een lege span
-// met een ref). De dropzone en de twee knoppen worden daar via een portal in
-// gerenderd, zodat ze fysiek in die rij staan terwijl de logica (state, drop-
-// afhandeling) hier in Kennisbank blijft, waar hij hoort.
-export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: { slug: string; onVerwerkt?: () => void; voorActie?: () => Promise<boolean | void>; actiesSlot?: HTMLElement | null }) {
+// De knoppen stonden via een portal in de knoppenrij van Bedrijfsgegevens, zodat
+// ze fysiek in die rij kwamen. Dat maakte ze onvindbaar als kennisbank-knoppen:
+// je zag "Materiaal toevoegen" en "Ontdubbelen" tussen de knoppen van een ander
+// blok staan. Nu staan ze in de eigen kop hierboven.
+export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: string; onVerwerkt?: () => void; voorActie?: () => Promise<boolean | void> }) {
   const [entiteiten, setEntiteiten] = useState<Entiteit[]>([]);
   const [gaps, setGaps] = useState<string[]>([]);
   const [voorstellen, setVoorstellen] = useState<Voorstel[]>([]);
@@ -250,9 +250,19 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
     </>
   );
 
+  // ── Eigen blok, met eigen kop ──
+  // Dit stond zonder titel onderin het paneel Bedrijfsgegevens, met zijn twee
+  // knoppen via een portal in de knoppenrij daarvan. Inhoudelijk hoort het daar
+  // ook (je laat hier documenten lezen en die vullen de gegevens voor structured
+  // data aan), maar zonder kop zag je niet dát er een kennisbank was, en de
+  // knoppen leken bij de bedrijfsgegevens te horen. Nu een eigen sectie met een
+  // eigen naam, terwijl de koppeling met de gegevens eronder in stand blijft.
   return (
-    <div className="kb-wrap">
-      {actiesSlot ? createPortal(acties, actiesSlot) : <div className="kb-head-right">{acties}</div>}
+    <section className="org-sec kb-wrap">
+      <div className="ck-section-head">
+        <span>Kennisbank <HelpHint xl title="De kennisbank: alles wat je over deze klant verzamelt" text={"Dit is de verzamelbak. Sleep of plak hier alles in wat je over deze klant tegenkomt: een document, een lijst met medewerkers, gegevens over een vestiging, een stuk schema-code uit de site.\n## Wat er daarna gebeurt\n- Het dashboard leest het materiaal en **structureert het tot losse gegevens** (de organisatie, personen, locaties, diensten), met een voorstel dat jij eerst bevestigt. Er wordt dus nooit iets aangepast zonder dat je het gezien hebt.\n- Wat je bevestigt vult de **bedrijfsgegevens hieronder** aan, en die worden gebruikt voor de structured data op de site.\n- Het rode lijstje laat zien wat er voor dit soort bedrijf nog **mist**, zodat je weet wat je nog moet opzoeken of aan de klant moet vragen.\n## Waarom dit hier staat en niet ergens anders\nDe kennisbank en de bedrijfsgegevens zijn twee helften van hetzelfde: hier gaat materiaal in, daar komen de gecontroleerde gegevens uit. Ze uit elkaar halen zou betekenen dat je op twee plekken moet kijken om te zien of iets is verwerkt."} /></span>
+        <span className="kb-head-right">{acties}</span>
+      </div>
       {dropOpen && (
         <div className="kb-dropzone-pop">
           <div className={"wp-docdrop" + (drag ? " wp-docdrop-actief" : "")}
@@ -369,6 +379,6 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie, actiesSlot }: 
           )}
         </section>
       )}
-    </div>
+    </section>
   );
 }

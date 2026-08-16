@@ -3411,7 +3411,10 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 
 /* Terugval als de knoppenrij van OrgDataPanel (nog) niet gemount is: de
    dropzone + knoppen dan gewoon hier tonen in plaats van via de portal. */
-.kb-head-right { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-bottom: var(--s-2); }
+/* De knoppen van de kennisbank staan in zijn eigen kopregel, rechts naast de
+   naam. Ze stonden eerder via een portal in de knoppenrij van Bedrijfsgegevens,
+   waardoor ze bij dat blok leken te horen. */
+.kb-head-right { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-left: auto; }
 /* Heel kleine dropzone: alleen het woord, maar nog steeds een echt drop-doel
    én een knop om de volledige dropzone (bladeren/plakken) open te klappen. */
 /* Zelfde lettertype, gewicht, ronding en maat als de knoppen ernaast (.btn.btn-klein);
