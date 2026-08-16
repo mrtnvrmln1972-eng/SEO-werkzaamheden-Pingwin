@@ -17,7 +17,7 @@ import KlantMegaMenu from "./KlantMegaMenu";
 
 export type Tab =
   | "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit"
-  | "resultaten" | "klant" | "developer" | "wijzigingen" | "cannibalisatie"
+  | "resultaten" | "klant" | "klantweergave" | "developer" | "wijzigingen" | "cannibalisatie"
   | "interne-links" | "meta" | "prioriteiten" | "google-profiel";
 
 export type TabItem = { id: Tab; label: string; hint: string };
@@ -45,7 +45,8 @@ export const TABS_KLANT: TabItem[] = [
   { id: "activiteit", label: "Wat we doen", hint: "Alles wat we voor deze klant uitvoerden, per maand: copy, meta, alt-teksten, structured data en redirects" },
   { id: "wijzigingen", label: "Wijzigingen", hint: "Wat er op de site van de klant veranderd is sinds de vorige controle" },
   { id: "onboarding", label: "Onboarding", hint: "De vaste volgorde bij de start: wat er al staat, wat er nog moet en wat er achterloopt" },
-  { id: "klant", label: "Klantgegevens", hint: "Profiel, bedrijfsgegevens, kennisbank en de instellingen van deze klant" },
+  { id: "klant", label: "Dossier", hint: "Alles wat je over deze klant weet: profiel en tone of voice, de afgesproken strategie, bedrijfsgegevens, kennisbank en concurrenten" },
+  { id: "klantweergave", label: "Klantweergave", hint: "Precies wat de klant ziet na inloggen, met de deelbare link erbij" },
 ];
 
 export const TABS_NA: TabItem[] = [
@@ -98,7 +99,7 @@ export const MEGA_GROEPEN: MegaGroep[] = [
   },
   {
     vraag: "Wat hebben we geleverd",
-    items: [tab("documenten"), tab("activiteit")],
+    items: [tab("documenten"), tab("activiteit"), tab("klantweergave")],
   },
 ];
 

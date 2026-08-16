@@ -41,7 +41,13 @@ export const HOOFDSTUK: Hoofdstuk = {
         "zo\'n regel wordt elke plek een kwestie van wie er die dag iets bouwde, en zo belandde het " +
         "klantprofiel boven een lijst van 65 URL\'s. Komt er een scherm bij, dan is de vraag welke van de " +
         "vijf het beantwoordt, niet waar nog ruimte was.\n\n" +
-        "**Het klantprofiel en de strategie staan bij Klantgegevens.** Het klantprofiel (met de tone of " +
+        "**Klantgegevens is gesplitst in twee.** De tab heet nu **Dossier** en bevat alleen nog wat je over " +
+        "de klant weet: het fundament, het profiel met de tone of voice, de afgesproken zoekwoorden en links, " +
+        "de bedrijfsgegevens, de kennisbank en de concurrenten. Wat de klant zelf ziet na inloggen stond daar " +
+        "onderaan verstopt en is iets heel anders: dat is geen dossierkennis maar het scherm dat je deelt. Dat " +
+        "heet nu **Klantweergave** en staat in de groep \"wat hebben we geleverd\", naast de documenten. Oude " +
+        "links naar Klantgegevens komen gewoon op het dossier uit.\n\n" +
+        "**Het klantprofiel en de strategie staan in het dossier.** Het klantprofiel (met de tone of " +
         "voice) stond boven de paginalijst, en 'Zoekwoorden & links' stond bij Taken. Allebei horen ze bij de " +
         "vraag wie deze klant is: het profiel is de vaste briefing die bijna elke motor leest, en de " +
         "zoekwoord- en linkstrategie is een afspraak die maanden meegaat, geen taak van deze week. Op Taken " +
@@ -79,7 +85,7 @@ export const HOOFDSTUK: Hoofdstuk = {
       titel: "Fundament: wat er per klant gekoppeld en ingevuld is, in één oogopslag",
       kern: "Tegels in plaats van een lijst, live afgelezen uit dezelfde stand als de Onboarding-tab.",
       tekst:
-        "Bovenaan de klant-tab **Klantgegevens** staat het Fundament: alle koppelingen en klantkennis als " +
+        "Bovenaan de tab **Dossier** staat het Fundament: alle koppelingen en klantkennis als " +
         "tegels, gegroepeerd in 'Aansluiten' en 'Wie is de klant'. Dit stond eerder op twee plekken (deze " +
         "kaart met zes punten, en een los 'Links'-zijpaneel met een uitklaplijstje) die soms een ander " +
         "verhaal vertelden over dezelfde koppeling. Nu is er één bron: dezelfde live berekening als de " +

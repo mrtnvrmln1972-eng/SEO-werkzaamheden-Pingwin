@@ -135,9 +135,11 @@ export default function ClientCockpit({
     taken: "werkzaamheden", "pagina's": "paginas", pages: "paginas",
     "meta-ctr": "meta", links: "interne-links", "interne links": "interne-links",
     "prioriteiten scan": "prioriteiten",
+    // Oude bookmarks en links naar "Klantgegevens" komen op het dossier uit.
+    klantgegevens: "klant", dossier: "klant", preview: "klantweergave",
   };
   const GELDIGE_TABS: Tab[] = ["lead", "onboarding", "werkzaamheden", "paginas", "documenten", "activiteit",
-    "resultaten", "klant", "developer", "wijzigingen", "meta", "cannibalisatie", "interne-links",
+    "resultaten", "klant", "klantweergave", "developer", "wijzigingen", "meta", "cannibalisatie", "interne-links",
     "prioriteiten", "google-profiel"];
   const validTab = (t?: string): Tab => {
     const k = (t || "").trim().toLowerCase();
@@ -789,14 +791,21 @@ export default function ClientCockpit({
           {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
               achter een knopje in een scan-blok. Zelfde component als daar. */}
           <Concurrenten slug={client.slug} />
+        </>)}
+
+        {/* Wat de klant ziet is geen dossierkennis maar een oplevering: het is het
+            scherm dat je deelt. Daarom een eigen tabblad onder "wat hebben we
+            geleverd" in plaats van onderaan het dossier, waar het onder de
+            bedrijfsgegevens en de concurrenten verstopt zat. */}
+        {tab === "klantweergave" && (
           <div className="cockpit-card client-frame-card">
-            <div className="ck-section-head"><span>Klant (zo ziet de klant het)</span>
+            <div className="ck-section-head"><span>Zo ziet de klant het</span>
               <a className="logout-btn" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>
             </div>
             <ShareLinkBar slug={client.slug} />
             <iframe src={`/admin/preview/${client.slug}`} className="client-frame" title="Klant-dashboard" />
           </div>
-        </>)}
+        )}
 
         {paginasVisited && (
           <div style={{ display: tab === "paginas" ? "block" : "none" }}>
