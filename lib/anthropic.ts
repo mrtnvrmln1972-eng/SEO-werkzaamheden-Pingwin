@@ -226,12 +226,12 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     if (blocks.length) blocks[blocks.length - 1].cache_control = { type: "ephemeral" };
   }
 
-  async function call(withTools: boolean) {
+  async function call(withTools: boolean, ruimte = maxTokens) {
     markLastMessage();
     const verstuur = async () => fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": key as string, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({ model: actiefModel, max_tokens: maxTokens, system: systemBlocks(system), messages: apiMessages, ...(withTools && tools.length ? { tools: cachedTools } : {}) }),
+      body: JSON.stringify({ model: actiefModel, max_tokens: ruimte, system: systemBlocks(system), messages: apiMessages, ...(withTools && tools.length ? { tools: cachedTools } : {}) }),
     });
     let res = await verstuur();
     // Onbekend of niet-vrijgegeven model? Val terug op het standaardmodel in plaats
@@ -253,15 +253,51 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
     u.cache_creation_input_tokens! += usage?.cache_creation_input_tokens || 0;
   }
 
+  // ── Een half antwoord is geen antwoord (16-08-2026) ───────────────────────
+  // `stop_reason: "max_tokens"` betekent dat het model middenin een zin is
+  // gestopt omdat de ruimte op was. Zit er een gereedschapsaanroep in dat
+  // antwoord, dan is de JSON van die aanroep óók middenin afgebroken, en dan is
+  // de tekst die erin zat onherstelbaar half. Dat is precies wat er op
+  // 16 augustus bij Kamsteeg gebeurde: de kaart "Klantprofiel bijwerken" werd
+  // uitgevoerd met een strategie die ophield bij "Zij doen ontwerp, aanleg en
+  // onder", dus de prompt voor de plaatspagina's stond er domweg niet in. En
+  // omdat de afrondingsronde onderaan gereedschap uitvoert zónder naar
+  // stop_reason te kijken, ging die halve tekst stilzwijgend het klantprofiel in.
+  //
+  // Daarom nooit meer doorwerken op een afgekapt antwoord: opnieuw vragen met
+  // meer ruimte. Dat kost alleen iets in het zeldzame geval dat het misgaat,
+  // want je betaalt wat er geschreven wordt en niet wat je toestaat.
+  const RUIM_PLAFOND = 16000;
+  async function callHeel(withTools: boolean): Promise<{ j: Record<string, unknown>; afgekapt: boolean }> {
+    let ruimte = maxTokens;
+    let j = await call(withTools, ruimte);
+    addUsage((j as { usage?: Usage }).usage);
+    for (let poging = 0; poging < 2 && j.stop_reason === "max_tokens" && ruimte < RUIM_PLAFOND; poging++) {
+      ruimte = Math.min(ruimte * 3, RUIM_PLAFOND);
+      j = await call(withTools, ruimte);
+      addUsage((j as { usage?: Usage }).usage);
+    }
+    return { j, afgekapt: j.stop_reason === "max_tokens" };
+  }
+
   const textOf = (j: { content?: Block[] }) => ((j.content || []) as Block[]).filter((c) => c.type === "text").map((c) => c.text || "").join("");
   let uitTijd = false;
   for (let round = 0; round < maxRounds; round++) {
     // Tijd op? Niet aan een nieuwe ronde beginnen; hieronder volgt de afronding.
     if (deadlineMs && Date.now() > deadlineMs) { uitTijd = true; break; }
-    const j = await call(true);
-    addUsage(j.usage);
+    const { j, afgekapt } = await callHeel(true) as unknown as { j: { stop_reason?: string; content?: Block[]; usage?: Usage }; afgekapt: boolean };
     const content: Block[] = j.content || [];
     const toolUses = content.filter((c) => c.type === "tool_use");
+    // Ook met méér ruimte nog afgekapt: die kaarten NIET uitvoeren, want de tekst
+    // erin is half. Terug naar het model met de opdracht het compacter te doen.
+    if (afgekapt && toolUses.length) {
+      apiMessages.push({ role: "assistant", content });
+      apiMessages.push({ role: "user", content: toolUses.map((tu) => ({
+        type: "tool_result", tool_use_id: tu.id, is_error: true,
+        content: "Je antwoord liep tegen de lengtegrens, dus deze aanroep kwam halverwege afgebroken binnen en is NIET uitgevoerd. Doe hem opnieuw en houd hem korter: splits een lange tekst over meerdere kaarten of vat compacter samen.",
+      })) });
+      continue;
+    }
     if (j.stop_reason !== "tool_use" || toolUses.length === 0) {
       const text = textOf(j);
       if (text.trim()) { await logClaudeUsage(ctx, u, actiefModel); return text; }
@@ -288,10 +324,11 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   // Uit de tijd gelopen? Dan geen ronde mét tools meer, want die kan opnieuw
   // minutenlang gereedschap aanroepen en juist de afronding onmogelijk maken.
   if (!uitTijd) {
-    const j = await call(true);
-    addUsage(j.usage);
+    const { j, afgekapt } = await callHeel(true) as unknown as { j: { content?: Block[] }; afgekapt: boolean };
     const content: Block[] = j.content || [];
-    const toolUses = content.filter((c) => c.type === "tool_use");
+    // Hier zat het gat: deze afrondingsronde voerde gereedschap uit zonder ooit
+    // naar stop_reason te kijken, dus een halve kaart ging er gewoon doorheen.
+    const toolUses = afgekapt ? [] : content.filter((c) => c.type === "tool_use");
     if (toolUses.length) {
       apiMessages.push({ role: "assistant", content });
       const results = await Promise.all(toolUses.map(async (tu) => {
@@ -306,8 +343,7 @@ export async function callClaudeAgentic(system: string, messages: ChatMsg[], too
   }
   // Definitieve tekst zonder tools (twee pogingen); anders een nette melding.
   for (let attempt = 0; attempt < 2 && !text.trim(); attempt++) {
-    const j = await call(false);
-    addUsage(j.usage);
+    const { j } = await callHeel(false) as unknown as { j: { content?: Block[] } };
     text = textOf(j);
   }
   await logClaudeUsage(ctx, u, actiefModel);

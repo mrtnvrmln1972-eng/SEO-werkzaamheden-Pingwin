@@ -64,7 +64,15 @@ export const HOOFDSTUK: Hoofdstuk = {
         "document genereren, een meta doorvoeren, een redirect zetten, een mail klaarzetten.\n\n" +
         "Er gaat nooit iets zelfstandig naar de klant of naar de site. Dat is geen technische beperking maar " +
         "een ontwerpkeuze, en hij staat er bewust in: een systeem dat autonoom naar buiten mag kan niet " +
-        "vertrouwd worden op het moment dat het één keer misgaat.",
+        "vertrouwd worden op het moment dat het één keer misgaat.\n\n" +
+        "**Een half geschreven kaart wordt niet uitgevoerd.** Loopt de assistent tegen zijn lengtegrens aan " +
+        "terwijl hij een lange kaart schrijft (een vastgelegde strategie, een aanvulling op het klantprofiel), " +
+        "dan stopt hij middenin een zin en is de tekst in die kaart onherstelbaar half. Er gaat dan technisch " +
+        "niets mis, en dat is juist het gevaar: de kaart ziet er compleet uit en werd gewoon opgeslagen. Op " +
+        "16 augustus 2026 kwam zo een Kamsteeg-strategie in het klantprofiel terecht die ophield bij \"aanleg " +
+        "en onder\", zonder de prompt voor de plaatspagina's. Nu wordt zo'n antwoord opnieuw gevraagd met meer " +
+        "ruimte, en past het dán nog niet, dan wordt de kaart niet uitgevoerd maar compacter opnieuw " +
+        "geschreven. Er wordt dus nooit meer stilzwijgend een halve tekst bewaard.",
     },
     {
       titel: "De assistent stuurt de gedetailleerde gereedschappen aan",

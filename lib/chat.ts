@@ -1439,7 +1439,13 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
     // gesprek waarin de opzet zelf ter discussie staat. Uit te zetten in de kop van
     // Overview; kent het account het model niet, dan zakt hij automatisch een trede.
     const zwaar = isOverview && (await diepDenkenAan()) ? HEAVY_MODEL : undefined;
-    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, rondes, isOverview ? 3200 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" }, startTijd + (isOverview ? 155_000 : 190_000), zwaar);
+    let answer = await callClaudeAgentic(system, apiMessages as { role: "user" | "assistant"; content: string }[], tools, run, // De overzichts-chat schrijft de lange kaarten (een vastgelegde strategie, een
+// klantprofiel-aanvulling), en die tekst moet in ÉÉN gereedschapsaanroep passen.
+// Met 3.200 paste dat niet: op 16-08-2026 hield de Kamsteeg-strategie op bij
+// "aanleg en onder" en ontbrak de hele prompt voor de plaatspagina's. Ruimer
+// zetten kost niets extra als het niet nodig is; je betaalt wat er geschreven
+// wordt, niet wat je toestaat.
+rondes, isOverview ? 8000 : isLead ? 3000 : 2000, { slug, action: isOverview ? "overzicht-chat" : isLead ? "lead-chat" : isAds ? "ads-chat" : "projectchat" }, startTijd + (isOverview ? 155_000 : 190_000), zwaar);
 
     // ── Vangnet: eenentwintig bronnen en dan geen antwoord ──────────────────
     // Het onderzoek lukte, het opschrijven niet: de rondes of de tijd waren op en
