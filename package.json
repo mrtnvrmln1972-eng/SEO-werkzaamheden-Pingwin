@@ -9,6 +9,7 @@
     "lint": "next lint",
     "proef": "node proeven/alles.mjs",
     "veldproef": "node scripts/veld-browsertest.mjs",
+    "menuproef": "node scripts/menu-browsertest.mjs",
     "prebuild": "node proeven/alles.mjs"
   },
   "dependencies": {

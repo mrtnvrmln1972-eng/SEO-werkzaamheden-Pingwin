@@ -24,18 +24,23 @@ export const HOOFDSTUK: Hoofdstuk = {
     },
     {
       titel: "De navigatie van de cockpit",
-      kern: "Zes knoppen, niet elf tabjes.",
+      kern: "Eén mega menu, met de vraag die elk scherm beantwoordt als kop.",
       tekst:
         "De cockpit had op een gegeven moment elf tabjes naast elkaar, en dat is precies één tabje meer dan een " +
-        "mens overziet. Nu zijn het zes ingangen, waarvan twee uitklapmenu's:\n\n" +
-        "| Ingang | Wat je er doet |\n" +
-        "|---|---|\n" +
-        "| **Taken** | Het startscherm: je prioriteiten, de gesprekken en de planning per dag en week |\n" +
-        "| **Pagina's** | Elke pagina van de site: hoe hij scoort, wat eraan gedaan is, wat er nog moet |\n" +
-        "| **Site-breed** | Prioriteitenscan, Meta en CTR, Opruimen, Interne links, Google-profiel |\n" +
-        "| **Klant** | Documenten, Wat we doen, Wijzigingen, Klantgegevens |\n" +
-        "| **KPI's** | Posities, vertoningen, klikken en de ontwikkeling daarvan |\n" +
-        "| **Developer** | Alle developer-taken over alle klanten heen |\n\n" +
+        "mens overziet. Daarna werden het zes ingangen met twee uitklapmenu's, en ook dat werkte maar half: die " +
+        "menu's toonden een kaal lijstje zonder uitleg, en het menu \"Klant\" bundelde twee verschillende vragen " +
+        "door elkaar (wie de klant is, en wat wij voor hem geleverd hebben).\n\n" +
+        "**De navigatie is één mega menu.** Klik op \"Alles over deze klant\" en je ziet in één keer elk " +
+        "scherm dat er voor deze klant is, verdeeld over vijf kolommen die geen categorie maar een vraag " +
+        "als kop hebben: wat moet ik nu doen, hoe staat de site ervoor, waar zit winst te halen, wie is deze " +
+        "klant, en wat hebben we geleverd. Bij elk scherm staat de regel uitleg zichtbaar onder de naam. Dat " +
+        "vervangt twee uitklapmenu\'s met een kaal lijstje, waarvan er één (\"Klant\") twee verschillende " +
+        "vragen door elkaar bundelde. Taken en Pagina\'s blijven ook los in de balk staan, want daar ga je " +
+        "tien keer per dag heen, en Developer staat er los achter omdat dat scherm over álle klanten gaat.\n\n" +
+        "De indeling is een regel en geen smaak: elk scherm staat bij de vraag die het beantwoordt. Zonder " +
+        "zo\'n regel wordt elke plek een kwestie van wie er die dag iets bouwde, en zo belandde het " +
+        "klantprofiel boven een lijst van 65 URL\'s. Komt er een scherm bij, dan is de vraag welke van de " +
+        "vijf het beantwoordt, niet waar nog ruimte was.\n\n" +
         "Daarnaast zit er aan de rechterrand één inschuifbaar zijpaneel, op elk tabblad bereikbaar: " +
         "'Zoekwoorden & links' heeft de afgesproken strategie links in een vrij tekstveld en rechts een kolom " +
         "met snel aan te klikken landingspagina's. Het losse 'Links'-zijpaneel (de koppelingen als " +

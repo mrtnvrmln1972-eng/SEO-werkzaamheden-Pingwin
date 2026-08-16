@@ -13,7 +13,7 @@
 // heeft dat niet en linkt gewoon. Vandaar de optionele `onKies`: geef je hem
 // mee, dan wisselt hij client-side, anders is het een gewone link.
 
-import HeaderMenu from "./HeaderMenu";
+import KlantMegaMenu from "./KlantMegaMenu";
 
 export type Tab =
   | "lead" | "onboarding" | "werkzaamheden" | "paginas" | "documenten" | "activiteit"
@@ -53,6 +53,55 @@ export const TABS_NA: TabItem[] = [
   { id: "developer", label: "Developer", hint: "Alle developer-taken over alle klanten" },
 ];
 
+// ═══════════════════════════════════════════════════════════
+// DE INDELING VAN HET MEGA MENU
+// ═══════════════════════════════════════════════════════════
+// Twaalf schermen zaten achter zes knopjes, waarvan twee uitklapmenu's met een
+// kaal lijstje. Elk scherm hééft een regel uitleg (de `hint` hierboven), maar je
+// zag hem alleen als je precies lang genoeg stil bleef hangen met je muis.
+//
+// De groepen hieronder zijn geen smaak maar een regel: elk scherm staat bij de
+// VRAAG die het beantwoordt. Zonder zo'n regel wordt elke plek een kwestie van
+// wie er die dag iets bouwde, en dat is precies hoe het klantprofiel boven een
+// lijst van 65 URL's terechtkwam. Komt er een scherm bij, dan is de vraag "welke
+// hiervan beantwoordt het?" en niet "waar is nog ruimte?".
+//
+// Bewust ÉÉN bron: de items hieronder verwijzen naar dezelfde TabItem-objecten
+// als de balk, dus een label of uitleg kan hier nooit iets anders zeggen dan
+// daar. `proeven/menu-indeling.proef.ts` bewaakt dat elk tabblad in precies één
+// groep staat, zodat er nooit een scherm buiten het menu valt.
+export type MegaGroep = { vraag: string; items: TabItem[] };
+
+const tab = (id: Tab): TabItem => {
+  const alles = [TAB_LEAD, ...TABS_VOOR, ...TABS_SITEBREED, ...TABS_KLANT, ...TABS_NA];
+  const t = alles.find((x) => x.id === id);
+  if (!t) throw new Error(`Onbekend tabblad in het menu: ${id}`);
+  return t;
+};
+
+export const MEGA_GROEPEN: MegaGroep[] = [
+  {
+    vraag: "Wat moet ik nu doen",
+    items: [tab("werkzaamheden"), tab("onboarding")],
+  },
+  {
+    vraag: "Hoe staat de site ervoor",
+    items: [tab("paginas"), tab("resultaten"), tab("wijzigingen")],
+  },
+  {
+    vraag: "Waar zit winst te halen",
+    items: [tab("prioriteiten"), tab("meta"), tab("cannibalisatie"), tab("interne-links"), tab("google-profiel")],
+  },
+  {
+    vraag: "Wie is deze klant",
+    items: [tab("klant")],
+  },
+  {
+    vraag: "Wat hebben we geleverd",
+    items: [tab("documenten"), tab("activiteit")],
+  },
+];
+
 export default function KlantTabs({ basisPad, actief, isLead, onKies }: {
   /** Het pad van de cockpit van deze klant, bijvoorbeeld /admin/client/kamsteeg. */
   basisPad: string;
@@ -74,13 +123,17 @@ export default function KlantTabs({ basisPad, actief, isLead, onKies }: {
       }}>{t.label}</a>
   );
 
+  // Taken en Pagina's blijven los in de balk staan: daar ga je tien keer per dag
+  // heen, die verdien je niet achter een menu te verstoppen. De rest zit in het
+  // mega menu, gegroepeerd naar de vraag die het scherm beantwoordt. Developer
+  // staat er los achter, want dat scherm gaat over álle klanten en hoort dus niet
+  // in een groep die met "deze klant" begint.
   return (
     <nav className="header-tabs">
       {isLead && link(TAB_LEAD)}
       {TABS_VOOR.map(link)}
-      <HeaderMenu<Tab> label="Site-breed" active={actief} hrefFor={href} onPick={onKies} items={TABS_SITEBREED} />
-      <HeaderMenu<Tab> label="Klant" active={actief} hrefFor={href} onPick={onKies} items={TABS_KLANT} />
-      {TABS_NA.map(link)}
+      <KlantMegaMenu label="Alles over deze klant" active={actief} hrefFor={href} onPick={onKies} />
+      {TABS_NA.filter((t) => t.id === "developer").map(link)}
     </nav>
   );
 }

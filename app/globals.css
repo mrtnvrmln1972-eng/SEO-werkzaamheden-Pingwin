@@ -188,7 +188,10 @@ body {
 }
 .client-switch:hover { background-color: var(--orange-light); }
 .client-switch:focus { outline: none; border-color: var(--orange-dark); box-shadow: 0 0 0 3px rgba(231, 119, 63, 0.15); }
-.header-tabs { display: flex; align-items: center; gap: 4px; }
+/* Het mega menu hangt onder de hele balk, niet onder zijn eigen knopje: een
+   paneel van bijna duizend pixels dat rechts in de balk begint, hangt links het
+   scherm uit. Vandaar dit ankerpunt. */
+.header-tabs { display: flex; align-items: center; gap: 4px; position: relative; }
 
 /* ── De klantenkiezer in de kopbalk van de cockpit ────────────────
    Vervangt de standaard uitklaplijst, die geen groep kan die je zelf openklapt.
@@ -557,6 +560,69 @@ tbody td:last-child { text-align: center; }
 /* ── Uitklapmenu in de kopbalk (Klant, Site-breed) ────────────────
    Bundelt bij elkaar horende tabjes zodat de balk zes knoppen telt in
    plaats van elf. De knop licht op zodra een van zijn items open staat. */
+/* ── Het mega menu van een klant ───────────────────────────────────────────
+   Eén knop opent alles wat er over deze klant te vinden is, in vier kolommen
+   naast elkaar: elk scherm bij de vraag die het beantwoordt, met de regel uitleg
+   er zichtbaar bij. Die uitleg bestond al per tabblad, maar stond als tooltip
+   verstopt achter stilhangen met je muis.
+
+   Leunt op dezelfde bouwstenen en tokens als de rest van de kopbalk; alleen wat
+   er echt anders is (het brede paneel en de kolommen) staat hier. */
+/* Bewust NIET relatief: het paneel hoort onder de balk te hangen (zie
+   .header-tabs), zodat het op elke breedte binnen beeld blijft. */
+.kmm-wrap { display: inline-flex; }
+.kmm-knop {
+  display: inline-flex; align-items: center; gap: var(--s-2);
+  background: none; border: none; cursor: pointer; font: inherit;
+}
+.kmm-pijl { width: 10px; height: 6px; flex: none; transition: transform 0.15s ease; }
+.kmm-knop.kmm-open .kmm-pijl { transform: rotate(180deg); }
+.kmm-knop.kmm-open { color: var(--orange-dark); }
+
+.kmm-paneel {
+  position: absolute; top: calc(100% + var(--s-2)); left: 0; z-index: 60;
+  /* Breed genoeg voor vier kolommen, maar nooit breder dan het scherm. Op een
+     smal scherm zakken de kolommen vanzelf onder elkaar. */
+  width: min(72rem, calc(100vw - var(--s-6)));
+  max-height: min(34rem, calc(100vh - 8rem));
+  overflow-y: auto;
+  display: grid;
+  /* Vijf kolommen passen precies; wordt het venster smaller, dan slaan ze om.
+     De ondergrens is bewust krap genoeg dat de vijfde groep niet in zijn eentje
+     op een tweede rij belandt, want dan leest hij als een losse restcategorie. */
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: var(--s-4) var(--s-5);
+  align-content: start;
+  padding: var(--s-5);
+  background: var(--white);
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.kmm-kolom { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; }
+.kmm-kolom-kop {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--orange-dark); text-transform: uppercase; letter-spacing: 0.4px;
+  padding-bottom: var(--s-2); margin-bottom: var(--s-2);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.kmm-item {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: var(--s-2); margin: 0 calc(var(--s-2) * -1);
+  border-radius: var(--r-sm);
+  border-left: 2px solid transparent;
+  text-decoration: none; color: inherit;
+}
+.kmm-item:hover { background: var(--orange-light); }
+.kmm-item-actief { border-left-color: var(--orange); background: var(--brand-orange-faint); }
+.kmm-item-label {
+  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 600; color: var(--dark);
+}
+.kmm-item-actief .kmm-item-label { color: var(--orange-dark); }
+.kmm-item-hint { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+
 .hm-wrap { position: relative; display: inline-flex; }
 .hm-knop {
   display: inline-flex; align-items: center; gap: var(--s-2);
