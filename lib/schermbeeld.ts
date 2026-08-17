@@ -116,7 +116,13 @@ async function anonimiseerPagina(page: any, vervang: { van: string; naar: string
 }
 
 /** Maakt één schermafbeelding, anonimiseert hem, en geeft de PNG-bytes terug (of null als de browser niet kan). */
-export async function maakSchermafbeelding(pad: string, baseUrl: string): Promise<Buffer | null> {
+/**
+ * @param wachtMs extra wachttijd ná het laden, vóór de foto. Standaard 600 ms.
+ *   Een scherm dat zijn lijst zelf nabezorgt (Meta & CTR, de Prioriteitenscan)
+ *   staat op dat moment nog op "bezig met opbouwen", en dan fotografeer je de
+ *   wachtboodschap in plaats van het scherm. Zet hem dan hoger.
+ */
+export async function maakSchermafbeelding(pad: string, baseUrl: string, wachtMs = 600): Promise<Buffer | null> {
   const sessie = makeAdminSession();
   const vervang = await haalVervangingenOp();
   const uit = await metBrowser(async (page) => {
@@ -124,7 +130,7 @@ export async function maakSchermafbeelding(pad: string, baseUrl: string): Promis
     const url = new URL(pad, baseUrl);
     await page.setCookie({ name: ADMIN_COOKIE, value: sessie, url: url.origin, path: "/" });
     await page.goto(url.toString(), { waitUntil: "networkidle2", timeout: 25000 });
-    await new Promise((r) => setTimeout(r, 600));
+    await new Promise((r) => setTimeout(r, Math.max(0, Math.min(20000, wachtMs))));
     await anonimiseerPagina(page, vervang);
     const shot = await page.screenshot({ type: "png", fullPage: true });
     return shot as Buffer;

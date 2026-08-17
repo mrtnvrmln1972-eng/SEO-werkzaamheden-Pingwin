@@ -43,8 +43,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Geef een pad op dit domein, bijvoorbeeld /admin/client/kamsteeg?tab=werkzaamheden." }, { status: 400 });
   }
   const basis = req.nextUrl.origin;
+  // Extra wachttijd vóór de foto, in milliseconden (?wacht=5000). Nodig voor een
+  // scherm dat zijn lijst zelf nabezorgt: dat staat na het laden nog even op
+  // "bezig met opbouwen", en dan fotografeer je de wachtboodschap.
+  const wacht = Number(req.nextUrl.searchParams.get("wacht")) || 600;
   try {
-    const png = await maakSchermafbeelding(pad, basis);
+    const png = await maakSchermafbeelding(pad, basis, wacht);
     if (!png) {
       return NextResponse.json({ ok: false, error: "De browser kon niet starten op deze server." }, { status: 500 });
     }
