@@ -80,6 +80,21 @@ check("het oppak-lijstje toont wanneer het is bijgewerkt", /bijgewerkt \$\{korte
 check("het oppak-lijstje meldt wat er daarna nog is besloten", /\/api\/admin\/oppak-stand/.test(koers),
   "Zonder dit seintje kan een herziene strategie ongemerkt naast het lijstje blijven liggen.");
 
+// Aangeraakt is niet hetzelfde als bijgewerkt. Bij Kamsteeg is op 17 augustus
+// 2026 een komma in het lijstje veranderd ná het gesprek waarin de hele
+// strategie herzien was; ging het seintje op de wijzigdatum af, dan noemde het
+// lijstje zichzelf daarmee "bij" terwijl er nog exact hetzelfde verouderde plan
+// stond. Alleen een klik van Maarten mag die grens verzetten.
+const standLib = lees("lib/oppak-stand.ts");
+check("het seintje gaat af op wat verwerkt is, niet op wanneer er getypt is",
+  /const grens = verwerktTot/.test(standLib),
+  "Op de wijzigdatum wist één komma het seintje terwijl de inhoud verouderd blijft.");
+
+const focusLib = lees("lib/focus.ts");
+check("de verwerkt-stempel schuift niet mee met het automatisch opslaan",
+  /typeof focus\.verwerktTot === "string" \? focus\.verwerktTot : huidig\.verwerktTot/.test(focusLib),
+  "Dit veld slaat tijdens het typen op; schuift de stempel mee, dan wist typen het seintje.");
+
 const stand = lees("app/api/admin/oppak-stand/route.ts");
 check("de stand-route start geen enkele motor en geen model", !/callClaude|getPrioriteitenScan|getMetaKansen/.test(stand),
   "Deze route draait bij élke keer openen van de takenpagina en mag dus niets kosten.");

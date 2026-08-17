@@ -19,6 +19,18 @@ export type ClientFocus = {
   html: string; prioHtml: string; koersHtml: string; links: FocusLink[];
   /** Per veld: wanneer de inhoud voor het laatst écht veranderde (ISO). */
   gewijzigd: Partial<Record<FocusVeld, string>>;
+  /**
+   * Tot wanneer het oppak-lijstje is bijgehouden: het moment waarop je een
+   * voorstel overnam of zei dat het al klopte.
+   *
+   * Bewust iets ánders dan `gewijzigd.prioHtml`. Aangeraakt is niet hetzelfde
+   * als bijgewerkt: bij Kamsteeg is op 17 augustus 2026 een komma in het lijstje
+   * veranderd, ná het gesprek waarin de hele strategie herzien was, en op de
+   * datum alléén verdween het seintje daarmee terwijl de inhoud nog steeds de
+   * oude was. Alleen jij kunt zeggen dat iets verwerkt is, dus alleen jouw klik
+   * zet deze stempel.
+   */
+  verwerktTot?: string;
 };
 
 function legacyToHtml(d: { keywords?: FocusKeyword[]; links?: FocusLink[] }): string {
@@ -46,7 +58,7 @@ function schoneLinks(links: unknown): FocusLink[] {
 export async function getFocus(slug: string): Promise<ClientFocus> {
   await ensureSchema();
   const { rows } = await sql`SELECT data FROM client_focus WHERE client_slug = ${slug} LIMIT 1`;
-  const d = rows[0]?.data as { html?: string; prioHtml?: string; koersHtml?: string; keywords?: FocusKeyword[]; links?: FocusLink[]; gewijzigd?: Record<string, string> } | undefined;
+  const d = rows[0]?.data as { html?: string; prioHtml?: string; koersHtml?: string; keywords?: FocusKeyword[]; links?: FocusLink[]; gewijzigd?: Record<string, string>; verwerktTot?: string } | undefined;
   if (!d) return { html: "", prioHtml: "", koersHtml: "", links: [], gewijzigd: {} };
   const html = typeof d.html === "string" ? d.html : legacyToHtml(d);
   // De losse linkkolom is nieuw sinds deze wijziging. Een rij van vóór "html"
@@ -59,6 +71,7 @@ export async function getFocus(slug: string): Promise<ClientFocus> {
     koersHtml: sanitize(typeof d.koersHtml === "string" ? d.koersHtml : ""),
     links,
     gewijzigd: schoneStempels(d.gewijzigd),
+    verwerktTot: typeof d.verwerktTot === "string" && !Number.isNaN(Date.parse(d.verwerktTot)) ? d.verwerktTot : undefined,
   };
 }
 
@@ -156,10 +169,24 @@ export async function saveFocus(slug: string, focus: Partial<ClientFocus>): Prom
   if (html !== huidig.html) { await bewaarVorige(slug, "html", huidig.html); gewijzigd.html = nu; }
   if (prioHtml !== huidig.prioHtml) { await bewaarVorige(slug, "prioHtml", huidig.prioHtml); gewijzigd.prioHtml = nu; }
   if (koersHtml !== huidig.koersHtml) { await bewaarVorige(slug, "koersHtml", huidig.koersHtml); gewijzigd.koersHtml = nu; }
-  const json = JSON.stringify({ html, prioHtml, koersHtml, links, gewijzigd });
+  // De verwerkt-stempel blijft staan tenzij hij expliciet wordt meegestuurd. Het
+  // veld slaat tijdens het typen automatisch op, dus zou hij hier stilzwijgend
+  // meeschuiven, dan zou één komma in het lijstje het seintje wissen.
+  const verwerktTot = typeof focus.verwerktTot === "string" ? focus.verwerktTot : huidig.verwerktTot;
+  const json = JSON.stringify({ html, prioHtml, koersHtml, links, gewijzigd, verwerktTot });
   await sql`
     INSERT INTO client_focus (client_slug, data, updated_at)
     VALUES (${slug}, ${json}::jsonb, now())
     ON CONFLICT (client_slug) DO UPDATE SET data = ${json}::jsonb, updated_at = now()`;
-  return { html, prioHtml, koersHtml, links, gewijzigd };
+  return { html, prioHtml, koersHtml, links, gewijzigd, verwerktTot };
+}
+
+/**
+ * "Dit lijstje is bij" vastleggen. Alleen dít zet de stempel, en alleen op een
+ * klik van Maarten: overnemen van een voorstel, of zeggen dat het al klopte.
+ */
+export async function markeerOppakVerwerkt(slug: string): Promise<string> {
+  const nu = new Date().toISOString();
+  await saveFocus(slug, { verwerktTot: nu });
+  return nu;
 }

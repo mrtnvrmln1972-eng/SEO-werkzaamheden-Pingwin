@@ -24,9 +24,15 @@ export const BLOKKEN: Uitklapper[] = [
       "terwijl de strategie een dag eerder in een gesprek volledig herzien was, en die verouderde tekst " +
       "ging óók nog eens bij elke vraag aan de assistent mee als *dit pakken we nu op*. Sinds 17 augustus " +
       "2026 draagt het lijstje daarom zijn eigen datum: op de kop staat **bijgewerkt 17 aug**, en is er " +
-      "daarna nog ergens iets vastgelegd, dan staat erbij hoeveel. Het lijstje kijkt daarvoor naar de " +
+      "sindsdien nog ergens iets vastgelegd, dan staat erbij hoeveel. Het lijstje kijkt daarvoor naar de " +
       "gesprekken die je over die klant hebt gevoerd en naar het strategiestuk in het dossier, en noemt " +
       "per plek de naam en de datum.\n\n" +
+      "Het seintje gaat bewust niet af op wanneer je voor het laatst in het veld getypt hebt, maar op " +
+      "wanneer je voor het laatst hebt gezégd dat het bij is. Aangeraakt is namelijk niet hetzelfde als " +
+      "bijgewerkt: bij Kamsteeg werd er ná dat gesprek nog een komma in het lijstje veranderd, en op de " +
+      "typdatum alleen zou het lijstje zichzelf daarmee bij noemen terwijl er nog exact hetzelfde " +
+      "verouderde plan stond. Houd je een lijstje met de hand bij, dan zet je het met **Dit klopt al** " +
+      "stil; dat legt alleen vast dat het bij is en raakt je tekst niet aan.\n\n" +
       "De knop **Bijwerken** maakt daar een voorstel van: een kort lijstje van wat er volgens het laatst " +
       "besliste nu aan de beurt is, met *(loopt)* achter alles wat al op de planning staat. Dat voorstel " +
       "verschijnt bóven je eigen tekst, dus je ziet oud en nieuw naast elkaar en beslist zelf: " +

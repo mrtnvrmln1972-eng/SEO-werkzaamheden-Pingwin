@@ -32,7 +32,7 @@ import { mdToHtml } from "../../../../lib/markdown";
 
 type WerkPost = { sleutel: string; label: string; aantal: number | null; tab: string; uitleg: string };
 type NieuwerePlek = { soort: "gesprek" | "strategie"; titel: string; datum: string; samenvatting: string; thread?: string };
-type OppakStand = { bijgewerkt: string | null; nieuwer: NieuwerePlek[] };
+type OppakStand = { bijgewerkt: string | null; verwerktTot: string | null; nieuwer: NieuwerePlek[] };
 
 /** "17 aug", zoals je het zelf zou opschrijven. */
 function korteDatum(iso: string): string {
@@ -113,7 +113,7 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
     setStand(null);
     fetch(`/api/admin/oppak-stand?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
-      .then((d) => { if (!off && d.ok) setStand({ bijgewerkt: d.bijgewerkt ?? null, nieuwer: (d.nieuwer || []) as NieuwerePlek[] }); })
+      .then((d) => { if (!off && d.ok) setStand({ bijgewerkt: d.bijgewerkt ?? null, verwerktTot: d.verwerktTot ?? null, nieuwer: (d.nieuwer || []) as NieuwerePlek[] }); })
       .catch(() => { /* geen seintje is vervelend, geen reden om het blok te breken */ });
     return () => { off = true; };
   }, [slug, overgenomen]);
@@ -172,7 +172,24 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
     if (!voorstel) return;
     setNieuweInhoud({ html: mdToHtml(voorstel), stempel: Date.now() });
     setVoorstel(null); setGebruikt([]); setToonRegels(false); setGezet(new Set());
-    setOvergenomen((n) => n + 1);
+    void meldBij();
+  }
+
+  // "Dit is bij." Zet alleen de stempel waar het seintje op afgaat, en raakt de
+  // tekst niet aan. Nodig als losse knop, want anders zou een lijstje dat je met
+  // de hand bijhoudt blijven zeuren over een gesprek dat je allang verwerkt hebt.
+  async function meldBij() {
+    setFout("");
+    try {
+      const d = await fetch("/api/admin/oppak-verwerkt", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      }).then((r) => r.json());
+      if (!d.ok) { setFout(d.error || "Vastleggen is niet gelukt."); return; }
+      setOvergenomen((n) => n + 1);
+    } catch {
+      setFout("Vastleggen is niet gelukt.");
+    }
   }
 
   async function naarPlanning(regel: string) {
@@ -276,10 +293,21 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
                 achterhaalde strategie op het scherm stond zonder dat iemand het
                 zag. Het overschrijft nooit iets uit zichzelf. */}
             {!voorstel && !!stand?.nieuwer.length && (
-              <Signalen soort="let-op" regels={[
-                "Hierna is er nog iets bepaald. Klik op Bijwerken om het over te nemen.",
-                ...stand.nieuwer.map((p) => `${p.titel} (${korteDatum(p.datum)})${p.samenvatting ? `: ${p.samenvatting}` : ""}`),
-              ]} />
+              <>
+                <Signalen soort="let-op" regels={[
+                  stand.verwerktTot
+                    ? "Hierna is er nog iets bepaald. Klik op Bijwerken om het over te nemen."
+                    : "Dit is nog nooit naast de besluiten gelegd. Klik op Bijwerken, of zeg dat het al klopt.",
+                  ...stand.nieuwer.map((p) => `${p.titel} (${korteDatum(p.datum)})${p.samenvatting ? `: ${p.samenvatting}` : ""}`),
+                ]} />
+                <div className="pnl-acties-groep">
+                  <button type="button" className="btn btn-quiet btn-klein pnl-acties-info"
+                    title="Legt vast dat dit lijstje bij is. Verandert je tekst niet."
+                    onClick={() => void meldBij()}>
+                    Dit klopt al
+                  </button>
+                </div>
+              </>
             )}
 
             {/* Oud blijft in beeld zolang het voorstel er ligt: je vergelijkt en

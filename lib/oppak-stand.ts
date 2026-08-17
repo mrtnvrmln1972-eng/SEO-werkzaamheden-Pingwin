@@ -1,4 +1,4 @@
-import { laatsteWijziging } from "./focus";
+import { getFocus, laatsteWijziging } from "./focus";
 import { listChatThreads } from "./chat";
 
 // ═══════════════════════════════════════════════════════════
@@ -28,9 +28,11 @@ export type NieuwerePlek = {
 };
 
 export type OppakStand = {
-  /** Wanneer het veld voor het laatst veranderde. Null = nooit, of te oud om te weten. */
+  /** Wanneer de tekst voor het laatst veranderde. Null = nooit, of te oud om te weten. */
   bijgewerkt: string | null;
-  /** Alles wat ná die datum is vastgelegd, nieuwste eerst. */
+  /** Wanneer je voor het laatst zei dat het lijstje bij was. Null = nog nooit. */
+  verwerktTot: string | null;
+  /** Alles wat sindsdien is vastgelegd en dus nog niet verwerkt is, nieuwste eerst. */
   nieuwer: NieuwerePlek[];
 };
 
@@ -38,8 +40,21 @@ export type OppakStand = {
 const MAX_PLEKKEN = 5;
 
 export async function getOppakStand(slug: string): Promise<OppakStand> {
+  const focus = await getFocus(slug).catch(() => null);
   const bijgewerkt = await laatsteWijziging(slug, "prioHtml");
-  const grens = bijgewerkt ? Date.parse(bijgewerkt) : 0;
+  const verwerktTot = focus?.verwerktTot || null;
+
+  // ── Waarom de grens de verwerkt-stempel is en niet de wijzigdatum ──
+  // Aangeraakt is niet hetzelfde als bijgewerkt. Bij Kamsteeg werd op 17
+  // augustus 2026 een komma in het lijstje veranderd, ná het gesprek waarin de
+  // hele strategie herzien was. Op de wijzigdatum alléén zou het lijstje zich
+  // daarmee "bij" noemen terwijl er nog exact hetzelfde verouderde plan stond.
+  // Alleen een klik van Maarten (overnemen, of "dit klopt al") verzet de grens.
+  //
+  // Is er nog nooit zo'n klik geweest, dan is de grens 0 en komt álles wat er
+  // aan besluiten ligt in beeld. Dat is geen ruis maar de eerlijke stand: er is
+  // dan namelijk ook nooit vastgesteld dat het lijstje ergens bij is.
+  const grens = verwerktTot ? Date.parse(verwerktTot) : 0;
 
   const nieuwer: NieuwerePlek[] = [];
 
@@ -59,7 +74,7 @@ export async function getOppakStand(slug: string): Promise<OppakStand> {
   // Dat is hetzelfde soort handwerk als dit veld, en het loopt er net zo hard
   // van weg: bij Kamsteeg is de herziene strategie dáár geplakt, niet hier.
   try {
-    const strategie = await laatsteWijziging(slug, "html");
+    const strategie = focus?.html?.trim() ? await laatsteWijziging(slug, "html") : null;
     if (strategie && Date.parse(strategie) > grens) {
       nieuwer.push({
         soort: "strategie",
@@ -71,5 +86,5 @@ export async function getOppakStand(slug: string): Promise<OppakStand> {
   } catch { /* zie boven */ }
 
   nieuwer.sort((a, b) => Date.parse(b.datum) - Date.parse(a.datum));
-  return { bijgewerkt, nieuwer: nieuwer.slice(0, MAX_PLEKKEN) };
+  return { bijgewerkt, verwerktTot, nieuwer: nieuwer.slice(0, MAX_PLEKKEN) };
 }
