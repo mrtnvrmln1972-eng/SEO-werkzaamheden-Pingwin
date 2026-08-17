@@ -496,13 +496,6 @@ export default function ClientCockpit({
                 langs dingen die je op dat moment niet nodig had. Nu één kop met drie
                 blokken die dicht beginnen, zodat je zelf kiest wat je openzet. */}
             <div className="tk-wide">
-            {/* Waar we naartoe werken: de koers, wat er nu opgepakt wordt, en de
-                plekken waar werk klaarligt. Staat bovenaan en over de volle
-                breedte, want dit is de vraag waarmee je hier binnenkomt; de twee
-                kolommen eronder zijn het uitvoeren. */}
-            <KoersBlok slug={client.slug}
-              onWeekplanChanged={() => setWeekplanReload((n) => n + 1)}
-              onGaNaarTab={(t) => changeTab(validTab(t))} />
             {/* De strategiegesprekken uit de assistent, met per actiepunt één klik
                 naar de takenlijst. Dit blok bestond al en werd door de chat ook
                 beloofd ("je vindt hem bovenaan het Taken-tabblad"), maar hing na
@@ -753,11 +746,24 @@ export default function ClientCockpit({
             })()}
             </>)}
 
-            {/* Hier stond een kaartje met alleen een kop: "Zoekwoorden & links staan
-                bij Klantgegevens". Dat was een doodlopende regel onderaan de
-                rechterkolom, met bovendien de oude tabnaam erin (de tab heet
-                inmiddels Dossier). De weg ernaartoe staat nu tussen de andere
-                doorklikjes in het koersblok bovenaan, waar je hem zoekt. */}
+            {/* Waar we naartoe werken: de koers, wat er nu opgepakt wordt, en de
+                plekken waar werk klaarligt.
+
+                Stond eerst bovenaan over de volle breedte, want het is de vraag
+                waarmee je hier binnenkomt. In de praktijk werkte dat niet: het
+                zijn drie ingeklapte regels waar je af en toe iets in bijhoudt, en
+                op de volle breedte duwden die de planning en de chats naar
+                beneden, elke keer dat je dit scherm opendeed. Hij hoort dus bij
+                de andere naslag in de rechterkolom (bespreeklijsten, mails) en
+                niet in de looproute. Verplaatst op 17 augustus 2026, op verzoek.
+
+                Hier stond een kaartje met alleen een kop: "Zoekwoorden & links
+                staan bij Klantgegevens". Dat was een doodlopende regel, met
+                bovendien de oude tabnaam erin (de tab heet inmiddels Dossier). De
+                weg ernaartoe staat tussen de doorklikjes in dit blok. */}
+            <KoersBlok slug={client.slug}
+              onWeekplanChanged={() => setWeekplanReload((n) => n + 1)}
+              onGaNaarTab={(t) => changeTab(validTab(t))} />
 
             </div>
             </div>
