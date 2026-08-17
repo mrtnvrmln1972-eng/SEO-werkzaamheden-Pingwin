@@ -85,6 +85,10 @@ async function doEnsureRunTable(): Promise<void> {
   // retries: hoe vaak een hangende stap is teruggezet. Noodrem tegen eindeloze
   // herhaal-lussen (elke mislukte poging kost echt AI-geld).
   await sql`ALTER TABLE page_doc_runs ADD COLUMN IF NOT EXISTS retries INT NOT NULL DEFAULT 0`;
+  // poort_negeren: deze run is met "Toch genereren" gestart, dus de keten-poort
+  // (lib/keten-poort.ts) wordt eenmalig overgeslagen. Per run, niet per pagina:
+  // de volgende gewone run controleert weer gewoon.
+  await sql`ALTER TABLE page_doc_runs ADD COLUMN IF NOT EXISTS poort_negeren BOOLEAN NOT NULL DEFAULT false`;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -103,7 +107,7 @@ function rowToRun(r: any): DocRun {
 
 // Start een nieuwe achtergrond-run voor een pagina. Zonder expliciete Drive-map
 // valt hij terug op de per-pagina opgeslagen map (indien aanwezig).
-export async function createDocRun(slug: string, url: string, extra: string, folderId: string, steps: DocKind[], audience: "intern" | "klant" = "klant"): Promise<number> {
+export async function createDocRun(slug: string, url: string, extra: string, folderId: string, steps: DocKind[], audience: "intern" | "klant" = "klant", negeerPoort = false): Promise<number> {
   await ensureSchema();
   await ensureRunTable();
   let fid = (folderId || "").trim();
@@ -111,8 +115,8 @@ export async function createDocRun(slug: string, url: string, extra: string, fol
   // Gevraagde stappen krijgen 'pending', de rest 'skipped' (worden overgeslagen).
   const st = (k: DocKind) => (steps.includes(k) ? "pending" : "skipped");
   const { rows } = await sql`
-    INSERT INTO page_doc_runs (client_slug, url, extra, folder_id, audience, analyse_state, blauwdruk_state, copy_state)
-    VALUES (${slug}, ${url}, ${extra || null}, ${fid || null}, ${audience}, ${st("analyse")}, ${st("blauwdruk")}, ${st("copy")})
+    INSERT INTO page_doc_runs (client_slug, url, extra, folder_id, audience, poort_negeren, analyse_state, blauwdruk_state, copy_state)
+    VALUES (${slug}, ${url}, ${extra || null}, ${fid || null}, ${audience}, ${negeerPoort}, ${st("analyse")}, ${st("blauwdruk")}, ${st("copy")})
     RETURNING id`;
   return Number(rows[0].id);
 }
@@ -323,6 +327,8 @@ async function processRun(id: number): Promise<void> {
   const extra = (r.extra as string) || "";
   const folderId = (r.folder_id as string) || "";
   const audience: "intern" | "klant" = (r.audience as string) === "intern" ? "intern" : "klant";
+  // Deze run is gestart met "Toch genereren": de keten-poort wordt overgeslagen.
+  const negeerPoort = r.poort_negeren === true;
   const states: Record<DocKind, string> = { analyse: r.analyse_state, blauwdruk: r.blauwdruk_state, copy: r.copy_state };
   // Handmatig gestopt? Dan mag er vanaf dat moment NIETS meer opgeslagen of
   // geüpload worden, ook niet het resultaat van een stap die net klaar is.
@@ -344,7 +350,7 @@ async function processRun(id: number): Promise<void> {
     const claimed = await claimStep(id, kind);
     if (!claimed) return; // andere worker pakte hem, of de status veranderde
     try {
-      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId, audience, canceled), 700000, "Genereren duurde te lang (>11,5 min) en is afgebroken. Probeer het opnieuw.");
+      const link = await withHardTimeout(generateAndStoreDoc(slug, url, kind, extra, folderId, audience, canceled, negeerPoort), 700000, "Genereren duurde te lang (>11,5 min) en is afgebroken. Probeer het opnieuw.");
       if (link === null || await canceled()) return; // gestopt: resultaat weggooien
       await finishStep(id, kind, link);
     } catch (e) {
@@ -383,10 +389,10 @@ async function failStep(id: number, kind: DocKind, msg: string): Promise<void> {
 // Drive (met klantversie + werkzaamheid), net als de synchrone route. Zonder Drive-map
 // wordt het document gegenereerd en als werkzaamheid vastgelegd (zonder downloadlink,
 // want er is geen browser om het bestand naartoe te sturen). Geeft de technische link terug.
-async function generateAndStoreDoc(slug: string, url: string, kind: DocKind, extra: string, folderId: string, audience: "intern" | "klant" = "klant", canceled?: () => Promise<boolean>): Promise<string | null> {
+async function generateAndStoreDoc(slug: string, url: string, kind: DocKind, extra: string, folderId: string, audience: "intern" | "klant" = "klant", canceled?: () => Promise<boolean>, negeerPoort = false): Promise<string | null> {
   // Standaard alleen de klantversie (direct uit de data): één generatie i.p.v. de dure
   // technische versie + een aparte klant-verkleining. Intern kan op verzoek.
-  const { spec, title } = await generateDocSpec(slug, url, kind, extra || undefined, audience);
+  const { spec, title } = await generateDocSpec(slug, url, kind, extra || undefined, audience, negeerPoort);
   // Ondertussen gestopt? Dan hier afbreken: geen upload naar Drive, geen taak.
   if (canceled && await canceled()) return null;
   const buffer = await buildPingwinDoc(spec);

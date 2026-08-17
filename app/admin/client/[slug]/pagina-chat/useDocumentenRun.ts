@@ -63,12 +63,14 @@ export function useDocumentenRun({ slug, url, driveFolder, nuance, setErr, setSt
   }, [run?.status, run?.id, slug, url]);
 
   // Start de achtergrond-run: de drie stappen draaien server-side door; wegklikken mag.
-  async function startBackgroundRun(steps: string[], folderIdOverride?: string, audience: "intern" | "klant" = "klant") {
+  // negeerPoort: eenmalig de keten-poort overslaan ("Toch genereren"), voor als
+  // die controle een document onterecht tegenhoudt. Geldt alleen voor deze run.
+  async function startBackgroundRun(steps: string[], folderIdOverride?: string, audience: "intern" | "klant" = "klant", negeerPoort = false) {
     if (runBusy) return;
     setRunBusy(true); setErr("");
     try {
       const fid = folderIdOverride ?? driveFolder?.id;
-      const r = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, steps, extra: nuance.trim() || undefined, folderId: fid || undefined, audience }) });
+      const r = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url, steps, extra: nuance.trim() || undefined, folderId: fid || undefined, audience, negeerPoort }) });
       const d = await r.json();
       if (!d.ok) { setErr(d.error || "Achtergrond-run starten mislukt."); return; }
       const s = await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`).then((x) => x.json()).catch(() => null);

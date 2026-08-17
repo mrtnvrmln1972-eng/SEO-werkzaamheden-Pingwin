@@ -7,6 +7,7 @@ import { useState } from "react";
 import HelpHint from "../HelpHint";
 import Voortgang from "../Voortgang";
 import DriveRij from "./DriveRij";
+import { isPoortBlokkade } from "../../../../../lib/keten-poort-melding";
 import type { useDocumentenRun } from "./useDocumentenRun";
 import type { DriveFolder } from "./types";
 
@@ -106,7 +107,28 @@ export default function VervolgstappenKaart({ slug, url, docRun, lastAssistant, 
                     }}>&times; Stoppen (niets opslaan)</button>
                 </div>
               )}
-              {run.status === "error" && run.error && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{run.error}</div>}
+              {/* Zelfde uitweg als op de projectkaart: liep de run vast op de
+                  keten-poort, dan staat de knop om die controle één keer over
+                  te slaan er direct bij. Een poort zonder deur betekent stilstand
+                  tot iemand code aanpast, en dat is hier vier keer gebeurd. */}
+              {run.status === "error" && run.error && (
+                <div className="login-error" style={{ marginTop: "var(--s-2)" }}>
+                  {run.error}
+                  {isPoortBlokkade(run.error) && (() => {
+                    const open = (["analyse", "blauwdruk", "copy"] as const).filter((k) => run.steps[k] === "error" || run.steps[k] === "pending");
+                    if (!open.length) return null;
+                    return (
+                      <div className="pnl-acties-groep" style={{ marginTop: "var(--s-2)" }}>
+                        <button type="button" className="btn btn-ghost btn-klein" disabled={docRun.runBusy}
+                          title="Sla deze controle één keer over en genereer de openstaande stappen alsnog"
+                          onClick={() => void docRun.startBackgroundRun([...open], undefined, "klant", true)}>
+                          Toch genereren
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
             </div>
           )}
           </div>))}

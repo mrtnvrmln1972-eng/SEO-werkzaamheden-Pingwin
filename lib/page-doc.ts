@@ -43,7 +43,17 @@ function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([p, new Promise<T>((res) => setTimeout(() => res(fallback), ms))]);
 }
 
-async function buildContext(slug: string, url: string, extra?: string): Promise<{ text: string; primary: string }> {
+// Staat de pagina echt live? Een 404/410 of een pagina die niet uit te lezen
+// is, betekent: er is nog niets om te vergelijken. Dat onderscheid is niet
+// cosmetisch, het bepaalt of de keten-poort überhaupt zin heeft (zie
+// lib/keten-poort.ts, slot A) én of het document over "aanpassen" of over
+// "nieuw bouwen" hoort te schrijven.
+function paginaStaatLive(m: { ok: boolean; status: number | null } | null): boolean {
+  if (!m || !m.ok) return false;
+  return m.status === null || m.status < 400;
+}
+
+async function buildContext(slug: string, url: string, extra?: string): Promise<{ text: string; primary: string; paginaLeeft: boolean }> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
   // Ronde 1: goedkope/snelle bronnen parallel. measurePage meet de pagina exact
@@ -104,6 +114,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
   }
 
   const liveStamp = new Date().toLocaleString("nl-NL", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Amsterdam" });
+  const paginaLeeft = paginaStaatLive(measure);
   const text = [
     `KLANT: ${client?.name || slug}`,
     client?.seoProfile ? `KLANTPROFIEL: ${client.seoProfile}` : "",
@@ -111,6 +122,9 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     content || measure
       ? `FEITEN LIVE GECHECKT OP: ${liveStamp} (de pagina is op dit moment vers uitgelezen; vermeld deze datum in het document)`
       : `LET OP: de pagina kon op ${liveStamp} NIET live uitgelezen worden; benoem in het document dat de meting ontbreekt en baseer geen content-gaps op aannames`,
+    paginaLeeft
+      ? ""
+      : `LET OP, DEZE PAGINA STAAT NOG NIET LIVE (${measure && measure.status !== null ? `HTTP ${measure.status}` : "niet uitleesbaar"}). Er is dus geen bestaande pagina om te vergelijken of te behouden: alles wat het plan noemt is een BOUWOPDRACHT voor een nieuw te maken pagina, niet een wijziging van bestaande content. Schrijf het document ook zo: benoem dat de pagina nieuw gebouwd wordt en baseer geen enkele "dit staat er al"- of "dit ontbreekt"-bevinding op de meting.`,
     primary ? `GEKOZEN PRIMAIR ZOEKWOORD (leidend, uit het plan/GSC): "${primary}"` : "",
     `OVERGENOMEN PLAN VOOR DEZE PAGINA (de strategische conclusie, leidend): ${plan || "(nog geen plan, leid af uit de data)"}`,
     "",
@@ -131,7 +145,7 @@ async function buildContext(slug: string, url: string, extra?: string): Promise<
     ahrefsText,
     competitorText ? "\n" + competitorText : "",
   ].filter(Boolean).join("\n");
-  return { text, primary };
+  return { text, primary, paginaLeeft };
 }
 
 const DOCSPEC_FORMAT = `Geef UITSLUITEND geldige JSON, niets eromheen, exact dit formaat:
@@ -885,7 +899,7 @@ async function enforceMetaInSpec(spec: DocSpec, slug: string, primary: string, m
 // - analyse/blauwdruk: eerst de DIEPE technische fundering (geketend), daaruit het korte klantdoc.
 // - copy: de VOLLEDIGE uitgeschreven pagina (kernproduct), geen samenvatting.
 // audience "intern": de uitgebreide technische versie als afgeleverd document.
-export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string, audience: "intern" | "klant" = "klant"): Promise<{ spec: DocSpec; title: string }> {
+export async function generateDocSpec(slug: string, url: string, kind: DocKind, extra?: string, audience: "intern" | "klant" = "klant", negeerPoort = false): Promise<{ spec: DocSpec; title: string }> {
   const context = await buildContext(slug, url, extra);
   const client = await getClientBySlug(slug);
 
@@ -903,9 +917,15 @@ export async function generateDocSpec(slug: string, url: string, kind: DocKind, 
   // wélke claim botst met wélk feit. Liever geen document dan twee documenten
   // die elkaar tegenspreken; één ongeverifieerde claim richting een klant kost
   // meer vertrouwen dan tien juiste claims opleveren.
-  {
+  //
+  // Twee uitgangen, allebei met opzet. De poort slaat over als de pagina nog
+  // niet live staat (dan is er niets om tegen te spreken), en Maarten kan hem
+  // met "Toch genereren" één keer overrulen. Een controle die je niet kunt
+  // passeren is geen vangnet maar een muur, en die heeft hier vier keer een
+  // dag gekost aan valse alarmen.
+  if (!negeerPoort) {
     const { vindKetenConflicten, ketenBlokkade } = await import("./keten-poort");
-    const conflicten = await vindKetenConflicten(slug, context.text, chain);
+    const conflicten = await vindKetenConflicten(slug, context.text, chain, { paginaLeeft: context.paginaLeeft });
     if (conflicten.length) throw new Error(ketenBlokkade(conflicten));
   }
 

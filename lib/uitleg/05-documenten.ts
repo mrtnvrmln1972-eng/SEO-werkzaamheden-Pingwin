@@ -50,7 +50,19 @@ export const HOOFDSTUK: Hoofdstuk = {
         "heeft bevestigd. De assistent wijst je erop als je een strategie naar een klant of sitebouwer wilt " +
         "sturen terwijl de analyse nog niet gedraaid is. Eén ongeverifieerde claim richting een klant kost " +
         "meer vertrouwen dan tien juiste claims opleveren; dat is precies wat er in augustus 2026 bij een " +
-        "echte klantcasus gebeurde en wat deze poort voortaan afvangt.",
+        "echte klantcasus gebeurde en wat deze poort voortaan afvangt.\n\n" +
+        "**En de poort heeft altijd een deur.** Deze controle heeft in augustus 2026 vier keer een pagina " +
+        "onterecht dichtgezet, en drie van die keren zijn opgelost door er uitleg bij te schrijven. Dat hielp " +
+        "nooit, want het probleem zat in de vorm: de controle kon alleen maar botsingen opschrijven, ook als " +
+        "hij zelf concludeerde dat er geen botsing was. De vierde keer schreef hij letterlijk \"dat klopt\" " +
+        "en \"dit is geen conflict\" ín de blokkade, en blokkeerde alsnog. Sinds 17 augustus 2026 is dat " +
+        "opgelost met vier harde sloten in plaats van instructies: een pagina die nog niet live staat wordt " +
+        "helemaal niet gecontroleerd (een plan voor een nieuwe pagina kan niet botsen met de constatering dat " +
+        "hij er nog niet is), een botsing telt alleen als hij expliciet als hard is aangemerkt, een botsing " +
+        "die zichzelf tegenspreekt gaat weg, en een botsing die een verhaal is in plaats van een feit ook. " +
+        "Vind je een blokkade tóch onterecht, dan staat er nu een knop **Toch genereren** bij: die slaat de " +
+        "controle één keer over, waarna hij bij de volgende run gewoon weer meedraait. Een controle die je " +
+        "niet kunt passeren is geen vangnet maar een muur.",
     },
     {
       titel: "Waarom de analyse de redenering bewaart en niet de takenlijst",

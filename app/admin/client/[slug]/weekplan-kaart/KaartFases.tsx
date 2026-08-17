@@ -10,6 +10,7 @@ import { splitCardInfo, faseSturing, verseCopySturing, isSjabloonSturing, type C
 import { linkifyHtml } from "../../../../../lib/linkify";
 import { docsBewerkLink } from "../../../../../lib/drive-id";
 import { volgendeFase, faseLabel } from "../../../../../lib/fase-volgorde";
+import { isPoortBlokkade } from "../../../../../lib/keten-poort-melding";
 import type { DriveMap } from "../DriveMapKiezer";
 import type { NaarDev } from "./KaartOnderRegel";
 import type { Meting } from "./KaartControle";
@@ -84,6 +85,11 @@ export default function KaartFases({
   }
 
   const runActive = !!run && run.status === "running";
+  // Welke stappen zijn door de blokkade niet gemaakt: de stap die op de poort
+  // stukliep plus alles wat daarna nog stond te wachten. "Toch genereren" pakt
+  // precies die weer op, dus je verliest geen stap en genereert niets dubbel.
+  const geblokkeerdeStappen = (["analyse", "blauwdruk", "copy"] as const)
+    .filter((k) => run?.steps?.[k] === "error" || run?.steps?.[k] === "pending");
   const schemaRunning = schemaStatus === "running";
 
   useEffect(() => { setSchemaStatus(page?.structuredStatus || "idle"); }, [page?.structuredStatus]);
@@ -145,14 +151,14 @@ export default function KaartFases({
     ensureDriveMap(() => void werkelijkStartDocStep(steps));
   }
 
-  async function werkelijkStartDocStep(steps: ("analyse" | "blauwdruk" | "copy")[]) {
+  async function werkelijkStartDocStep(steps: ("analyse" | "blauwdruk" | "copy")[], negeerPoort = false) {
     if (busy || runActive) return;
     setBusy(steps.join("+")); setFoutje(""); setMelding("");
     try {
       // Gerichte sturing: achtergrond + de sturing van deze fase(s) + de laatste
       // chat-conclusie, niet de hele kaarttekst (scherpere documenten, minder ruis).
       const extra = await bouwExtra(steps);
-      const d = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, steps, extra, folderId: "", audience: "klant" }) }).then((r) => r.json());
+      const d = await fetch("/api/admin/page-doc/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, steps, extra, folderId: "", audience: "klant", negeerPoort }) }).then((r) => r.json());
       if (!d?.ok) setFoutje(d?.error || "Starten mislukt.");
       else setRun({ status: "running", steps: Object.fromEntries(steps.map((s, i) => [s, i === 0 ? "running" : "pending"])), links: {} });
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
@@ -405,7 +411,26 @@ export default function KaartFases({
             fout stond alleen in de database, nergens in beeld, dus leek het of er
             gewoon niets gebeurd was. Verdwijnt vanzelf zodra je die stap opnieuw
             start (de run-state wordt dan lokaal meteen vervangen). */}
-        {run && run.status === "error" && run.error && <div className="wp-fase-fouttekst">Vastgelopen: {run.error}</div>}
+        {/* Liep de run vast op de keten-poort (de controle die een document
+            tegenhoudt als het plan de verse meting tegenspreekt), dan hoort er
+            een uitweg bij te staan. Die controle heeft vier keer een pagina
+            onterecht dichtgezet, en zonder knop betekent dat: niets meer
+            genereren tot iemand code aanpast. Nu is het één klik, en de
+            volgende gewone run controleert weer gewoon. */}
+        {run && run.status === "error" && run.error && (
+          <div className="wp-fase-fouttekst">
+            Vastgelopen: {run.error}
+            {isPoortBlokkade(run.error) && geblokkeerdeStappen.length > 0 && (
+              <div className="pnl-acties-groep" style={{ marginTop: "var(--s-2)" }}>
+                <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy || runActive}
+                  title="Sla deze controle één keer over en genereer de openstaande stappen alsnog"
+                  onClick={() => void werkelijkStartDocStep(geblokkeerdeStappen, true)}>
+                  Toch genereren
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
         {melding && <div className="wp-fase-melding">{melding}</div>}
       </div>

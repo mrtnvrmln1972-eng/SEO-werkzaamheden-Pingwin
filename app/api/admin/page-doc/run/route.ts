@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
   const reqSteps = (Array.isArray(body.steps) ? body.steps.map((s) => String(s)) : []).filter((s): s is (typeof allowed)[number] => (allowed as readonly string[]).includes(s));
   const steps = reqSteps.length ? reqSteps : [...allowed];
   const audience: "intern" | "klant" = body.audience === "intern" ? "intern" : "klant";
+  // "Toch genereren": deze ene run slaat de keten-poort over. Bewust per run en
+  // niet als instelling, zodat de controle daarna gewoon weer meedraait.
+  const negeerPoort = body.negeerPoort === true;
   if (!slug || !url) return NextResponse.json({ ok: false, error: "Klant en URL zijn verplicht." }, { status: 400 });
 
   // De poort: geen analyse, blauwdruk of copy zonder klantprofiel en tone of voice.
@@ -39,7 +42,7 @@ export async function POST(req: NextRequest) {
   if (!p.mag) return NextResponse.json({ ok: false, error: p.reden, onboarding: p.ontbreekt }, { status: 400 });
 
   try {
-    const runId = await createDocRun(slug, url, extra, folderId, steps, audience);
+    const runId = await createDocRun(slug, url, extra, folderId, steps, audience, negeerPoort);
     // Meteen server-side starten (los van de browser); de cron is alleen vangnet.
     waitUntil(runNow(runId));
     return NextResponse.json({ ok: true, runId });
