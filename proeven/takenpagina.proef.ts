@@ -43,12 +43,14 @@ check("de koers is een eigen veld", /soort="koers"/.test(koers),
 check("de tellingen komen uit de werkvoorraad-route", /\/api\/admin\/werkvoorraad/.test(koers),
   "De chips horen te tellen wat er ligt, niet zelf iets te berekenen.");
 
-// De koers is Maartens eigen tekst. Zodra de controle erin mag schrijven in
-// plaats van ernaast, is hij na twee rondes niet meer van hem, en dan is het
-// precies het automatisch samengeraapte lijstje dat hier niet gewenst is.
-const koersCheck = lees("app/api/admin/koers-check/route.ts");
-check("de koers-controle schrijft niet in het veld zelf", !/saveFocus/.test(koersCheck),
-  "Deze route mag alleen commentaar teruggeven, nooit de koers overschrijven.");
+// De koers is Maartens eigen tekst, en er hoort geen enkele motor aan te zitten.
+// Er zat een knop "Klopt dit nog?" bij die de koers naast de opgeslagen feiten
+// legde en commentaar ernaast zette. Bij Kamsteeg leverde één klik vijf
+// opmerkingen op die nergens over gingen; een controle die je moet wegdenken
+// kost aandacht en geeft niets terug (18-08-2026). Knop én route zijn weg.
+check("er zit geen controleknop of model aan de koers", !/fetch\([^)]*koers-check|callClaude\(/.test(koers),
+  "De koers is handwerk. Een model dat er commentaar bij zet, is er eerder uit gehaald\n"
+  + "       omdat het onzin opleverde; zet het niet terug zonder dat opnieuw te wegen.");
 
 // Deze route wordt bij élke keer openen van de takenpagina aangeroepen, tien keer
 // per dag, voor elke klant. Start hij een motor, dan kost het openen van een
@@ -104,12 +106,14 @@ check("de chat leest de koers mee", /koersHtml/.test(chatLib),
 check("de chat leest het oude oppak-lijstje niet meer mee", !/prioHtml/.test(chatLib),
   "Dat veld wordt niet meer bijgehouden; meesturen betekent de assistent een verouderd beeld geven.");
 
-// ── De koers staat open ──
-// Hij zat achter een uitklapper omdat dit blok met drie stroken de planning van
-// het scherm af duwde. Met één strook is dat weg, en een koers die je moet
-// openklikken is een koers die je niet leest.
-check("de koers staat open in plaats van achter een uitklapper", /ov-blok-open/.test(koers),
-  "De koers is de reden dat dit blok bestaat; die hoort niet dichtgeklapt te beginnen.");
+// ── Twee uitklappers, allebei dicht ──
+// De koers stond even open. Dat maakte de takenpagina juist weer lang, want de
+// koers is een heel strategiestuk. Allebei dicht, en wat je openzet blijft per
+// klant onthouden.
+check("de koers en de bronnen zitten allebei achter een uitklapper", /klap\("koers"\)|kop\("koers"/.test(koers),
+  "Zonder uitklapper duwt een lange koers de planning en de chats van het scherm af.");
+check("wat je openzet wordt onthouden per klant", /pingwin-koers-open:\$\{slug\}/.test(koers),
+  "Anders klap je hem elke keer opnieuw open.");
 
 // ── De chats laten zien wanneer ze voor het laatst liepen ──
 // Zonder datum is een gesprek van drie weken terug niet te onderscheiden van dat

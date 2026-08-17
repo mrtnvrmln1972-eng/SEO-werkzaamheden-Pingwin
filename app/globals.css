@@ -5228,16 +5228,6 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 /* De strook "Wat we nu oppakken" is er op 18-08-2026 uit, met alles wat eromheen
    gebouwd was. De opmaak van dat lijstje en van het voorstel eronder is hier dus
    ook weg; zie de uitleg bovenaan KoersBlok.tsx. */
-/* Een strook die altijd openstaat heeft geen kopregel om op te klikken; hij
-   krijgt zijn lucht hier. */
-.ov-blok-open { padding: var(--s-3) 0 var(--s-4); }
-.ov-blok-open:first-of-type { padding-top: 0; }
-.koers-bronnen-blok { padding-bottom: var(--s-2); }
-.koers-bronnen-kop {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
-  color: var(--gray); text-transform: uppercase; letter-spacing: .04em;
-  margin-bottom: var(--s-2);
-}
 /* De chips naar de plekken waar werk klaarligt. Echte links, dus cmd-klik opent
    ze in een nieuw tabblad, precies zoals de rest van de navigatie. */
 .koers-bronnen { display: flex; flex-wrap: wrap; gap: var(--s-2); }

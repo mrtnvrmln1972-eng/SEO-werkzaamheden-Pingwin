@@ -49,7 +49,6 @@ import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
 import LinkPreview from "./LinkPreview";
 import { mdToHtml } from "../../../../lib/markdown";
-import BespreekLijsten from "./BespreekLijsten";
 import FloatVenster from "./FloatVenster";
 import InvoiceAlert from "./InvoiceAlert";
 import SelectionActions from "./SelectionActions";
@@ -546,8 +545,10 @@ export default function ClientCockpit({
             <div className="tk-rechts">
 
             {showMailSections && (<>
-            {/* Bespreeklijsten per persoon. */}
-            <BespreekLijsten slug={client.slug} clientName={client.name} clientEmail={client.email || clientMailQuery} domain={client.domain} />
+            {/* De bespreeklijsten stonden hier. Weggehaald op 18-08-2026: de
+                takenpagina moest korter, en dit blok hoorde bij de vraag "wat wil
+                ik met wie bespreken", niet bij "wat doen we deze periode". Het
+                component staat er nog, dus terugzetten is één regel. */}
 
             {(() => {
               const mailsInner = (

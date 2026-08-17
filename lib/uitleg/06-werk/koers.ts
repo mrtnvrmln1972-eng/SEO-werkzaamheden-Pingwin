@@ -8,16 +8,18 @@ export const BLOKKEN: Uitklapper[] = [
       "De takenpagina is de plek waar de meeste tijd doorgebracht wordt. Die vertelde wel wat er op de " +
       "planning stond, maar niet waaróm: de afgesproken koers en de landingspagina's stonden een tabblad " +
       "verderop, en de schermen waar werk klaarligt weer twee tabbladen terug. Bovenaan staat daarom de " +
-      "koers, met daaronder de weg naar het werk.\n\n" +
+      "koers, met daaronder de weg naar het werk. Allebei achter een uitklapper die dicht begint: de koers is "
+      + "vaak een heel strategiestuk, en opengeklapt duwt die de planning en de gesprekken van het scherm af. "
+      + "Wat je openzet blijft per klant onthouden.\n\n" +
       "**De koers** is een kort stuk tekst in eigen woorden: waar zetten we op in, welke pagina's zijn " +
       "afgesproken, wat doen we bewust niet. Hij is met de hand geschreven en dat blijft zo. Je vult hem " +
       "door te knippen en te plakken: een strategie die in een gesprek is uitgewerkt, of de afspraken over " +
       "zoekwoorden en landingspagina's die in **Overzicht** staan. Geplakte tekst houdt zijn opmaak, dus " +
       "kopjes, opsommingen en tabellen komen er net zo netjes in te staan als waar je ze vandaan haalt.\n\n" +
-      "Er zit één knop bij, **Klopt dit nog?**, die de tekst naast de feiten legt die het dashboard al " +
-      "heeft liggen en alleen zegt wat er niet meer klopt (een pagina die er inmiddels staat, een doel dat " +
-      "gehaald is). Dat commentaar verschijnt náást de tekst en nooit erin. Dat is een harde grens: een " +
-      "koers die door een model herschreven mag worden, is na twee rondes niet meer van jou.\n\n" +
+      "Er zit geen enkele motor aan. Er was een knop **Klopt dit nog?** die de koers naast de opgeslagen " +
+      "feiten legde en er commentaar bij zette; die is er op 18 augustus 2026 uit, samen met de route " +
+      "erachter. Bij Kamsteeg leverde één klik vijf opmerkingen op die nergens over gingen, en een controle " +
+      "die je moet wegdenken kost aandacht zonder iets terug te geven.\n\n" +
       "**Waar het werk vandaan komt** is een rij doorklikjes onder de koers: naar de prioriteitenscan, " +
       "Meta & CTR, Opruimen, Interne links en de navigatie-roadmap (die heet daar *Nog te bouwen " +
       "pagina's*), met per plek het aantal dat er ligt. Van daaruit zet je iets op de planning. Die " +

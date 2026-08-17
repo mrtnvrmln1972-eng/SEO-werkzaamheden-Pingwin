@@ -1,47 +1,39 @@
 "use client";
 
 // ═══════════════════════════════════════════════════════════
-// DE KOERS, bovenaan de takenpagina
+// WAAR WE NAARTOE WERKEN, bovenaan de takenpagina
 // ═══════════════════════════════════════════════════════════
-// Eén veld met de grote lijn voor deze klant, in Maartens eigen woorden, en
-// eronder de knoppen naar de plekken waar werk klaarligt.
+// Eén kaart met twee uitklappers, allebei dicht tot je ze opent:
+//   1. De koers               : de grote lijn, Maartens eigen tekst
+//   2. Waar het werk vandaan komt : de plekken met werkvoorraad, met het
+//                                   aantal dat er ligt, om door te klikken
 //
-// ── Wat hier weg is, en waarom (18 augustus 2026) ──
-// Hier stonden drie stroken: de koers, "Wat we nu oppakken", en waar het werk
-// vandaan komt. Die middelste is eruit, met alles wat eromheen gebouwd was: de
-// knop "Bijwerken" (die een model een nieuw lijstje liet voorstellen), de rode
-// seintjes met "hierna is er nog iets bepaald", de knop "Dit klopt al" die een
-// streep in de tijd zette, en de bijbehorende routes en opslag.
+// ── Wat hier weg is, en waarom ──
+// 18-08-2026, ronde 1. Hier zat een derde strook, "Wat we nu oppakken": een
+// vrij tekstveld met een generator, een verouderings-seintje en een
+// streep-in-de-tijd eromheen. Vier mechanismen voor één veld dat je toch met de
+// hand bijhoudt, en de uitkomst was dat er bij Kamsteeg een strategie stond die
+// op 5 augustus klopte en op 16 augustus herzien was, met vier rode
+// uitroeptekens erboven waarvan er één naar precies dat ingehaalde gesprek wees.
+// Het systeem kon niet weten dat het ene gesprek het andere overrulet.
 //
-// Dat was vier mechanismen voor één veld dat je toch met de hand bijhoudt, en
-// het werkte precies verkeerd om: bij Kamsteeg stond er een strategie in die op
-// 5 augustus klopte en op 16 augustus herzien was, met vier rode uitroeptekens
-// erboven waarvan er één naar een gesprek wees dat door een later gesprek al
-// was ingehaald. Het systeem kon dat niet weten en zette ze allemaal even hard
-// neer. Een veld dat je zelf bijhoudt plus een generator plus een
-// verouderings-seintje plus een verwerkt-stempel geeft geen overzicht; het geeft
-// werk aan het overzicht.
+// 18-08-2026, ronde 2. Ook de knop "Klopt dit nog?" is eruit. Die legde de koers
+// naast wat het dashboard al wist en zette het commentaar ernaast. Bij Kamsteeg
+// leverde één klik vijf opmerkingen op die nergens over gingen. Een controle die
+// je moet wegdenken is erger dan geen controle: hij kost aandacht en geeft niets
+// terug. De route `/api/admin/koers-check` is mee weggehaald, want een knop
+// weghalen en de motor laten staan is precies hoe er dode code blijft liggen.
 //
-// De verdeling is nu drie lagen die elkaar niet overlappen:
-//   1. DE KOERS      : de grote lijn. Handwerk, verandert alleen als Maarten
-//                      hem verandert. Komt uit een chat of uit "Overzicht",
-//                      met knippen en plakken.
-//   2. WAAR HET WERK : wat er klaarligt, geteld uit wat al is opgeslagen.
-//      VANDAAN KOMT    Doorklikken en van daaruit op de planning zetten.
-//   3. DE PLANNING   : wat we deze periode echt doen (eigen blok, links).
-//
-// De tekst van het oude lijstje is NIET weggegooid: hij staat gewoon nog in de
-// opslag en in de versiehistorie op /admin/veld-herstel. Alleen niets leest hem
-// nog.
+// De verdeling is nu drie lagen die elkaar niet overlappen: de koers is de grote
+// lijn, de knoppenrij is waar werk klaarligt, en de planning (eigen blok) is wat
+// we deze periode doen.
 //
 // Het veld zelf is `FocusBlock`, hetzelfde component als "Overzicht". Bewust
 // geen tweede editor: dat veld heeft al twee keer inhoud gekost en de reparatie
 // daarvan (herstelStructuur, opslaan op vier momenten, versiehistorie) zit dáár.
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import FocusBlock from "./FocusBlock";
-import { Signalen } from "../../../_ui/Uitkomst";
-import { htmlNaarTekst } from "../../../../lib/veilige-html";
 
 type WerkPost = { sleutel: string; label: string; aantal: number | null; tab: string; uitleg: string };
 
@@ -50,47 +42,49 @@ export default function KoersBlok({ slug, onGaNaarTab }: {
   /** Binnen de cockpit van tab wisselen zonder de pagina te herladen. */
   onGaNaarTab?: (tab: string) => void;
 }) {
-  const [koersHtml, setKoersHtml] = useState("");
-  const [commentaar, setCommentaar] = useState<string[]>([]);
-  const [checkBezig, setCheckBezig] = useState(false);
-  const [fout, setFout] = useState("");
+  // Allebei dicht. Ze duwen anders de planning en de chats van het scherm af,
+  // terwijl je hier meestal komt voor het werk eronder. Wat je openzet, blijft
+  // per klant onthouden.
+  const [open, setOpen] = useState({ koers: false, bronnen: false });
+  const sleutelOpen = `pingwin-koers-open:${slug}`;
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(sleutelOpen);
+      const v = s ? JSON.parse(s) as Partial<typeof open> : null;
+      setOpen({ koers: !!v?.koers, bronnen: !!v?.bronnen });
+    } catch { /* geen opslag, dan gewoon dicht */ }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [sleutelOpen]);
+  function klap(sleutel: "koers" | "bronnen") {
+    setOpen((v) => {
+      const n = { ...v, [sleutel]: !v[sleutel] };
+      try { localStorage.setItem(sleutelOpen, JSON.stringify(n)); } catch { /* geen opslag */ }
+      return n;
+    });
+  }
+
   const [posten, setPosten] = useState<WerkPost[] | null>(null);
 
+  // Pas tellen als je de strook openzet. Het is een goedkope leesopdracht, maar
+  // hij hoeft niet te draaien voor een blok dat dicht is.
   useEffect(() => {
+    if (!open.bronnen || posten !== null) return;
     let off = false;
-    setPosten(null);
     fetch(`/api/admin/werkvoorraad?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((d) => { if (!off && d.ok) setPosten(d.posten as WerkPost[]); })
       .catch(() => { /* een chip zonder cijfer is geen reden om het blok te verbergen */ });
     return () => { off = true; };
-  }, [slug]);
+  }, [slug, open.bronnen, posten]);
 
-  // Wissel je van klant, dan hoort het commentaar van de vorige klant weg.
-  useEffect(() => { setCommentaar([]); setFout(""); }, [slug]);
+  useEffect(() => { setPosten(null); }, [slug]);
 
-  const pakKoers = useCallback((h: string) => setKoersHtml(h), []);
-
-  async function checkKoers() {
-    if (checkBezig) return;
-    setCheckBezig(true); setFout(""); setCommentaar([]);
-    try {
-      const d = await fetch("/api/admin/koers-check", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug }),
-      }).then((r) => r.json());
-      if (!d.ok) { setFout(d.error || "De controle is niet gelukt."); return; }
-      const regels = String(d.commentaar || "").split("\n")
-        .map((r: string) => r.replace(/^[-•*\s]+/, "").trim()).filter(Boolean);
-      setCommentaar(regels.length ? regels : ["Er is niets gevonden dat tegen je koers in gaat."]);
-    } catch {
-      setFout("De controle is niet gelukt.");
-    } finally {
-      setCheckBezig(false);
-    }
-  }
-
-  const heeftKoers = htmlNaarTekst(koersHtml).trim().length > 0;
+  const kop = (sleutel: "koers" | "bronnen", titel: string) => (
+    <button type="button" className="strategy-head" onClick={() => klap(sleutel)}>
+      <span className="strategy-caret">{open[sleutel] ? "▾" : "▸"}</span>
+      <span className="strategy-title">{titel}</span>
+    </button>
+  );
 
   return (
     <div className="cockpit-card ovc-card koers-card">
@@ -102,60 +96,49 @@ export default function KoersBlok({ slug, onGaNaarTab }: {
             <path d="M6 21h12" strokeLinecap="round" />
           </svg>
         </span>
-        <span className="ovc-title">De koers</span>
+        <span className="ovc-title">Waar we naartoe werken</span>
       </div>
 
-      {/* De koers staat open. Hij stond achter een uitklapper omdat dit blok
-          met drie stroken de planning van het scherm af duwde; met één strook
-          is dat weg, en een koers die je moet openklikken is een koers die je
-          niet leest. */}
-      <div className="ov-blok ov-blok-open">
-        <div className="pnl-acties-groep">
-          <button type="button" className="btn btn-ghost btn-klein"
-            disabled={checkBezig || !heeftKoers}
-            title={heeftKoers
-              ? "Legt je tekst naast wat het dashboard al weet en zegt wat er niet meer klopt. Schrijft nooit in je tekst."
-              : "Schrijf eerst in een paar regels waar we naartoe werken."}
-            onClick={() => void checkKoers()}>
-            {checkBezig ? "Bezig met nakijken…" : "Klopt dit nog?"}
-          </button>
-        </div>
-        <FocusBlock kaal slug={slug} soort="koers" onInhoud={pakKoers} />
-        {/* Commentaar staat NAAST de tekst, nooit erin: de koers blijft van
-            Maarten. Zodra een model erin mag schrijven, is hij na twee rondes
-            niet meer van hem. */}
-        <Signalen regels={commentaar} soort="notitie" />
-        {fout && <Signalen regels={[fout]} soort="let-op" />}
+      {/* ── 1. De koers ───────────────────────────────────────── */}
+      <div className="ov-blok">
+        {kop("koers", "De koers")}
+        {open.koers && (
+          <div className="strategy-body">
+            <FocusBlock kaal slug={slug} soort="koers" />
+          </div>
+        )}
       </div>
 
-      {/* ── Waar het werk vandaan komt ─────────────────────────
-          Geen uitklapper meer maar gewoon een rij knoppen onder de koers: het
-          is één regel hoog en het is de weg naar de planning. */}
-      <div className="ov-blok ov-blok-open koers-bronnen-blok">
-        <div className="koers-bronnen-kop">Waar het werk vandaan komt</div>
-        <div className="koers-bronnen">
-          {(posten || []).map((p) => {
-            const href = p.tab
-              ? `/admin/client/${slug}?tab=${p.tab}`
-              : `/admin/client/${slug}/navigatie`;
-            // "Nog niet gedraaid" en "0" betekenen iets heel anders. Een 0 die
-            // eigenlijk onbekend is, is precies het cijfer waarop je iets ten
-            // onrechte laat liggen.
-            const cijfer = p.aantal === null ? "nog niet gedraaid" : String(p.aantal);
-            return (
-              <a key={p.sleutel} className="btn btn-ghost btn-klein koers-bron"
-                href={href} title={p.uitleg}
-                onClick={(e) => {
-                  if (!onGaNaarTab || !p.tab || e.metaKey || e.ctrlKey || e.shiftKey) return;
-                  e.preventDefault(); onGaNaarTab(p.tab);
-                }}>
-                <span>{p.label}</span>
-                <span className={"koers-bron-telling" + (p.aantal ? " vol" : "")}>{cijfer}</span>
-              </a>
-            );
-          })}
-        </div>
-        {posten === null && <div className="koers-bronnen-laden">Bezig met tellen…</div>}
+      {/* ── 2. Waar het werk vandaan komt ─────────────────────── */}
+      <div className="ov-blok">
+        {kop("bronnen", "Waar het werk vandaan komt")}
+        {open.bronnen && (
+          <div className="strategy-body">
+            <div className="koers-bronnen">
+              {(posten || []).map((p) => {
+                const href = p.tab
+                  ? `/admin/client/${slug}?tab=${p.tab}`
+                  : `/admin/client/${slug}/navigatie`;
+                // "Nog niet gedraaid" en "0" betekenen iets heel anders. Een 0 die
+                // eigenlijk onbekend is, is precies het cijfer waarop je iets ten
+                // onrechte laat liggen.
+                const cijfer = p.aantal === null ? "nog niet gedraaid" : String(p.aantal);
+                return (
+                  <a key={p.sleutel} className="btn btn-ghost btn-klein koers-bron"
+                    href={href} title={p.uitleg}
+                    onClick={(e) => {
+                      if (!onGaNaarTab || !p.tab || e.metaKey || e.ctrlKey || e.shiftKey) return;
+                      e.preventDefault(); onGaNaarTab(p.tab);
+                    }}>
+                    <span>{p.label}</span>
+                    <span className={"koers-bron-telling" + (p.aantal ? " vol" : "")}>{cijfer}</span>
+                  </a>
+                );
+              })}
+            </div>
+            {posten === null && <div className="koers-bronnen-laden">Bezig met tellen…</div>}
+          </div>
+        )}
       </div>
     </div>
   );
