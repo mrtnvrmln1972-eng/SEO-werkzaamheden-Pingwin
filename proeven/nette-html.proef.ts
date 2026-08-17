@@ -19,7 +19,7 @@
 // voor zijn eigen scherm geldt, of rendert tekst even snel met een eigen regel.
 // Vandaar deze proef.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { netteHtml, isAlHtml } from "../lib/nette-html";
 
@@ -86,6 +86,60 @@ for (const b of bronnen) {
     "De regel die bepaalt of iets al HTML is, hoort alleen in lib/nette-html.ts te staan.",
   );
 }
+
+// ── 2b. Een nieuw scherm kan geen zesde manier verzinnen ─────────────────────
+// Elke plek die HTML op het scherm zet gaat door de gedeelde poort of de gedeelde
+// renderer. Wat er van vóór 17-08-2026 nog buitenom gaat, staat in
+// `render-erfenis.json`, en die lijst mag alleen korter worden.
+type Erfenis = { toegestaan: string[]; vrijgesteld: Record<string, string> };
+const erfenis = JSON.parse(readFileSync(join(__dirname, "render-erfenis.json"), "utf8")) as Erfenis;
+
+function alleTsx(map: string): string[] {
+  const uit: string[] = [];
+  for (const naam of readdirSync(map, { withFileTypes: true })) {
+    const pad = join(map, naam.name);
+    if (naam.isDirectory()) uit.push(...alleTsx(pad));
+    else if (naam.name.endsWith(".tsx")) uit.push(pad);
+  }
+  return uit;
+}
+
+const buitenom: string[] = [];
+const schoonGeworden: string[] = [];
+for (const pad of alleTsx(join(WORTEL, "app"))) {
+  const relatief = pad.slice(WORTEL.length + 1);
+  const inhoud = readFileSync(pad, "utf8");
+  const aanroepen = inhoud.match(/dangerouslySetInnerHTML=\{\{\s*__html:\s*([A-Za-z_$][\w$]*)/g) || [];
+  if (!aanroepen.length) continue;
+  // Een kort hulpje in het bestand zelf mag, zolang het niets anders doet dan de
+  // poort aanroepen (bijvoorbeeld `const puntHtml = (t) => netteHtml(t, ...)`).
+  // Dat is geen tweede manier, dat is dezelfde manier met een kortere naam.
+  const doorgeefluik = (naam: string) => {
+    const def = new RegExp(`(const|function)\\s+${naam}\\b[^\\n]*(\\n[^\\n]*){0,4}`).exec(inhoud);
+    return !!def && erfenis.toegestaan.some((goed) => def[0].includes(`${goed}(`));
+  };
+  const eigen = aanroepen
+    .map((a) => a.replace(/[\s\S]*__html:\s*/, ""))
+    .filter((naam) => !erfenis.toegestaan.includes(naam) && !doorgeefluik(naam));
+  const vrijgesteld = relatief in erfenis.vrijgesteld;
+  if (eigen.length && !vrijgesteld) buitenom.push(`${relatief} (${[...new Set(eigen)].join(", ")})`);
+  if (!eigen.length && vrijgesteld) schoonGeworden.push(relatief);
+}
+
+proef(
+  "geen enkel scherm zet HTML op het scherm buiten de gedeelde poort om",
+  buitenom.length === 0,
+  buitenom.length
+    ? `Deze plek(ken) renderen zelf:\n     | ${buitenom.join("\n     | ")}\n     | Gebruik netteHtml uit lib/nette-html.ts, of zet het bestand met een reden in\n     | proeven/render-erfenis.json als het écht een losse regel of een echte mail is.`
+    : "",
+);
+proef(
+  "de erfenislijst bevat niets wat allang schoon is",
+  schoonGeworden.length === 0,
+  schoonGeworden.length
+    ? `Haal deze uit proeven/render-erfenis.json, dan kan het niet meer terugvallen:\n     | ${schoonGeworden.join("\n     | ")}`
+    : "",
+);
 
 // ── 3. Eén uiterlijk op het scherm ───────────────────────────────────────────
 const css = readFileSync(join(WORTEL, "app", "globals.css"), "utf8");

@@ -1,0 +1,40 @@
+{
+  "_uitleg": [
+    "Plekken die HTML op het scherm zetten zonder de gedeelde poort (netteHtml) of de",
+    "gedeelde renderer (mdToHtml). Deze lijst is een ratel: hij mag korter worden en",
+    "nooit langer. Zet je een scherm om, haal het er dan af; de proef meldt zelf als",
+    "een bestand eraf kan.",
+    "",
+    "Twee soorten staan er met opzet in, en die hoeven NIET omgezet te worden:",
+    "  - losse regel: een pad, een cijferregel of een korte reden op één regel. Daar",
+    "    hoort geen alinea of kop in, dus escapen plus links leggen is juist goed.",
+    "  - echte mail: HTML die uit Outlook komt. Die mag je niet opnieuw renderen,",
+    "    anders verandert het bericht dat de ontvanger zag.",
+    "De rest is werk dat nog moet gebeuren; die staan hieronder met 'nog omzetten'."
+  ],
+  "toegestaan": [
+    "netteHtml",
+    "mdToHtml",
+    "cardInfoHtml"
+  ],
+  "vrijgesteld": {
+    "app/admin/client/[slug]/Bronnenstrip.tsx": "losse regel",
+    "app/admin/client/[slug]/TakenVoorstel.tsx": "losse regel",
+    "app/admin/client/[slug]/MailControlePanel.tsx": "losse regel + concept-mail",
+    "app/admin/client/[slug]/ClientCockpit.tsx": "echte mail",
+    "app/admin/client/[slug]/PageChat.tsx": "echte mail",
+    "app/admin/client/[slug]/OverviewChat.tsx": "losse regel (de vraag compact, met kernwoorden vet)",
+    "app/admin/client/[slug]/page.tsx": "geen tekst, maar een klein script vooraf",
+    "app/admin/veld-herstel/VeldHerstelClient.tsx": "toont een opgeslagen versie precies zoals hij bewaard is",
+    "app/admin/routekaart/RoutekaartClient.tsx": "nog omzetten",
+    "app/admin/developer/DeveloperOverview.tsx": "nog omzetten (cel van één regel hoog)",
+    "app/admin/client/[slug]/PagesPanel.tsx": "losse regel naast het omgezette plan",
+    "app/admin/client/[slug]/weekplan-kaart/KaartOverDeze.tsx": "nog omzetten",
+    "app/admin/client/[slug]/KpiPanel.tsx": "nog omzetten",
+    "app/admin/client/[slug]/pagina-chat/CannibalisatieKaart.tsx": "nog omzetten",
+    "app/admin/client/[slug]/pagina-chat/StrategieKaart.tsx": "nog omzetten",
+    "app/admin/client/[slug]/PaginaDossier.tsx": "nog omzetten",
+    "app/admin/client/[slug]/AntwoordBlokken.tsx": "nog omzetten",
+    "app/dashboard/Dashboard.tsx": "nog omzetten"
+  }
+}

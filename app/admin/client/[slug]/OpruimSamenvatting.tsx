@@ -13,7 +13,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { mdToHtml } from "../../../../lib/markdown";
-import { linkifyHtml } from "../../../../lib/linkify";
+import { netteHtml } from "../../../../lib/nette-html";
 
 /**
  * De AI-samenvatting leesbaar maken. Twee patronen komen vast terug:
@@ -119,7 +119,7 @@ export default function OpruimSamenvatting({
       {samenvatting && (
         <details className="opr-details">
           <summary>De uitgebreide bevindingen per zoekwoord</summary>
-          <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: linkifyHtml(mdToHtml(alsPunten(samenvatting)), domain) }} />
+          <div className="cannibal-summary md" dangerouslySetInnerHTML={{ __html: netteHtml(alsPunten(samenvatting), { basis: domain }) }} />
         </details>
       )}
     </div>
