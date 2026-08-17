@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DevTask } from "../../../lib/developer";
 import RijkTekstVeld from "../../_velden/RijkTekstVeld";
+import { netteHtml } from "../../../lib/nette-html";
 import OntwikkelMenu from "../OntwikkelMenu";
 import Tellers from "../Tellers";
 import MeldingenMenu from "../MeldingenMenu";
@@ -102,6 +103,33 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   const [afgerondOpen, setAfgerondOpen] = useState<Record<string, boolean>>({});
   // De taak waarover gemaild wordt; niet-leeg betekent: mailvenster staat open.
   const [mailVoor, setMailVoor] = useState<{ r: Row; note: string } | null>(null);
+  // Welke taak op dit moment van de lijst wordt gehaald (dan gaat de knop op slot,
+  // zodat één klik niet twee keer aankomt).
+  const [wegBezig, setWegBezig] = useState<string>("");
+
+  // Een taak van de lijst halen zonder hem eerst te openen. Wat er precies
+  // gebeurt hangt af van waar de taak vandaan komt, en dat staat ook in de vraag:
+  // een zelf aangemaakte taak bestaat alleen hier en gaat echt weg, een
+  // doorgezette kaart gaat alleen van deze lijst af en blijft in de weekplanning
+  // staan. De keuze zat hiervoor achter "Bekijk", dus voor de meest voorkomende
+  // handeling (dit hoeft niet meer) moest je eerst een venster openen.
+  async function taakVanLijst(r: Row) {
+    const sleutel = r.clientSlug + "|" + r.taskKey;
+    if (wegBezig) return;
+    const kort = stripText(r.taak).slice(0, 80);
+    if (!window.confirm(r.eigen
+      ? `"${kort}" weggooien? Deze taak bestaat alleen hier, dus hij is daarna weg.`
+      : `"${kort}" van de developerlijst halen? De kaart zelf blijft in de weekplanning staan.`)) return;
+    setWegBezig(sleutel);
+    try {
+      const d = await fetch("/api/admin/developer", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verwijder", clientSlug: r.clientSlug, taskKey: r.taskKey }),
+      }).then((x) => x.json()).catch(() => null);
+      if (d?.ok) zetLijst((d.tasks as DevTask[]) || []);
+      else window.alert(d?.error || "Dat lukte niet. Probeer het nog een keer.");
+    } finally { setWegBezig(""); }
+  }
 
   // "Is dit doorgevoerd?": dezelfde meting als op de projectkaart in de
   // weekplanning, maar dan met één klik vanuit deze lijst, zodat je niet voor
@@ -289,6 +317,22 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   rows.forEach((r, idx) => { if (r.ownerDone) return; if (r.execDate) { if (!tasksByDay.has(r.execDate)) tasksByDay.set(r.execDate, []); tasksByDay.get(r.execDate)!.push({ r, idx }); } });
   const undated = rows.map((r, idx) => ({ r, idx })).filter((x) => !x.r.ownerDone && !x.r.execDate);
 
+  // De weghaal-knop, in de rij én op de weekkaart dezelfde. Onomkeerbaar, dus
+  // .btn-danger, en het label zegt wat er echt gebeurt: een zelf aangemaakte taak
+  // gaat weg, een doorgezette kaart gaat alleen van deze lijst af.
+  const wegKnop = (r: Row) => {
+    const bezig = wegBezig === r.clientSlug + "|" + r.taskKey;
+    return (
+      <button type="button" className="btn btn-danger btn-klein" disabled={bezig}
+        onClick={(e) => { e.stopPropagation(); void taakVanLijst(r); }}
+        title={r.eigen
+          ? "Deze taak bestaat alleen hier en wordt echt weggegooid."
+          : "Haalt de taak van de developerlijst af. De kaart zelf blijft in de weekplanning staan."}>
+        {bezig ? "Bezig…" : r.eigen ? "Weggooien" : "Van de lijst"}
+      </button>
+    );
+  };
+
   const taskCard = (r: Row, idx: number) => (
     <div key={r.clientSlug + "|" + r.taskKey} className={"dev-task-card " + (r.devDone ? "dev-done" : "dev-todo")}>
       <div className="dev-task-top">
@@ -306,7 +350,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             in dit compacte kaartje: de titel hierboven is genoeg om de taak te
             herkennen. Dit stipje laat alleen zien dát er een opmerking is; de
             hele tekst lees je via "Bewerk". */}
-        {stripText(r.toelichting) && <span className="dev-task-note-stip" title="Er staat een opmerking bij deze taak; open Bewerk om hem te lezen">···</span>}
+        {(stripText(r.toelichting) || stripText(r.kaartOpm)) && <span className="dev-task-note-stip" title="Er staat een opmerking bij deze taak; open Bekijk om hem te lezen">···</span>}
       </div>
       {/* De documenten die bij deze taak horen. Een opdracht als "zet de nieuwe
           copy live" zonder de copy erbij is geen opdracht; dan moet de
@@ -326,6 +370,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
           <button type="button" className="btn btn-ghost btn-klein" onClick={() => void controleer(r)} title="Meet de live pagina op wat er is afgesproken">Is dit doorgevoerd?</button>
         )}
+        {wegKnop(r)}
       </div>
     </div>
   );
@@ -343,11 +388,12 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         <col style={{ width: "72px" }} />
         <col style={{ width: "80px" }} />
         <col style={{ width: "150px" }} />
-        {/* De knoppenrij (Bekijk, Mail, Controleer) staat op één regelhoogte en
-            mag niet omslaan; deze kolom is dus zo breed dat alle drie erin passen.
-            De tabel staat op table-layout: fixed, dus zonder deze breedte valt de
-            laatste knop buiten beeld in plaats van dat de kolom meegroeit. */}
-        <col style={{ width: "270px" }} />
+        {/* De knoppenrij (Bekijk, Mail, Controleer, Van de lijst) staat op één
+            regelhoogte en mag niet omslaan; deze kolom is dus zo breed dat alle
+            vier erin passen. De tabel staat op table-layout: fixed, dus zonder
+            deze breedte valt de laatste knop buiten beeld in plaats van dat de
+            kolom meegroeit. */}
+        <col style={{ width: "376px" }} />
       </colgroup>
       <thead>
         <tr>
@@ -392,6 +438,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         {kaartIdVan(r) && r.link && /^https?:/i.test(r.link) && (
           <button type="button" className="btn btn-ghost btn-klein" onClick={(e) => { e.stopPropagation(); void controleer(r); }} title="Meet de live pagina op wat er is afgesproken">Controleer</button>
         )}
+        {wegKnop(r)}
       </td>
     </tr>
   );
@@ -647,6 +694,10 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
   const [msg, setMsg] = useState("");
   const bestandRef = useRef<HTMLInputElement | null>(null);
   const eigen = taak ? !!taak.eigen : true;
+  const kaartOpm = taak?.kaartOpm || "";
+  // Overnemen levert dezelfde HTML op als het veld zelf maakt, zodat er geen
+  // tweede soort opmaak in dat veld terechtkomt.
+  const kaartHtml = netteHtml(kaartOpm);
 
   // De lijst komt na elke wijziging compleet terug; daar halen we de documenten
   // van déze taak weer uit, zodat het venster laat zien wat er echt hangt.
@@ -753,6 +804,22 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
           <label className="compose-label">Taak: wat moet er gebeuren</label>
           <RijkTekstVeld waarde={tekst} onChange={setTekst} klasse="dev-veld-rijk" placeholder="Bijvoorbeeld: vervang de header-afbeelding op de homepage" autoFocus={!taak} />
 
+          {/* Wat de kaart in de weekplanning meegaf. Stond hiervoor als
+              voorgevulde tekst in het invulveld hieronder, dus Maarten opende dit
+              venster met een waslijst in zijn eigen veld die hij eerst moest
+              weghalen. Hier is hij te lezen (ook voor de sitebouwer) en over te
+              nemen met één knop, maar hij zit niemand in de weg. */}
+          {kaartOpm.trim() && (
+            <div className="dev-kaart-opm">
+              <div className="dev-kaart-opm-kop">
+                <span>Uit de kaart in de weekplanning</span>
+                <button type="button" className="btn btn-quiet btn-klein" title="Zet deze tekst onder in je eigen opmerking, dan kun je hem aanpassen"
+                  onClick={() => setOpm((h) => (stripText(h) ? h + kaartHtml : kaartHtml))}>Overnemen</button>
+              </div>
+              <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(kaartOpm) }} />
+            </div>
+          )}
+
           <label className="compose-label">Opmerking voor de developer</label>
           <RijkTekstVeld waarde={opm} onChange={setOpm} klasse="dev-veld-rijk" placeholder="Achtergrond, aandachtspunten, links naar documenten (plakken mag)" />
 
@@ -769,7 +836,8 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
                     {docs.map((d) => (
                       <li key={d.url}>
                         <a href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label}>{d.label}</a>
-                        <button type="button" className="dev-doc-weg" onClick={() => void docWeg(d.url)} title="Van deze taak afhalen">&times;</button>
+                        <button type="button" className="dev-doc-weg" onClick={() => void docWeg(d.url)} disabled={!!busy}
+                          title="Van deze taak afhalen (het document zelf blijft bestaan)">&times;</button>
                       </li>
                     ))}
                   </ul>
@@ -786,7 +854,7 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
                   </span>
                 </div>
                 <p className="muted dev-doc-hint">
-                  Documenten die het dashboard zelf bij de pagina vindt (copy, blauwdruk, analyse) blijven staan; die horen bij de pagina, niet bij deze ene taak.
+                  Het kruisje haalt een document van déze taak af, ook de documenten die het dashboard zelf bij de pagina vond (de pagina, de copy, de blauwdruk, de analyse). Het document zelf blijft gewoon bestaan en blijft bij de pagina staan.
                 </p>
               </>
             )}

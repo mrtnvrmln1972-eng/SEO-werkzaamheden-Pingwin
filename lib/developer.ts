@@ -20,7 +20,23 @@ export type DevTask = {
   clientName: string;
   taskKey: string;
   taak: string;        // rauwe HTML (kan inline links bevatten)
-  toelichting: string; // Opm. developer (rauwe HTML, kan inline links bevatten)
+  /**
+   * De opmerking die Maarten (of de developer) ZELF bij deze taak heeft getypt.
+   * Leeg is leeg: hier komt nooit automatisch tekst in te staan.
+   *
+   * Dat was wél zo, en dat was fout. Bij een doorgezette kaart uit de
+   * weekplanning stond hier de door de chat bedachte "Bouw:"-regel uit die
+   * kaart, dus Maarten opende het taakvenster en vond een waslijst in zijn eigen
+   * invulveld die hij eerst moest weggooien. Die kaarttekst staat nu apart in
+   * `kaartOpm`: te lezen, over te nemen met één knop, maar geen voorvulling.
+   */
+  toelichting: string;
+  /**
+   * Wat de kaart in de weekplanning meegaf over de bouw (alleen lezen, komt uit
+   * `devSturing`). Staat naast het eigen opmerkingveld in het taakvenster, zodat
+   * de sitebouwer hem gewoon blijft zien.
+   */
+  kaartOpm: string;
   uren: number | null;
   status: string;
   maand: string;
@@ -95,6 +111,16 @@ async function ensureDevTable(): Promise<void> {
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS toel_edit TEXT`;
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS link_edit TEXT`;
   await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS extra_docs JSONB`;
+  //  - docs_uit = de documenten die Maarten van DEZE taak heeft afgehaald.
+  //
+  // Waarom een aparte lijst en niet gewoon "uit extra_docs halen": de meeste
+  // documenten bij een taak zijn niet zelf toegevoegd, maar door het dashboard
+  // bij de pagina gevonden (de pagina zelf, de copy, de blauwdruk, de analyse).
+  // Die kun je niet "verwijderen", want ze worden elke keer opnieuw gevonden. Het
+  // kruisje deed daarom stilletjes niets: je klikte, de lijst kwam terug, en het
+  // document stond er nog. Een lijst met wat er níet meer bij hoort werkt voor
+  // alle drie de soorten hetzelfde, en het document zelf blijft gewoon bestaan.
+  await sql`ALTER TABLE developer_overview ADD COLUMN IF NOT EXISTS docs_uit JSONB`;
 }
 
 /**
@@ -254,12 +280,13 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
 
   const meta = await sql`
     SELECT client_slug, task_key, position, exec_date, dev_done, dev_note, owner_done,
-           eigen, taak_edit, toel_edit, link_edit, extra_docs
+           eigen, taak_edit, toel_edit, link_edit, extra_docs, docs_uit
     FROM developer_overview`;
   type Meta = {
     position: number | null; execDate: string; devDone: boolean; devNote: string; ownerDone: boolean;
     eigen: boolean; taakEdit: string; toelEdit: string; linkEdit: string;
     extraDocs: { label: string; url: string }[];
+    docsUit: string[];
   };
   const metaMap = new Map<string, Meta>();
   for (const m of meta.rows) {
@@ -274,6 +301,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       toelEdit: (m.toel_edit as string) || "",
       linkEdit: (m.link_edit as string) || "",
       extraDocs: Array.isArray(m.extra_docs) ? (m.extra_docs as { label: string; url: string }[]) : [],
+      docsUit: Array.isArray(m.docs_uit) ? (m.docs_uit as unknown[]).map((u) => String(u)) : [],
     });
   }
 
@@ -287,7 +315,10 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       clientName: (r.client_name as string) ?? slug,
       taskKey: key,
       taak,
+      // Bij een taak uit Werkzaamheden is dit de kolom "Opm. developer", en die
+      // vult Maarten daar zelf in; dat is dus wél zijn eigen tekst.
       toelichting: (r.toelichting as string) ?? "",
+      kaartOpm: "",
       uren: r.uren === null ? null : Number(r.uren),
       status: (r.status as string) ?? "",
       maand: (r.maand as string) ?? "",
@@ -340,10 +371,14 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       // De doorgeefversie wint: die heeft Maarten bij het doorzetten zelf
       // bijgesteld. Staat die er niet, dan de kaart zelf.
       taak: (r.dev_taak as string) || (r.taak as string) || "",
+      // Alleen wat er bij het doorzetten zelf is getypt. Stond hier niets, dan
+      // blijft dit leeg: de kaarttekst hoort niet in Maartens eigen invulveld,
+      // maar in `kaartOpm` ernaast.
+      toelichting: (r.dev_toelichting as string) || "",
       // Alleen de sturing voor de bouw, niet het hele verhaal. De kaart bevat
       // achtergrond, cijfers en de aanpak per fase; een sitebouwer heeft daar niets
       // aan en moet gewoon weten wát hij moet doen.
-      toelichting: (r.dev_toelichting as string) || devSturing((r.toelichting as string) ?? ""),
+      kaartOpm: devSturing((r.toelichting as string) ?? ""),
       uren: null,
       // Een doorgezette kaart telt als open dev-werk, tenzij de developer hem afvinkte.
       status: mm?.devDone ? "klaar" : "naar dev",
@@ -379,6 +414,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
         taskKey: m.task_key as string,
         taak: mm.taakEdit,
         toelichting: mm.toelEdit,
+        kaartOpm: "",
         uren: null,
         status: mm.devDone ? "klaar" : "naar dev",
         maand: "",
@@ -407,10 +443,20 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
     t.bewerkt = !!(mm.taakEdit || mm.toelEdit || mm.linkEdit);
   }
   for (const t of list) {
-    const extra = metaMap.get(t.clientSlug + "|" + t.taskKey)?.extraDocs || [];
-    if (!extra.length) continue;
-    const gezien = new Set(t.docs.map((d) => d.url));
-    for (const d of extra) if (d && d.url && !gezien.has(d.url)) { gezien.add(d.url); t.docs.push(d); }
+    const mm = metaMap.get(t.clientSlug + "|" + t.taskKey);
+    const extra = mm?.extraDocs || [];
+    if (extra.length) {
+      const gezien = new Set(t.docs.map((d) => d.url));
+      for (const d of extra) if (d && d.url && !gezien.has(d.url)) { gezien.add(d.url); t.docs.push(d); }
+    }
+    // En er weer af wat Maarten met het kruisje van deze taak heeft afgehaald.
+    // Dit gebeurt als laatste, dus het geldt voor alle drie de soorten: de
+    // documenten die het dashboard bij de pagina vond, de documenten die bij het
+    // doorzetten zijn gekozen, en de zelf toegevoegde links en bestanden.
+    if (mm?.docsUit.length) {
+      const uit = new Set(mm.docsUit);
+      t.docs = t.docs.filter((d) => !uit.has(d.url));
+    }
   }
 
   // Alleen echt relevante rijen: open ('naar dev'), door de developer afgevinkt,
@@ -604,6 +650,30 @@ async function eigenDocs(clientSlug: string, taskKey: string): Promise<{ label: 
   return Array.isArray(d) ? (d as { label: string; url: string }[]) : [];
 }
 
+/** De documenten die van deze taak zijn afgehaald (op URL). */
+async function afgehaaldeDocs(clientSlug: string, taskKey: string): Promise<string[]> {
+  const { rows } = await sql`
+    SELECT docs_uit FROM developer_overview
+    WHERE client_slug = ${clientSlug} AND task_key = ${taskKey}`;
+  const d = rows[0]?.docs_uit;
+  return Array.isArray(d) ? (d as unknown[]).map((u) => String(u)) : [];
+}
+
+/**
+ * Zet de afhaal-lijst van één taak. Een upsert, geen UPDATE, en dat is precies
+ * waar het kruisje op stukliep: een doorgezette kaart heeft vaak nog helemaal
+ * geen rij in `developer_overview` (die ontstaat pas als je sleept of een datum
+ * zet), dus een UPDATE raakte nul rijen en er gebeurde niets, zonder melding.
+ */
+async function zetAfgehaald(clientSlug: string, taskKey: string, urls: string[]): Promise<void> {
+  const json = JSON.stringify(Array.from(new Set(urls)).slice(0, 100));
+  await sql`
+    INSERT INTO developer_overview (client_slug, task_key, docs_uit, updated_at)
+    VALUES (${clientSlug}, ${taskKey}, ${json}::jsonb, now())
+    ON CONFLICT (client_slug, task_key)
+    DO UPDATE SET docs_uit = ${json}::jsonb, updated_at = now()`;
+}
+
 /** Hangt een document of bestand aan een taak (een Drive-link, een zip, een URL). */
 export async function voegDevDocToe(
   clientSlug: string, taskKey: string, doc: { label: string; url: string },
@@ -619,19 +689,40 @@ export async function voegDevDocToe(
     VALUES (${clientSlug}, ${taskKey}, ${JSON.stringify(nieuw)}::jsonb, now())
     ON CONFLICT (client_slug, task_key)
     DO UPDATE SET extra_docs = ${JSON.stringify(nieuw)}::jsonb, updated_at = now()`;
+  // Koppel je een link die je eerder had afgehaald opnieuw, dan hoort hij weer in
+  // beeld te komen; anders zou hij door de afhaal-lijst meteen weer verdwijnen.
+  const uit = await afgehaaldeDocs(clientSlug, taskKey);
+  if (uit.includes(schoon[0].url)) await zetAfgehaald(clientSlug, taskKey, uit.filter((u) => u !== schoon[0].url));
   return nieuw;
 }
 
-/** Haalt een zelf toegevoegd document weer van de taak af (het bestand zelf blijft staan). */
+/**
+ * Haalt één document van de taak af. Het document zelf blijft altijd bestaan
+ * (in Drive, of bij de pagina); alleen deze taak draagt het niet meer mee.
+ *
+ * Twee soorten, en het verschil is met opzet onzichtbaar voor wie klikt:
+ *  - zelf toegevoegd (een link of een geüpload bestand): die gaat echt uit de
+ *    eigen lijst, zodat je hem later opnieuw kunt koppelen.
+ *  - door het dashboard bij de pagina gevonden, of gekozen bij het doorzetten:
+ *    die komt bij elke keer opnieuw boven water, dus die gaat op de afhaal-lijst.
+ */
 export async function verwijderDevDoc(
   clientSlug: string, taskKey: string, url: string,
 ): Promise<{ label: string; url: string }[]> {
   await ensureSchema();
   await ensureDevTable();
-  const nieuw = (await eigenDocs(clientSlug, taskKey)).filter((d) => d.url !== url);
-  await sql`
-    UPDATE developer_overview SET extra_docs = ${JSON.stringify(nieuw)}::jsonb, updated_at = now()
-    WHERE client_slug = ${clientSlug} AND task_key = ${taskKey}`;
+  if (!clientSlug || !taskKey || !url) return [];
+  const huidig = await eigenDocs(clientSlug, taskKey);
+  const nieuw = huidig.filter((d) => d.url !== url);
+  if (nieuw.length !== huidig.length) {
+    await sql`
+      INSERT INTO developer_overview (client_slug, task_key, extra_docs, updated_at)
+      VALUES (${clientSlug}, ${taskKey}, ${JSON.stringify(nieuw)}::jsonb, now())
+      ON CONFLICT (client_slug, task_key)
+      DO UPDATE SET extra_docs = ${JSON.stringify(nieuw)}::jsonb, updated_at = now()`;
+    return nieuw;
+  }
+  await zetAfgehaald(clientSlug, taskKey, [...(await afgehaaldeDocs(clientSlug, taskKey)), url]);
   return nieuw;
 }
 

@@ -5406,6 +5406,24 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 }
 .dev-weg-btn { margin-right: auto; }
 
+/* Wat de kaart in de weekplanning meegaf over de bouw: te lezen, niet te typen.
+   Deze tekst stond hiervoor voorgevuld in het eigen opmerkingveld eronder, dus
+   het venster opende met een waslijst die eerst weg moest. Hij staat nu als
+   eigen, rustig blok apart, met een knop om hem alsnog over te nemen. */
+.dev-kaart-opm {
+  margin-bottom: var(--s-3); padding: var(--s-3);
+  background: var(--gray-light); border-left: 3px solid var(--orange);
+  border-radius: var(--r-sm);
+}
+.dev-kaart-opm-kop {
+  display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+}
+.dev-kaart-opm-kop .btn { margin-left: auto; }
+.dev-kaart-opm .md > *:first-child { margin-top: 0; }
+.dev-kaart-opm .md > *:last-child { margin-bottom: 0; }
+
 .dev-docs-blok {
   margin-top: var(--s-5); padding-top: var(--s-4);
   border-top: 1px solid var(--border);
