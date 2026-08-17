@@ -179,6 +179,27 @@ export const HOOFDSTUK: Hoofdstuk = {
         "tabel sneuvelt, of zodra een veld weer zijn eigen opmaakregels krijgt.",
     },
     {
+      titel: "Een kop is overal een kop, een tabel overal dezelfde tabel",
+      kern: "Eén opmaak voor alle lopende tekst, en één plek waar hij vandaan komt.",
+      tekst:
+        "Er waren vier uiterlijken voor dezelfde soort tekst, en niemand had dat besloten; ze waren " +
+        "gegroeid. Een tabel in een chat-antwoord had een licht-oranje kop, dezelfde tabel in een rapport " +
+        "een donkere, een geplakte tabel weer een andere. Kopjes waren in de chat oranje met een lijntje " +
+        "eronder en elders bruin zonder. Dezelfde inhoud zag er dus anders uit, puur afhankelijk van welk " +
+        "scherm hem toevallig tekende.\n\n" +
+        "Er is er nu één, en het is de mooiste van de vier: oranje kopjes met een lijntje, oranje pijltjes " +
+        "als opsommingsteken, oranje links, en één tabel met een licht-oranje kop en om-en-om een grijze " +
+        "rij. Die staat op **één plek** en geldt voor alle drie de soorten tekst tegelijk: wat het " +
+        "dashboard rendert, wat er in een chat verschijnt, en wat je zelf in een veld typt of plakt.\n\n" +
+        "Datzelfde gold voor de code eronder. Negenentwintig plekken beslisten zélf hoe een stuk tekst " +
+        "HTML werd; twee daarvan hadden precies dezelfde regel woordelijk uitgeschreven, en een paar deden " +
+        "iets zwakkers, waardoor daar opmaaktekens gewoon in beeld kwamen. Dat is nu één functie waar " +
+        "alles doorheen gaat.\n\n" +
+        "Een controle vóór elke bouw houdt het zo: hij leest élke opmaakregel die ná de gedeelde staat en " +
+        "stopt de bouw zodra iemand er weer een eigen setje bijzet voor een kop, een opsomming, een link " +
+        "of een tabel.",
+    },
+    {
       titel: "Eén codebase, meerdere merken",
       kern: "Het project bepaalt het merk, niet de code.",
       tekst:

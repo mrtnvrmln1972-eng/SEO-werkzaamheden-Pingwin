@@ -1253,42 +1253,51 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .md *, .chat-md *, .focus-rich * { text-align: left; }
 .md > :first-child, .chat-md > :first-child, .focus-rich > :first-child { margin-top: 0; }
 .md > :last-child, .chat-md > :last-child, .focus-rich > :last-child { margin-bottom: 0; }
-/* h1/h2 maakt `mdToHtml` niet (een paginakop hoort bij de pagina, niet bij de
-   inhoud) en het plakken zet ze om naar h3. Ze staan hier voor oude inhoud die
-   ze nog wél heeft: zonder deze regel valt zo'n kop terug op de browserstandaard
-   en staat er ineens een enorme letter in een kaart. */
-.md h1, .md h2, .chat-md h1, .chat-md h2, .focus-rich h1, .focus-rich h2 {
-  font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700;
+/* Kopjes: oranje, met een lijntje eronder. Dat lijntje is wat een lange
+   uitwerking scanbaar maakt; zonder is het één grijze lap. h1/h2 maakt
+   `mdToHtml` niet (een paginakop hoort bij de pagina, niet bij de inhoud) en het
+   plakken zet ze om naar h3. Ze staan hier voor oude inhoud die ze nog wél heeft:
+   anders valt zo'n kop terug op de browserstandaard en staat er ineens een
+   enorme letter in een kaart. */
+.md h1, .md h2, .md h3, .chat-md h1, .chat-md h2, .chat-md h3,
+.focus-rich h1, .focus-rich h2, .focus-rich h3 {
+  font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 800;
+  color: var(--orange); margin: var(--s-5) 0 var(--s-2);
+  padding-bottom: var(--s-1); border-bottom: 2px solid rgba(231, 119, 63, 0.22);
+  text-transform: none; letter-spacing: 0;
+}
+/* Een kop op de eerste regel hoort niet eerst een gat te laten vallen. */
+.md > :first-child, .chat-md > :first-child, .focus-rich > :first-child,
+.md h3:first-child, .chat-md h3:first-child, .focus-rich h3:first-child,
+.md h4:first-child, .chat-md h4:first-child, .focus-rich h4:first-child { margin-top: 0; }
+/* Een subkop krijgt het lijntje alleen onder zichzelf, niet over de volle
+   breedte: zo zie je meteen dat hij ondergeschikt is aan de kop erboven. */
+.md h4, .md h5, .md h6, .chat-md h4, .chat-md h5, .chat-md h6,
+.focus-rich h4, .focus-rich h5, .focus-rich h6 {
+  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 800;
   color: var(--orange-dark); margin: var(--s-4) 0 var(--s-2);
-  text-transform: none; letter-spacing: 0;
+  padding-bottom: 3px; border-bottom: 1px solid rgba(231, 119, 63, 0.18);
+  display: inline-block; text-transform: none; letter-spacing: 0;
 }
-.md h2, .chat-md h2, .focus-rich h2 { font-size: var(--fs-md); line-height: var(--lh-md); }
-.md h3, .chat-md h3, .focus-rich h3 {
-  font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700;
-  color: var(--orange-dark); margin: var(--s-4) 0 var(--s-2);
-  text-transform: none; letter-spacing: 0;
+.md p, .chat-md p, .focus-rich p { margin: var(--s-2) 0; max-width: 900px; line-height: var(--lh-base); }
+/* Opsommingen met een oranje pijltje in plaats van een grijze stip. */
+.md ul, .chat-md ul, .focus-rich ul { list-style: none; margin: var(--s-2) 0; padding-left: 2px; max-width: 900px; }
+.md ul > li, .chat-md ul > li, .focus-rich ul > li { position: relative; padding-left: 18px; margin: var(--s-1) 0; line-height: var(--lh-base); }
+.md ul > li::before, .chat-md ul > li::before, .focus-rich ul > li::before {
+  content: "\203A"; position: absolute; left: 5px; top: -1px;
+  color: var(--orange); font-weight: 800;
 }
-.md h4, .chat-md h4, .focus-rich h4 {
-  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700;
-  color: var(--orange-dark); margin: var(--s-4) 0 var(--s-1);
-  text-transform: none; letter-spacing: 0;
-}
-.md h5, .md h6, .chat-md h5, .chat-md h6, .focus-rich h5, .focus-rich h6 {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
-  color: var(--orange-dark); text-transform: uppercase; letter-spacing: 0.4px;
-  margin: var(--s-3) 0 var(--s-1);
-}
-.md p, .chat-md p, .focus-rich p { margin: 0 0 var(--s-3); max-width: 820px; line-height: var(--lh-base); }
-.md ul, .md ol, .chat-md ul, .chat-md ol, .focus-rich ul, .focus-rich ol { margin: var(--s-1) 0 var(--s-3); padding-left: var(--s-5); max-width: 820px; }
-/* Een lijst in een lijst hoort niet nog een keer lucht eronder te krijgen. */
-.md li > ul, .md li > ol, .chat-md li > ul, .chat-md li > ol, .focus-rich li > ul, .focus-rich li > ol { margin: var(--s-1) 0 0; }
-.md li, .chat-md li, .focus-rich li { margin-bottom: var(--s-1); line-height: var(--lh-base); }
-.md a, .chat-md a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+.md ol, .chat-md ol, .focus-rich ol { margin: var(--s-2) 0 var(--s-2) var(--s-5); padding-left: 0; max-width: 900px; }
+.md ol > li, .chat-md ol > li, .focus-rich ol > li { margin: var(--s-1) 0; line-height: var(--lh-base); }
+/* Een lijst in een lijst springt in en krijgt geen extra lucht eronder. */
+.md li ul, .md li ol, .chat-md li ul, .chat-md li ol, .focus-rich li ul, .focus-rich li ol { margin: var(--s-1) 0 var(--s-1) var(--s-4); }
+.md a, .chat-md a, .focus-rich a { color: var(--orange-dark); text-decoration: underline; text-underline-offset: 2px; }
+.md a:hover, .chat-md a:hover, .focus-rich a:hover { color: var(--orange); }
 .md code, .chat-md code, .focus-rich code {
-  background: var(--gray-light); padding: 1px 5px;
-  border-radius: var(--r-sm); font-size: var(--fs-xs);
+  background: rgba(231, 119, 63, 0.10); color: var(--orange-dark);
+  padding: 1px 5px; border-radius: var(--r-sm); font-size: var(--fs-xs);
 }
-.md strong, .chat-md strong, .focus-rich strong { font-weight: 700; }
+.md strong, .chat-md strong, .focus-rich strong { color: var(--dark); font-weight: 800; }
 .md hr, .chat-md hr, .focus-rich hr { border: none; border-top: 1px solid var(--border); margin: var(--s-4) 0; }
 /* Citaat en codeblok. Bestonden geen van beide, terwijl de renderer ze nu
    maakt; zonder deze regels stond er een kale inspringing of een muur code. */
@@ -1297,7 +1306,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
   border-left: 3px solid var(--orange);
   border-radius: 0 var(--r-md) var(--r-md) 0;
   background: var(--brand-orange-faint);
-  color: var(--muted); max-width: 820px;
+  color: var(--muted); max-width: 900px;
 }
 .md pre.md-code, .chat-md pre.md-code, .focus-rich pre.md-code {
   margin: var(--s-3) 0; padding: var(--s-3) var(--s-4);
@@ -1306,15 +1315,33 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
   overflow-x: auto; max-width: 100%;
   font-size: var(--fs-xs); line-height: var(--lh-sm);
 }
-.md pre.md-code code, .chat-md pre.md-code code, .focus-rich pre.md-code code { background: none; padding: 0; }
-/* Tabellen: strak, links uitgelijnd (overschrijft globale centrering) */
-.md-table, .paste-table { border-collapse: collapse; width: auto; min-width: 60%; margin: var(--s-3) 0 var(--s-4); font-size: var(--fs-sm); }
-.md-table th, .md-table td, .md-table th:last-child, .md-table td:last-child,
-.paste-table th, .paste-table td, .paste-table th:last-child, .paste-table td:last-child { text-align: left !important; }
-.md-table th, .paste-table th { background: var(--dark) !important; color: #fff !important; padding: 8px 12px; font-weight: 700; white-space: nowrap; }
-.md-table td, .paste-table td { border: 1px solid var(--border); padding: 7px 12px; vertical-align: top; }
-.md-table tbody tr:nth-child(even), .paste-table tbody tr:nth-child(even) { background: #F7F7F8; }
-.md-table tbody tr:hover, .paste-table tbody tr:hover { background: var(--orange-light); }
+.md pre.md-code code, .chat-md pre.md-code code, .focus-rich pre.md-code code { background: none; padding: 0; color: inherit; }
+/* ── Tabellen in lopende tekst: ÉÉN uiterlijk ─────────────────────────────────
+   Er bestonden er vier naast elkaar, met een donkere kop, een witte kop, een
+   grijze hoofdletterkop en een licht-oranje kop, afhankelijk van wélk scherm de
+   tabel toevallig tekende. Dit is de enige: licht-oranje kop, rustig raster,
+   om-en-om een grijze rij. `md-table` komt uit de renderer, `chat-table` uit de
+   chat, `paste-table` uit geplakte tekst; alle drie hetzelfde.
+   Let op: dit gaat alleen over tabellen ín tekst. De werktabellen (taken, KPI's,
+   pagina's) hebben hun eigen klasse en horen daar niet bij. */
+.md-table, .chat-table, .paste-table {
+  border-collapse: collapse; width: 100%; max-width: 100%;
+  margin: var(--s-3) 0 var(--s-4); font-size: var(--fs-sm); line-height: var(--lh-sm);
+  font-variant-numeric: tabular-nums;
+}
+.md-table th, .md-table td, .chat-table th, .chat-table td, .paste-table th, .paste-table td,
+.md-table th:last-child, .md-table td:last-child, .chat-table th:last-child, .chat-table td:last-child,
+.paste-table th:last-child, .paste-table td:last-child {
+  text-align: left !important; border: 1px solid var(--border);
+  padding: 7px 11px; vertical-align: top;
+}
+.md-table th, .chat-table th, .paste-table th {
+  background: rgba(231, 119, 63, 0.10); color: var(--dark); font-weight: 800;
+}
+.md-table tbody tr:nth-child(even) td, .chat-table tr:nth-child(even) td, .paste-table tbody tr:nth-child(even) td {
+  background: var(--gray-light);
+}
+.md-table td a, .chat-table td a, .paste-table td a { word-break: break-word; }
 .page-chat-proposal { border: 1px solid var(--orange); border-radius: 10px; padding: 12px 14px; background: #FFF8F2; margin-bottom: 8px; }
 .page-chat-proposal-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--orange-dark); margin-bottom: 8px; }
 .pch-prop-item { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--dark); line-height: 1.45; padding: 6px 0; border-top: 1px solid #F0E4D8; cursor: pointer; }
@@ -1766,20 +1793,15 @@ button.ck-collapse-head {
 .chat-msg.user .chat-bubble { background: var(--orange); color: var(--white); }
 .chat-msg.assistant .chat-bubble { background: var(--gray-light); color: var(--body-text); border: 1px solid var(--border); }
 .chat-md { white-space: normal; }
-.chat-md h3, .chat-md h4, .chat-md h5, .chat-md h6 { font-size: 14px; font-weight: 700; margin: 12px 0 4px; color: var(--dark); }
-.chat-md p { margin: 6px 0; }
-.chat-md ul, .chat-md ol { margin: 6px 0 6px 20px; }
-.chat-md li { margin: 3px 0; }
-.chat-md code { background: rgba(0,0,0,0.06); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
-.chat-md a { color: var(--orange-dark); }
-.chat-md > :first-child { margin-top: 0; }
-.chat-md > :last-child { margin-bottom: 0; }
-.chat-md hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+/* Hier stond een VIERDE setje opmaakregels voor chattekst: grijze kopjes op één
+   maat, eigen afstanden, eigen code-kleur. Het stond ná het gedeelde blok en won
+   daardoor stilletjes, waardoor de chat er dof uitzag terwijl het gedeelde blok
+   allang oranje kopjes met een lijntje voorschreef. Weggehaald op 17-08-2026;
+   alles staat nu één keer bovenaan bij `.md, .chat-md, .focus-rich`. */
 /* Assistent-antwoord als nette chat-tekst, niet als kaartje: geen kader/achtergrond, volle breedte. */
 .chat-msg.assistant .chat-bubble.chat-md { background: transparent; border: none; padding: 2px 0; max-width: 100%; border-radius: 0; }
-.chat-table { border-collapse: collapse; margin: 8px 0; font-size: 12px; width: 100%; }
-.chat-table th, .chat-table td { border: 1px solid var(--border); padding: 5px 9px; text-align: left; }
-.chat-table th { background: var(--white); font-weight: 700; color: var(--dark); }
+/* De eigen stijl van .chat-table (witte kop, kleinere letter) is weg: tabellen in
+   lopende tekst hebben nu één uiterlijk, hierboven bij .md-table. */
 .task-toggle { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin: 12px 0 5px; display: block; }
 .task-toggle:hover { color: var(--orange-dark); }
 .chat-input { display: flex; gap: 8px; margin-top: 12px; }
@@ -2173,7 +2195,7 @@ button.ck-collapse-head {
 .rich-cell:focus { display: block; -webkit-line-clamp: unset; overflow-y: auto; max-height: 220px; }
 .rich-cell p { display: inline; }
 .rich-cell:focus p { display: block; }
-.rich-cell a, .focus-rich a { color: var(--orange) !important; text-decoration: underline; }
+.rich-cell a { color: var(--orange) !important; text-decoration: underline; }
 .link-preview { position: fixed; z-index: 1000; width: 384px; background: var(--white); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 28px rgba(0,0,0,0.18); overflow: hidden; }
 .link-preview iframe { width: 100%; height: 300px; border: 0; display: block; background: #f7f7f7; }
 .link-preview-card { padding: 14px 16px; }
@@ -2398,8 +2420,10 @@ tbody tr.row-done:hover { background: #E2F1E2; }
    De klasse blijft `paste-table` (dat staat zo in alles wat al opgeslagen is);
    de opmaak komt uit hetzelfde blok als `.md-table`, zie daar. */
 .paste-table td a, .paste-table th a { word-break: break-all; }
-.focus-rich a { color: var(--orange); text-decoration: none; word-break: break-word; }
-.focus-rich a:hover { text-decoration: underline; }
+/* De eigen linkkleur van een tekstveld is weg: links zien er nu overal hetzelfde
+   uit (gedeeld blok bovenaan). Alleen het afbreken van een lange URL blijft hier,
+   want dat is geen opmaak maar een kwestie van niet buiten de kaart lopen. */
+.focus-rich a { word-break: break-word; }
 .focus-editable { min-height: 220px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; outline: none; background: var(--white); }
 .focus-editable:focus { border-color: var(--orange); }
 /* Deksel op een lang vrij tekstveld: je ziet het begin, de rest achter "toon
@@ -3068,30 +3092,18 @@ button.org-sec-kop:hover { color: var(--orange-dark); }
 /* Mooie, rustige opmaak van de bird's eye-antwoorden: als card, met gekleurde
    koppen, nette bullets en gekleurde links (Pingwin-stijl). */
 .ovc-msg.assistant .ovc-bubble.chat-md { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; max-width: 100%; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03); }
-.ovc-bubble.chat-md { font-size: 13.5px; line-height: 1.65; color: #1f1f1f; }
-/* Begrensde leesbreedte (~2/3): lange lopende tekst leest niet prettig over de
-   volle breedte. Tabellen mogen wél de volle breedte pakken (die hebben kolommen). */
+.ovc-bubble.chat-md { font-size: var(--fs-base); line-height: var(--lh-base); color: #1f1f1f; }
+/* Begrensde leesbreedte: lange lopende tekst leest niet prettig over de volle
+   breedte. Tabellen mogen wél de volle breedte pakken (die hebben kolommen). */
 .ovc-bubble.chat-md > div > * { max-width: 900px; }
 .ovc-bubble.chat-md > div > .chat-table, .ovc-bubble.chat-md table.chat-table { max-width: 100%; }
-.ovc-bubble.chat-md h3 { font-size: 15.5px; font-weight: 800; color: var(--orange); margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 2px solid rgba(231, 119, 63, 0.22); }
-.ovc-bubble.chat-md h3:first-child, .ovc-bubble.chat-md h4:first-child { margin-top: 2px; }
-.ovc-bubble.chat-md h4, .ovc-bubble.chat-md h5, .ovc-bubble.chat-md h6 { font-size: 13.5px; font-weight: 800; color: var(--orange-dark); margin: 16px 0 6px; padding-bottom: 3px; border-bottom: 1px solid rgba(231, 119, 63, 0.18); display: inline-block; }
-.ovc-bubble.chat-md p { margin: 8px 0; }
-.ovc-bubble.chat-md ul { list-style: none; margin: 8px 0; padding-left: 2px; }
-.ovc-bubble.chat-md ul li { position: relative; padding-left: 18px; margin: 5px 0; }
-.ovc-bubble.chat-md ul li::before { content: "\203A"; position: absolute; left: 5px; top: -1px; color: var(--orange); font-weight: 800; }
-.ovc-bubble.chat-md ul ul, .ovc-bubble.chat-md ol ol, .ovc-bubble.chat-md ul ol, .ovc-bubble.chat-md ol ul { margin: 4px 0 4px 16px; }
-.ovc-bubble.chat-md ol { margin: 8px 0 8px 20px; }
-.ovc-bubble.chat-md ol li { margin: 5px 0; }
-.ovc-bubble.chat-md a { color: var(--orange-dark); text-decoration: underline; text-underline-offset: 2px; }
-.ovc-bubble.chat-md a:hover { color: var(--orange); }
-.ovc-bubble.chat-md strong { color: var(--dark); font-weight: 800; }
-.ovc-bubble.chat-md hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-.ovc-bubble.chat-md code { background: rgba(231, 119, 63, 0.10); color: var(--orange-dark); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
-.ovc-bubble.chat-md table.chat-table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 12.5px; }
-.ovc-bubble.chat-md table.chat-table th { background: rgba(231, 119, 63, 0.10); color: var(--dark); font-weight: 800; text-align: left; padding: 7px 11px; border: 1px solid var(--border); vertical-align: top; }
-.ovc-bubble.chat-md table.chat-table td { padding: 7px 11px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
-.ovc-bubble.chat-md table.chat-table tr:nth-child(even) td { background: var(--gray-light); }
+/* Hier stond de complete opmaak van een chat-antwoord nog een keer: oranje
+   kopjes met een lijntje, pijltjes als bullets, oranje links, een licht-oranje
+   tabelkop. Dat wás de mooiste opmaak van het dashboard, en precies daarom hoort
+   hij niet hier thuis maar in het gedeelde blok bovenaan dit bestand: nu ziet
+   élk stuk gerenderde tekst er zo uit, ook een uitkomst, een rapport en een veld
+   waar je zelf in typt. Deze kopie is weggehaald op 17 augustus 2026; zet hem
+   nooit terug, want dan lopen de chat en de rest weer uit elkaar. */
 /* ── Eerst sparren, dan concluderen, dan pas taken ────────────────────────────
    De twee knoppen onder het gesprek. Ze staan bewust ONDER het hele gesprek en
    niet bij een los antwoord: beide stappen wegen het complete gesprek. */
@@ -3199,6 +3211,10 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
    rechts drie knopjes: groen plusje (taak), rood kruisje (negeer), groen
    vinkje (gedaan). Bullets én vetgedrukte punten. */
 .ovc-blok-inhoud ul, .ovc-blok-inhoud ol { list-style: none; padding-left: 0; margin: var(--s-2) 0; }
+/* Dit zijn geen bullets maar omkaderde taakrijtjes met knopjes erin. Het oranje
+   pijltje uit het gedeelde blok hoort er dus niet voor te staan; het eigen
+   stipje bij een feit-regel (hieronder) blijft wel. */
+.ovc-blok-inhoud ul > li::before, .ovc-blok-inhoud ol > li::before { content: none; }
 .ovc-blok-inhoud ul > li, .ovc-blok-inhoud ol > li, .ovc-blok-inhoud p.ovc-punt {
   position: relative; border: 1px solid var(--card-border); border-radius: var(--r-md);
   background: #fff; padding: var(--s-3) 126px var(--s-3) var(--s-4); margin: 0 0 var(--s-2); line-height: var(--lh-base);
@@ -3240,6 +3256,10 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .ovc-blok-inhoud .chat-table tr:last-child td { border-bottom: none; }
 /* Sub-bullets binnen een taakrijtje blijven gewone bullets, zonder eigen knopjes. */
 .ovc-blok-inhoud li ul, .ovc-blok-inhoud li ol { list-style: disc; padding-left: 20px; margin: 6px 0 0; }
+/* Deze lijstjes zetten hun eigen stip terug. Dan moet het oranje pijltje uit het
+   gedeelde blok weg, anders staan er twee tekens voor dezelfde regel. */
+.ovc-blok-inhoud li ul > li { padding-left: 0; }
+.ovc-blok-inhoud li ul > li::before { content: none; }
 .ovc-blok-inhoud li li { border: none; border-radius: 0; padding: 1px 0; margin: 0; background: transparent; }
 .ovc-blok-inhoud li li > .ovc-acties { display: none; }
 /* Afgevinkt = doorgestreept; genegeerd = gedempt. */
@@ -3575,13 +3595,10 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .act-taken { margin: 4px 0 2px; padding-left: 18px; font-size: 12.5px; line-height: 1.45; }
 .act-taken li { margin: 2px 0; }
 
-/* Rustiger stand-van-zaken-blokken in de bird's eye: meer lucht en duidelijker
-   scheiding tussen de blokken (kopjes en streepjes), zonder de tekst te wijzigen. */
-.ovc-bubble.chat-md h2 { margin: 20px 0 9px; }
-.ovc-bubble.chat-md h2:first-child { margin-top: 2px; }
-.ovc-bubble.chat-md hr { margin: 18px 0; }
-.ovc-bubble.chat-md ul { margin-bottom: 10px; }
-.ovc-bubble.chat-md p { margin-bottom: 9px; }
+/* Hier stond nog een derde setje afstanden voor dezelfde chatbubbel (kopjes,
+   lijnen, bullets, alinea's), met eigen pixelwaarden naast de twee sets die er al
+   waren. Weggehaald op 17-08-2026: die afstanden staan nu één keer in het
+   gedeelde blok bovenaan, op de schaal-tokens. */
 
 /* Laatste mails in de smalle rechterkolom: alles netjes laten wrappen i.p.v. overlappen. */
 .tk-rechts .email-list { max-width: 100%; }

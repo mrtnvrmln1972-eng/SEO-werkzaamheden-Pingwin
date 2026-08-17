@@ -13,7 +13,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { persoonLabel, devVoornaam } from "../../../../lib/personen";
-import { linkifyHtml } from "../../../../lib/linkify";
+import { netteHtml } from "../../../../lib/nette-html";
 import { escapeHtml, isHtml, htmlNaarTekst } from "../../../../lib/veilige-html";
 import { openMailProgramma } from "../../../../lib/mailto-openen";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
@@ -63,10 +63,11 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
   const van = (p: string) => items.filter((i) => i.persoon === p);
   const labelVan = (p: string) => persoonLabel(p, { devName: devNaam, clientName });
 
-  // Een punt als nette HTML. Oude punten zijn platte tekst; die escapen we en
-  // houden we op regels, zodat een geplakt rijtje URL's leesbaar blijft.
-  const puntHtml = (tekst: string) =>
-    linkifyHtml(isHtml(tekst) ? tekst : escapeHtml(tekst).replace(/\r?\n/g, "<br>"), host);
+  // Een punt als nette HTML, via de gedeelde poort. Deed hier eerst iets eigens
+  // en zwakkers: platte tekst werd alleen geëscaped met <br>'s ertussen, dus een
+  // punt met een kopje of een opsomming erin kwam als `## Kopje` en `- punt`
+  // letterlijk in beeld. Nu gaat het door dezelfde renderer als de rest.
+  const puntHtml = (tekst: string) => netteHtml(tekst, { basis: host });
 
   async function post(body: Record<string, unknown>) {
     setBusy(true);

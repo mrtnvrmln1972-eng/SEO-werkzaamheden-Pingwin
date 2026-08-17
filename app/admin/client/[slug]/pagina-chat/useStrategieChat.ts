@@ -6,6 +6,7 @@
 // De weergave staat in StrategieKaart.tsx; dit bestand houdt alleen de staat
 // en de serverkant vast.
 import { useEffect, useRef, useState } from "react";
+import { netteHtml } from "../../../../../lib/nette-html";
 import { mdToHtml } from "../../../../../lib/markdown";
 import { striptVulzinnen } from "../../../../../lib/vulzinnen";
 import { SUMMARIZE_PROMPT } from "../../../../../lib/strategie-prompt";
@@ -166,10 +167,7 @@ export function useStrategieChat({ slug, url, siteBase, planDone, onApplied, onG
   function renderMsgHtml(ruw: string): string {
     // Aankondigingszinnen eruit, net als in de Bird's eye: dit filter draaide daar
     // wel en hier niet, dus in de kaart-chat stonden ze er nog gewoon.
-    const content = striptVulzinnen(ruw);
-    const hasClosingTag = /<\/[a-z][a-z0-9]*>/i.test(content);
-    const looksMarkdown = /(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(content);
-    return hasClosingTag && !looksMarkdown ? content : mdToHtml(content, siteBase);
+    return netteHtml(striptVulzinnen(ruw), { basis: siteBase });
   }
   // Een bericht weghalen. Bevestigen gebeurt in de regel zelf (geen browserpopup),
   // en wat je weghaalt is meteen bewaard. Is dit het laatste bericht, dan is de

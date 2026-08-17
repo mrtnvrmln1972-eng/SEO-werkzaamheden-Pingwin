@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ClientUrl } from "../../../../lib/site-urls";
+import { netteHtml } from "../../../../lib/nette-html";
 import { mdToHtml } from "../../../../lib/markdown";
 import { sanitizeHtml } from "../../../../lib/veilige-html";
 import ImportAnalysis from "./ImportAnalysis";
@@ -752,7 +753,10 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
   // Gerenderde, bewerkbare plan-preview (contentEditable), geen ruwe textarea. Het plan
   // kan markdown zijn (van de chat) of al bewerkte HTML; render de juiste.
   const planRef = useRef<HTMLDivElement | null>(null);
-  const renderPlanHtml = (p: string) => (/<\/[a-z][a-z0-9]*>/i.test(p) && !/(^|\n)#{1,6}\s|\*\*[^*]|(^|\n)\s*[-*]\s|(^|\n)\s*\d+\.\s|\|[^|]*\|/.test(p) ? p : mdToHtml(p, (u.url.match(/^https?:\/\/[^/]+/i) || [""])[0]));
+  // Via de gedeelde poort. Hier stond de beslissing "al HTML of nog markdown?"
+  // woordelijk uitgeschreven, en precies dezelfde regel stond ook in de
+  // strategie-chat; twee kopieën van één afspraak lopen uit elkaar.
+  const renderPlanHtml = (p: string) => netteHtml(p, { basis: (u.url.match(/^https?:\/\/[^/]+/i) || [""])[0] });
   useEffect(() => {
     if (editing && planRef.current) planRef.current.innerHTML = renderPlanHtml(plan || "");
     /* eslint-disable-next-line react-hooks/exhaustive-deps */

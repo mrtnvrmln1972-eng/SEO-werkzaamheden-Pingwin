@@ -119,6 +119,31 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
     een bullet, een lijn, een link of een tabel sneuvelt, als er een `cleanPastedHtml` zonder
     `rich: true` bijkomt, als een veld zijn eigen opmaakregels krijgt in plaats van het gedeelde
     blok, of als een vangnet de koppen weer platslaat. Zet die proef nooit uit.
+- **Er is ÉÉN opmaak en ÉÉN poort, voor álles wat het dashboard op het scherm zet
+  (vaste regel, 17-08-2026).** De regel hierboven ging over geplakte tekst. Diezelfde dag bleek
+  dat het probleem twee lagen dieper zat: er waren vier uiterlijken voor dezelfde soort tekst en
+  negenentwintig plekken die zelf beslisten hoe tekst HTML werd. Maarten wees de opmaak van een
+  chat-antwoord aan als de juiste. Die is nu de enige.
+  - **Op het scherm: één blok in `app/globals.css`,** helemaal bovenaan, voor `.md` (gerenderde
+    tekst), `.chat-md` (chat) en `.focus-rich` (elk veld waar je zelf in typt) tegelijk. Oranje
+    kopjes met een lijntje eronder, oranje pijltjes als opsommingsteken, oranje onderstreepte
+    links, en één tabel: licht-oranje kop, rustig raster, om-en-om een grijze rij.
+    `.md-table`, `.chat-table` en `.paste-table` staan in dezelfde regel, want dat waren drie
+    van de vier uiterlijken. **Zet ná dat blok nooit opnieuw opmaak neer voor een kop, bullet,
+    link, alinea of tabel binnen `.md`/`.chat-md`/`.focus-rich`**; dat wint stilletijds en dan
+    lopen ze weer uit elkaar. Werktabellen (`.task-table`, `.kpi-table`, `.opr-tabel`) horen hier
+    niet bij: die gaan niet over lopende tekst.
+  - **In de code: `netteHtml` uit `lib/nette-html.ts`.** Die neemt één beslissing (is dit al
+    HTML, of markdown/platte tekst?), rendert met `mdToHtml` en maakt daarna elke URL en elk pad
+    klikbaar. **Schrijf die beslissing nooit opnieuw uit in een scherm.** Precies dat gebeurde:
+    twee bestanden hadden dezelfde regel woordelijk staan, en de bespreekpunten, de
+    aantekeningen en de sturing op een taakkaart deden iets zwakkers, waardoor `## Kopje` daar
+    letterlijk in beeld kwam.
+  - **`proeven/nette-html.proef.ts` bewaakt allebei en draait vóór élke bouw.** Hij rendert een
+    echt stuk strategie en kijkt of kop, vet, opsomming, tabel en klikbaar pad eruit komen, hij
+    leest élke CSS-regel ná het gedeelde blok en wordt rood zodra iemand er weer een eigen setje
+    bijzet, en hij controleert dat de omgezette schermen via de poort renderen. Zet die proef
+    nooit uit.
 - **Met terugwerkende kracht (vaste regel, 31-07-2026).** Elke opmaak- of dashboardaanpassing geldt automatisch óók voor bestaande kaarten, taken en chats, in alle werelden (Pingwin én NOC). Bouw zulke aanpassingen daarom in de weergave-laag (renderer/parser, zoals `lib/card-info.ts`), niet alleen in de prompt voor nieuwe data. Maarten hoeft dit niet meer per wijziging te vragen.
 
 ## 0b. DE UITLEGPAGINA BIJWERKEN (vaste stap, 06-08-2026)

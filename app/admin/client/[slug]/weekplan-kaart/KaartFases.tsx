@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { splitCardInfo, faseSturing, verseCopySturing, isSjabloonSturing, type CardFaseKey } from "../../../../../lib/card-info";
-import { linkifyHtml } from "../../../../../lib/linkify";
+import { netteHtml } from "../../../../../lib/nette-html";
 import { docsBewerkLink } from "../../../../../lib/drive-id";
 import { volgendeFase, faseLabel } from "../../../../../lib/fase-volgorde";
 import { isPoortBlokkade } from "../../../../../lib/keten-poort-melding";
@@ -451,7 +451,7 @@ export default function KaartFases({
                 <span className={"wp-fase-chip " + stand.cls} title={stand.label === "✓" ? "Klaar" : undefined}>{stand.label}</span>
               </div>
               {/* Slugs/URL's in de sturing zijn altijd klikbaar (harde huisregel). */}
-              {sturingNuttig && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: linkifyHtml(sturing.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), (() => { try { return new URL(t.url).host; } catch { return ""; } })()) }} />}
+              {sturingNuttig && sturingOpen && <div className="wp-fase-sturing" dangerouslySetInnerHTML={{ __html: netteHtml(sturing, { basis: (() => { try { return new URL(t.url).host; } catch { return ""; } })() }) }} />}
             </div>
           );
         })}

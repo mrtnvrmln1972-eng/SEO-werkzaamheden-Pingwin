@@ -6,7 +6,7 @@
 // achtergrond mee in de chats en de pagina-analyses.
 
 import { useEffect, useRef, useState } from "react";
-import { linkifyHtml } from "../../../../lib/linkify";
+import { netteHtml } from "../../../../lib/nette-html";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 
 type Notitie = { id: number; titel: string; inhoud: string; createdAt: string | null; updatedAt: string | null };
@@ -126,7 +126,7 @@ export default function Notities({ slug, domain }: { slug: string; domain?: stri
             )}
             {!isOpen && n.inhoud.trim() && (
               <div className="nt-voorproef md" onClick={() => setOpenId(n.id)}
-                dangerouslySetInnerHTML={{ __html: linkifyHtml(n.inhoud, host) }} />
+                dangerouslySetInnerHTML={{ __html: netteHtml(n.inhoud, { basis: host }) }} />
             )}
           </div>
         );

@@ -129,9 +129,10 @@ const css = readFileSync(join(WORTEL, "app", "globals.css"), "utf8");
 // De vrije velden hangen aan dezelfde typografie als gerenderde tekst. Wordt
 // `.focus-rich` daar losgetrokken, dan lopen de twee weer uit elkaar.
 const gedeeld = [
-  ["kopjes", ".md h3, .chat-md h3, .focus-rich h3"],
+  ["kopjes", ".focus-rich h1, .focus-rich h2, .focus-rich h3"],
   ["alinea's", ".md p, .chat-md p, .focus-rich p"],
-  ["lijsten", ".md ul, .md ol, .chat-md ul, .chat-md ol, .focus-rich ul, .focus-rich ol"],
+  ["opsommingen", ".md ul, .chat-md ul, .focus-rich ul"],
+  ["genummerde lijsten", ".md ol, .chat-md ol, .focus-rich ol"],
   ["lijnen", ".md hr, .chat-md hr, .focus-rich hr"],
 ] as const;
 for (const [wat, selector] of gedeeld) {
@@ -154,8 +155,9 @@ proef(
 );
 proef(
   "een geplakte tabel krijgt dezelfde opmaak als een gerenderde tabel",
-  /\.md-table,\s*\.paste-table\s*\{/.test(css),
-  "Verwacht dat `.paste-table` meeloopt in het `.md-table`-blok.",
+  /\.md-table, \.chat-table, \.paste-table \{/.test(css),
+  "Verwacht dat `.paste-table` meeloopt in het gedeelde tabelblok, samen met\n"
+  + "     | `.md-table` (renderer) en `.chat-table` (chat).",
 );
 
 console.log(fouten === 0 ? "\nAlle proeven geslaagd." : `\n${fouten} proef(en) mislukt.`);
