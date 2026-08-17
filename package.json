@@ -10,7 +10,7 @@
     "proef": "node proeven/alles.mjs",
     "veldproef": "node scripts/veld-browsertest.mjs",
     "menuproef": "node scripts/menu-browsertest.mjs",
-    "prebuild": "node proeven/alles.mjs"
+    "prebuild": "tsx scripts/stijl-inventaris.ts && node proeven/alles.mjs"
   },
   "dependencies": {
     "@sparticuz/chromium": "^131.0.1",

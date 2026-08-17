@@ -1,0 +1,28 @@
+{
+  "_uitleg": [
+    "Het plafond per soort waarde: hoeveel verschillende er MOGEN bestaan in het hele dashboard.",
+    "Dit is een ratel: het getal mag alleen omlaag, nooit omhoog. proeven/stijl-teller.proef.ts",
+    "wordt rood als je erboven komt, en ook als je er ruim onder duikt zonder het plafond mee te",
+    "verlagen (want dan glipt de winst er later weer uit).",
+    "De beginstand hieronder is de gemeten werkelijkheid op 17-08-2026. Niet mooi, wel eerlijk:",
+    "je kunt alleen dalen vanaf waar je staat. Het doel per soort staat in 'doel'."
+  ],
+  "plafond": {
+    "kleuren": 331,
+    "lettergroottes": 21,
+    "rondingen": 19,
+    "schaduwen": 45,
+    "afstanden": 21,
+    "knopklassen": 98,
+    "inlineOpmaak": 50
+  },
+  "doel": {
+    "kleuren": 45,
+    "lettergroottes": 6,
+    "rondingen": 4,
+    "schaduwen": 3,
+    "afstanden": 10,
+    "knopklassen": 8,
+    "inlineOpmaak": 0
+  }
+}

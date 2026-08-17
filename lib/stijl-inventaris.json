@@ -1,0 +1,4926 @@
+{
+  "css": {
+    "regels": 8264,
+    "stijlregels": 4375,
+    "classnamen": 2892
+  },
+  "kleuren": {
+    "verschillend": 331,
+    "benoemd": 41,
+    "los": [
+      {
+        "waarde": "#fff",
+        "aantal": 141
+      },
+      {
+        "waarde": "#1c7a3f",
+        "aantal": 61
+      },
+      {
+        "waarde": "#2e7d32",
+        "aantal": 42
+      },
+      {
+        "waarde": "#b3261e",
+        "aantal": 30
+      },
+      {
+        "waarde": "#1e824c",
+        "aantal": 29
+      },
+      {
+        "waarde": "#6f645a",
+        "aantal": 29
+      },
+      {
+        "waarde": "#f15829",
+        "aantal": 27
+      },
+      {
+        "waarde": "#c62828",
+        "aantal": 20
+      },
+      {
+        "waarde": "#e5ded6",
+        "aantal": 16
+      },
+      {
+        "waarde": "#fffdfb",
+        "aantal": 13
+      },
+      {
+        "waarde": "#fdecea",
+        "aantal": 12
+      },
+      {
+        "waarde": "#c0392b",
+        "aantal": 10
+      },
+      {
+        "waarde": "#e7f6ea",
+        "aantal": 10
+      },
+      {
+        "waarde": "#8a7a6c",
+        "aantal": 9
+      },
+      {
+        "waarde": "#2b2b2b",
+        "aantal": 8
+      },
+      {
+        "waarde": "#8a5a00",
+        "aantal": 7
+      },
+      {
+        "waarde": "#eaf6ef",
+        "aantal": 7
+      },
+      {
+        "waarde": "rgba(0,0,0,0.06)",
+        "aantal": 7
+      },
+      {
+        "waarde": "#2e9e5b",
+        "aantal": 6
+      },
+      {
+        "waarde": "#eadfce",
+        "aantal": 6
+      },
+      {
+        "waarde": "#eaf5ee",
+        "aantal": 6
+      },
+      {
+        "waarde": "#fdecec",
+        "aantal": 6
+      },
+      {
+        "waarde": "rgba(0,0,0,0.25)",
+        "aantal": 6
+      },
+      {
+        "waarde": "rgba(231, 119, 63, 0.14)",
+        "aantal": 6
+      },
+      {
+        "waarde": "rgba(231, 119, 63, 0.15)",
+        "aantal": 6
+      },
+      {
+        "waarde": "rgba(51,48,46,0.06)",
+        "aantal": 6
+      },
+      {
+        "waarde": "#1b7f3b",
+        "aantal": 5
+      },
+      {
+        "waarde": "#1f1f1f",
+        "aantal": 5
+      },
+      {
+        "waarde": "#6b7280",
+        "aantal": 5
+      },
+      {
+        "waarde": "#a12622",
+        "aantal": 5
+      },
+      {
+        "waarde": "#c93f16",
+        "aantal": 5
+      },
+      {
+        "waarde": "#e7f4e8",
+        "aantal": 5
+      },
+      {
+        "waarde": "#e8f5e9",
+        "aantal": 5
+      },
+      {
+        "waarde": "#f0ebe5",
+        "aantal": 5
+      },
+      {
+        "waarde": "#f1e9db",
+        "aantal": 5
+      },
+      {
+        "waarde": "#fafafa",
+        "aantal": 5
+      },
+      {
+        "waarde": "#fffaf7",
+        "aantal": 5
+      },
+      {
+        "waarde": "rgba(0,0,0,0.05)",
+        "aantal": 5
+      },
+      {
+        "waarde": "rgba(231, 119, 63, 0.10)",
+        "aantal": 5
+      },
+      {
+        "waarde": "#1a56b0",
+        "aantal": 4
+      },
+      {
+        "waarde": "#1c7a44",
+        "aantal": 4
+      },
+      {
+        "waarde": "#33302e",
+        "aantal": 4
+      },
+      {
+        "waarde": "#444",
+        "aantal": 4
+      },
+      {
+        "waarde": "#6d28d9",
+        "aantal": 4
+      },
+      {
+        "waarde": "#8a6d00",
+        "aantal": 4
+      },
+      {
+        "waarde": "#e6c3bd",
+        "aantal": 4
+      },
+      {
+        "waarde": "#e7f6ec",
+        "aantal": 4
+      },
+      {
+        "waarde": "#ede9fe",
+        "aantal": 4
+      },
+      {
+        "waarde": "#eef7ee",
+        "aantal": 4
+      },
+      {
+        "waarde": "#f0c8c8",
+        "aantal": 4
+      },
+      {
+        "waarde": "#f0f1f3",
+        "aantal": 4
+      },
+      {
+        "waarde": "#f3e9e1",
+        "aantal": 4
+      },
+      {
+        "waarde": "#fbedea",
+        "aantal": 4
+      },
+      {
+        "waarde": "#fbf8f5",
+        "aantal": 4
+      },
+      {
+        "waarde": "#fff3d9",
+        "aantal": 4
+      },
+      {
+        "waarde": "rgba(231, 119, 63, 0.12)",
+        "aantal": 4
+      },
+      {
+        "waarde": "#0b4ea8",
+        "aantal": 3
+      },
+      {
+        "waarde": "#2286c7",
+        "aantal": 3
+      },
+      {
+        "waarde": "#2a4bad",
+        "aantal": 3
+      },
+      {
+        "waarde": "#3b4a9e",
+        "aantal": 3
+      },
+      {
+        "waarde": "#8a8d91",
+        "aantal": 3
+      },
+      {
+        "waarde": "#9a6b00",
+        "aantal": 3
+      },
+      {
+        "waarde": "#b03a2e",
+        "aantal": 3
+      },
+      {
+        "waarde": "#bfe6cc",
+        "aantal": 3
+      },
+      {
+        "waarde": "#c3b9ae",
+        "aantal": 3
+      },
+      {
+        "waarde": "#dcf5e3",
+        "aantal": 3
+      },
+      {
+        "waarde": "#e5edff",
+        "aantal": 3
+      },
+      {
+        "waarde": "#e6e6e6",
+        "aantal": 3
+      },
+      {
+        "waarde": "#e6f4ea",
+        "aantal": 3
+      },
+      {
+        "waarde": "#e6f6ec",
+        "aantal": 3
+      },
+      {
+        "waarde": "#e8f0f7",
+        "aantal": 3
+      },
+      {
+        "waarde": "#ececec",
+        "aantal": 3
+      },
+      {
+        "waarde": "#eef8ee",
+        "aantal": 3
+      },
+      {
+        "waarde": "#f3efeb",
+        "aantal": 3
+      },
+      {
+        "waarde": "#f6f1ec",
+        "aantal": 3
+      },
+      {
+        "waarde": "#fdeee7",
+        "aantal": 3
+      },
+      {
+        "waarde": "#fdf3f2",
+        "aantal": 3
+      },
+      {
+        "waarde": "#fff6f1",
+        "aantal": 3
+      },
+      {
+        "waarde": "rgba(0,0,0,0.16)",
+        "aantal": 3
+      },
+      {
+        "waarde": "rgba(231, 119, 63, 0.22)",
+        "aantal": 3
+      },
+      {
+        "waarde": "#000",
+        "aantal": 2
+      },
+      {
+        "waarde": "#0369a1",
+        "aantal": 2
+      },
+      {
+        "waarde": "#0b7c91",
+        "aantal": 2
+      },
+      {
+        "waarde": "#1565c0",
+        "aantal": 2
+      },
+      {
+        "waarde": "#17679a",
+        "aantal": 2
+      },
+      {
+        "waarde": "#1b7f45",
+        "aantal": 2
+      },
+      {
+        "waarde": "#1e293b",
+        "aantal": 2
+      },
+      {
+        "waarde": "#1e7e34",
+        "aantal": 2
+      },
+      {
+        "waarde": "#1e9a4a",
+        "aantal": 2
+      },
+      {
+        "waarde": "#2b5f8a",
+        "aantal": 2
+      },
+      {
+        "waarde": "#32407f",
+        "aantal": 2
+      },
+      {
+        "waarde": "#3e9e4c",
+        "aantal": 2
+      },
+      {
+        "waarde": "#555",
+        "aantal": 2
+      },
+      {
+        "waarde": "#5e6063",
+        "aantal": 2
+      },
+      {
+        "waarde": "#8a5000",
+        "aantal": 2
+      },
+      {
+        "waarde": "#8f2b23",
+        "aantal": 2
+      },
+      {
+        "waarde": "#a86f04",
+        "aantal": 2
+      },
+      {
+        "waarde": "#b26a00",
+        "aantal": 2
+      },
+      {
+        "waarde": "#bfe0c8",
+        "aantal": 2
+      },
+      {
+        "waarde": "#c33",
+        "aantal": 2
+      },
+      {
+        "waarde": "#c8442c",
+        "aantal": 2
+      },
+      {
+        "waarde": "#cfe8da",
+        "aantal": 2
+      },
+      {
+        "waarde": "#cfe9d6",
+        "aantal": 2
+      },
+      {
+        "waarde": "#e0f2fe",
+        "aantal": 2
+      },
+      {
+        "waarde": "#e2f1e2",
+        "aantal": 2
+      },
+      {
+        "waarde": "#e7f1fa",
+        "aantal": 2
+      },
+      {
+        "waarde": "#e7f6e7",
+        "aantal": 2
+      },
+      {
+        "waarde": "#e8f0fe",
+        "aantal": 2
+      },
+      {
+        "waarde": "#e8f5ec",
+        "aantal": 2
+      },
+      {
+        "waarde": "#eaf4fb",
+        "aantal": 2
+      },
+      {
+        "waarde": "#eef0f2",
+        "aantal": 2
+      },
+      {
+        "waarde": "#eef0fa",
+        "aantal": 2
+      },
+      {
+        "waarde": "#efe8e1",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f0b9b4",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f0c7c3",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f1f8f3",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f2c4c2",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f2c9b0",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f3c9b3",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f3d3b0",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f4faf5",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f5c6c0",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f6d8c8",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f6fbf7",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f7f7f7",
+        "aantal": 2
+      },
+      {
+        "waarde": "#f8e7e7",
+        "aantal": 2
+      },
+      {
+        "waarde": "#faf8f6",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fcf2f2",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fdeceb",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fdf1ea",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fdf4e3",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fdf6e7",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fef7f6",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fff2cc",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fff3e0",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fff6e5",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fff8f3",
+        "aantal": 2
+      },
+      {
+        "waarde": "#fffdfc",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(0,0,0,0.18)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(0,0,0,0.22)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(0,0,0,0.28)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(231, 119, 63, 0.18)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(241, 88, 41, 0.18)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(255, 255, 255, 0.25)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(255, 255, 255, 0.45)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(255,255,255,0.35)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(255,255,255,0.92)",
+        "aantal": 2
+      },
+      {
+        "waarde": "rgba(51,48,46,0.25)",
+        "aantal": 2
+      },
+      {
+        "waarde": "#12a9c6",
+        "aantal": 1
+      },
+      {
+        "waarde": "#16803c",
+        "aantal": 1
+      },
+      {
+        "waarde": "#1a7f37",
+        "aantal": 1
+      },
+      {
+        "waarde": "#1f5c2a",
+        "aantal": 1
+      },
+      {
+        "waarde": "#1f6b3a",
+        "aantal": 1
+      },
+      {
+        "waarde": "#222",
+        "aantal": 1
+      },
+      {
+        "waarde": "#23211f",
+        "aantal": 1
+      },
+      {
+        "waarde": "#245b38",
+        "aantal": 1
+      },
+      {
+        "waarde": "#2b6cb0",
+        "aantal": 1
+      },
+      {
+        "waarde": "#2c5b8f",
+        "aantal": 1
+      },
+      {
+        "waarde": "#2e7d5b",
+        "aantal": 1
+      },
+      {
+        "waarde": "#2f2f31",
+        "aantal": 1
+      },
+      {
+        "waarde": "#333",
+        "aantal": 1
+      },
+      {
+        "waarde": "#45484c",
+        "aantal": 1
+      },
+      {
+        "waarde": "#555a5f",
+        "aantal": 1
+      },
+      {
+        "waarde": "#5b5b5d",
+        "aantal": 1
+      },
+      {
+        "waarde": "#6b46c1",
+        "aantal": 1
+      },
+      {
+        "waarde": "#6b4e00",
+        "aantal": 1
+      },
+      {
+        "waarde": "#7a4600",
+        "aantal": 1
+      },
+      {
+        "waarde": "#7a6a5c",
+        "aantal": 1
+      },
+      {
+        "waarde": "#7b241c",
+        "aantal": 1
+      },
+      {
+        "waarde": "#7c7268",
+        "aantal": 1
+      },
+      {
+        "waarde": "#7d7871",
+        "aantal": 1
+      },
+      {
+        "waarde": "#8a2a20",
+        "aantal": 1
+      },
+      {
+        "waarde": "#8a3b12",
+        "aantal": 1
+      },
+      {
+        "waarde": "#8a6a3e",
+        "aantal": 1
+      },
+      {
+        "waarde": "#8a8a8a",
+        "aantal": 1
+      },
+      {
+        "waarde": "#8a8f99",
+        "aantal": 1
+      },
+      {
+        "waarde": "#8b1e13",
+        "aantal": 1
+      },
+      {
+        "waarde": "#8e1b1b",
+        "aantal": 1
+      },
+      {
+        "waarde": "#9a9086",
+        "aantal": 1
+      },
+      {
+        "waarde": "#9aa0a6",
+        "aantal": 1
+      },
+      {
+        "waarde": "#9e9e9e",
+        "aantal": 1
+      },
+      {
+        "waarde": "#a5d6a7",
+        "aantal": 1
+      },
+      {
+        "waarde": "#aaa",
+        "aantal": 1
+      },
+      {
+        "waarde": "#b06a00",
+        "aantal": 1
+      },
+      {
+        "waarde": "#b0b0b0",
+        "aantal": 1
+      },
+      {
+        "waarde": "#b5710a",
+        "aantal": 1
+      },
+      {
+        "waarde": "#b58900",
+        "aantal": 1
+      },
+      {
+        "waarde": "#b8b2ab",
+        "aantal": 1
+      },
+      {
+        "waarde": "#bcb6ae",
+        "aantal": 1
+      },
+      {
+        "waarde": "#bfe0c2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#c4c4c4",
+        "aantal": 1
+      },
+      {
+        "waarde": "#c7e5d0",
+        "aantal": 1
+      },
+      {
+        "waarde": "#c95e28",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ccefd8",
+        "aantal": 1
+      },
+      {
+        "waarde": "#cdbfb2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#cfc7bd",
+        "aantal": 1
+      },
+      {
+        "waarde": "#cfe6d4",
+        "aantal": 1
+      },
+      {
+        "waarde": "#cfe7d4",
+        "aantal": 1
+      },
+      {
+        "waarde": "#d8d8dc",
+        "aantal": 1
+      },
+      {
+        "waarde": "#d97316",
+        "aantal": 1
+      },
+      {
+        "waarde": "#d9930d",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ddd6cf",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ded6cd",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e0dcd7",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e0e0e0",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e2f2e5",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e3b4ae",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e3e3e3",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e4e4e7",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e4ebf3",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e65100",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e6e0da",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e6f0fa",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e6f2ec",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e7773f",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e7eef7",
+        "aantal": 1
+      },
+      {
+        "waarde": "#e7f5ec",
+        "aantal": 1
+      },
+      {
+        "waarde": "#eadb9a",
+        "aantal": 1
+      },
+      {
+        "waarde": "#eae7e2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#eaf8ef",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ece7e2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ecf7ee",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ede7e1",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ede7fb",
+        "aantal": 1
+      },
+      {
+        "waarde": "#eeeeee",
+        "aantal": 1
+      },
+      {
+        "waarde": "#eef2f7",
+        "aantal": 1
+      },
+      {
+        "waarde": "#eef8f1",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ef9385",
+        "aantal": 1
+      },
+      {
+        "waarde": "#efc7b4",
+        "aantal": 1
+      },
+      {
+        "waarde": "#efdfb8",
+        "aantal": 1
+      },
+      {
+        "waarde": "#efe9e2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#efedea",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f0d9c8",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f0e4d8",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f0f0f0",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f0faf3",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f1f1ef",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f1f8f1",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f1f8f2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f2d69a",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f3c2bf",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f3c9c9",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f3d6d2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f4d9c9",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f4f4f5",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f4f8fb",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f4f9fd",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f5c6c6",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f5f1ed",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f5f4f2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f5f5f6",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f5f6fc",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f6712c",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f6dcc8",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f6f6f6",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f7f3ef",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f8f5f1",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f8f7f4",
+        "aantal": 1
+      },
+      {
+        "waarde": "#f9c89b",
+        "aantal": 1
+      },
+      {
+        "waarde": "#faf9f7",
+        "aantal": 1
+      },
+      {
+        "waarde": "#faf9f8",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fbe0c7",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fbfbfa",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fceeeb",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fdece1",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fdefe7",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fdefe9",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fdf1f1",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fdf7f2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fdf9ee",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ffe0b8",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ffe0d2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ffe9dc",
+        "aantal": 1
+      },
+      {
+        "waarde": "#ffece2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff1e2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff1e8",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff2e9",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff3c4",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff3ec",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff4e5",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff6ec",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff7e6",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff8ec",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff8ef",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff8f2",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff9e6",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff9f5",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fffaf6",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fffbf0",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fffbf8",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(0, 0, 0, 0.03)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(0,0,0,0.04)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(0,0,0,0.08)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(0,0,0,0.14)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(0,0,0,0.26)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(0,0,0,0.4)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(15, 23, 42, 0.35)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(17, 17, 17, .35)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(199, 226, 235, 0.25)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(199, 226, 235, 0.30)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(211, 47, 47, 0.20)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(231, 119, 63, 0.08)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(231, 119, 63, 0.35)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(232, 119, 34, 0.55)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(232, 119, 34, 0)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(240, 138, 36, .06)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(241, 88, 41, .12)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(246, 113, 44, 0.4)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(248, 218, 188, 0.35)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(248, 218, 188, 0.40)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(255, 255, 255, 0.7)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(255, 255, 255, 0.85)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(255,255,255,0.5)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(255,255,255,0.6)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(255,255,255,0.75)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(28, 122, 63, 0.05)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(28, 122, 63, 0.10)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(30, 35, 40, 0.16)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(30, 35, 40, 0.18)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(31, 27, 20, 0.10)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(32, 32, 32, 0.14)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(35, 30, 25, 0.45)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51, 48, 46, 0.04)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51, 48, 46, 0.05)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51, 48, 46, 0.06)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51, 48, 46, 0.14)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51, 48, 46, 0.45)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51,48,46,0.05)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51,48,46,0.10)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51,48,46,0.15)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(51,48,46,0.22)",
+        "aantal": 1
+      }
+    ]
+  },
+  "lettergroottes": {
+    "verschillend": 21,
+    "benoemd": 6,
+    "los": [
+      {
+        "waarde": "12px",
+        "aantal": 109
+      },
+      {
+        "waarde": "13px",
+        "aantal": 107
+      },
+      {
+        "waarde": "11px",
+        "aantal": 83
+      },
+      {
+        "waarde": "14px",
+        "aantal": 40
+      },
+      {
+        "waarde": "10px",
+        "aantal": 30
+      },
+      {
+        "waarde": "12.5px",
+        "aantal": 27
+      },
+      {
+        "waarde": "11.5px",
+        "aantal": 14
+      },
+      {
+        "waarde": "15px",
+        "aantal": 9
+      },
+      {
+        "waarde": "13.5px",
+        "aantal": 7
+      },
+      {
+        "waarde": "16px",
+        "aantal": 7
+      },
+      {
+        "waarde": "9px",
+        "aantal": 7
+      },
+      {
+        "waarde": "18px",
+        "aantal": 6
+      },
+      {
+        "waarde": "20px",
+        "aantal": 3
+      },
+      {
+        "waarde": "24px",
+        "aantal": 3
+      },
+      {
+        "waarde": "26px",
+        "aantal": 2
+      },
+      {
+        "waarde": "9.5px",
+        "aantal": 2
+      },
+      {
+        "waarde": "10.5px",
+        "aantal": 1
+      },
+      {
+        "waarde": "14.5px",
+        "aantal": 1
+      },
+      {
+        "waarde": "17px",
+        "aantal": 1
+      },
+      {
+        "waarde": "22px",
+        "aantal": 1
+      },
+      {
+        "waarde": "34px",
+        "aantal": 1
+      }
+    ]
+  },
+  "rondingen": {
+    "verschillend": 19,
+    "benoemd": 4,
+    "los": [
+      {
+        "waarde": "8px",
+        "aantal": 74
+      },
+      {
+        "waarde": "10px",
+        "aantal": 44
+      },
+      {
+        "waarde": "6px",
+        "aantal": 38
+      },
+      {
+        "waarde": "12px",
+        "aantal": 20
+      },
+      {
+        "waarde": "50%",
+        "aantal": 20
+      },
+      {
+        "waarde": "5px",
+        "aantal": 16
+      },
+      {
+        "waarde": "7px",
+        "aantal": 16
+      },
+      {
+        "waarde": "14px",
+        "aantal": 13
+      },
+      {
+        "waarde": "999px",
+        "aantal": 12
+      },
+      {
+        "waarde": "9px",
+        "aantal": 11
+      },
+      {
+        "waarde": "16px",
+        "aantal": 2
+      },
+      {
+        "waarde": "20px",
+        "aantal": 2
+      },
+      {
+        "waarde": "2px",
+        "aantal": 2
+      },
+      {
+        "waarde": "4px",
+        "aantal": 2
+      },
+      {
+        "waarde": "0 0 8px 8px",
+        "aantal": 1
+      },
+      {
+        "waarde": "10px 0 0 10px",
+        "aantal": 1
+      },
+      {
+        "waarde": "13px",
+        "aantal": 1
+      },
+      {
+        "waarde": "30px",
+        "aantal": 1
+      },
+      {
+        "waarde": "7px 7px 0 0",
+        "aantal": 1
+      }
+    ]
+  },
+  "schaduwen": {
+    "verschillend": 45,
+    "benoemd": 3,
+    "los": [
+      {
+        "waarde": "0 0 0 3px rgba(231, 119, 63, 0.15)",
+        "aantal": 6
+      },
+      {
+        "waarde": "0 1px 3px rgba(0,0,0,0.05)",
+        "aantal": 5
+      },
+      {
+        "waarde": "0 2px 10px rgba(51,48,46,0.06)",
+        "aantal": 4
+      },
+      {
+        "waarde": "0 0 0 3px rgba(231, 119, 63, 0.12)",
+        "aantal": 2
+      },
+      {
+        "waarde": "0 0 0 3px rgba(241, 88, 41, 0.18)",
+        "aantal": 2
+      },
+      {
+        "waarde": "0 10px 40px rgba(0,0,0,0.25)",
+        "aantal": 2
+      },
+      {
+        "waarde": "0 6px 20px rgba(0,0,0,0.25)",
+        "aantal": 2
+      },
+      {
+        "waarde": "-12px 8px 34px rgba(30, 35, 40, 0.16)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 -6px 16px rgba(31, 27, 20, 0.10)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 0 0 0 rgba(232, 119, 34, 0.55)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 0 0 2px rgba(241, 88, 41, .12)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 0 0 3px rgba(255,255,255,0.35)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 0 0 7px rgba(232, 119, 34, 0)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 10px 28px rgba(32, 32, 32, 0.14)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 10px 30px rgba(0,0,0,0.16)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 12px 28px rgba(51,48,46,0.15)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 12px 40px rgba(0,0,0,0.25)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 14px 40px rgba(30, 35, 40, 0.18)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 14px 48px rgba(0,0,0,0.26)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 18px 50px rgba(0,0,0,0.25)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 18px 60px rgba(0,0,0,0.28)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 1px 2px rgba(51, 48, 46, 0.04), 0 12px 28px -8px rgba(51, 48, 46, 0.14)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 1px 3px rgba(0,0,0,0.04)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 1px 3px rgba(0,0,0,0.06)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 1px 4px rgba(0, 0, 0, 0.03)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 1px 4px rgba(0,0,0,0.06)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 2px 10px rgba(0,0,0,0.06)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 2px 10px rgba(51,48,46,0.05)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 2px 4px rgba(51, 48, 46, 0.05), 0 20px 40px -10px rgba(231, 119, 63, 0.22)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 2px 5px rgba(51,48,46,0.22)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 2px 6px rgba(51,48,46,0.25)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 2px 7px rgba(51,48,46,0.06)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 2px 8px rgba(0,0,0,0.06)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 2px 8px rgba(51,48,46,0.25)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 4px 14px rgba(0,0,0,0.18)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 4px 14px rgba(231, 119, 63, 0.35)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 4px 16px rgba(231, 119, 63, 0.10)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 4px 24px rgba(0,0,0,0.08)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 6px 20px rgba(0,0,0,0.14)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 6px 20px rgba(0,0,0,0.22)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 8px 22px rgba(0,0,0,0.16)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 8px 24px rgba(0,0,0,0.16)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 8px 24px rgba(51,48,46,0.10), 0 2px 6px rgba(51,48,46,0.06)",
+        "aantal": 1
+      },
+      {
+        "waarde": "0 8px 28px rgba(0,0,0,0.18)",
+        "aantal": 1
+      },
+      {
+        "waarde": "inset 0 3px 0 rgba(246, 113, 44, 0.4)",
+        "aantal": 1
+      }
+    ]
+  },
+  "afstanden": {
+    "verschillend": 21,
+    "benoemd": 10,
+    "los": [
+      {
+        "waarde": "8px",
+        "aantal": 83
+      },
+      {
+        "waarde": "10px",
+        "aantal": 41
+      },
+      {
+        "waarde": "6px",
+        "aantal": 34
+      },
+      {
+        "waarde": "12px",
+        "aantal": 23
+      },
+      {
+        "waarde": "2px",
+        "aantal": 17
+      },
+      {
+        "waarde": "4px",
+        "aantal": 17
+      },
+      {
+        "waarde": "7px",
+        "aantal": 9
+      },
+      {
+        "waarde": "14px",
+        "aantal": 8
+      },
+      {
+        "waarde": "16px",
+        "aantal": 7
+      },
+      {
+        "waarde": "5px",
+        "aantal": 7
+      },
+      {
+        "waarde": "20px",
+        "aantal": 5
+      },
+      {
+        "waarde": "1px",
+        "aantal": 4
+      },
+      {
+        "waarde": "24px",
+        "aantal": 2
+      },
+      {
+        "waarde": "3px",
+        "aantal": 2
+      },
+      {
+        "waarde": "11px",
+        "aantal": 1
+      },
+      {
+        "waarde": "13px",
+        "aantal": 1
+      },
+      {
+        "waarde": "26px",
+        "aantal": 1
+      },
+      {
+        "waarde": "32px",
+        "aantal": 1
+      },
+      {
+        "waarde": "40px",
+        "aantal": 1
+      },
+      {
+        "waarde": "60px",
+        "aantal": 1
+      },
+      {
+        "waarde": "9px",
+        "aantal": 1
+      }
+    ]
+  },
+  "families": [
+    {
+      "naam": "Knoppen",
+      "aantal": 98,
+      "namen": [
+        "add-month-btn",
+        "add-task-btn",
+        "ag-datumknop",
+        "ag-datumknop-close-row",
+        "ag-datumknop-panel",
+        "ag-datumknop-panel-meten",
+        "ag-datumknop-section",
+        "ag-datumknop-section-kop",
+        "ag-datumknop-subtiel",
+        "ag-datumknop-tabcontent",
+        "ag-datumknop-tabs",
+        "ag-datumknop-wrap",
+        "ag-datumknop-wrap-subtiel",
+        "ag-day-selector-btn",
+        "ag-delete-btn",
+        "as-btn",
+        "at-knop",
+        "beheer-knoppen",
+        "bl-add-knoppen",
+        "btn",
+        "btn-danger",
+        "btn-ghost",
+        "btn-ghost-aan",
+        "btn-klein",
+        "btn-omrand",
+        "btn-primary",
+        "btn-quiet",
+        "btn-uit",
+        "bulk-knoppen",
+        "cb-kern-knop",
+        "ct-btn",
+        "ct-knoppen",
+        "deel-knoppen",
+        "dev-afgerond-knop",
+        "dev-mail-btn",
+        "dev-nieuw-btn",
+        "dev-weg-btn",
+        "ghost-btn",
+        "hm-knop",
+        "kb-gaps-kop-btn",
+        "kijk-knoppen",
+        "kk-knop",
+        "kmm-knop",
+        "ktr-explain-btn",
+        "lead-maak-knoppen",
+        "logout-btn",
+        "mail-col-btn",
+        "mc-knoppen",
+        "md-knop",
+        "mini-btn",
+        "month-btn",
+        "om-knop",
+        "opr-btn",
+        "opr-knoppen",
+        "ov-item-btn",
+        "ovc-blok-taakbtn",
+        "pcd-btn",
+        "pcd-btn-done",
+        "pcd-btn-primary",
+        "pcd-docs-buttons",
+        "pch-msg-btn",
+        "pd-knop",
+        "pd-knopjes",
+        "pg-planknop",
+        "pl-bloktitel-btn",
+        "pl-schakelknop",
+        "primary-btn",
+        "prio-groepknop",
+        "prio-knoppen",
+        "prio-waarom-knop",
+        "profile-gen-buttons",
+        "ql-btn",
+        "rk-volledig-knop",
+        "strategy-verwerkt-btn",
+        "task-link-btn",
+        "tv-lijst-btn",
+        "tw-knop",
+        "uk-knoppen",
+        "uk-knoppen-onder",
+        "vg-knop",
+        "vm-btn",
+        "vm-knoppen",
+        "wl-knop",
+        "wl-rij-knoppen",
+        "wp-btn",
+        "wp-btn-ghost",
+        "wp-btn-primary",
+        "wp-btns",
+        "wp-check-btn",
+        "wp-fase-btn",
+        "wp-fase-btn-aan",
+        "wp-fase-btn-licht",
+        "wp-fase-btn-primair",
+        "wp-fase-btn-uit",
+        "wp-info-lijstbtn",
+        "wp-link-btn",
+        "zp-knop",
+        "zp-kop-knoppen"
+      ]
+    },
+    {
+      "naam": "Kaarten en panelen",
+      "aantal": 124,
+      "namen": [
+        "act-card",
+        "ag-datumknop-panel",
+        "ag-datumknop-panel-meten",
+        "at-paneel",
+        "cannibal-panel",
+        "card",
+        "client-frame-card",
+        "cockpit-card",
+        "cw-kaart",
+        "dev-card",
+        "dev-client-card",
+        "dev-client-card-head",
+        "dev-kaart-opm",
+        "dev-kaart-opm-kop",
+        "dev-task-card",
+        "hm-paneel",
+        "kb-kaart",
+        "kb-kaart-kop",
+        "kb-kaart-naam",
+        "kb-kaart-velden",
+        "kijk-kaart",
+        "kk-paneel",
+        "kmm-paneel",
+        "koers-card",
+        "kpi-card",
+        "kpi-card-trend",
+        "kpi-focus-card",
+        "kpi-panel",
+        "link-preview-card",
+        "login-card",
+        "md-paneel",
+        "month-card",
+        "month-card-caret",
+        "month-card-count",
+        "month-card-head",
+        "month-card-title",
+        "month-card-uren",
+        "month-cards",
+        "nv-lijstkaart",
+        "ob-panel",
+        "om-paneel",
+        "opr-deelkaart",
+        "opr-intro-kaart",
+        "opr-kaart",
+        "opr-kaart-acties",
+        "opr-kaart-intro",
+        "opr-kaart-sam",
+        "opr-kaart-tekst",
+        "ov-card",
+        "ov-cards",
+        "ovc-card",
+        "page-chat-cluster-card",
+        "page-chat-links-card",
+        "page-chat-schema-card",
+        "page-summary-card",
+        "pages-panel",
+        "pages-plan-card",
+        "pages-plan-card-body",
+        "pages-plan-card-head",
+        "pages-plan-card-title",
+        "pch-apply-panel",
+        "pch-card",
+        "pch-card-chat",
+        "pl-card",
+        "pl-cardbody",
+        "pl-cardkop",
+        "pl-cardtitel",
+        "pnl-acties-groep",
+        "pnl-acties-info",
+        "pnl-acties-scheiding",
+        "prio-waarom-kaart",
+        "prog-kaart",
+        "prog-kaart-cijfer",
+        "prog-kaart-label",
+        "prog-kaart-onder",
+        "prog-kaarten",
+        "rk-parallel-kaart",
+        "sb-kaart",
+        "sb-kaart-body",
+        "sb-kaart-meta",
+        "sb-kaart-titel",
+        "stat-card",
+        "step-card",
+        "step-card-1",
+        "step-card-2",
+        "step-card-3",
+        "step-card-4",
+        "step-card-5",
+        "step-card-6",
+        "step-card-7",
+        "strategy-card",
+        "task-card",
+        "tvk-card",
+        "uk-paneel",
+        "uk-paneel-kop",
+        "uk-paneel-titel",
+        "uk-paneel-uitleg",
+        "vm-kaart",
+        "vm-kaart-abo",
+        "vm-kaart-tips",
+        "wb-kaart",
+        "wl-kaart",
+        "wp-card",
+        "wp-card-acties-kolom",
+        "wp-card-actions",
+        "wp-card-foot",
+        "wp-card-grid",
+        "wp-card-grip",
+        "wp-card-info",
+        "wp-card-links",
+        "wp-card-main",
+        "wp-card-sub",
+        "wp-card-taak",
+        "wp-card-tile",
+        "wp-card-top",
+        "wp-card-url",
+        "wp-info-kaart",
+        "wp-info-kaarthead",
+        "wp-kaart-doel",
+        "wp-kaart-doel-aan",
+        "wp-panel",
+        "wz-detail-card",
+        "wz-detail-card-title",
+        "zp-paneel"
+      ]
+    },
+    {
+      "naam": "Tabellen",
+      "aantal": 26,
+      "namen": [
+        "chat-table",
+        "dev-afgerond-tabel",
+        "dev-table",
+        "focus-editable",
+        "gmb-tabel",
+        "import-table",
+        "import-table-wrap",
+        "kpi-page-kw-table",
+        "kpi-table",
+        "md-table",
+        "opr-onderwerp-tabel",
+        "opr-tabel",
+        "pages-table",
+        "pages-table-wrap",
+        "paste-table",
+        "pch-msg-editable",
+        "prio-tabel",
+        "prio-tabel-wrap",
+        "res-table",
+        "res-table-wrap",
+        "task-table",
+        "task-table-verwerkt",
+        "task-table-wrap",
+        "uk-tabel",
+        "uk-tabel-wrap",
+        "wz-kw-table"
+      ]
+    },
+    {
+      "naam": "Tabjes",
+      "aantal": 10,
+      "namen": [
+        "kb-tab",
+        "kb-tab-aantal",
+        "kb-tab-actief",
+        "kb-tab-body",
+        "opr-tab",
+        "overview-tab",
+        "tab",
+        "tab-link",
+        "zp-tab",
+        "zp-tab-open"
+      ]
+    },
+    {
+      "naam": "Labels en badges",
+      "aantal": 124,
+      "namen": [
+        "act-edit-label",
+        "ag-hour-label",
+        "ag-weekbar-label",
+        "at-label",
+        "badge-done",
+        "bl-mail-label",
+        "bulk-chip",
+        "cannibal-dk-pill",
+        "cb-chip",
+        "chat-threads-label",
+        "chip",
+        "chip-aan",
+        "ck-label",
+        "compose-label",
+        "contact-badge",
+        "contact-chip",
+        "cw-chip",
+        "dev-check-label",
+        "dev-veld-label",
+        "dev-week-row-label",
+        "dev-week-row-nu-badge",
+        "doc-chip-live",
+        "focus-toolbar-label",
+        "gp-chip-akkoord",
+        "gp-chip-wacht",
+        "gp-nu-label",
+        "header-contact-label",
+        "hh-label",
+        "hh-label-dot",
+        "hm-item-label",
+        "il-anchor-chip",
+        "il-anchors-label",
+        "invoice-badge",
+        "kk-groep-label",
+        "klus-chip",
+        "klus-chip-ring",
+        "klus-chip-stil",
+        "klus-chip-wrap",
+        "kmm-item-label",
+        "kpi-compare-labels",
+        "kpi-label",
+        "kpi-site-badge",
+        "kpi-tier-badge",
+        "mail-bijlage-chip",
+        "mail-live-badge",
+        "mc-chip",
+        "mc-chip-eigen",
+        "mc-chip-soort",
+        "md-label",
+        "meta-live-badge",
+        "nv-badge-mist",
+        "nv-badge-plan",
+        "ob-chip",
+        "om-label",
+        "opr-chip",
+        "opr-groepkop-label",
+        "opr-voortgang-label",
+        "org-label",
+        "ov-label",
+        "ovc-conclusie-label",
+        "ovc-deel-label",
+        "pages-detail-label",
+        "pcd-label",
+        "pch-badge",
+        "pcq-label",
+        "pillar",
+        "pl-datumlabel",
+        "pl-nulabel",
+        "plan-chip",
+        "prio-filter-label",
+        "prio-gepland-chip",
+        "prio-label",
+        "prog-chip",
+        "prog-kaart-label",
+        "psc-label",
+        "psc-label-key",
+        "rk-advies-label",
+        "rk-chip-af",
+        "rk-chip-alarm",
+        "rk-chip-kan",
+        "rk-chip-loopt",
+        "rk-chip-ongemeten",
+        "rk-chip-open",
+        "rk-chip-twijfel",
+        "share-link-label",
+        "sov-pill",
+        "stat-label",
+        "step-badge",
+        "tv-chip",
+        "tvk-pill",
+        "tvk-pill-done",
+        "tvk-pill-err",
+        "tw-chip-nu",
+        "tw-chip-punt",
+        "tw-stand-chip",
+        "uk-chip",
+        "uk-chips",
+        "url-badge",
+        "ut-chip-intern",
+        "ut-hero-label",
+        "vg-label",
+        "wie-badge",
+        "wl-huidig-label",
+        "wl-rij-label",
+        "wp-aud-pill",
+        "wp-chip",
+        "wp-chip-geschreven",
+        "wp-chip-onbekend",
+        "wp-chip-plan",
+        "wp-controle-label",
+        "wp-doc-chip",
+        "wp-doc-chip-leeg",
+        "wp-doc-chips",
+        "wp-docchip",
+        "wp-docchip-actief",
+        "wp-fase-alles-label",
+        "wp-fase-chip",
+        "wp-fase-label",
+        "wp-mail-linkchip",
+        "wp-mail-onderwerp-label",
+        "wp-sectie-label",
+        "wz-kpi-label",
+        "wz-line-label",
+        "wz-marker-label"
+      ]
+    },
+    {
+      "naam": "Invoervelden",
+      "aantal": 58,
+      "namen": [
+        "add-month-select",
+        "ag-checkbox-field",
+        "ag-day-selector",
+        "ag-day-selector-btn",
+        "ag-day-selector-name",
+        "ag-day-selector-num",
+        "ag-field",
+        "ag-field-row",
+        "beheer-veld-kop",
+        "bl-add-veld",
+        "chat-input",
+        "chat-thread-select",
+        "comp-inputs",
+        "compose-input",
+        "dev-veld",
+        "dev-veld-label",
+        "dev-veld-msg",
+        "dev-veld-rijk",
+        "dk-veld",
+        "dk-veld-open",
+        "field",
+        "field-wide",
+        "gmb-zoekveld",
+        "header-month-select",
+        "hr-veld",
+        "kb-kaart-velden",
+        "kb-veld",
+        "kb-velden",
+        "kpi-focus-select",
+        "kpi-period-select",
+        "kw-veld",
+        "nt-titel-input",
+        "nt-veld",
+        "nv-term-input",
+        "opr-ads-veld",
+        "opr-select",
+        "org-field",
+        "org-mis-input",
+        "ovc-input",
+        "page-chat-input",
+        "pchf-input",
+        "prio-ads-veld",
+        "prio-prop-veld",
+        "prog-instel-veld",
+        "prog-veld",
+        "psc-input",
+        "reply-to-input",
+        "selected",
+        "selection-body",
+        "selection-pop",
+        "selection-toast",
+        "share-link-input",
+        "tw-veld",
+        "tw-veld-klein",
+        "wp-chat-input",
+        "wp-docdrop-input",
+        "wp-mail-toveld",
+        "wp-notitie-veld"
+      ]
+    }
+  ],
+  "inline": {
+    "totaal": 615,
+    "metVasteWaarde": 50,
+    "perBestand": [
+      {
+        "bestand": "app/admin/financien/page.tsx",
+        "aantal": 10
+      },
+      {
+        "bestand": "app/admin/usage/page.tsx",
+        "aantal": 8
+      },
+      {
+        "bestand": "app/admin/developer/DeveloperOverview.tsx",
+        "aantal": 6
+      },
+      {
+        "bestand": "app/admin/client/[slug]/MetaCtrPanel.tsx",
+        "aantal": 4
+      },
+      {
+        "bestand": "app/admin/client/[slug]/PagesPanel.tsx",
+        "aantal": 4
+      },
+      {
+        "bestand": "app/admin/financien/FinancienClient.tsx",
+        "aantal": 4
+      },
+      {
+        "bestand": "app/admin/ViewAsBanner.tsx",
+        "aantal": 2
+      },
+      {
+        "bestand": "app/admin/client/[slug]/ClientCockpit.tsx",
+        "aantal": 2
+      },
+      {
+        "bestand": "app/admin/client/[slug]/pagina-chat/AfwijsVenster.tsx",
+        "aantal": 2
+      },
+      {
+        "bestand": "app/admin/client/[slug]/pagina-chat/StrategieKaart.tsx",
+        "aantal": 2
+      },
+      {
+        "bestand": "app/admin/fundament/FundamentClient.tsx",
+        "aantal": 2
+      },
+      {
+        "bestand": "app/admin/beheer/BeheerClient.tsx",
+        "aantal": 1
+      },
+      {
+        "bestand": "app/admin/client/[slug]/SelectionActions.tsx",
+        "aantal": 1
+      },
+      {
+        "bestand": "app/admin/fundament/page.tsx",
+        "aantal": 1
+      },
+      {
+        "bestand": "app/proefveld/page.tsx",
+        "aantal": 1
+      }
+    ]
+  },
+  "tokens": [
+    {
+      "naam": "--orange",
+      "waarde": "#E7773F"
+    },
+    {
+      "naam": "--orange-dark",
+      "waarde": "#C95E28"
+    },
+    {
+      "naam": "--link",
+      "waarde": "#1a6dd6"
+    },
+    {
+      "naam": "--orange-light",
+      "waarde": "#FFF4EE"
+    },
+    {
+      "naam": "--dark",
+      "waarde": "#222222"
+    },
+    {
+      "naam": "--body-text",
+      "waarde": "#181818"
+    },
+    {
+      "naam": "--gray",
+      "waarde": "#616161"
+    },
+    {
+      "naam": "--muted",
+      "waarde": "#444444"
+    },
+    {
+      "naam": "--gray-light",
+      "waarde": "#F5F5F5"
+    },
+    {
+      "naam": "--brand-charcoal",
+      "waarde": "#33302E"
+    },
+    {
+      "naam": "--brand-taupe",
+      "waarde": "#7C7268"
+    },
+    {
+      "naam": "--brand-taupe-light",
+      "waarde": "#F1EEEB"
+    },
+    {
+      "naam": "--brand-teal",
+      "waarde": "#12A9C6"
+    },
+    {
+      "naam": "--brand-teal-light",
+      "waarde": "#E4F5F9"
+    },
+    {
+      "naam": "--brand-blue",
+      "waarde": "#2286C7"
+    },
+    {
+      "naam": "--brand-blue-light",
+      "waarde": "#E7F1FA"
+    },
+    {
+      "naam": "--brand-salmon",
+      "waarde": "#EF9385"
+    },
+    {
+      "naam": "--brand-orange-soft",
+      "waarde": "#FBE7DA"
+    },
+    {
+      "naam": "--brand-orange-faint",
+      "waarde": "#FFF6F0"
+    },
+    {
+      "naam": "--app-bg",
+      "waarde": "#F5F6FA"
+    },
+    {
+      "naam": "--white",
+      "waarde": "#FFFFFF"
+    },
+    {
+      "naam": "--border",
+      "waarde": "#E0E0E0"
+    },
+    {
+      "naam": "--red",
+      "waarde": "#D32F2F"
+    },
+    {
+      "naam": "--red-light",
+      "waarde": "#FFEBEE"
+    },
+    {
+      "naam": "--good",
+      "waarde": "#2E7D32"
+    },
+    {
+      "naam": "--bad",
+      "waarde": "#C62828"
+    },
+    {
+      "naam": "--bad-deep",
+      "waarde": "#a13d3d"
+    },
+    {
+      "naam": "--warn-dark",
+      "waarde": "#b25a00"
+    },
+    {
+      "naam": "--danger",
+      "waarde": "#c0392b"
+    },
+    {
+      "naam": "--accent-warm",
+      "waarde": "#d97316"
+    },
+    {
+      "naam": "--label-muted",
+      "waarde": "#8a6a3e"
+    },
+    {
+      "naam": "--text-secondary",
+      "waarde": "#5b6472"
+    },
+    {
+      "naam": "--highlight-manual",
+      "waarde": "#fff6e5"
+    },
+    {
+      "naam": "--accent",
+      "waarde": "#F15829"
+    },
+    {
+      "naam": "--pingwin",
+      "waarde": "var(--orange)"
+    },
+    {
+      "naam": "--grad-blauw",
+      "waarde": "#C7E2EB"
+    },
+    {
+      "naam": "--grad-perzik",
+      "waarde": "#F8DABC"
+    },
+    {
+      "naam": "--grad-pingwin",
+      "waarde": "linear-gradient(228deg, #C7E2EB 38%, #F8DABC 80%)"
+    },
+    {
+      "naam": "--card-border",
+      "waarde": "#F0E7DF"
+    },
+    {
+      "naam": "--s-0",
+      "waarde": "0px"
+    },
+    {
+      "naam": "--s-1",
+      "waarde": "4px"
+    },
+    {
+      "naam": "--s-2",
+      "waarde": "8px"
+    },
+    {
+      "naam": "--s-3",
+      "waarde": "12px"
+    },
+    {
+      "naam": "--s-4",
+      "waarde": "16px"
+    },
+    {
+      "naam": "--s-5",
+      "waarde": "20px"
+    },
+    {
+      "naam": "--s-6",
+      "waarde": "24px"
+    },
+    {
+      "naam": "--s-8",
+      "waarde": "32px"
+    },
+    {
+      "naam": "--s-10",
+      "waarde": "40px"
+    },
+    {
+      "naam": "--s-12",
+      "waarde": "48px"
+    },
+    {
+      "naam": "--fs-xs",
+      "waarde": "11px"
+    },
+    {
+      "naam": "--lh-xs",
+      "waarde": "16px"
+    },
+    {
+      "naam": "--fs-sm",
+      "waarde": "12.5px"
+    },
+    {
+      "naam": "--lh-sm",
+      "waarde": "18px"
+    },
+    {
+      "naam": "--fs-base",
+      "waarde": "14px"
+    },
+    {
+      "naam": "--lh-base",
+      "waarde": "22px"
+    },
+    {
+      "naam": "--fs-md",
+      "waarde": "16px"
+    },
+    {
+      "naam": "--lh-md",
+      "waarde": "24px"
+    },
+    {
+      "naam": "--fs-lg",
+      "waarde": "20px"
+    },
+    {
+      "naam": "--lh-lg",
+      "waarde": "28px"
+    },
+    {
+      "naam": "--fs-xl",
+      "waarde": "26px"
+    },
+    {
+      "naam": "--lh-xl",
+      "waarde": "32px"
+    },
+    {
+      "naam": "--r-sm",
+      "waarde": "6px"
+    },
+    {
+      "naam": "--r-md",
+      "waarde": "10px"
+    },
+    {
+      "naam": "--r-lg",
+      "waarde": "14px"
+    },
+    {
+      "naam": "--breedte-scherm",
+      "waarde": "900px"
+    },
+    {
+      "naam": "--r-full",
+      "waarde": "999px"
+    },
+    {
+      "naam": "--shadow-sm",
+      "waarde": "0 1px 3px rgba(51, 48, 46, 0.06)"
+    },
+    {
+      "naam": "--shadow-md",
+      "waarde": "0 4px 16px rgba(51, 48, 46, 0.07), 0 1px 3px rgba(51, 48, 46, 0.05)"
+    },
+    {
+      "naam": "--shadow-lg",
+      "waarde": "0 8px 24px rgba(51, 48, 46, 0.10), 0 2px 6px rgba(51, 48, 46, 0.06)"
+    }
+  ],
+  "kleurNaastToken": [
+    {
+      "waarde": "#fff",
+      "aantal": 141,
+      "dichtst": "--white",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#1c7a3f",
+      "aantal": 61,
+      "dichtst": "--good",
+      "afstand": 35,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#2e7d32",
+      "aantal": 42,
+      "dichtst": "--good",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#b3261e",
+      "aantal": 30,
+      "dichtst": "--bad",
+      "afstand": 35,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#1e824c",
+      "aantal": 29,
+      "dichtst": "--good",
+      "afstand": 51,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#6f645a",
+      "aantal": 29,
+      "dichtst": "--gray",
+      "afstand": 25,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f15829",
+      "aantal": 27,
+      "dichtst": "--accent",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#c62828",
+      "aantal": 20,
+      "dichtst": "--bad",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#e5ded6",
+      "aantal": 16,
+      "dichtst": "--border",
+      "afstand": 17,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fffdfb",
+      "aantal": 13,
+      "dichtst": "--white",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdecea",
+      "aantal": 12,
+      "dichtst": "--red-light",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#c0392b",
+      "aantal": 10,
+      "dichtst": "--danger",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#e7f6ea",
+      "aantal": 10,
+      "dichtst": "--brand-teal-light",
+      "afstand": 22,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#8a7a6c",
+      "aantal": 9,
+      "dichtst": "--brand-taupe",
+      "afstand": 28,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#2b2b2b",
+      "aantal": 8,
+      "dichtst": "--brand-charcoal",
+      "afstand": 16,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#8a5a00",
+      "aantal": 7,
+      "dichtst": "--warn-dark",
+      "afstand": 65,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#eaf6ef",
+      "aantal": 7,
+      "dichtst": "--brand-teal-light",
+      "afstand": 18,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.06)",
+      "aantal": 7,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "#2e9e5b",
+      "aantal": 6,
+      "dichtst": "--good",
+      "afstand": 95,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#eadfce",
+      "aantal": 6,
+      "dichtst": "--card-border",
+      "afstand": 31,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#eaf5ee",
+      "aantal": 6,
+      "dichtst": "--brand-teal-light",
+      "afstand": 19,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdecec",
+      "aantal": 6,
+      "dichtst": "--red-light",
+      "afstand": 5,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.25)",
+      "aantal": 6,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(231, 119, 63, 0.14)",
+      "aantal": 6,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(231, 119, 63, 0.15)",
+      "aantal": 6,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51,48,46,0.06)",
+      "aantal": 6,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "#1b7f3b",
+      "aantal": 5,
+      "dichtst": "--good",
+      "afstand": 32,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#1f1f1f",
+      "aantal": 5,
+      "dichtst": "--dark",
+      "afstand": 9,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#6b7280",
+      "aantal": 5,
+      "dichtst": "--text-secondary",
+      "afstand": 44,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#a12622",
+      "aantal": 5,
+      "dichtst": "--bad",
+      "afstand": 62,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#c93f16",
+      "aantal": 5,
+      "dichtst": "--danger",
+      "afstand": 37,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#e7f4e8",
+      "aantal": 5,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 21,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e8f5e9",
+      "aantal": 5,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 21,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f0ebe5",
+      "aantal": 5,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f1e9db",
+      "aantal": 5,
+      "dichtst": "--card-border",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fafafa",
+      "aantal": 5,
+      "dichtst": "--app-bg",
+      "afstand": 12,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fffaf7",
+      "aantal": 5,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 13,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.05)",
+      "aantal": 5,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(231, 119, 63, 0.10)",
+      "aantal": 5,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "#1a56b0",
+      "aantal": 4,
+      "dichtst": "--link",
+      "afstand": 79,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#1c7a44",
+      "aantal": 4,
+      "dichtst": "--good",
+      "afstand": 41,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#33302e",
+      "aantal": 4,
+      "dichtst": "--brand-charcoal",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#444",
+      "aantal": 4,
+      "dichtst": "--muted",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#6d28d9",
+      "aantal": 4,
+      "dichtst": "--link",
+      "afstand": 186,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#8a6d00",
+      "aantal": 4,
+      "dichtst": "--warn-dark",
+      "afstand": 75,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#e6c3bd",
+      "aantal": 4,
+      "dichtst": "--grad-perzik",
+      "afstand": 55,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#e7f6ec",
+      "aantal": 4,
+      "dichtst": "--brand-teal-light",
+      "afstand": 20,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ede9fe",
+      "aantal": 4,
+      "dichtst": "--brand-blue-light",
+      "afstand": 20,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eef7ee",
+      "aantal": 4,
+      "dichtst": "--gray-light",
+      "afstand": 16,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f0c8c8",
+      "aantal": 4,
+      "dichtst": "--grad-perzik",
+      "afstand": 42,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f0f1f3",
+      "aantal": 4,
+      "dichtst": "--gray-light",
+      "afstand": 12,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f3e9e1",
+      "aantal": 4,
+      "dichtst": "--card-border",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fbedea",
+      "aantal": 4,
+      "dichtst": "--red-light",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fbf8f5",
+      "aantal": 4,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff3d9",
+      "aantal": 4,
+      "dichtst": "--highlight-manual",
+      "afstand": 18,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "rgba(231, 119, 63, 0.12)",
+      "aantal": 4,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "#0b4ea8",
+      "aantal": 3,
+      "dichtst": "--link",
+      "afstand": 102,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#2286c7",
+      "aantal": 3,
+      "dichtst": "--brand-blue",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#2a4bad",
+      "aantal": 3,
+      "dichtst": "--link",
+      "afstand": 100,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#3b4a9e",
+      "aantal": 3,
+      "dichtst": "--text-secondary",
+      "afstand": 101,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#8a8d91",
+      "aantal": 3,
+      "dichtst": "--brand-taupe",
+      "afstand": 87,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#9a6b00",
+      "aantal": 3,
+      "dichtst": "--warn-dark",
+      "afstand": 52,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#b03a2e",
+      "aantal": 3,
+      "dichtst": "--danger",
+      "afstand": 27,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#bfe6cc",
+      "aantal": 3,
+      "dichtst": "--grad-blauw",
+      "afstand": 49,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#c3b9ae",
+      "aantal": 3,
+      "dichtst": "--grad-perzik",
+      "afstand": 113,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#dcf5e3",
+      "aantal": 3,
+      "dichtst": "--brand-teal-light",
+      "afstand": 35,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#e5edff",
+      "aantal": 3,
+      "dichtst": "--brand-blue-light",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e6e6e6",
+      "aantal": 3,
+      "dichtst": "--border",
+      "afstand": 18,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e6f4ea",
+      "aantal": 3,
+      "dichtst": "--brand-teal-light",
+      "afstand": 22,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e6f6ec",
+      "aantal": 3,
+      "dichtst": "--brand-teal-light",
+      "afstand": 19,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e8f0f7",
+      "aantal": 3,
+      "dichtst": "--brand-blue-light",
+      "afstand": 5,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ececec",
+      "aantal": 3,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eef8ee",
+      "aantal": 3,
+      "dichtst": "--gray-light",
+      "afstand": 17,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f3efeb",
+      "aantal": 3,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 4,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f6f1ec",
+      "aantal": 3,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdeee7",
+      "aantal": 3,
+      "dichtst": "--red-light",
+      "afstand": 12,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdf3f2",
+      "aantal": 3,
+      "dichtst": "--orange-light",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff6f1",
+      "aantal": 3,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 1,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.16)",
+      "aantal": 3,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(231, 119, 63, 0.22)",
+      "aantal": 3,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "#000",
+      "aantal": 2,
+      "dichtst": "--body-text",
+      "afstand": 72,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#0369a1",
+      "aantal": 2,
+      "dichtst": "--link",
+      "afstand": 97,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#0b7c91",
+      "aantal": 2,
+      "dichtst": "--brand-blue",
+      "afstand": 100,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#1565c0",
+      "aantal": 2,
+      "dichtst": "--link",
+      "afstand": 41,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#17679a",
+      "aantal": 2,
+      "dichtst": "--brand-blue",
+      "afstand": 100,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#1b7f45",
+      "aantal": 2,
+      "dichtst": "--good",
+      "afstand": 43,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#1e293b",
+      "aantal": 2,
+      "dichtst": "--brand-charcoal",
+      "afstand": 40,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#1e7e34",
+      "aantal": 2,
+      "dichtst": "--good",
+      "afstand": 24,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#1e9a4a",
+      "aantal": 2,
+      "dichtst": "--good",
+      "afstand": 75,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#2b5f8a",
+      "aantal": 2,
+      "dichtst": "--text-secondary",
+      "afstand": 83,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#32407f",
+      "aantal": 2,
+      "dichtst": "--text-secondary",
+      "afstand": 97,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#3e9e4c",
+      "aantal": 2,
+      "dichtst": "--good",
+      "afstand": 82,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#555",
+      "aantal": 2,
+      "dichtst": "--gray",
+      "afstand": 36,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#5e6063",
+      "aantal": 2,
+      "dichtst": "--gray",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#8a5000",
+      "aantal": 2,
+      "dichtst": "--warn-dark",
+      "afstand": 68,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#8f2b23",
+      "aantal": 2,
+      "dichtst": "--bad-deep",
+      "afstand": 61,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#a86f04",
+      "aantal": 2,
+      "dichtst": "--warn-dark",
+      "afstand": 45,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#b26a00",
+      "aantal": 2,
+      "dichtst": "--warn-dark",
+      "afstand": 32,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#bfe0c8",
+      "aantal": 2,
+      "dichtst": "--grad-blauw",
+      "afstand": 54,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#c33",
+      "aantal": 2,
+      "dichtst": "--red",
+      "afstand": 15,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#c8442c",
+      "aantal": 2,
+      "dichtst": "--danger",
+      "afstand": 26,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#cfe8da",
+      "aantal": 2,
+      "dichtst": "--grad-blauw",
+      "afstand": 31,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#cfe9d6",
+      "aantal": 2,
+      "dichtst": "--grad-blauw",
+      "afstand": 37,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#e0f2fe",
+      "aantal": 2,
+      "dichtst": "--brand-teal-light",
+      "afstand": 12,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e2f1e2",
+      "aantal": 2,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 29,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e7f1fa",
+      "aantal": 2,
+      "dichtst": "--brand-blue-light",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#e7f6e7",
+      "aantal": 2,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 24,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e8f0fe",
+      "aantal": 2,
+      "dichtst": "--brand-blue-light",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e8f5ec",
+      "aantal": 2,
+      "dichtst": "--brand-teal-light",
+      "afstand": 20,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eaf4fb",
+      "aantal": 2,
+      "dichtst": "--brand-blue-light",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eef0f2",
+      "aantal": 2,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 12,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eef0fa",
+      "aantal": 2,
+      "dichtst": "--brand-blue-light",
+      "afstand": 12,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#efe8e1",
+      "aantal": 2,
+      "dichtst": "--card-border",
+      "afstand": 4,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f0b9b4",
+      "aantal": 2,
+      "dichtst": "--grad-perzik",
+      "afstand": 68,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#f0c7c3",
+      "aantal": 2,
+      "dichtst": "--grad-perzik",
+      "afstand": 42,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f1f8f3",
+      "aantal": 2,
+      "dichtst": "--gray-light",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f2c4c2",
+      "aantal": 2,
+      "dichtst": "--grad-perzik",
+      "afstand": 46,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f2c9b0",
+      "aantal": 2,
+      "dichtst": "--grad-perzik",
+      "afstand": 39,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f3c9b3",
+      "aantal": 2,
+      "dichtst": "--grad-perzik",
+      "afstand": 37,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f3d3b0",
+      "aantal": 2,
+      "dichtst": "--grad-perzik",
+      "afstand": 24,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f4faf5",
+      "aantal": 2,
+      "dichtst": "--gray-light",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f5c6c0",
+      "aantal": 2,
+      "dichtst": "--grad-perzik",
+      "afstand": 41,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f6d8c8",
+      "aantal": 2,
+      "dichtst": "--grad-perzik",
+      "afstand": 18,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f6fbf7",
+      "aantal": 2,
+      "dichtst": "--app-bg",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f7f7f7",
+      "aantal": 2,
+      "dichtst": "--app-bg",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f8e7e7",
+      "aantal": 2,
+      "dichtst": "--red-light",
+      "afstand": 18,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#faf8f6",
+      "aantal": 2,
+      "dichtst": "--gray-light",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fcf2f2",
+      "aantal": 2,
+      "dichtst": "--orange-light",
+      "afstand": 9,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdeceb",
+      "aantal": 2,
+      "dichtst": "--red-light",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdf1ea",
+      "aantal": 2,
+      "dichtst": "--orange-light",
+      "afstand": 9,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdf4e3",
+      "aantal": 2,
+      "dichtst": "--highlight-manual",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdf6e7",
+      "aantal": 2,
+      "dichtst": "--highlight-manual",
+      "afstand": 4,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fef7f6",
+      "aantal": 2,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 9,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff2cc",
+      "aantal": 2,
+      "dichtst": "--brand-orange-soft",
+      "afstand": 30,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#fff3e0",
+      "aantal": 2,
+      "dichtst": "--highlight-manual",
+      "afstand": 9,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff6e5",
+      "aantal": 2,
+      "dichtst": "--highlight-manual",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#fff8f3",
+      "aantal": 2,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fffdfc",
+      "aantal": 2,
+      "dichtst": "--white",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.18)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.22)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.28)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(231, 119, 63, 0.18)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(241, 88, 41, 0.18)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255, 255, 255, 0.25)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255, 255, 255, 0.45)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255,255,255,0.35)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255,255,255,0.92)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51,48,46,0.25)",
+      "aantal": 2,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "#12a9c6",
+      "aantal": 1,
+      "dichtst": "--brand-teal",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#16803c",
+      "aantal": 1,
+      "dichtst": "--good",
+      "afstand": 39,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#1a7f37",
+      "aantal": 1,
+      "dichtst": "--good",
+      "afstand": 31,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#1f5c2a",
+      "aantal": 1,
+      "dichtst": "--good",
+      "afstand": 71,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#1f6b3a",
+      "aantal": 1,
+      "dichtst": "--good",
+      "afstand": 44,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#222",
+      "aantal": 1,
+      "dichtst": "--dark",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#23211f",
+      "aantal": 1,
+      "dichtst": "--dark",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#245b38",
+      "aantal": 1,
+      "dichtst": "--muted",
+      "afstand": 69,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#2b6cb0",
+      "aantal": 1,
+      "dichtst": "--brand-blue",
+      "afstand": 66,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#2c5b8f",
+      "aantal": 1,
+      "dichtst": "--text-secondary",
+      "afstand": 87,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#2e7d5b",
+      "aantal": 1,
+      "dichtst": "--good",
+      "afstand": 69,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#2f2f31",
+      "aantal": 1,
+      "dichtst": "--brand-charcoal",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#333",
+      "aantal": 1,
+      "dichtst": "--brand-charcoal",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#45484c",
+      "aantal": 1,
+      "dichtst": "--muted",
+      "afstand": 16,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#555a5f",
+      "aantal": 1,
+      "dichtst": "--gray",
+      "afstand": 23,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#5b5b5d",
+      "aantal": 1,
+      "dichtst": "--gray",
+      "afstand": 16,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#6b46c1",
+      "aantal": 1,
+      "dichtst": "--text-secondary",
+      "afstand": 143,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#6b4e00",
+      "aantal": 1,
+      "dichtst": "--warn-dark",
+      "afstand": 116,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#7a4600",
+      "aantal": 1,
+      "dichtst": "--warn-dark",
+      "afstand": 99,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#7a6a5c",
+      "aantal": 1,
+      "dichtst": "--brand-taupe",
+      "afstand": 25,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#7b241c",
+      "aantal": 1,
+      "dichtst": "--bad-deep",
+      "afstand": 94,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#7c7268",
+      "aantal": 1,
+      "dichtst": "--brand-taupe",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#7d7871",
+      "aantal": 1,
+      "dichtst": "--brand-taupe",
+      "afstand": 19,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#8a2a20",
+      "aantal": 1,
+      "dichtst": "--bad-deep",
+      "afstand": 70,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#8a3b12",
+      "aantal": 1,
+      "dichtst": "--bad-deep",
+      "afstand": 76,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#8a6a3e",
+      "aantal": 1,
+      "dichtst": "--label-muted",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#8a8a8a",
+      "aantal": 1,
+      "dichtst": "--brand-taupe",
+      "afstand": 75,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#8a8f99",
+      "aantal": 1,
+      "dichtst": "--brand-taupe",
+      "afstand": 99,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#8b1e13",
+      "aantal": 1,
+      "dichtst": "--bad-deep",
+      "afstand": 97,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#8e1b1b",
+      "aantal": 1,
+      "dichtst": "--bad-deep",
+      "afstand": 91,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#9a9086",
+      "aantal": 1,
+      "dichtst": "--brand-taupe",
+      "afstand": 90,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#9aa0a6",
+      "aantal": 1,
+      "dichtst": "--brand-taupe",
+      "afstand": 142,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#9e9e9e",
+      "aantal": 1,
+      "dichtst": "--brand-taupe",
+      "afstand": 134,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#a5d6a7",
+      "aantal": 1,
+      "dichtst": "--grad-blauw",
+      "afstand": 119,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#aaa",
+      "aantal": 1,
+      "dichtst": "--brand-salmon",
+      "afstand": 136,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#b06a00",
+      "aantal": 1,
+      "dichtst": "--warn-dark",
+      "afstand": 32,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#b0b0b0",
+      "aantal": 1,
+      "dichtst": "--brand-salmon",
+      "afstand": 136,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#b5710a",
+      "aantal": 1,
+      "dichtst": "--warn-dark",
+      "afstand": 49,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#b58900",
+      "aantal": 1,
+      "dichtst": "--accent-warm",
+      "afstand": 81,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#b8b2ab",
+      "aantal": 1,
+      "dichtst": "--brand-salmon",
+      "afstand": 125,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#bcb6ae",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 126,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#bfe0c2",
+      "aantal": 1,
+      "dichtst": "--grad-blauw",
+      "afstand": 63,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#c4c4c4",
+      "aantal": 1,
+      "dichtst": "--grad-blauw",
+      "afstand": 84,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#c7e5d0",
+      "aantal": 1,
+      "dichtst": "--grad-blauw",
+      "afstand": 41,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#c95e28",
+      "aantal": 1,
+      "dichtst": "--orange-dark",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#ccefd8",
+      "aantal": 1,
+      "dichtst": "--grad-blauw",
+      "afstand": 39,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#cdbfb2",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 92,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#cfc7bd",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 77,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#cfe6d4",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 36,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#cfe7d4",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 36,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#d8d8dc",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 22,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#d97316",
+      "aantal": 1,
+      "dichtst": "--accent-warm",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#d9930d",
+      "aantal": 1,
+      "dichtst": "--accent-warm",
+      "afstand": 65,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#ddd6cf",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 32,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#ded6cd",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 34,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#e0dcd7",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 15,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e0e0e0",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#e2f2e5",
+      "aantal": 1,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 28,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e3b4ae",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 86,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#e3e3e3",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 9,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e4e4e7",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 15,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e4ebf3",
+      "aantal": 1,
+      "dichtst": "--brand-blue-light",
+      "afstand": 17,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e65100",
+      "aantal": 1,
+      "dichtst": "--accent",
+      "afstand": 64,
+      "stapel": "anders"
+    },
+    {
+      "waarde": "#e6e0da",
+      "aantal": 1,
+      "dichtst": "--border",
+      "afstand": 13,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e6f0fa",
+      "aantal": 1,
+      "dichtst": "--brand-blue-light",
+      "afstand": 3,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#e6f2ec",
+      "aantal": 1,
+      "dichtst": "--brand-teal-light",
+      "afstand": 20,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e7773f",
+      "aantal": 1,
+      "dichtst": "--orange",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#e7eef7",
+      "aantal": 1,
+      "dichtst": "--brand-blue-light",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#e7f5ec",
+      "aantal": 1,
+      "dichtst": "--brand-teal-light",
+      "afstand": 20,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eadb9a",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 54,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#eae7e2",
+      "aantal": 1,
+      "dichtst": "--card-border",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eaf8ef",
+      "aantal": 1,
+      "dichtst": "--brand-teal-light",
+      "afstand": 19,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ece7e2",
+      "aantal": 1,
+      "dichtst": "--card-border",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ecf7ee",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 19,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ede7e1",
+      "aantal": 1,
+      "dichtst": "--card-border",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ede7fb",
+      "aantal": 1,
+      "dichtst": "--brand-blue-light",
+      "afstand": 23,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eeeeee",
+      "aantal": 1,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eef2f7",
+      "aantal": 1,
+      "dichtst": "--brand-blue-light",
+      "afstand": 13,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eef8f1",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 15,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ef9385",
+      "aantal": 1,
+      "dichtst": "--brand-salmon",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#efc7b4",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 43,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#efdfb8",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 19,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#efe9e2",
+      "aantal": 1,
+      "dichtst": "--card-border",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#efedea",
+      "aantal": 1,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 4,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f0d9c8",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 22,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f0e4d8",
+      "aantal": 1,
+      "dichtst": "--card-border",
+      "afstand": 12,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f0f0f0",
+      "aantal": 1,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f0faf3",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 13,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f1f1ef",
+      "aantal": 1,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f1f8f1",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f1f8f2",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f2d69a",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 50,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f3c2bf",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 49,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f3c9c9",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 40,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f3d6d2",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 34,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f4d9c9",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 20,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f4f4f5",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 3,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#f4f8fb",
+      "aantal": 1,
+      "dichtst": "--app-bg",
+      "afstand": 5,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f4f9fd",
+      "aantal": 1,
+      "dichtst": "--app-bg",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f5c6c6",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 43,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f5f1ed",
+      "aantal": 1,
+      "dichtst": "--brand-taupe-light",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f5f4f2",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 5,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f5f5f6",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 1,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#f5f6fc",
+      "aantal": 1,
+      "dichtst": "--app-bg",
+      "afstand": 3,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#f6712c",
+      "aantal": 1,
+      "dichtst": "--orange",
+      "afstand": 39,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#f6dcc8",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 18,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f6f6f6",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 3,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#f7f3ef",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f8f5f1",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f8f7f4",
+      "aantal": 1,
+      "dichtst": "--gray-light",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#f9c89b",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 59,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#faf9f7",
+      "aantal": 1,
+      "dichtst": "--app-bg",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#faf9f8",
+      "aantal": 1,
+      "dichtst": "--app-bg",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fbe0c7",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 20,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fbfbfa",
+      "aantal": 1,
+      "dichtst": "--white",
+      "afstand": 13,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fceeeb",
+      "aantal": 1,
+      "dichtst": "--red-light",
+      "afstand": 9,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdece1",
+      "aantal": 1,
+      "dichtst": "--brand-orange-soft",
+      "afstand": 15,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdefe7",
+      "aantal": 1,
+      "dichtst": "--red-light",
+      "afstand": 13,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdefe9",
+      "aantal": 1,
+      "dichtst": "--red-light",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdf1f1",
+      "aantal": 1,
+      "dichtst": "--orange-light",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdf7f2",
+      "aantal": 1,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 5,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fdf9ee",
+      "aantal": 1,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ffe0b8",
+      "aantal": 1,
+      "dichtst": "--grad-perzik",
+      "afstand": 18,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ffe0d2",
+      "aantal": 1,
+      "dichtst": "--brand-orange-soft",
+      "afstand": 19,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ffe9dc",
+      "aantal": 1,
+      "dichtst": "--brand-orange-soft",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#ffece2",
+      "aantal": 1,
+      "dichtst": "--brand-orange-soft",
+      "afstand": 17,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff1e2",
+      "aantal": 1,
+      "dichtst": "--highlight-manual",
+      "afstand": 11,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff1e8",
+      "aantal": 1,
+      "dichtst": "--orange-light",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff2e9",
+      "aantal": 1,
+      "dichtst": "--orange-light",
+      "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff3c4",
+      "aantal": 1,
+      "dichtst": "--brand-orange-soft",
+      "afstand": 40,
+      "stapel": "familie"
+    },
+    {
+      "waarde": "#fff3ec",
+      "aantal": 1,
+      "dichtst": "--orange-light",
+      "afstand": 3,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff4e5",
+      "aantal": 1,
+      "dichtst": "--highlight-manual",
+      "afstand": 4,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff6ec",
+      "aantal": 1,
+      "dichtst": "--orange-light",
+      "afstand": 5,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff7e6",
+      "aantal": 1,
+      "dichtst": "--highlight-manual",
+      "afstand": 2,
+      "stapel": "gelijk"
+    },
+    {
+      "waarde": "#fff8ec",
+      "aantal": 1,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 7,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff8ef",
+      "aantal": 1,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 4,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff8f2",
+      "aantal": 1,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 5,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff9e6",
+      "aantal": 1,
+      "dichtst": "--highlight-manual",
+      "afstand": 6,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff9f5",
+      "aantal": 1,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 9,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fffaf6",
+      "aantal": 1,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 12,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fffbf0",
+      "aantal": 1,
+      "dichtst": "--brand-orange-faint",
+      "afstand": 10,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#fffbf8",
+      "aantal": 1,
+      "dichtst": "--white",
+      "afstand": 13,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "rgba(0, 0, 0, 0.03)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.04)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.08)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.14)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.26)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.4)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(15, 23, 42, 0.35)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(17, 17, 17, .35)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(199, 226, 235, 0.25)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(199, 226, 235, 0.30)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(211, 47, 47, 0.20)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(231, 119, 63, 0.08)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(231, 119, 63, 0.35)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(232, 119, 34, 0.55)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(232, 119, 34, 0)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(240, 138, 36, .06)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(241, 88, 41, .12)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(246, 113, 44, 0.4)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(248, 218, 188, 0.35)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(248, 218, 188, 0.40)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255, 255, 255, 0.7)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255, 255, 255, 0.85)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255,255,255,0.5)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255,255,255,0.6)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(255,255,255,0.75)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(28, 122, 63, 0.05)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(28, 122, 63, 0.10)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(30, 35, 40, 0.16)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(30, 35, 40, 0.18)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(31, 27, 20, 0.10)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(32, 32, 32, 0.14)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(35, 30, 25, 0.45)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51, 48, 46, 0.04)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51, 48, 46, 0.05)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51, 48, 46, 0.06)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51, 48, 46, 0.14)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51, 48, 46, 0.45)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51,48,46,0.05)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51,48,46,0.10)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51,48,46,0.15)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
+      "waarde": "rgba(51,48,46,0.22)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    }
+  ]
+}

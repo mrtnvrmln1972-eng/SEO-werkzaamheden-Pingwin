@@ -200,6 +200,29 @@ export const HOOFDSTUK: Hoofdstuk = {
         "of een tabel.",
     },
     {
+      titel: "Een meter die alleen mag dalen",
+      kern: "Drie controles bewaken of een scherm het goed doet. Deze telt hoeveel keuzes er in totaal bestaan.",
+      tekst:
+        "De controles hierboven vragen allemaal hetzelfde: doet **dit** scherm het volgens de regels? " +
+        "Alle drie groen, en toch groeide het geheel uit elkaar. Dat is geen tegenspraak maar een blinde " +
+        "vlek: geen enkele controle vroeg hoeveel verschillende kleuren, tekstmaten, schaduwen of soorten " +
+        "knop er in **totaal** bestaan. Een scherm mag dus keurig volgens de regels een eigen kleur kiezen, " +
+        "en honderd schermen die dat allemaal netjes doen leveren honderd kleuren op. Elke keuze op zich is " +
+        "verdedigbaar, de optelsom is een ratjetoe.\n\n" +
+        "Er is nu een meter die de optelsom telt, en het getal mag alleen omlaag. Komt er een kleur, maat of " +
+        "schaduw bij die niet uit de vaste schaal komt, dan stopt de bouw. Ruim je op, dan zakt het plafond " +
+        "mee, zodat de winst er niet later ongemerkt weer in glipt.\n\n" +
+        "Op **/admin/stijl** staat de spiegel: bovenaan hoe weinig keuzes het dashboard zou moeten hebben " +
+        "(één schaal voor tekst, één voor ruimte, één set kleuren, één knop), daaronder hoeveel er werkelijk " +
+        "in de code staan. Elke losse kleur wordt daar naast de kleur gelegd die al een naam heeft, want dat " +
+        "maakt het verschil tussen ontwerpwerk en opruimwerk: verreweg de meeste zijn een kleur die al " +
+        "bestaat, alleen anders opgeschreven of een tint ernaast. Dat is zoeken en vervangen, geen smaak.\n\n" +
+        "Waarom dat scherm er nu al is en niet pas als alles klopt: zodra alles uit de schalen leest, is een " +
+        "ander ontwerp kiezen niets meer dan die schalen veranderen, en zie je op dezelfde plek in één blik " +
+        "wat dat met alle bouwstenen tegelijk doet. Het strak trekken en de speelruimte bouwen zijn niet " +
+        "twee klussen maar één.",
+    },
+    {
       titel: "Eén codebase, meerdere merken",
       kern: "Het project bepaalt het merk, niet de code.",
       tekst:

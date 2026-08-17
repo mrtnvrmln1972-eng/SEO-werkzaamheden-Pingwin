@@ -8051,3 +8051,213 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   font-size: var(--fs-base); line-height: var(--lh-base); color: var(--text-secondary);
   padding: var(--s-2) var(--s-0); font-variant-numeric: tabular-nums;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   /admin/stijl — DE SPIEGEL
+   ═══════════════════════════════════════════════════════════
+   Het scherm dat naast elkaar zet wat de bedoeling is en wat er werkelijk in
+   de opmaak staat. Alles hieronder komt uit de schaal-tokens, zonder één losse
+   waarde: een scherm dat over het fundament gáát en er zelf naast bouwt zou
+   zichzelf tegenspreken.
+
+   De enige waarden die van buiten komen zijn de gemeten kleuren en maten zelf,
+   en die staan met opzet in de code (style={{ background: k.waarde }}): dat is
+   geen eigen opmaak maar de meetuitkomst tekenen.
+   ═══════════════════════════════════════════════════════════ */
+
+.stijl-pagina {
+  max-width: var(--breedte-scherm); margin: 0 auto;
+  padding: var(--s-8) var(--s-5) var(--s-12);
+  display: flex; flex-direction: column; gap: var(--s-6);
+}
+
+.stijl-h2 {
+  font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700;
+  color: var(--brand-charcoal); margin-bottom: var(--s-2);
+}
+.stijl-h3 {
+  font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700;
+  color: var(--orange-dark); margin: var(--s-6) var(--s-0) var(--s-3);
+}
+.stijl-h3:first-of-type { margin-top: var(--s-4); }
+.stijl-p {
+  font-size: var(--fs-base); line-height: var(--lh-base); color: var(--body-text);
+  max-width: 68ch;
+}
+.stijl-p-klein { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
+.stijl-code {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: var(--fs-xs); line-height: var(--lh-xs);
+  background: var(--gray-light); color: var(--muted);
+  padding: var(--s-0) var(--s-1); border-radius: var(--r-sm);
+}
+.stijl-code-kort { max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stijl-voet {
+  margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--card-border);
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+}
+
+/* ── De meters ── */
+.stijl-meters {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--s-5); margin-top: var(--s-4);
+}
+.stijl-meter-kop { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); }
+.stijl-meter-naam {
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--brand-charcoal);
+}
+.stijl-meter-cijfer {
+  font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700; color: var(--orange-dark);
+  font-variant-numeric: tabular-nums;
+}
+.stijl-goed { color: var(--good); }
+.stijl-meter-doel { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 400; color: var(--gray); }
+.stijl-balk {
+  position: relative; height: var(--s-2); margin: var(--s-2) var(--s-0) var(--s-1);
+  background: var(--gray-light); border-radius: var(--r-full); overflow: hidden;
+}
+.stijl-balk-vul { height: 100%; background: var(--orange); border-radius: var(--r-full); }
+.stijl-balk-klaar { background: var(--good); }
+/* Het doelstreepje is een haarlijn, geen blokje: 1px is de enige losse maat die
+   dit project toestaat (een randje), en juist dit scherm mag daar niet naast
+   gaan zitten met een eigen 2px. */
+.stijl-balk-doel {
+  position: absolute; top: 0; bottom: 0; border-left: 1px solid var(--brand-charcoal);
+}
+.stijl-meter-uitleg { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+
+/* ── Kleurstapels ── */
+.stijl-stapels {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--s-4); margin-top: var(--s-4);
+}
+.stijl-stapel {
+  border: 1px solid var(--card-border); border-radius: var(--r-md);
+  padding: var(--s-4); background: var(--brand-orange-faint);
+}
+.stijl-stapel-open { grid-column: 1 / -1; background: var(--white); box-shadow: var(--shadow-sm); }
+/* De stapelkop is een gewone .btn-quiet uit het knopsysteem, geen eigen knopklasse.
+   Dat is geen detail: de stijlteller-proef betrapte precies hier twee nieuwe
+   knop-classnamen die dit scherm voor zichzelf verzon, terwijl het scherm er
+   juist over gaat dat niemand dat meer doet. */
+.stijl-stapel > .btn { max-width: 100%; }
+.stijl-stapel-aantal {
+  font-size: var(--fs-lg); line-height: var(--lh-lg); font-weight: 700; color: var(--orange-dark);
+  font-variant-numeric: tabular-nums;
+}
+.stijl-stapel-kop {
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700;
+  color: var(--brand-charcoal); text-align: left;
+}
+.stijl-stapel-wat {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); margin-top: var(--s-1);
+}
+.stijl-stapel-voorproef { display: flex; flex-wrap: wrap; gap: var(--s-1); margin-top: var(--s-3); }
+.stijl-stip {
+  width: var(--s-4); height: var(--s-4); border-radius: var(--r-sm);
+  border: 1px solid var(--border); display: inline-block; flex: none;
+}
+.stijl-stip-groot { width: var(--s-6); height: var(--s-6); }
+.stijl-stapel-lijst {
+  margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--card-border);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s-2);
+}
+.stijl-kleurregel { display: flex; align-items: center; gap: var(--s-2); }
+.stijl-kleurregel-aantal {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+  font-variant-numeric: tabular-nums; min-width: var(--s-10);
+}
+.stijl-kleurregel-naar { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
+
+/* ── De bedoeling ── */
+.stijl-palet {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: var(--s-3);
+}
+.stijl-swatch { min-width: 0; }
+.stijl-swatch-vlak {
+  height: var(--s-12); border-radius: var(--r-md); border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.stijl-swatch-naam {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--brand-charcoal); margin-top: var(--s-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.stijl-swatch-waarde {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+}
+.stijl-type { display: flex; flex-direction: column; gap: var(--s-3); }
+.stijl-type-regel { display: flex; align-items: baseline; gap: var(--s-3); }
+.stijl-type-naam {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--orange-dark); min-width: var(--s-10);
+}
+.stijl-type-maat {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); min-width: var(--s-12);
+}
+.stijl-type-proef { color: var(--body-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stijl-ruimte { display: flex; flex-direction: column; gap: var(--s-2); }
+.stijl-ruimte-regel { display: flex; align-items: center; gap: var(--s-3); }
+.stijl-ruimte-naam {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--orange-dark); min-width: var(--s-10);
+}
+.stijl-ruimte-blok { height: var(--s-4); background: var(--orange); border-radius: var(--r-sm); flex: none; }
+.stijl-ruimte-maat {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+}
+.stijl-vormen { display: flex; flex-wrap: wrap; gap: var(--s-5); }
+.stijl-vorm { text-align: center; }
+.stijl-vorm-blok {
+  width: var(--s-12); height: var(--s-12); background: var(--orange-light);
+  border: 1px solid var(--orange); border-radius: var(--r-md);
+}
+.stijl-vorm-schaduw { background: var(--white); border-color: var(--card-border); }
+.stijl-vorm-naam {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); margin-top: var(--s-2);
+}
+.stijl-bouwstenen { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+
+/* ── De werkelijkheid ── */
+.stijl-raster { display: flex; flex-wrap: wrap; gap: var(--s-1); }
+.stijl-tegel {
+  width: var(--s-6); height: var(--s-6); border-radius: var(--r-sm);
+  border: 1px solid var(--border); display: inline-block; flex: none;
+}
+.stijl-meer { margin-top: var(--s-3); }
+.stijl-waarden { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.stijl-waarde {
+  display: inline-flex; align-items: center; gap: var(--s-1);
+  border: 1px solid var(--card-border); border-radius: var(--r-full);
+  padding: var(--s-1) var(--s-2); background: var(--white);
+}
+.stijl-waarde-aantal {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+  font-variant-numeric: tabular-nums;
+}
+.stijl-families { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); }
+.stijl-familie-aantal {
+  font-size: var(--fs-md); line-height: var(--lh-md); font-weight: 700;
+  color: var(--orange-dark); font-variant-numeric: tabular-nums; min-width: var(--s-8);
+  text-align: right;
+}
+.stijl-familie-namen {
+  display: flex; flex-wrap: wrap; gap: var(--s-1);
+  margin: var(--s-2) var(--s-0) var(--s-3) var(--s-10);
+}
+
+/* ── De werklijst ── */
+.stijl-werklijst { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-4); }
+.stijl-werkregel {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-1) var(--s-0); border-bottom: 1px solid var(--card-border);
+}
+.stijl-werkregel:last-child { border-bottom: none; }
+.stijl-werkregel-aantal {
+  font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--orange-dark);
+  font-variant-numeric: tabular-nums; min-width: var(--s-6); text-align: right;
+}
+.stijl-werkregel-pad { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

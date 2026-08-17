@@ -1,0 +1,353 @@
+// ═══════════════════════════════════════════════════════════
+// DE MEETLAT ONDER DE STIJL VAN HET DASHBOARD
+// ═══════════════════════════════════════════════════════════
+// Dit bestand telt. Meer niet. Het leest `app/globals.css` en alle schermen in
+// `app/`, en geeft terug hoeveel verschillende kleuren, lettergroottes,
+// rondingen, schaduwen en afstanden er op dit moment bestaan.
+//
+// WAAROM DIT ER IS
+// ────────────────
+// Er staan al poorten op de opmaak (`opmaak.proef.ts`, `huisstijl.proef.ts`,
+// `nette-html.proef.ts`) en die zijn groen. En tóch bestonden er op 17 augustus
+// 2026 286 verschillende kleuren, twintig lettergroottes en 94 eigen
+// knop-classnamen in één stylesheet van 8.049 regels.
+//
+// Dat is geen tegenspraak, het is een blinde vlek. Die poorten vragen allemaal
+// "gebruikt DIT bestand de bouwstenen?". Geen enkele vraagt "hoeveel
+// verschillende waarden bestaan er in TOTAAL?". Een scherm mag dus keurig een
+// eigen kleur kiezen zolang het dat netjes doet, en zo groeit een ontwerp uit
+// elkaar zonder dat één controle rood wordt.
+//
+// Deze meetlat vult precies dat gat. `proeven/stijl-teller.proef.ts` gebruikt
+// hem als plafond dat alleen mag dalen, en `/admin/stijl` gebruikt hem om te
+// laten zien wat er is. Eén bron, twee vensters: dezelfde vaste vorm als overal
+// in dit project.
+//
+// De cijfers zijn met opzet ruw. Het gaat er niet om of een kleur mooi is, maar
+// om hoeveel plekken zelf een beslissing nemen die de tokens al genomen hadden.
+// ═══════════════════════════════════════════════════════════
+
+import fs from "fs";
+import path from "path";
+
+export const WORTEL = path.join(__dirname, "..");
+
+/** Eén gevonden waarde, met hoe vaak hij voorkomt. Vaak = eerst opruimen. */
+export type Waarde = { waarde: string; aantal: number };
+
+/** Een soort waarde (kleur, lettergrootte, …) met zijn stand. */
+export type Soort = {
+  /** Hoeveel verschillende waarden er los in de opmaak staan. */
+  verschillend: number;
+  /** Hoeveel er benoemd zijn als token in :root. Dat is het aantal dat mág. */
+  benoemd: number;
+  /** Alle losse waarden, meest gebruikte eerst. */
+  los: Waarde[];
+};
+
+/**
+ * Een losse kleur naast de token die er het dichtst bij ligt.
+ *
+ * Dit is het cijfer dat "331 kleuren" pas bruikbaar maakt. Zonder deze
+ * vergelijking is 331 alleen een schrikgetal en weet je nog steeds niet wat je
+ * moet doen. Mét de vergelijking valt het uiteen in drie stapels, en twee
+ * daarvan zijn zoekopdrachten van vijf minuten in plaats van ontwerpwerk.
+ */
+export type KleurNaast = {
+  waarde: string;
+  aantal: number;
+  /** De token die er het dichtst bij ligt, of null als er geen kleurtoken is. */
+  dichtst: string | null;
+  /** Hoe ver ervandaan, 0 = exact dezelfde kleur. */
+  afstand: number;
+  /** In welke stapel deze kleur valt. Zie STAPELS hieronder. */
+  stapel: Stapel;
+};
+
+/**
+ * De vier stapels waarin elke losse kleur valt, plus een vijfde voor
+ * doorzichtige kleuren. De eerste drie zijn opruimwerk zonder enige
+ * ontwerpbeslissing: er staat al een kleur met een naam die dit doet.
+ */
+export const STAPELS = {
+  gelijk: "Dezelfde kleur, anders opgeschreven",
+  bijna: "Met het blote oog niet te onderscheiden",
+  familie: "Dezelfde kleurfamilie, net een andere tint",
+  anders: "Echt een andere kleur",
+  doorzichtig: "Doorzichtig (schaduwen en waas)",
+} as const;
+
+export type Stapel = keyof typeof STAPELS;
+
+export type Meting = {
+  css: { regels: number; stijlregels: number; classnamen: number };
+  kleuren: Soort;
+  lettergroottes: Soort;
+  rondingen: Soort;
+  schaduwen: Soort;
+  afstanden: Soort;
+  /** Eigen classnamen per familie: hoeveel varianten van hetzelfde ding bestaan er. */
+  families: { naam: string; aantal: number; namen: string[] }[];
+  /** Losse `style={{ }}` in de schermen: het lek waar geen CSS-poort bij kan. */
+  inline: { totaal: number; metVasteWaarde: number; perBestand: { bestand: string; aantal: number }[] };
+  /** De tokens zoals ze nu in :root staan, voor de "bedoeling"-helft van het scherm. */
+  tokens: { naam: string; waarde: string }[];
+  /** Elke losse kleur naast de token die er het dichtst bij ligt. */
+  kleurNaastToken: KleurNaast[];
+};
+
+const lees = (p: string) => fs.readFileSync(path.join(WORTEL, p), "utf8");
+
+/** Tel voorkomens en geef ze terug van vaak naar zelden. */
+function tel(waarden: string[]): Waarde[] {
+  const teller = new Map<string, number>();
+  for (const w of waarden) teller.set(w, (teller.get(w) ?? 0) + 1);
+  return [...teller.entries()]
+    .map(([waarde, aantal]) => ({ waarde, aantal }))
+    .sort((a, b) => b.aantal - a.aantal || a.waarde.localeCompare(b.waarde));
+}
+
+/**
+ * Knip het `:root`-blok eruit. Alles daarbinnen is per definitie goed: dat ZIJN
+ * de tokens. Alles daarbuiten is een losse beslissing.
+ */
+function splitsRoot(css: string): { root: string; rest: string } {
+  const start = css.indexOf(":root {");
+  if (start === -1) return { root: "", rest: css };
+  const eind = css.indexOf("\n}", start);
+  if (eind === -1) return { root: "", rest: css };
+  return { root: css.slice(start, eind + 2), rest: css.slice(0, start) + css.slice(eind + 2) };
+}
+
+/** Alle tokens uit :root, in de volgorde waarin ze staan. */
+function leesTokens(root: string): { naam: string; waarde: string }[] {
+  return [...root.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)]
+    .map((m) => ({ naam: m[1], waarde: m[2].trim() }));
+}
+
+/**
+ * Alle kleurwaarden in een stuk CSS: hex, rgb(), rgba() en hsl().
+ * Hex wordt kleingeschreven zodat #FFF en #fff niet als twee kleuren tellen;
+ * dat gebeurde echt, en dan lijkt het erger dan het is.
+ */
+function kleurenIn(tekst: string): string[] {
+  const hex = [...tekst.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0].toLowerCase());
+  const functies = [...tekst.matchAll(/\b(?:rgba?|hsla?)\([^)]*\)/g)]
+    .map((m) => m[0].replace(/\s+/g, " ").toLowerCase());
+  return [...hex, ...functies];
+}
+
+/** Losse waarden achter een eigenschap, met var(--…) eruit gefilterd. */
+function waardenVan(css: string, eigenschap: RegExp, filter: (w: string) => boolean): string[] {
+  return css
+    .split("\n")
+    .flatMap((regel) => [...regel.matchAll(eigenschap)].map((m) => m[1].trim()))
+    .filter((w) => !w.includes("var(--"))
+    .filter((w) => w !== "0" && w !== "inherit" && w !== "none" && w !== "initial" && w !== "unset")
+    .map((w) => w.replace(/\s*!important\s*$/, "").replace(/\s+/g, " "))
+    .filter(filter);
+}
+
+/** #abc en #aabbcc naar drie getallen 0-255. Geeft null bij alles wat geen hex is. */
+function naarRgb(hex: string): [number, number, number] | null {
+  const k = hex.replace("#", "");
+  const zes = k.length === 3 ? k.split("").map((c) => c + c).join("") : k.slice(0, 6);
+  if (zes.length !== 6 || /[^0-9a-f]/i.test(zes)) return null;
+  return [
+    parseInt(zes.slice(0, 2), 16),
+    parseInt(zes.slice(2, 4), 16),
+    parseInt(zes.slice(4, 6), 16),
+  ];
+}
+
+/**
+ * Hoe ver twee kleuren uit elkaar liggen zoals een oog het ziet.
+ *
+ * Bewust niet de kale rekenkundige afstand: het oog is veel gevoeliger voor
+ * groen dan voor blauw, dus twee blauwen die rekenkundig ver uit elkaar liggen
+ * zien er identiek uit en twee groenen die dichtbij lijken juist niet. Dit is
+ * de gangbare weging daarvoor. Grof, maar ruim genoeg voor de vraag die we
+ * stellen: "is dit een nieuwe kleur, of dezelfde nog een keer?"
+ */
+function kleurAfstand(a: [number, number, number], b: [number, number, number]): number {
+  const rGem = (a[0] + b[0]) / 2;
+  const [dr, dg, db] = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  return Math.sqrt(
+    (2 + rGem / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rGem) / 256) * db * db
+  );
+}
+
+/**
+ * Legt elke losse kleur naast de token die er het dichtst bij ligt.
+ *
+ * De drempels: onder de 3 is het dezelfde kleur anders opgeschreven (#FFF naast
+ * #ffffff, of een afronding). Onder de 30 zie je het verschil op een scherm
+ * niet. Onder de 60 is het duidelijk dezelfde kleurfamilie, alleen net een
+ * andere tint; dat is het geval bij de zes groenen die in dit dashboard naast
+ * elkaar "goed" betekenen. Alles daarboven is een echte keuze, en die verdient
+ * een naam in :root of hij moet weg.
+ */
+function legNaastTokens(los: Waarde[], tokens: { naam: string; waarde: string }[]): KleurNaast[] {
+  const tokenKleuren = tokens
+    .map((t) => ({ naam: t.naam, rgb: naarRgb(t.waarde.trim()) }))
+    .filter((t): t is { naam: string; rgb: [number, number, number] } => t.rgb !== null);
+
+  return los.map(({ waarde, aantal }) => {
+    // rgba() en hsla() zijn doorzichtig, en een doorzichtige kleur vergelijken
+    // met een dekkende token zegt niets: hij ziet eruit als wat eronder ligt.
+    // Ze horen bij de schaduwen en de waas achter een venster en worden daar
+    // beoordeeld, niet hier.
+    if (!waarde.startsWith("#")) {
+      return { waarde, aantal, dichtst: null, afstand: 0, stapel: "doorzichtig" as const };
+    }
+    const rgb = naarRgb(waarde);
+    if (!rgb || !tokenKleuren.length) {
+      return { waarde, aantal, dichtst: null, afstand: 999, stapel: "anders" as const };
+    }
+    let beste = tokenKleuren[0];
+    let besteAfstand = Infinity;
+    for (const t of tokenKleuren) {
+      const d = kleurAfstand(rgb, t.rgb);
+      if (d < besteAfstand) { besteAfstand = d; beste = t; }
+    }
+    const stapel: Stapel =
+      besteAfstand < 3 ? "gelijk" : besteAfstand < 30 ? "bijna" : besteAfstand < 60 ? "familie" : "anders";
+    return { waarde, aantal, dichtst: beste.naam, afstand: Math.round(besteAfstand), stapel };
+  });
+}
+
+/** Alle .tsx-schermen onder app/, zonder node_modules. */
+export function alleSchermen(map = path.join(WORTEL, "app")): string[] {
+  const uit: string[] = [];
+  for (const naam of fs.readdirSync(map)) {
+    const vol = path.join(map, naam);
+    if (fs.statSync(vol).isDirectory()) {
+      if (naam !== "node_modules") uit.push(...alleSchermen(vol));
+      continue;
+    }
+    if (naam.endsWith(".tsx")) uit.push(vol);
+  }
+  return uit;
+}
+
+/**
+ * De families waarin dezelfde soort onderdeel steeds opnieuw is uitgevonden.
+ * Dit is het cijfer dat het meeste zegt: 94 knop-classnamen betekent dat er 94
+ * plekken zijn waar iemand vond dat een knop er net even anders uit moest zien.
+ */
+const FAMILIES: { naam: string; patroon: RegExp }[] = [
+  { naam: "Knoppen", patroon: /(btn|knop|button)/i },
+  { naam: "Kaarten en panelen", patroon: /(card|kaart|panel|paneel|pnl)/i },
+  { naam: "Tabellen", patroon: /(table|tabel|tbl)/i },
+  { naam: "Tabjes", patroon: /(tab|tabje)(?![a-z])/i },
+  { naam: "Labels en badges", patroon: /(chip|badge|pill|label|tag)/i },
+  { naam: "Invoervelden", patroon: /(input|veld|field|textarea|select)/i },
+];
+
+/**
+ * De hele meting in één keer. Draait in een halve seconde, dus er is geen reden
+ * om ergens een oude uitkomst te bewaren en te hopen dat hij nog klopt.
+ */
+export function meet(): Meting {
+  const css = lees("app/globals.css");
+  const { root, rest } = splitsRoot(css);
+  const tokens = leesTokens(root);
+
+  // Hoeveel tokens er per soort bestaan. Dat is het getal waar de losse waarden
+  // naartoe moeten: niet naar nul, maar naar "alles komt uit de schaal".
+  const tokenNamen = tokens.map((t) => t.naam);
+  const tokensMet = (p: RegExp) => tokenNamen.filter((n) => p.test(n)).length;
+  const tokenKleuren = tokens.filter((t) => /#|rgb|hsl|linear-gradient/.test(t.waarde)).length;
+
+  const classnamen = new Set(
+    [...css.matchAll(/\.([a-z][a-z0-9_-]*)/gi)].map((m) => m[1])
+  );
+
+  const families = FAMILIES.map(({ naam, patroon }) => {
+    const namen = [...classnamen].filter((n) => patroon.test(n)).sort();
+    return { naam, aantal: namen.length, namen };
+  });
+
+  // ── Losse waarden in de schermen zelf (style={{ … }}) ──
+  // Dit is het lek dat geen enkele CSS-controle ziet: opmaak die niet in het
+  // stylesheet staat maar in de React-code. Elke regel die je in globals.css
+  // strak trekt, geldt hier niet.
+  let inlineTotaal = 0;
+  const inlinePerBestand: { bestand: string; aantal: number }[] = [];
+  const inlineKleuren: string[] = [];
+  const inlineMaten: string[] = [];
+  let inlineVast = 0;
+  for (const vol of alleSchermen()) {
+    const rel = path.relative(WORTEL, vol).split(path.sep).join("/");
+    const inhoud = fs.readFileSync(vol, "utf8");
+    const stukken = [...inhoud.matchAll(/style=\{\{([^}]*)\}/g)].map((m) => m[1]);
+    if (!stukken.length) continue;
+    inlineTotaal += stukken.length;
+    let vastHier = 0;
+    for (const stuk of stukken) {
+      const heeftVast = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\d+(\.\d+)?px/.test(stuk);
+      if (heeftVast) { vastHier++; inlineVast++; }
+      inlineKleuren.push(...kleurenIn(stuk));
+      // Ook hier geldt: een scherm dat `fontSize: "var(--fs-sm)"` schrijft doet
+      // het juist goed. Zonder deze filter stond var(--fs-sm) bovenaan de lijst
+      // met losse maten, wat precies het omgekeerde is van wat er aan de hand is.
+      inlineMaten.push(
+        ...[...stuk.matchAll(/fontSize\s*:\s*["'`]([^"'`]+)["'`]/g)]
+          .map((m) => m[1].trim())
+          .filter((w) => !w.includes("var(--") && /\d/.test(w))
+      );
+    }
+    if (vastHier) inlinePerBestand.push({ bestand: rel, aantal: vastHier });
+  }
+  inlinePerBestand.sort((a, b) => b.aantal - a.aantal);
+
+  const losseKleuren = tel([...kleurenIn(rest), ...inlineKleuren]);
+
+  return {
+    css: {
+      regels: css.split("\n").length,
+      stijlregels: (css.match(/\{/g) ?? []).length,
+      classnamen: classnamen.size,
+    },
+    kleuren: {
+      verschillend: losseKleuren.length,
+      benoemd: tokenKleuren,
+      los: losseKleuren,
+    },
+    lettergroottes: {
+      verschillend: new Set([
+        ...waardenVan(rest, /font-size:\s*([^;{}]+)/g, (w) => /\d/.test(w)),
+        ...inlineMaten,
+      ]).size,
+      benoemd: tokensMet(/^--fs-/),
+      los: tel([
+        ...waardenVan(rest, /font-size:\s*([^;{}]+)/g, (w) => /\d/.test(w)),
+        ...inlineMaten,
+      ]),
+    },
+    rondingen: {
+      verschillend: new Set(waardenVan(rest, /border-radius:\s*([^;{}]+)/g, (w) => /\d/.test(w))).size,
+      benoemd: tokensMet(/^--r-/),
+      los: tel(waardenVan(rest, /border-radius:\s*([^;{}]+)/g, (w) => /\d/.test(w))),
+    },
+    schaduwen: {
+      verschillend: new Set(waardenVan(rest, /box-shadow:\s*([^;{}]+)/g, (w) => /\d/.test(w))).size,
+      benoemd: tokensMet(/^--shadow-/),
+      los: tel(waardenVan(rest, /box-shadow:\s*([^;{}]+)/g, (w) => /\d/.test(w))),
+    },
+    afstanden: {
+      // Alleen de enkelvoudige waarden, want "8px 12px" is een combinatie van
+      // twee stappen uit de schaal en geen eigen maat. Anders telt hetzelfde
+      // probleem drie keer mee en wordt het getal betekenisloos.
+      verschillend: new Set(
+        waardenVan(rest, /(?:padding|margin|gap):\s*([^;{}]+)/g, (w) => /^\d+(\.\d+)?px$/.test(w))
+      ).size,
+      benoemd: tokensMet(/^--s-/),
+      los: tel(waardenVan(rest, /(?:padding|margin|gap):\s*([^;{}]+)/g, (w) => /^\d+(\.\d+)?px$/.test(w))),
+    },
+    families,
+    inline: { totaal: inlineTotaal, metVasteWaarde: inlineVast, perBestand: inlinePerBestand },
+    tokens,
+    kleurNaastToken: legNaastTokens(losseKleuren, tokens),
+  };
+}
