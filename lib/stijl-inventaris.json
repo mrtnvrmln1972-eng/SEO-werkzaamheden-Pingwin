@@ -1,6 +1,6 @@
 {
   "css": {
-    "regels": 8425,
+    "regels": 8433,
     "stijlregels": 4366,
     "classnamen": 2888
   },
@@ -2631,6 +2631,10 @@
       "waarde": "var(--s-6)"
     },
     {
+      "naam": "--ruimte-groep",
+      "waarde": "var(--s-4)"
+    },
+    {
       "naam": "--ruimte-regel",
       "waarde": "var(--s-3)"
     },
@@ -5178,6 +5182,11 @@
         "groep": "Ruimte"
       },
       {
+        "naam": "--ruimte-groep",
+        "wijstNaar": "var(--s-4)",
+        "groep": "Ruimte"
+      },
+      {
         "naam": "--ruimte-regel",
         "wijstNaar": "var(--s-3)",
         "groep": "Ruimte"
@@ -5229,7 +5238,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 70,
-    "schaalGebruik": 6475
+    "gebruik": 240,
+    "schaalGebruik": 6305
   }
 }
