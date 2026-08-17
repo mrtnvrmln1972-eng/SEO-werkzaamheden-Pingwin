@@ -8252,7 +8252,9 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   background: var(--gray-light); border-radius: var(--r-full); overflow: hidden;
 }
 .stijl-balk-vul { height: 100%; background: var(--orange); border-radius: var(--r-full); }
-.stijl-balk-klaar { background: var(--good); }
+.stijl-balk-klaar { background: var(--kleur-goed); }
+/* Grijs = wel gemeten, geen poort. Een werklijst mag er niet uitzien als een garantie. */
+.stijl-balk-stil { background: var(--kleur-tekst-stil); }
 /* Het doelstreepje is een haarlijn, geen blokje: 1px is de enige losse maat die
    dit project toestaat (een randje), en juist dit scherm mag daar niet naast
    gaan zitten met een eigen 2px. */

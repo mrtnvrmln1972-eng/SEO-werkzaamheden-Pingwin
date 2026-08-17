@@ -258,6 +258,34 @@ export function alleSchermen(map = path.join(WORTEL, "app")): string[] {
 }
 
 /**
+ * Houdt alleen de WORTELS over: namen die geen uitbreiding zijn van een andere
+ * naam in dezelfde lijst.
+ *
+ * Waarom dit er is (18-08-2026, en het heeft een deploy gekost). Deze meting
+ * telde eerst kale classnamen, en meldde daarmee `.btn`, `.btn-primary`,
+ * `.btn-ghost` en `.btn-klein` als vier soorten knop. Dat is precies het
+ * omgekeerde van de waarheid: dat is één knopsysteem met drie varianten.
+ *
+ * Het ging pas echt mis toen een andere chat een uitklapknop toevoegde die het
+ * knopsysteem keurig gebruikte (`btn btn-quiet btn-klein wp-vouwknop`), met een
+ * toestand `-aan` en een pijltje `-pijl` erbij. Dat pijltje is een span, geen
+ * knop. De teller zag drie nieuwe soorten knop, werd rood, en hield een
+ * correcte oplevering tegen: main stond stil en niemand wist waarom.
+ *
+ * Een meter die goed werk tegenhoudt wordt uitgezet, en dan bewaakt hij niets
+ * meer. Vandaar deze regel: een naam die begint met een andere naam plus een
+ * streepje hoort bij die andere naam. Varianten, toestanden en onderdelen
+ * tellen daarmee bij hun eigen component, en wat overblijft is het echte
+ * getal: hoe vaak is dit onderdeel opnieuw uitgevonden.
+ */
+function wortels(namen: string[]): string[] {
+  const gesorteerd = [...namen].sort();
+  return gesorteerd
+    .filter((n) => !gesorteerd.some((ander) => ander !== n && n.startsWith(`${ander}-`)))
+    .sort();
+}
+
+/**
  * De families waarin dezelfde soort onderdeel steeds opnieuw is uitgevonden.
  * Dit is het cijfer dat het meeste zegt: 94 knop-classnamen betekent dat er 94
  * plekken zijn waar iemand vond dat een knop er net even anders uit moest zien.
@@ -291,7 +319,7 @@ export function meet(): Meting {
   );
 
   const families = FAMILIES.map(({ naam, patroon }) => {
-    const namen = [...classnamen].filter((n) => patroon.test(n)).sort();
+    const namen = wortels([...classnamen].filter((n) => patroon.test(n)));
     return { naam, aantal: namen.length, namen };
   });
 

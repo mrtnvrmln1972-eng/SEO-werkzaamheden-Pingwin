@@ -19,9 +19,9 @@ type Props = {
 };
 
 /** De zeven meters, in de volgorde waarin ze het meeste zeggen. */
-const METERS: { sleutel: string; naam: string; uitleg: string }[] = [
+const METERS: { sleutel: string; naam: string; uitleg: string; losseWerklijst?: boolean }[] = [
   { sleutel: "kleuren", naam: "Kleuren", uitleg: "Verschillende kleuren die ergens in de opmaak staan." },
-  { sleutel: "knopklassen", naam: "Soorten knop", uitleg: "Eigen classnamen voor iets dat een knop is." },
+  { sleutel: "knopklassen", naam: "Soorten knop", uitleg: "Eigen knopnamen naast het knopsysteem. Werklijst, geen poort: dat een knop het systeem gebruikt wordt al bewaakt bij de knop zelf, en twee poorten voor één regel lopen uit elkaar.", losseWerklijst: true },
   { sleutel: "schaduwen", naam: "Schaduwen", uitleg: "Verschillende manieren waarop iets van de pagina af komt." },
   { sleutel: "lettergroottes", naam: "Lettergroottes", uitleg: "Verschillende tekstmaten buiten de type-schaal om." },
   { sleutel: "afstanden", naam: "Afstanden", uitleg: "Losse waarden voor ruimte, naast de spacing-schaal." },
@@ -116,7 +116,12 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
                     </span>
                   </div>
                   <div className="stijl-balk">
-                    <div className={klaar ? "stijl-balk-vul stijl-balk-klaar" : "stijl-balk-vul"} style={{ width: vulling }} />
+                    {/* Een grijze balk betekent: wel gemeten, geen poort. Dat verschil
+                        moet zichtbaar zijn, anders lijkt een werklijst een garantie. */}
+                    <div
+                      className={m.losseWerklijst ? "stijl-balk-vul stijl-balk-stil" : klaar ? "stijl-balk-vul stijl-balk-klaar" : "stijl-balk-vul"}
+                      style={{ width: vulling }}
+                    />
                     <div className="stijl-balk-doel" style={{ left: doelPunt }} />
                   </div>
                   <div className="stijl-meter-uitleg">{m.uitleg}</div>

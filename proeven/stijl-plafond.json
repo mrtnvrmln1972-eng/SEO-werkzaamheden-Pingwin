@@ -8,7 +8,16 @@
     "je kunt alleen dalen vanaf waar je staat. Het doel per soort staat in 'doel'.",
     "Naast het plafond staat er sinds 18-08-2026 een VLOER: hoeveel plekken de betekenislaag",
     "(--kleur-*, --type-*, --ruimte-*, --ronding-*, --diepte-*) gebruiken. Dat getal mag alleen",
-    "stijgen. Een laag die niemand gebruikt is geen fundament maar een vierde stapel ernaast."
+    "stijgen. Een laag die niemand gebruikt is geen fundament maar een vierde stapel ernaast.",
+    "LET OP, 18-08-2026: 'knopklassen' staat bewust NIET meer in het plafond, alleen in 'doel'.",
+    "Het was een gate en hij hield een correcte oplevering tegen: een uitklapknop die het knopsysteem",
+    "keurig gebruikte (btn btn-quiet btn-klein) kreeg een toestand -aan en een pijltje -pijl erbij, en",
+    "die werden geteld als twee nieuwe soorten knop. Main stond daardoor stil zonder dat iemand wist",
+    "waarom. De regel die deze meter probeerde te bewaken (een knop gebruikt het knopsysteem) wordt al",
+    "goed bewaakt door proeven/huisstijl.proef.ts, die naar de echte <button> in de code kijkt in plaats",
+    "van naar classnamen. Dezelfde regel op twee plekken bewaken loopt uit elkaar; dat is in dit project",
+    "de vaste les. Het getal blijft zichtbaar op /admin/stijl als werklijst, want 73 eigen knopnamen is",
+    "nog steeds te veel, maar het houdt geen bouw meer tegen."
   ],
   "plafond": {
     "kleuren": 331,
@@ -16,7 +25,6 @@
     "rondingen": 19,
     "schaduwen": 45,
     "afstanden": 21,
-    "knopklassen": 98,
     "inlineOpmaak": 50
   },
   "doel": {
@@ -25,7 +33,7 @@
     "rondingen": 4,
     "schaduwen": 3,
     "afstanden": 10,
-    "knopklassen": 8,
+    "knopklassen": 1,
     "inlineOpmaak": 0
   },
   "vloer": {
