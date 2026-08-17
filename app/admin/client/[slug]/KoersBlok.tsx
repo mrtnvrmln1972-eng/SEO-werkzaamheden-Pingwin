@@ -46,9 +46,27 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
   /** Binnen de cockpit van tab wisselen zonder de pagina te herladen. */
   onGaNaarTab?: (tab: string) => void;
 }) {
-  // De koers en het oppak-lijstje staan open: dat is waarvoor je hier komt. De
-  // twee onderste stroken beginnen dicht, zodat het blok kort blijft.
-  const [open, setOpen] = useState({ koers: true, oppak: true, bronnen: false });
+  // Alle drie beginnen dicht. Ze stonden open, en dan duwt dit blok de planning
+  // en de chats van het scherm af terwijl je meestal komt voor het werk eronder.
+  // Eén regel per strook, jij kiest wat je openzet, en die keuze blijft staan.
+  const [open, setOpen] = useState({ koers: false, oppak: false, bronnen: false });
+  // Onthouden per klant, net als bij de Overview-blokken ernaast: klap je de
+  // koers open, dan staat hij morgen nog open, en alleen bij deze klant.
+  const sleutelOpen = `pingwin-koers-open:${slug}`;
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(sleutelOpen);
+      setOpen(s ? JSON.parse(s) as typeof open : { koers: false, oppak: false, bronnen: false });
+    } catch { /* geen opslag, dan gewoon dicht */ }
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [sleutelOpen]);
+  function klap(sleutel: "koers" | "oppak" | "bronnen") {
+    setOpen((v) => {
+      const n = { ...v, [sleutel]: !v[sleutel] };
+      try { localStorage.setItem(sleutelOpen, JSON.stringify(n)); } catch { /* geen opslag */ }
+      return n;
+    });
+  }
   const [koersHtml, setKoersHtml] = useState("");
   const [prioHtml, setPrioHtml] = useState("");
   const [commentaar, setCommentaar] = useState<string[]>([]);
@@ -116,7 +134,7 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
   const heeftKoers = htmlNaarTekst(koersHtml).trim().length > 0;
 
   const kop = (sleutel: keyof typeof open, titel: string, extra?: string) => (
-    <button type="button" className="strategy-head" onClick={() => setOpen((v) => ({ ...v, [sleutel]: !v[sleutel] }))}>
+    <button type="button" className="strategy-head" onClick={() => klap(sleutel)}>
       <span className="strategy-caret">{open[sleutel] ? "▾" : "▸"}</span>
       <span className="strategy-title">{titel}</span>
       {extra && <span className="strategy-meta-right">{extra}</span>}

@@ -373,6 +373,36 @@ export async function deleteWeekplanTask(slug: string, id: number): Promise<void
   await sql`DELETE FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id}`;
 }
 
+/**
+ * Een kaart dupliceren: alles mee, behalve wat van de oorspronkelijke kaart zelf is.
+ *
+ * Wat NIET meekomt, en waarom:
+ *  - de status gaat terug naar "gepland"; een kopie van iets dat al klaar is, is
+ *    juist het werk dat nog moet gebeuren;
+ *  - "naar dev" en het moment daarvan blijven leeg, anders zou de developerlijst
+ *    denken dat deze kopie al bij hem ligt;
+ *  - het archief van de oorspronkelijke kaart blijft daar; dat is geschiedenis
+ *    van díe kaart en zou hier een verzonnen verleden zijn.
+ *
+ * De datum en de week komen wél mee: je dupliceert meestal omdat er nóg zo'n
+ * klus is in dezelfde periode, en verzetten kan daarna met één sleep.
+ */
+export async function dupliceerWeekplanTask(slug: string, id: number): Promise<number | null> {
+  await ensureSchema();
+  const { rows } = await sql`
+    INSERT INTO client_weekplan (
+      client_slug, thread, taak, wie, url, week_year, week_no, status, sort_order,
+      toelichting, taaktype, copy_url, bron_mail, datum, notitie, taak_handmatig, ruw
+    )
+    SELECT
+      client_slug, thread, taak || ' (kopie)', wie, url, week_year, week_no, 'gepland', sort_order + 1,
+      toelichting, taaktype, copy_url, bron_mail, datum, notitie, taak_handmatig, ruw
+    FROM client_weekplan
+    WHERE client_slug = ${slug} AND id = ${id}
+    RETURNING id`;
+  return rows[0] ? Number(rows[0].id) : null;
+}
+
 /** Maartens eigen aantekeningen bij een kaart opslaan. */
 export async function setWeekplanNotitie(slug: string, id: number, notitie: string): Promise<void> {
   await ensureSchema();
