@@ -25,24 +25,6 @@ export default function KaartKop({
   const [opruimMsg, setOpruimMsg] = useState<string>("");
   const hasInfo = !!t.toelichting.trim();
 
-  // Een kaart dupliceren. Alleen zichtbaar als de kaart openstaat: dan zie je
-  // wát je dupliceert. De kopie krijgt "(kopie)" achter de titel en komt direct
-  // onder het origineel te staan, met dezelfde dag; verzetten is daarna één
-  // sleep. De server bepaalt wat er niet meekomt (status, naar-dev, archief).
-  async function dupliceer() {
-    if (busy) return;
-    setBusy("dupliceren"); setFoutje("");
-    try {
-      const d = await fetch("/api/admin/weekplan", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, id: t.id, dupliceer: true }),
-      }).then((r) => r.json());
-      if (d?.ok) refreshBoard();
-      else setFoutje(d?.error || "Dupliceren mislukte.");
-    } catch { setFoutje("Dupliceren mislukte."); }
-    finally { setBusy(""); }
-  }
-
   async function bewaarTitel() {
     const nieuw = titelDraft.trim();
     if (!nieuw || nieuw === t.taak.trim()) { setTitelBewerk(false); return; }
@@ -121,11 +103,6 @@ export default function KaartKop({
             <button type="button" className="btn btn-ghost btn-klein" disabled={busy === "opruimen"}
               title="Laat de assistent de kaarttekst één keer herschrijven naar het strakke formaat. Niets verzinnen, niets weggooien; de oude tekst blijft in het archief staan."
               onClick={() => void ruimOp()}>{busy === "opruimen" ? "Bezig…" : "Opschonen"}</button>
-          )}
-          {open && (
-            <button type="button" className="btn btn-ghost btn-klein" disabled={busy === "dupliceren"}
-              title="Maak een kopie van deze kaart, met dezelfde achtergrond, fases en dag. De kopie heet '(kopie)' en staat er direct onder."
-              onClick={() => void dupliceer()}>{busy === "dupliceren" ? "Bezig…" : "Dupliceren"}</button>
           )}
           {inRij && !titelBewerk && (
             <button type="button" className="wp-titel-pen" title="Titel aanpassen"

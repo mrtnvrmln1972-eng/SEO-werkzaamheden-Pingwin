@@ -24,22 +24,6 @@ export type DagTaak = {
   herinneringen_dagen: number[];
 };
 
-// Lijsten die er altijd zijn, ook als je ze nog nooit gebruikt hebt. Het veld
-// "Lijst" is vrije tekst met suggesties uit wat je eerder typte, en dat is prima
-// voor eenmalige lijstjes, maar een categorie die je élke week gebruikt hoort
-// niet elke keer opnieuw ingetypt te worden (en dan een keer als "AI werk", een
-// keer als "AI-werk", waarna het twee categorieën zijn).
-//
-// Deze lijst mag groeien, maar houd hem kort: hij is bedoeld voor wat er altijd
-// is, niet voor alles wat je ooit een keer gebruikt hebt.
-export const VASTE_LIJSTEN = ["AI-werk"];
-
-/** De suggesties bij het veld "Lijst": de vaste lijsten plus wat je zelf gebruikte. */
-export function lijstSuggesties(gebruikt: string[]): string[] {
-  const kleine = new Set(gebruikt.map((l) => l.toLowerCase()));
-  return [...VASTE_LIJSTEN.filter((l) => !kleine.has(l.toLowerCase())), ...gebruikt];
-}
-
 export const PRIORITEITEN: [number, string][] = [
   [0, "Geen"],
   [1, "Laag"],

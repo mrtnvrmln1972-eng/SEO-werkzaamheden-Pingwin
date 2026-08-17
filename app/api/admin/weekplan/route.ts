@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, dupliceerWeekplanTask, isoWeek, setWeekplanNaarDev, setWeekplanKaart, setWeekplanNotitie } from "../../../../lib/weekplan";
+import { getWeekplan, updateWeekplanTask, deleteWeekplanTask, isoWeek, setWeekplanNaarDev, setWeekplanKaart, setWeekplanNotitie } from "../../../../lib/weekplan";
 import { getWeekplanPages } from "../../../../lib/overview";
 import { getClientUrls } from "../../../../lib/site-urls";
 import { splitsBestaandeKaarten } from "../../../../lib/weekplan-splitsen";
@@ -87,14 +87,6 @@ export async function POST(req: NextRequest) {
   if (!slug || !id) return NextResponse.json({ ok: false, error: "Klant en taak-id zijn verplicht." }, { status: 400 });
 
   if (body.delete === true) { await deleteWeekplanTask(slug, id); return NextResponse.json({ ok: true }); }
-  // Een kaart dupliceren. Staat hier en niet in een eigen route: het is dezelfde
-  // handeling op dezelfde kaart, met dezelfde toegangscontrole erboven.
-  if (body.dupliceer === true) {
-    const nieuwId = await dupliceerWeekplanTask(slug, id);
-    return nieuwId
-      ? NextResponse.json({ ok: true, id: nieuwId })
-      : NextResponse.json({ ok: false, error: "Die kaart bestaat niet meer." }, { status: 404 });
-  }
 
   // Naar de developerpagina doorzetten. Bewust hier en niet via een aparte route:
   // het is gewoon een eigenschap van de kaart, net als de week of de status.

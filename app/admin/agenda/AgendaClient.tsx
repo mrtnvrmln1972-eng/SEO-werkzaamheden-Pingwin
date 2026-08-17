@@ -8,7 +8,7 @@ import TaakPopup, { type DagTaakDraft } from "./TaakPopup";
 import { mdToHtml } from "../../../lib/markdown";
 import {
   type TaakItem, type DagTaak, COLORS, blokKleur, PRIORITEITEN, HERINNERING_MIN_PRESETS,
-  shiftDate, toKey, fmtDatumLabel, fmtTaakBadge, geldtOp, lijstSuggesties,
+  shiftDate, toKey, fmtDatumLabel, fmtTaakBadge, geldtOp,
 } from "../../../lib/agenda-items";
 
 type Block = {
@@ -174,9 +174,7 @@ export default function AgendaClient() {
     setBlocks(data.blocks || []);
     setMarks(data.marks || []);
     setDagTaken(taken.taken || []);
-    // De vaste lijsten staan er altijd bij, ook als je ze nog nooit gebruikt hebt;
-    // anders moet je een categorie die je elke week gebruikt elke keer intypen.
-    setLijsten(lijstSuggesties(Array.from(new Set([...(data.lijsten || []), ...(taken.lijsten || [])])).sort()));
+    setLijsten(Array.from(new Set([...(data.lijsten || []), ...(taken.lijsten || [])])).sort());
     setLoading(false);
   }, [weekStart]);
 
