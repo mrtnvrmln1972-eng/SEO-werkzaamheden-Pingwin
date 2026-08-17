@@ -1780,7 +1780,6 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
   border: 1px solid #F3C9B3;
 }
 .ql:hover { background: var(--orange); color: var(--white); }
-.ql-btn { font-family: 'Montserrat', sans-serif; cursor: pointer; }
 .primary-btn.small { padding: 9px 16px; font-size: 13px; }
 .saved-msg {
   background: #E8F5E9; color: #2E7D32; border-radius: 8px; padding: 10px 16px;
@@ -2362,8 +2361,6 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .budget-inline > div.neg strong { color: var(--red); }
 .task-table .col-center { text-align: center; }
 /* "Mail"-knop in de kolomheader: vink taken aan en klik hier om ze te mailen. */
-.mail-col-btn { background: var(--orange); color: #fff; border: none; border-radius: 6px; font-family: inherit; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; padding: 4px 12px; cursor: pointer; }
-.mail-col-btn:hover { background: var(--orange-dark); }
 /* Klant/developer-schakelaar bovenin het mailvenster. */
 .compose-modeswitch { display: flex; gap: 8px; margin-bottom: 12px; }
 .mini-btn.active { background: var(--orange); border-color: var(--orange); color: #fff; }
@@ -2434,16 +2431,12 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .month-card-uren { font-size: 13px; color: var(--gray); font-weight: 600; }
 .task-section { margin-bottom: 16px; }
 .task-section-head { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--orange-dark); margin-bottom: 4px; }
-.add-task-btn { background: none; border: 1px dashed var(--border); border-radius: 6px; color: var(--gray); font-size: 12px; padding: 4px 12px; cursor: pointer; margin-top: 4px; }
-.add-task-btn:hover { border-color: var(--orange); color: var(--orange-dark); }
 .budget-block { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 10px; background: var(--orange-light); border: 1px solid #F4D9C9; border-radius: 8px; padding: 14px; margin-top: 8px; }
 .budget-block > div { display: flex; flex-direction: column; font-size: 12px; }
 .budget-block span { color: var(--gray); }
 .budget-block strong { font-size: 16px; color: var(--dark); margin-top: 2px; }
 .budget-block .neg strong { color: var(--red); }
 .add-month-row { font-size: 12px; color: var(--gray); margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
-.add-month-btn { background: var(--gray-light); border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 12px; cursor: pointer; text-transform: capitalize; font-family: 'Montserrat', sans-serif; }
-.add-month-btn:hover { border-color: var(--orange); color: var(--orange-dark); }
 
 /* Verstuur-naar-developer modal */
 .compose-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 300; padding: 20px; }
@@ -2521,7 +2514,6 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .sov-links { display: flex; gap: 14px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
 .sov-maillink { display: inline-block; font-size: 11px; font-weight: 600; color: var(--orange-dark); text-decoration: none; }
 .sov-maillink:hover { text-decoration: underline; }
-.sov-maillink.as-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; }
 
 .sov-side { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
 .sov-side .sov-tasks { flex: 0 0 auto; min-width: 0; }
@@ -2586,8 +2578,6 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .wie-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 8px; margin-right: 6px; }
 .wie-badge.seo { background: var(--orange-light); color: var(--orange-dark); }
 .wie-badge.dev { background: #E8F0FE; color: #1A56B0; }
-.task-link-btn { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; font-size: 13px; color: var(--orange-dark); text-align: left; line-height: 1.4; }
-.task-link-btn:hover { text-decoration: underline; }
 @media (max-width: 760px) { .sov-layout { flex-direction: column; } .sov-side { flex: 1 1 auto; width: 100%; flex-direction: column; } .sov-bubble { max-width: 90%; } }
 
 /* ── Wijzigingen-tab (change-detectie + diff) ── */
@@ -3924,7 +3914,6 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 /* Nog niet af: rood kruisje in dezelfde pilvorm als het groene vinkje. Zo hoef je
    niets te lezen om te zien wat er staat. */
 .wp-fase-chip.wp-fase-open { color: #a12622; background: #fdecec; border-color: #f2c4c2; min-width: 34px; font-size: var(--fs-sm); }
-.wp-fase-btn.wp-fase-btn-aan { border-color: #1e824c; color: #1e824c; background: #eaf6ef; }
 /* Klein linkje naar het document, achter de fasenaam. Vervangt drie volle
    "Document"-knoppen die de rij onrustig maakten. */
 .wp-fase-doclink {
@@ -4480,8 +4469,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 
 /* Knop per overzicht-item (fruit → Pagina's, CTR → Meta-tab) */
 .ov-item-actions { margin-top: 5px; }
-.ov-item-btn { font-family: inherit; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 7px; border: 1px solid var(--border); background: #fff; color: var(--gray); cursor: pointer; }
-.ov-item-btn:hover { background: var(--orange-light); color: var(--orange-dark); border-color: var(--orange); }
 
 /* Bewerkbaar voorstel op een actie-kaart (bv. klantprofiel-nuance) */
 .act-edit-label { font-size: 11px; margin: 6px 0 3px; }
@@ -4500,7 +4487,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    De knoppen staan nu altijd, uitgeschakeld met uitleg zolang er niets te zien is. */
 .wp-werklijst-doen { margin-top: var(--s-2, 8px); padding-top: var(--s-2, 8px); border-top: 1px solid var(--line, #e6e6e6); }
 .wp-werklijst-groep { font-size: var(--fs-xs, 11px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #6b7280); margin-right: var(--s-1, 4px); }
-.wp-fase-btn-uit { opacity: 0.45; pointer-events: none; cursor: default; }
 
 /* Waarom-blok, dossier en documenten als één blok: "wat is er over deze pagina" is
    één vraag, en werden drie losse blokken die hetzelfde verhaal drie keer vertelden. */
@@ -5747,9 +5733,6 @@ a.wb-pad:hover { text-decoration: underline; }
 
 .pl-blok { display: flex; flex-direction: column; gap: var(--s-3); }
 .pl-bloktitel { font-size: var(--fs-xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); margin-top: var(--s-4); }
-.pl-bloktitel-btn { display: flex; align-items: center; gap: var(--s-2); width: 100%; border: 0; background: none; padding: 0; margin-top: var(--s-4); cursor: pointer; font-family: inherit; text-align: left; }
-.pl-bloktitel-btn .pl-bloktitel { margin-top: 0; }
-.pl-bloktitel-btn:hover .pl-bloktitel { color: var(--orange-dark); }
 
 /* De kaart zelf. De kop is de knop waarmee je hem in- en uitklapt; de body heeft
    geen eigen padding links, zodat de regels tegen de kaartrand uitlijnen. */
@@ -6335,7 +6318,6 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 /* ── De volledige beschrijving, bij het punt zelf ─────────────────
    Stond eerst als link naar /uitleg#agenda, en dan zocht je in een lang
    document naar het punt waar je net op klikte. Nu klapt hij hier open. */
-.rk-volledig-knop { margin-top: var(--s-1); }
 .rk-volledig {
   margin-top: var(--s-3);
   padding: var(--s-4);
@@ -6787,7 +6769,7 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 
 /* De uitzonderingen die moeten blijven winnen. */
 .wp-fase-btn.wp-fase-btn-primair { background: var(--orange); border-color: var(--orange); color: var(--white); }
-.wp-fase-btn.wp-fase-btn-aan, .btn-ghost.btn-ghost-aan { background: #e7f6ea; border-color: #1c7a3f; color: #1c7a3f; }
+.btn-ghost.btn-ghost-aan { background: #e7f6ea; border-color: #1c7a3f; color: #1c7a3f; }
 .wp-icon.wp-del:hover:not(:disabled) { background: #FDECEA; border-color: #B3261E; color: #B3261E; }
 /* Een pictogramknop blijft vierkant genoeg om als icoon te lezen. */
 .wp-icon, .wp-titel-pen { padding: 0 var(--s-2); min-width: 22px; height: 22px; }

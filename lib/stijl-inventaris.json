@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8437,
-    "stijlregels": 4382,
-    "classnamen": 2899
+    "regels": 8419,
+    "stijlregels": 4364,
+    "classnamen": 2888
   },
   "kleuren": {
     "verschillend": 331,
@@ -10,7 +10,7 @@
     "los": [
       {
         "waarde": "#fff",
-        "aantal": 141
+        "aantal": 139
       },
       {
         "waarde": "#1c7a3f",
@@ -25,12 +25,12 @@
         "aantal": 30
       },
       {
-        "waarde": "#1e824c",
+        "waarde": "#6f645a",
         "aantal": 29
       },
       {
-        "waarde": "#6f645a",
-        "aantal": 29
+        "waarde": "#1e824c",
+        "aantal": 27
       },
       {
         "waarde": "#f15829",
@@ -73,10 +73,6 @@
         "aantal": 7
       },
       {
-        "waarde": "#eaf6ef",
-        "aantal": 7
-      },
-      {
         "waarde": "rgba(0,0,0,0.06)",
         "aantal": 7
       },
@@ -90,6 +86,10 @@
       },
       {
         "waarde": "#eaf5ee",
+        "aantal": 6
+      },
+      {
+        "waarde": "#eaf6ef",
         "aantal": 6
       },
       {
@@ -1340,15 +1340,15 @@
     "los": [
       {
         "waarde": "12px",
-        "aantal": 109
-      },
-      {
-        "waarde": "13px",
         "aantal": 107
       },
       {
+        "waarde": "13px",
+        "aantal": 106
+      },
+      {
         "waarde": "11px",
-        "aantal": 83
+        "aantal": 81
       },
       {
         "waarde": "14px",
@@ -1438,7 +1438,7 @@
       },
       {
         "waarde": "6px",
-        "aantal": 38
+        "aantal": 35
       },
       {
         "waarde": "12px",
@@ -1454,7 +1454,7 @@
       },
       {
         "waarde": "7px",
-        "aantal": 16
+        "aantal": 15
       },
       {
         "waarde": "14px",
@@ -1785,14 +1785,11 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 71,
+      "aantal": 62,
       "namen": [
-        "add-month-btn",
-        "add-task-btn",
         "ag-datumknop",
         "ag-day-selector-btn",
         "ag-delete-btn",
-        "as-btn",
         "at-knop",
         "beheer-knoppen",
         "bl-add-knoppen",
@@ -1815,7 +1812,6 @@
         "ktr-explain-btn",
         "lead-maak-knoppen",
         "logout-btn",
-        "mail-col-btn",
         "mc-knoppen",
         "md-knop",
         "mini-btn",
@@ -1823,7 +1819,6 @@
         "om-knop",
         "opr-btn",
         "opr-knoppen",
-        "ov-item-btn",
         "ovc-blok-taakbtn",
         "pcd-btn",
         "pcd-docs-buttons",
@@ -1831,17 +1826,13 @@
         "pd-knop",
         "pd-knopjes",
         "pg-planknop",
-        "pl-bloktitel-btn",
         "pl-schakelknop",
         "primary-btn",
         "prio-groepknop",
         "prio-knoppen",
         "prio-waarom-knop",
         "profile-gen-buttons",
-        "ql-btn",
-        "rk-volledig-knop",
         "strategy-verwerkt-btn",
-        "task-link-btn",
         "tv-lijst-btn",
         "tw-knop",
         "uk-knoppen",
@@ -2683,7 +2674,7 @@
   "kleurNaastToken": [
     {
       "waarde": "#fff",
-      "aantal": 141,
+      "aantal": 139,
       "dichtst": "--white",
       "afstand": 0,
       "stapel": "gelijk"
@@ -2710,18 +2701,18 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#1e824c",
-      "aantal": 29,
-      "dichtst": "--good",
-      "afstand": 51,
-      "stapel": "familie"
-    },
-    {
       "waarde": "#6f645a",
       "aantal": 29,
       "dichtst": "--gray",
       "afstand": 25,
       "stapel": "bijna"
+    },
+    {
+      "waarde": "#1e824c",
+      "aantal": 27,
+      "dichtst": "--good",
+      "afstand": 51,
+      "stapel": "familie"
     },
     {
       "waarde": "#f15829",
@@ -2794,13 +2785,6 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#eaf6ef",
-      "aantal": 7,
-      "dichtst": "--good-light",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "rgba(0,0,0,0.06)",
       "aantal": 7,
       "dichtst": null,
@@ -2826,6 +2810,13 @@
       "aantal": 6,
       "dichtst": "--good-light",
       "afstand": 8,
+      "stapel": "bijna"
+    },
+    {
+      "waarde": "#eaf6ef",
+      "aantal": 6,
+      "dichtst": "--good-light",
+      "afstand": 9,
       "stapel": "bijna"
     },
     {
@@ -5239,6 +5230,6 @@
     ],
     "eigenWaarde": [],
     "gebruik": 70,
-    "schaalGebruik": 6493
+    "schaalGebruik": 6473
   }
 }
