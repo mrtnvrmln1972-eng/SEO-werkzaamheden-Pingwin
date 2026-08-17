@@ -5607,6 +5607,12 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   padding: var(--s-2); border-bottom: 1px solid var(--card-border); cursor: pointer;
 }
 .wb-rij:hover { background: #FFFAF7; }
+/* Het kruisje op een regel is een bedieningsteken, geen knop in de huisstijl:
+   geen rand, geen vlak, gewoon een klein kruisje rechts. Rood pas als je erop
+   staat, want dan gaat het ergens over. Alleen hier; elders (in de kaartkop)
+   houdt hetzelfde .wp-del zijn knopvorm, want daar staat hij tussen knoppen. */
+.wb-rij .wp-del { border-color: transparent; background: transparent; color: var(--gray); }
+.wb-rij .wp-del:hover:not(:disabled) { background: transparent; border-color: transparent; color: var(--red); }
 .wb-rij-open { background: var(--orange-light); }
 .wb-rij.wb-sleept { opacity: 0.45; }
 .wb-greep { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: var(--r-sm); text-align: center; }
