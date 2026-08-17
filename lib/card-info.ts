@@ -549,11 +549,17 @@ export function eerdereNotitiesHtml(toelichting: string, pageUrl?: string, taak?
 // Weggooien is toch niet goed: precies deze tekst reist als sturing mee naar de
 // kaart-chat en naar de documenten (analyse, blauwdruk, copy). Zou hij helemaal
 // van het scherm verdwijnen, dan werken die motoren met een opdracht die jij
-// niet meer kunt lezen of corrigeren. Daarom één dichte regel: van het scherm
-// af, maar één klik terug te halen. `verhaalDicht` zet dat aan; de projectkaart
-// gebruikt het, de andere plek (de takenkaart in ActionCard) staat zelf al
-// achter een uitklapper en laat het dus gewoon open staan.
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean, verhaalDicht?: boolean): string {
+// niet meer kunt lezen of corrigeren. Daarom staan ze op de projectkaart achter
+// één dichte regel, samen met de documenten en de oude versies: van het scherm
+// af, maar één klik terug te halen. Die uitklapper zit in KaartOverDeze (dat
+// scherm kiest welke van de drie openstaat); deze functie levert alleen de twee
+// vakken, en `verhaalAantal` hieronder telt hoeveel punten erin staan.
+export function verhaalAantal(toelichting: string, taak?: string, herkomst?: HerkomstContext): number {
+  const info = splitCardInfo(toelichting, taak, herkomst);
+  return info.achtergrond.length + ontdubbel([...info.overig, ...info.afspraken]).length;
+}
+
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   // Kant-en-klare inhoud (bijv. een contentagenda): de Achtergrond/Aanpak-per-fase-
   // indeling hieronder knipt per regel en zou een tabel in losse pipe-regels breken.
@@ -582,11 +588,7 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   if (aanpak.length) {
     kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst", mails)));
   }
-  const vakken = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
-  const kolommen = !vakken ? ""
-    : verhaalDicht
-      ? `<details class="wp-info-rest wp-info-verhaal"><summary>Achtergrond en afspraken (${info.achtergrond.length + aanpak.length})</summary>${vakken}</details>`
-      : vakken;
+  const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
 
   // De cijfers komen uit de METING, nooit uit geschreven tekst. Zolang een getal in
   // een zin stond, konden er twee metingen naast elkaar blijven staan (positie 27.9

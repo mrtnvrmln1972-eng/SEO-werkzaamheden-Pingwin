@@ -21,8 +21,6 @@ const TAB_FOR_TYPE: Record<string, { tab: string; label: string }> = {
   overig: { tab: "paginas", label: "Pagina's" },
 };
 
-function shortUrl(url: string): string { try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; } }
-
 /** Staat deze kaart op de developerpagina? */
 export function useNaarDev({ slug, t, setFoutje }: { slug: string; t: WpTask; setFoutje: (v: string) => void }) {
   const [naarDev, setNaarDev] = useState<boolean>(t.naarDev === true);
@@ -46,63 +44,53 @@ export function useNaarDev({ slug, t, setFoutje }: { slug: string; t: WpTask; se
     finally { setBezig(false); }
   }
 
-  // Alleen de vlag omzetten, zonder het doorzet-venster. Voor het vinkje "ligt
-  // bij dev" in de Implementatie-rij: dat zegt "hij ligt daar", het stuurt niets
-  // door. Zelfde vlag als de knop hierboven, dus de kaart, de fase-chip en de
-  // developerlijst blijven één stand tonen in plaats van twee die uit elkaar
-  // kunnen lopen.
-  async function markeerNaarDev(aan: boolean) {
-    if (bezig) return;
-    setBezig(true);
-    try {
-      const d = await fetch("/api/admin/weekplan", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, id: t.id, naarDev: aan }),
-      }).then((r) => r.json());
-      if (d?.ok) setNaarDev(aan);
-      else setFoutje(d?.error || "De stand bij de developer bijwerken mislukte.");
-    } catch { setFoutje("De stand bij de developer bijwerken mislukte."); }
-    finally { setBezig(false); }
-  }
-
-  return { naarDev, setNaarDev, bezig, venster, setVenster, zetNaarDev, markeerNaarDev };
+  return { naarDev, setNaarDev, bezig, venster, setVenster, zetNaarDev };
 }
 
 export type NaarDev = ReturnType<typeof useNaarDev>;
 
-export default function KaartOnderRegel({ slug, t, dev, onMail }: {
+export default function KaartOnderRegel({ slug, t, dev, onMail, heeftFases }: {
   slug: string; t: WpTask; dev: NaarDev;
   onMail: (aud: "klant" | "dev") => void;
+  /** Heeft deze kaart het fase-blok (dus een pagina)? Dan staan "Naar developer?"
+      en "Mail" al in de Implementatie-rij en horen ze hier niet nog een keer.
+      Een kaart zónder pagina heeft dat blok niet, en dan is dit de enige plek. */
+  heeftFases?: boolean;
 }) {
   // Dashboard-deeplinks vanuit een kaart openen in een NIEUW browsertabblad,
   // zodat je het bord niet kwijtraakt terwijl je iets uitzoekt.
-  const openPaginaNieuwTab = () => window.open(`/admin/client/${slug}?tab=paginas&page=${encodeURIComponent(t.url)}`, "_blank");
   const openTabNieuwTab = (tabNaam: string) => window.open(`/admin/client/${slug}?tab=${tabNaam}${tabNaam === "paginas" && t.url ? `&page=${encodeURIComponent(t.url)}` : ""}`, "_blank");
   const tab0 = TAB_FOR_TYPE[t.taaktype];
   const tab = tab0 && (tab0.tab !== "paginas" || t.url) ? tab0 : undefined;
+  const eigenTab = tab && tab.tab !== "paginas" ? tab : undefined;
+  // De link naar de live pagina stond hier én bovenaan de kaart (in de titel).
+  // Twee keer hetzelfde adres, en de bovenste zie je het eerst; deze is weg.
+  // "Pagina's" is verhuisd naar de rij van de chat, waar hij naast "Chat over
+  // deze pagina" staat in dezelfde vorm.
+  const links = !!(t.copyUrl || t.bronMail || eigenTab);
+  const acties = !heeftFases;
+  if (!links && !acties) return null;
 
   return (
     <div className="wp-card-links wp-onder-regel">
       <span className="wp-onder-groep">
-        {t.url && <a className="wp-link" href={t.url} target="_blank" rel="noreferrer" title="De live pagina">{shortUrl(t.url)}</a>}
         {t.copyUrl && <a className="wp-link" href={t.copyUrl} target="_blank" rel="noreferrer" title="De aangeleverde copy">Copy</a>}
         {t.bronMail && <a className="wp-link" href={t.bronMail} target="_blank" rel="noreferrer" title="De mail waar deze taak uit voortkomt">Bronmail</a>}
-        {/* Geen dubbele knop: bij paginakaarten dekt de Pagina's-knop hieronder het al. */}
-        {tab && tab.tab !== "paginas" && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(tab.tab)}>{tab.label}</button>}
-        {t.url && <button type="button" className="wp-link wp-link-btn" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={openPaginaNieuwTab}>Pagina&rsquo;s</button>}
+        {eigenTab && <button type="button" className="wp-link wp-link-btn" title="Open dit dashboard-onderdeel in een nieuw tabblad" onClick={() => openTabNieuwTab(eigenTab.tab)}>{eigenTab.label}</button>}
       </span>
-      <span className="wp-onder-scheiding" aria-hidden="true" />
-      <span className="wp-onder-groep wp-onder-delen">
-        {/* Doorzetten naar de developer stond bovenin de kaart, naast Opschonen
-            en Is dit doorgevoerd?. Dat is geen meting of controle, maar iets
-            wegsturen, dus hij hoort bij Mail in dit groepje rechtsonder. */}
-        <button type="button" className={"wp-act" + (dev.naarDev ? " wp-act-aan" : "")} disabled={dev.bezig}
-          title={dev.naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart klaar voor de developer: de opdracht, de pagina en de documenten."}
-          onClick={() => void dev.zetNaarDev()}>
-          {dev.bezig ? "Bezig…" : dev.naarDev ? "✓ Bij de developer" : "Developer"}
-        </button>
-        <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
-      </span>
+      {links && acties && <span className="wp-onder-scheiding" aria-hidden="true" />}
+      {acties && (
+        <span className="wp-onder-groep wp-onder-delen">
+          {/* Alleen op een kaart zonder pagina: die heeft geen fase-blok, dus
+              zonder deze twee zou je er niets mee kunnen wegsturen. */}
+          <button type="button" className={"wp-act" + (dev.naarDev ? " wp-act-aan" : "")} disabled={dev.bezig}
+            title={dev.naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze taak klaar voor de developer: de opdracht en de documenten."}
+            onClick={() => void dev.zetNaarDev()}>
+            {dev.bezig ? "Bezig…" : dev.naarDev ? "Bij developer" : "Naar developer?"}
+          </button>
+          <button type="button" className="wp-act wp-act-klant" title="Mail over deze kaart; de ontvanger (klant, developer of anders) kies je in het venster." onClick={() => onMail("klant")}>Mail</button>
+        </span>
+      )}
     </div>
   );
 }

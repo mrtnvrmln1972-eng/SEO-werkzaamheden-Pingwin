@@ -74,13 +74,25 @@ export const BLOKKEN: Uitklapper[] = [
       "staat dicht. Hij gaat vanzelf open als er meerdere versies van hetzelfde soort liggen en je nog niet " +
       "hebt aangewezen welke geldt, want daar wachten de mail en de sitebouwer op. In dat geval staat het " +
       "tijdstip erbij, anders zijn drie documenten van dezelfde dag niet uit elkaar te houden.\n\n" +
-      "**\"Waarom deze pagina\" en \"Aanpak en afspraken\" staan sinds 17 augustus 2026 óók onder een dichte " +
-      "regel** (\"Achtergrond en afspraken\"). Ze vulden het halve scherm met de stand van de zoekwoorden op " +
+      "**De kaart heeft één rij uitklappers en hooguit één open paneel (18 augustus 2026).** " +
+      "\"Achtergrond en afspraken\", \"Documenten\" en \"Oude versies van deze kaart\" staan als drie knopjes " +
+      "naast elkaar, direct boven je aantekeningen; klik je er een open, dan vult die de hele breedte van de " +
+      "kaart en gaat de vorige dicht. Ze hadden alle drie hun eigen klepje op hun eigen plek, met een " +
+      "scheidingslijn ertussen, dus je scrolde langs drie koppen voordat je bij je eigen tekst was. Ligt er " +
+      "een keuze open (twee versies van hetzelfde document zonder dat je hebt aangewezen welke geldt), dan " +
+      "gaat het documentenblok nog steeds vanzelf open. **De verse meting staat nu rechts op de kopregel**, " +
+      "naast \"Over deze pagina\", in plaats van als losse grijze balk boven de tekst.\n\n" +
+      "**\"Waarom deze pagina\" en \"Aanpak en afspraken\" staan sinds 17 augustus 2026 achter zo'n " +
+      "uitklapper.** Ze vulden het halve scherm met de stand van de zoekwoorden op " +
       "het moment dat de kaart werd gemaakt, en dat is bevroren tekst: de posities en vertoningen erin " +
       "kloppen na een paar weken niet meer, terwijl wat er echt met de pagina gebeurt in de wijzigingen en " +
       "in de rankings van díe pagina staat. Helemaal weghalen kan niet, want precies deze tekst reist als " +
       "sturing mee naar de kaart-chat en naar de documenten; verdwijnt hij van het scherm, dan werken die " +
       "motoren met een opdracht die jij niet meer kunt lezen of bijstellen. Eén klik en hij staat er weer.\n\n" +
+      "**Onderaan de kaart staat alleen nog wat nergens anders staat.** De link naar de live pagina stond " +
+      "daar én bovenaan in de titel; de knop \"Pagina's\" is verhuisd naar de rij van de chat, waar hij in " +
+      "dezelfde vorm naast \"Chat over deze pagina\" staat, want het is dezelfde soort stap. \"Developer\" en " +
+      "\"Mail\" staan er alleen nog bij een taak zonder pagina, want die heeft geen fase-rij waar ze in horen.\n\n" +
       "**Het klokje \"herinner me over X dagen\" is bij elke taak weggehaald.** Elke regel had er een, en die " +
       "herinneringen kwamen allemaal bij het belletje in de kopbalk terecht. Een taak in de planning heeft " +
       "al een datum; een tweede, onzichtbare wekker erbij maakt van de takenlijst een tweede lijst om af te " +

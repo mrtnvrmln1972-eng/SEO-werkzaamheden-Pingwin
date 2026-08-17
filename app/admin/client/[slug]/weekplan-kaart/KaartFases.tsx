@@ -322,21 +322,21 @@ export default function KaartFases({
             </button>
           )}
           <button type="button" className="btn btn-ghost btn-klein" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
-          {/* Bij dev: de enige plek in deze rij die over de developer gaat. Er
-              stonden er drie (een knop "Developer" die het doorzet-venster opende,
-              dit vinkje, en de chip rechts die óók "Bij de developer" zei), en die
-              zeiden alle drie hetzelfde. Aan of uit is genoeg om te weten waar het
-              werk ligt. Het pakket mét opdracht en documenten doorzetten (en de
-              sitebouwer mailen) blijft onderaan de kaart staan, in het groepje
-              "wat stuur ik weg"; dat is een actie, geen stand. Beide schrijven
-              dezelfde vlag, dus de kaart en de developerlijst kunnen niet uit
-              elkaar lopen. */}
+          {/* Eén knop die de actie doet én de stand laat zien. Hier stonden er
+              drie die alle drie over de developer gingen: een knop "Developer",
+              een vinkje "(ligt bij dev)" en de statuspil rechts die óók "Bij de
+              developer" zei. Nu: staat hij er niet, dan vraagt de knop "Naar
+              developer?" en opent hij het doorzet-venster (welke documenten gaan
+              mee, wat moet er gebeuren). Staat hij er wel, dan is de knop rood en
+              zegt hij "Bij developer"; klikken haalt hem er weer af. Dezelfde
+              knop staat onderaan de kaart voor taken zonder pagina, want die
+              hebben dit blok niet. */}
           {dev && (
-            <label className="wp-fase-dev" title={naarDev ? "Ligt bij de developer. Klik om die stand weg te halen." : "Zet aan als deze pagina bij de developer ligt."}>
-              <input type="checkbox" checked={naarDev} disabled={dev.bezig}
-                onChange={(e) => void dev.markeerNaarDev(e.target.checked)} />
-              <span>Bij dev</span>
-            </label>
+            <button type="button" className={"btn btn-ghost btn-klein" + (naarDev ? " wp-devknop-aan" : "")} disabled={dev.bezig}
+              title={naarDev ? "Ligt bij de developer. Klik om hem er weer af te halen." : "Zet deze pagina klaar voor de developer: de opdracht, de pagina en de documenten."}
+              onClick={() => void dev.zetNaarDev()}>
+              {dev.bezig ? "Bezig…" : naarDev ? "Bij developer" : "Naar developer?"}
+            </button>
           )}
         </>
       );

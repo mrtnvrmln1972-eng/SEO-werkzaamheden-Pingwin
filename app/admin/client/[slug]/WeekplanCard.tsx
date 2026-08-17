@@ -129,10 +129,11 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
           {open && (
             <KaartChat slug={slug} t={t} page={page} chat={chat}
               driveMap={driveMap} onKiesMap={() => setKiezerOpen(true)} ensureDriveMap={ensureDriveMap}
-              refreshBoard={refreshBoard} />
+              refreshBoard={refreshBoard}
+              onPaginas={t.url ? () => window.open(`/admin/client/${slug}?tab=paginas&page=${encodeURIComponent(t.url)}`, "_blank") : undefined} />
           )}
 
-          {open && <KaartOnderRegel slug={slug} t={t} dev={dev} onMail={onMail} />}
+          {open && <KaartOnderRegel slug={slug} t={t} dev={dev} onMail={onMail} heeftFases={!!page} />}
         </div>
       </div>
 

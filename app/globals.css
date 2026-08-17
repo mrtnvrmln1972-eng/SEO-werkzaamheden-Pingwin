@@ -3891,6 +3891,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* Prominente chat-knop boven de fases (de chat voedt de fases eronder). */
 .wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: var(--s-1); border: 1px solid var(--border); border-radius: var(--r-full); padding: var(--s-1) var(--s-3); background: #fffaf7; font-size: var(--fs-xs); line-height: var(--lh-xs); margin: var(--s-1) 0 var(--s-2); }
 .wp-chat-toggle-groot:hover, .wp-chat-toggle-groot.wp-chat-open { background: var(--orange-light); }
+/* "Chat over deze pagina" en "Pagina's" staan naast elkaar in dezelfde pilvorm:
+   allebei "hier kijk ik verder". De tweede stond onderaan de kaart tussen de
+   linkjes, in een andere vorm, terwijl het dezelfde soort stap is. */
+.wp-chat-kop { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .wp-chat-body { border: 1px solid var(--border); border-radius: 8px; background: var(--gray-light); padding: 8px; }
 /* De chat groeit gewoon mee met het gesprek; geen mini-scrollvenster. */
 .wp-chat-msgs { display: flex; flex-direction: column; gap: 6px; }
@@ -4163,10 +4167,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-info-rest > summary::before { content: "▸ "; color: var(--orange); }
 .wp-info-rest[open] > summary::before { content: "▾ "; }
 .wp-info-rest > summary:hover { color: var(--orange-dark); }
-/* "Waarom deze pagina" en "Aanpak en afspraken" zitten achter dezelfde dichte
-   regel; opengeklapt houden ze hun twee kolommen, met wat lucht onder de kop. */
-.wp-info-verhaal { margin-top: var(--s-0); }
-.wp-info-verhaal > .wp-info-doel { margin-top: var(--s-2); }
 
 /* Sturing per fase pas bij het openklappen; anders lees je de instructie voor
    Copy terwijl je bij Analyse zit. */
@@ -4392,10 +4392,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* Waarom-blok, dossier en documenten als één blok: "wat is er over deze pagina" is
    één vraag, en werden drie losse blokken die hetzelfde verhaal drie keer vertelden. */
 .wp-overdeze { border: 1px solid var(--line, #e6e6e6); border-radius: var(--r-md, 10px); padding: var(--s-3, 12px); margin: var(--s-3, 12px) 0; display: flex; flex-direction: column; gap: var(--s-2, 8px); }
-.wp-overdeze-kop { font-size: var(--fs-xs, 10.5px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #5e6063); }
-/* Eén archief, onderaan het blok, met een lijn erboven zodat het duidelijk de
-   afsluiting is en niet nog een sectie. */
-.wp-overdeze-archief { border-top: 1px solid var(--line, #e6e6e6); padding-top: var(--s-2, 8px); margin-top: var(--s-1, 4px); }
+/* Links de naam, rechts de verse meting: één regel, want het is één zin ("dit
+   is de pagina, en zo staat hij er nu voor"). */
+.wp-overdeze-kop { font-size: var(--fs-xs, 10.5px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #5e6063);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; }
+/* De meting is een cijfer, geen kopje: de hoofdletters en de letterafstand van
+   de kopregel horen er niet overheen te lopen, en de marge van de losse balk
+   die hij hiervoor was moet eraf. */
+.wp-overdeze-kop .wp-info-cijfers { margin-bottom: 0; text-transform: none; letter-spacing: normal; font-weight: 600; }
+
+/* Achtergrond en afspraken, documenten, oude versies: één rij knoppen, hooguit
+   één open, en het paneel eronder is de volle breedte van de kaart. Hiervoor
+   had elk van de drie zijn eigen klepje op zijn eigen plek in de kaart. */
+.wp-vouwrij { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.wp-vouwknop { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; padding: var(--s-1) var(--s-2); gap: var(--s-1); }
+.wp-vouwknop-pijl { color: var(--orange); }
+.wp-vouwknop-aan { background: var(--orange-light); border-color: var(--orange-light); color: var(--orange-dark); }
+.wp-vouwpaneel { width: 100%; }
 
 /* "Alles in één keer" hoort bij de eerste drie fases samen, niet in de Copy-rij:
    daar maakte hij die ene rij hoger dan de andere zes. */
@@ -5729,13 +5742,12 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .wp-fase-vink { display: inline-flex; align-items: center; flex: 0 0 auto; }
 .wp-fase-vink input { width: 13px; height: 13px; accent-color: #1c7a3f; cursor: pointer; margin: 0; }
 .wp-fase-vink input:disabled { cursor: wait; opacity: 0.6; }
-/* "(ligt bij dev)" in de Implementatie-rij: een stand, geen knop. Daarom geen
-   knopvorm maar een vinkje met een rustig labeltje, in dezelfde maat als de
-   andere vinkjes in dit blok. */
-.wp-fase-dev { display: inline-flex; align-items: center; gap: var(--s-1); flex: 0 0 auto; cursor: pointer; }
-.wp-fase-dev input { width: 13px; height: 13px; accent-color: var(--pingwin); cursor: pointer; margin: 0; }
-.wp-fase-dev input:disabled { cursor: wait; opacity: 0.6; }
-.wp-fase-dev span { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--muted); white-space: nowrap; }
+/* "Naar developer?" in de Implementatie-rij, als hij daar ligt. Eén knop die de
+   actie doet en de stand laat zien: rood betekent "ligt bij de sitebouwer, ik
+   wacht". Hier stonden hiervoor drie dingen naast elkaar die alle drie dezelfde
+   stand toonden (een knop, een vinkje en de statuspil rechts). */
+.wp-devknop-aan { background: var(--red-light); border-color: var(--red); color: var(--red); }
+.wp-devknop-aan:hover:not(:disabled) { background: var(--red-light); border-color: var(--red); color: var(--red); }
 
 /* ── De volledige projectkaart binnen het weekbord ──
    Het is dezelfde kaart als op het tabblad Taken, met alle infoblokken, fases,

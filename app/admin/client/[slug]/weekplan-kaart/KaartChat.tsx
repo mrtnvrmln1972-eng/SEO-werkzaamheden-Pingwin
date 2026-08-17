@@ -13,9 +13,13 @@ import type { KaartChatState } from "./useKaartChat";
 import type { WpTask, WpPageInfo } from "./types";
 import MeegegevenAdvies from "../pagina-chat/MeegegevenAdvies";
 
-export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, ensureDriveMap, refreshBoard }: {
+export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, ensureDriveMap, refreshBoard, onPaginas }: {
   slug: string; t: WpTask; page?: WpPageInfo; chat: KaartChatState;
   driveMap: DriveMap | null; onKiesMap: () => void;
+  /** Opent deze pagina in het tabblad Pagina's (nieuw browsertabblad). Die knop
+      stond onderaan de kaart tussen de linkjes; hij hoort naast de chat, in
+      dezelfde vorm, want het is dezelfde soort stap: hier verder kijken. */
+  onPaginas?: () => void;
   /** Zelfde poort als bij de fases: pas de strategie vastleggen (en het
       document ervan maken) zodra er een Drive-map is. */
   ensureDriveMap: (actie: () => void) => void;
@@ -28,18 +32,26 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
 
   return (
     <div className="wp-chat">
-      <button type="button" className={"wp-chat-toggle wp-chat-toggle-groot" + (chatOpen ? " wp-chat-open" : "")} onClick={() => (chatOpen ? setChatOpen(false) : void chat.openChat())}>
-        <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> {t.url ? "Chat over deze pagina" : "Chat over deze taak"} {chatOpen ? "▾" : "▸"}
-      </button>
-      {chatOpen && msgs.length > 0 && (wegVraag === "chat" ? (
-        <span className="wp-weg-vraag wp-weg-naast">
-          Hele chat weggooien?
-          <button type="button" className="wp-weg-ja" onClick={() => void chat.wisChat()}>ja</button>
-          <button type="button" className="wp-weg-nee" onClick={() => setWegVraag(null)}>nee</button>
-        </span>
-      ) : (
-        <button type="button" className="wp-chat-wis" title="Dit hele gesprek weggooien" onClick={() => setWegVraag("chat")}>&times;</button>
-      ))}
+      <div className="wp-chat-kop">
+        <button type="button" className={"wp-chat-toggle wp-chat-toggle-groot" + (chatOpen ? " wp-chat-open" : "")} onClick={() => (chatOpen ? setChatOpen(false) : void chat.openChat())}>
+          <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> {t.url ? "Chat over deze pagina" : "Chat over deze taak"} {chatOpen ? "▾" : "▸"}
+        </button>
+        {/* Zelfde pilvorm, direct ernaast: naar deze pagina in Pagina's. */}
+        {onPaginas && (
+          <button type="button" className="wp-chat-toggle wp-chat-toggle-groot" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={onPaginas}>
+            Pagina&rsquo;s &#8599;
+          </button>
+        )}
+        {chatOpen && msgs.length > 0 && (wegVraag === "chat" ? (
+          <span className="wp-weg-vraag wp-weg-naast">
+            Hele chat weggooien?
+            <button type="button" className="wp-weg-ja" onClick={() => void chat.wisChat()}>ja</button>
+            <button type="button" className="wp-weg-nee" onClick={() => setWegVraag(null)}>nee</button>
+          </span>
+        ) : (
+          <button type="button" className="wp-chat-wis" title="Dit hele gesprek weggooien" onClick={() => setWegVraag("chat")}>&times;</button>
+        ))}
+      </div>
       {chatOpen && (
         <div className="wp-chat-body">
           {t.url && <MeegegevenAdvies slug={slug} url={t.url} siteBase={origin} />}

@@ -28,11 +28,20 @@ type Versie = {
 const KIND_LABEL: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", structured: "Structured data", overig: "Overig" };
 const OORDEEL_KLEUR: Record<Toets["oordeel"], string> = { "goed": "wp-toets-goed", "let-op": "wp-toets-letop", "niet-goed": "wp-toets-fout" };
 
-export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: string; url: string; taakId?: number;
+export default function DocVersies({ slug, url, taakId, triggerSlot, open, onStand }: { slug: string; url: string; taakId?: number;
   /** DOM-knoop uit de knoppenbalk van de aantekeningen (via een portal), zodat
       het "document toevoegen"-chipje daar fysiek in staat i.p.v. als eigen,
       altijd-open blok. Geen knoop (nog niet gemount) = gewoon hier inline. */
-  triggerSlot?: HTMLElement | null }) {
+  triggerSlot?: HTMLElement | null;
+  /** Staat de lijst open? De knop ervoor staat niet hier maar in de rij met
+      uitklappers bovenaan de kaart ("Achtergrond en afspraken", "Documenten",
+      "Oude versies"), want daar hoort maar één van de drie tegelijk open te
+      staan. Dit blok had zijn eigen open-of-dicht-klepje, en dan heb je twee
+      dingen die hetzelfde regelen. */
+  open?: boolean;
+  /** Hoeveel documenten er liggen en of er nog een keuze openstaat. De knop
+      hierboven toont dat, en die staat in het andere bestand. */
+  onStand?: (s: { aantal: number; moetKiezen: boolean }) => void }) {
   const [versies, setVersies] = useState<Versie[]>([]);
   const [drag, setDrag] = useState(false);
   // Het "voeg een document toe"-blok stond hier altijd volledig open, ook als er
@@ -57,6 +66,9 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
   // Dan wacht de mail en de sitebouwer op jouw keuze, en gaat het blok open.
   const moetKiezen = Object.keys(aantalPerSoort).some((kind) =>
     aantalPerSoort[kind] > 1 && !versies.some((v) => v.kind === kind && v.goedgekeurd));
+
+  // De kaart tekent de knop voor dit blok, dus die moet weten wat erin zit.
+  useEffect(() => { onStand?.({ aantal: versies.length, moetKiezen }); }, [versies.length, moetKiezen, onStand]);
 
   const laad = useCallback(async () => {
     const d = await fetch(`/api/admin/page-doc/upload?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
@@ -205,16 +217,13 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
           voorvertonen, weggooien en aanwijzen welke versie geldt; daarom blijft
           de lijst compleet in plaats van dat er regels uit verdwijnen.
 
-          Eén uitzondering die zich vanzelf opent: liggen er meerdere versies van
-          hetzelfde soort en heb je nog niet aangewezen welke geldt, dan is dat
-          een openstaande keuze waar de mail en de sitebouwer op wachten. Die
-          hoort niet achter een dicht klepje te verdwijnen. */}
-      {versies.length > 0 && (
-        <details className="wp-doc-vouw" open={moetKiezen}>
-          <summary>
-            Documenten ({versies.length})
-            {moetKiezen && <span className="wp-doc-vouw-let">kies welke versie geldt</span>}
-          </summary>
+          De knop staat niet meer hier maar in de rij uitklappers bovenaan de
+          kaart, samen met "Achtergrond en afspraken" en "Oude versies": daar is
+          er precies één tegelijk open. Liggen er meerdere versies van hetzelfde
+          soort zonder dat je hebt aangewezen welke geldt, dan zet die rij dit
+          blok vanzelf open; dat is een keuze waar de mail en de sitebouwer op
+          wachten en die hoort niet achter een dicht klepje te verdwijnen. */}
+      {versies.length > 0 && open && (
         <ul className="wp-doclijst">
           {/* Leesvolgorde = proces-volgorde (analyse, blauwdruk, copy), binnen een
               stap nieuwste eerst. Puur op datum stond copy bovenaan en las de
@@ -296,7 +305,6 @@ export default function DocVersies({ slug, url, taakId, triggerSlot }: { slug: s
             </li>
           ))}
         </ul>
-        </details>
       )}
 
       {/* Hier stond de knop "Zet copy als concept in de site". Die staat sinds
