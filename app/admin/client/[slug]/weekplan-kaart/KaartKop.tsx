@@ -86,8 +86,12 @@ export default function KaartKop({
 
               "Opschonen" herschreef de kaarttekst naar het vaste formaat. Dat was
               nodig voor de kaarten uit de begintijd, en die zijn opgeruimd; nieuwe
-              kaarten komen al in dat formaat binnen. De motor erachter blijft
-              bestaan (/api/admin/weekplan/tidy), dus terugzetten is één regel. */}
+              kaarten komen al in dat formaat binnen. Op 18-08-2026 is om dezelfde
+              reden ook de laatste knop weg die dit met de hand deed ("Ruim alle
+              kaarten op", in de kop van de planning), en daarmee de route
+              /api/admin/weekplan/tidy. Het opschonen zelf bestaat nog en gebeurt
+              vanzelf op het enige moment dat het nodig is: als twee kaarten
+              samengevoegd worden (`tidyCards` in lib/weekplan-tidy.ts). */}
           {inRij && !titelBewerk && (
             <button type="button" className="wp-titel-pen" title="Titel aanpassen"
               onClick={() => { setTitelDraft(t.taak.replace(/<[^>]*>/g, "").trim()); setTitelBewerk(true); }}>✎</button>

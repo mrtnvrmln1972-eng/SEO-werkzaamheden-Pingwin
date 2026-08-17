@@ -133,9 +133,14 @@ export default function Planning({
   const [wlMsg, setWlMsg] = useState("");
   const [wlLink, setWlLink] = useState("");
   const [wlFout, setWlFout] = useState(false);
-  const [opruimBusy, setOpruimBusy] = useState(false);
-  const [opruimMsg, setOpruimMsg] = useState("");
-  const [opruimFout, setOpruimFout] = useState(false);
+  // Hier stond "Ruim alle kaarten op": één klik die de assistent tot twintig
+  // kaartteksten liet herschrijven. Weg op 18-08-2026, om dezelfde reden als
+  // waarom het knopje "Opschonen" al eerder per kaart wegging (zie KaartKop):
+  // het was reparatiewerk voor de kaarten uit de begintijd, en die zijn op.
+  // Nieuwe kaarten komen al in het vaste formaat binnen, en bij samenvoegen
+  // ruimt `tidyCards` de tekst automatisch op (weekplan/add en overview-actions).
+  // Er viel dus niets meer op te ruimen, terwijl de knop wél op elk moment
+  // twintig kaarten kon herschrijven zonder dat iemand ernaar keek.
 
   // ── Laden ──
   // Twee bronnen, één vorm. De klant-route doet onderweg ook het onderhoud
@@ -214,21 +219,6 @@ export default function Planning({
     fetch("/api/admin/dev-worklist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).catch(() => {});
     void volgWerklijst();
   }
-  async function ruimAllesOp() {
-    if (opruimBusy) return;
-    setOpruimBusy(true); setOpruimMsg(""); setOpruimFout(false);
-    try {
-      const d = await fetch("/api/admin/weekplan/tidy", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, all: true }),
-      }).then((r) => r.json());
-      setOpruimFout(!d?.ok);
-      setOpruimMsg(d?.ok ? d.samenvatting : (d?.error || "Opruimen mislukte."));
-      if (d?.ok) await laad();
-    } catch { setOpruimFout(true); setOpruimMsg("Opruimen mislukte."); }
-    finally { setOpruimBusy(false); }
-  }
-
   // ── Wijzigen ──
   async function stuur(t: Taak, body: Record<string, unknown>) {
     await fetch("/api/admin/weekplan", {
@@ -608,10 +598,6 @@ export default function Planning({
           {wlMsg && (wlLink
             ? <a className="wp-link" href={wlLink} target="_blank" rel="noreferrer">{wlMsg}</a>
             : <span className={"ovc-mk-msg" + (wlFout ? " err" : " ok")}>{wlMsg}</span>)}
-          <button type="button" className="ghost-btn small" disabled={opruimBusy}
-            title="Laat de assistent elke kaart één keer netjes herschrijven: dubbelingen eruit, per fase één regel. Er wordt niets inhoudelijks weggegooid."
-            onClick={() => void ruimAllesOp()}>{opruimBusy ? "Opruimen…" : "Ruim alle kaarten op"}</button>
-          {opruimMsg && <span className={"ovc-mk-msg" + (opruimFout ? " err" : " ok")}>{opruimMsg}</span>}
         </div>
       </div>
 
@@ -622,11 +608,14 @@ export default function Planning({
         <div className="pl-lijst card">
           {/* Toevoegen staat bovenaan de lijst en niet meer per vak of per week:
               met één lijst is er nog maar één plek waar iets bij kan komen. */}
+          {/* Zelfde vorm als de kop van "Nog geen datum" verderop: een klein
+              grijs kopje met het aantal als bolletje ernaast. Het stond hier als
+              hele zin ("7 taken open"), en dan lezen twee koppen in dezelfde
+              lijst als twee verschillende soorten. */}
           <div className="pl-lijstkop">
-            <span className="pl-lijsttitel">
-              {totaal} {totaal === 1 ? "taak" : "taken"} open
-              {teLaat > 0 && <span className="pl-telaat"> &middot; {teLaat} over de datum heen</span>}
-            </span>
+            <span className="pl-staarttitel">Open</span>
+            <span className="pl-aantal">{totaal}</span>
+            {teLaat > 0 && <span className="pl-telaat">{teLaat} over de datum heen</span>}
             <button type="button" className="btn btn-ghost btn-klein"
               onClick={() => { setNieuwVoor(nieuwVoor ? null : "nieuw"); setNieuwFout(""); }}>
               {nieuwVoor ? "Annuleren" : "Taak toevoegen"}

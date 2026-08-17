@@ -45,9 +45,11 @@ function proef(naam: string, goed: boolean, waarom: string) {
 // ── 1. Eén knop voor de developer in de Implementatie-rij ────────────────────
 proef(
   "de Implementatie-rij heeft de knop die vraagt én de stand toont",
-  /"Naar developer\?"/.test(fases) && /"Bij developer"/.test(fases) && /wp-devknop-aan/.test(fases),
+  /"Naar developer\?"/.test(fases) && /"Bij developer"/.test(fases) && /aria-pressed=\{naarDev\}/.test(fases),
   "Eén knop: \"Naar developer?\" als hij er niet ligt, rood \"Bij developer\" als hij er wel\n"
-  + "      ligt (klasse wp-devknop-aan).",
+  + "      ligt. De stand staat in aria-pressed={naarDev}; daar hangt de rode opmaak aan\n"
+  + "      (.wp-fase-rij .btn[aria-pressed=\"true\"] in globals.css). Dat was een eigen\n"
+  + "      classnaam wp-devknop-aan, en dat telde als een zoveelste soort knop.",
 );
 proef(
   "er staat geen tweede vinkje voor dezelfde stand naast",

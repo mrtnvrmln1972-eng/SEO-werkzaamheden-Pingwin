@@ -332,7 +332,7 @@ export default function KaartFases({
               knop staat onderaan de kaart voor taken zonder pagina, want die
               hebben dit blok niet. */}
           {dev && (
-            <button type="button" className={"btn btn-ghost btn-klein" + (naarDev ? " wp-devknop-aan" : "")} disabled={dev.bezig}
+            <button type="button" className="btn btn-ghost btn-klein" aria-pressed={naarDev} disabled={dev.bezig}
               title={naarDev ? "Ligt bij de developer. Klik om hem er weer af te halen." : "Zet deze pagina klaar voor de developer: de opdracht, de pagina en de documenten."}
               onClick={() => void dev.zetNaarDev()}>
               {dev.bezig ? "Bezig…" : naarDev ? "Bij developer" : "Naar developer?"}

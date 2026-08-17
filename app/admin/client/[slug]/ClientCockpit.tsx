@@ -595,6 +595,15 @@ export default function ClientCockpit({
             </div>
             <div className="tk-rechts">
 
+            {/* Waar we naartoe werken staat bovenaan deze kolom, op dezelfde
+                hoogte als de kop "Overview" links. Het is de vraag waarmee je
+                hier binnenkomt, en als kop van de kolom hoort hij dus naast de
+                kop van de andere kolom; daaronder komt de naslag (de mails, het
+                vrije overzichtsveld). Hij stond onderaan, onder twee blokken
+                die je pas nodig hebt als je al aan het werk bent. Verplaatst op
+                18 augustus 2026, op verzoek. */}
+            <KoersBlok slug={client.slug} onGaNaarTab={(t) => changeTab(validTab(t))} />
+
             {showMailSections && (<>
             {/* De bespreeklijsten stonden hier. Weggehaald op 18-08-2026: de
                 takenpagina moest korter, en dit blok hoorde bij de vraag "wat wil
@@ -809,23 +818,6 @@ export default function ClientCockpit({
             <div className="cockpit-card strategy-card">
               <FocusBlock slug={client.slug} standalone titel="Overzicht" />
             </div>
-
-            {/* Waar we naartoe werken: de koers, wat er nu opgepakt wordt, en de
-                plekken waar werk klaarligt.
-
-                Stond eerst bovenaan over de volle breedte, want het is de vraag
-                waarmee je hier binnenkomt. In de praktijk werkte dat niet: het
-                zijn drie ingeklapte regels waar je af en toe iets in bijhoudt, en
-                op de volle breedte duwden die de planning en de chats naar
-                beneden, elke keer dat je dit scherm opendeed. Hij hoort dus bij
-                de andere naslag in de rechterkolom (bespreeklijsten, mails) en
-                niet in de looproute. Verplaatst op 17 augustus 2026, op verzoek.
-
-                Hier stond een kaartje met alleen een kop: "Zoekwoorden & links
-                staan bij Klantgegevens". Dat was een doodlopende regel, met
-                bovendien de oude tabnaam erin (de tab heet inmiddels Dossier). De
-                weg ernaartoe staat tussen de doorklikjes in dit blok. */}
-            <KoersBlok slug={client.slug} onGaNaarTab={(t) => changeTab(validTab(t))} />
 
             </div>
             </div>

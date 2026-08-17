@@ -97,6 +97,19 @@ export const BLOKKEN: Uitklapper[] = [
       "herinneringen kwamen allemaal bij het belletje in de kopbalk terecht. Een taak in de planning heeft " +
       "al een datum; een tweede, onzichtbare wekker erbij maakt van de takenlijst een tweede lijst om af te " +
       "werken. Wil je jezelf laten porren over iets dat bij de sitebouwer ligt, dan kan dat nog steeds in " +
-      "het doorzet-venster.",
+      "het doorzet-venster.\n\n" +
+      "**De knop \"Ruim alle kaarten op\" is weg (18 augustus 2026).** Eén klik liet de assistent tot twintig " +
+      "kaartteksten herschrijven. Dat was reparatiewerk voor de kaarten uit de begintijd, die vol dubbelingen " +
+      "stonden, en die zijn allang opgeruimd; het knopje dat hetzelfde per kaart deed was om precies die reden " +
+      "al eerder verdwenen. Opschonen bestaat nog en gebeurt vanzelf op het enige moment dat het nodig is: " +
+      "als twee kaarten over dezelfde pagina worden samengevoegd. Er is dus niets bijgekomen dat je zelf moet " +
+      "doen, er is alleen een knop weg die op elk moment twintig kaarten kon herschrijven zonder dat iemand " +
+      "ernaar keek.\n\n" +
+      "**De regel zelf is rechtgezet.** Het kruisje om een taak weg te halen stond als een brede knop in " +
+      "beeld: de rij is een vast kolomraster, en daar stond nog een kolom in van de badge SEO/DEV die er in " +
+      "augustus uitging. Daardoor schoof alles één plek op en kreeg het kruisje de brede kolom die voor de " +
+      "datumknop bedoeld was. Het is nu weer een klein kruisje rechts. De kop van de lijst zegt bovendien " +
+      "\"Open\" met het aantal in een grijs bolletje, precies zoals \"Nog geen datum\" eronder, in plaats van " +
+      "als hele zin; en \"Taak toevoegen\" heeft dezelfde compacte maat als de andere knoppen op dit scherm.",
   },
 ];

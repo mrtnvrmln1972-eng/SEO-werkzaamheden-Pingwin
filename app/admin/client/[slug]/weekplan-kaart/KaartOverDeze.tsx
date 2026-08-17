@@ -98,10 +98,14 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
   /** Eén knop in de uitklapper-rij: pijltje, naam, aantal. */
   function VouwKnop({ welke, naam, aantal, extra }: { welke: Vouw; naam: string; aantal?: number; extra?: string }) {
     const aan = vouw === welke;
+    // Open of dicht staat in aria-expanded, niet in een tweede classnaam: de
+    // opmaak hangt daaraan vast (zie .wp-vouwrij in globals.css) en een
+    // schermlezer hoort de stand meteen mee. Het pijltje is hetzelfde als in
+    // elke andere uitklapper.
     return (
-      <button type="button" className={"btn btn-quiet btn-klein wp-vouwknop" + (aan ? " wp-vouwknop-aan" : "")}
+      <button type="button" className="btn btn-quiet btn-klein" aria-expanded={aan}
         onClick={() => klap(welke)}>
-        <span className="wp-vouwknop-pijl">{aan ? "▾" : "▸"}</span>
+        <span className="strategy-caret">{aan ? "▾" : "▸"}</span>
         {naam}{aantal !== undefined ? ` (${aantal})` : ""}
         {extra && <span className="wp-doc-vouw-let">{extra}</span>}
       </button>

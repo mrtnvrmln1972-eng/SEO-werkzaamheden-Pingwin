@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8415,
-    "stijlregels": 4384,
-    "classnamen": 2903
+    "regels": 8437,
+    "stijlregels": 4382,
+    "classnamen": 2899
   },
   "kleuren": {
     "verschillend": 331,
@@ -1785,7 +1785,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 73,
+      "aantal": 71,
       "namen": [
         "add-month-btn",
         "add-task-btn",
@@ -1853,11 +1853,9 @@
         "wp-btn",
         "wp-btns",
         "wp-check-btn",
-        "wp-devknop-aan",
         "wp-fase-btn",
         "wp-info-lijstbtn",
         "wp-link-btn",
-        "wp-vouwknop",
         "zp-knop",
         "zp-kop-knoppen"
       ]
@@ -5241,6 +5239,6 @@
     ],
     "eigenWaarde": [],
     "gebruik": 70,
-    "schaalGebruik": 6498
+    "schaalGebruik": 6493
   }
 }

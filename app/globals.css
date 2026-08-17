@@ -4518,9 +4518,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    één open, en het paneel eronder is de volle breedte van de kaart. Hiervoor
    had elk van de drie zijn eigen klepje op zijn eigen plek in de kaart. */
 .wp-vouwrij { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
-.wp-vouwknop { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; padding: var(--s-1) var(--s-2); gap: var(--s-1); }
-.wp-vouwknop-pijl { color: var(--orange); }
-.wp-vouwknop-aan { background: var(--orange-light); border-color: var(--orange-light); color: var(--orange-dark); }
+/* De knoppen in deze rij zijn gewoon `btn btn-quiet btn-klein`. Hier staat
+   alleen wat de rij er extra van vraagt: compacter, en hoe een openstaande knop
+   eruitziet. Dat waren drie eigen knopnamen (wp-vouwknop, -aan, -pijl), en dat
+   is precies wat de stijl-meter telt: een zoveelste manier om een knop te maken.
+   Open of dicht staat nu in `aria-expanded`, dus de stand zit in de knop zelf en
+   niet in een tweede classnaam ernaast; een schermlezer hoort hem meteen mee.
+   Het pijltje is dezelfde `.strategy-caret` als in elke andere uitklapper. */
+.wp-vouwrij .btn { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; padding: var(--s-1) var(--s-2); gap: var(--s-1); }
+.wp-vouwrij .btn[aria-expanded="true"] { background: var(--orange-light); border-color: var(--orange-light); color: var(--orange-dark); }
 .wp-vouwpaneel { width: 100%; }
 
 /* "Alles in één keer" hoort bij de eerste drie fases samen, niet in de Copy-rij:
@@ -5354,7 +5360,9 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    Zelfde bouw als de Overview-kaart ernaast (ovc-card met ov-blok-stroken), zodat
    de takenpagina één vorm houdt in plaats van per blok een eigen vorm te krijgen.
    Alleen wat hier écht anders is staat hieronder; de rest erft. */
-.koers-card { margin-bottom: var(--s-4); }
+/* Geen eigen ondermarge meer: dit blok staat sinds 18-08-2026 bovenaan de
+   rechterkolom, en die kolom zet de afstand tussen kaarten zelf al. */
+.koers-card { margin-bottom: 0; }
 /* De strook "Wat we nu oppakken" is er op 18-08-2026 uit, met alles wat eromheen
    gebouwd was. De opmaak van dat lijstje en van het voorstel eronder is hier dus
    ook weg; zie de uitleg bovenaan KoersBlok.tsx. */
@@ -5602,7 +5610,13 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    per regel uit de pas, want de ene taaknaam is nu eenmaal langer dan de andere. */
 .wb-rij {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto 116px 22px 96px 22px;
+  /* Zes kolommen voor zes dingen: handvat, taak, fase-letters, volgende stap,
+     datumknop, kruisje. Er stonden er zeven, een overblijfsel van de badge
+     SEO/DEV die er in augustus uitging. Daardoor schoof alles één kolom op:
+     de datumknop stond in een kolom van 22 pixels (en puilde eruit) en het
+     kruisje kreeg de kolom van 96 die voor de datum bedoeld was, waardoor het
+     als een brede knop in beeld kwam in plaats van als een klein kruisje. */
+  grid-template-columns: 20px minmax(0, 1fr) auto 116px 96px 22px;
   align-items: center; gap: var(--s-3);
   padding: var(--s-2); border-bottom: 1px solid var(--card-border); cursor: pointer;
 }
@@ -5777,8 +5791,13 @@ a.wb-pad:hover { text-decoration: underline; }
   display: flex; align-items: center; gap: var(--s-3);
   padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--border);
 }
-.pl-lijsttitel { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--gray); }
+/* De kop van de lijst gebruikt .pl-staarttitel + .pl-aantal, precies zoals de
+   kop van "Nog geen datum" eronder: één soort kopje in één lijst. De eigen
+   klasse .pl-lijsttitel is daarmee weg. */
 .pl-lijstkop .btn { margin-left: auto; }
+/* Compact, net als de knoppen in de kaartkop; een volle knop naast een klein
+   kopje trekt het scherm scheef. Zelfde maat als .wp-kop-acties hierboven. */
+.pl-lijstkop .btn.btn-ghost.btn-klein { padding: var(--s-1) var(--s-2); font-size: var(--fs-xs); }
 .pl-lijst > .wb-doel, .pl-lijst > .pl-groep { margin-left: var(--s-4); margin-right: var(--s-4); }
 /* De staart: alles zonder datum, en tegelijk het sleepdoel om een dag eraf te
    halen. Een lijntje met een kopje erboven, geen tweede kaart: het hoort bij
@@ -5858,9 +5877,12 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 /* "Naar developer?" in de Implementatie-rij, als hij daar ligt. Eén knop die de
    actie doet en de stand laat zien: rood betekent "ligt bij de sitebouwer, ik
    wacht". Hier stonden hiervoor drie dingen naast elkaar die alle drie dezelfde
-   stand toonden (een knop, een vinkje en de statuspil rechts). */
-.wp-devknop-aan { background: var(--red-light); border-color: var(--red); color: var(--red); }
-.wp-devknop-aan:hover:not(:disabled) { background: var(--red-light); border-color: var(--red); color: var(--red); }
+   stand toonden (een knop, een vinkje en de statuspil rechts).
+   Het is één knop met twee standen, dus de stand staat in `aria-pressed` en niet
+   in een eigen classnaam: dat scheelt weer een knopsoort, en een schermlezer
+   zegt nu zelf of hij ingedrukt staat. */
+.wp-fase-rij .btn[aria-pressed="true"],
+.wp-fase-rij .btn[aria-pressed="true"]:hover:not(:disabled) { background: var(--red-light); border-color: var(--red); color: var(--red); }
 
 /* ── De volledige projectkaart binnen het weekbord ──
    Het is dezelfde kaart als op het tabblad Taken, met alle infoblokken, fases,
