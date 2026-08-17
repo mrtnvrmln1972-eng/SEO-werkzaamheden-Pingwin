@@ -301,7 +301,23 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
         {!n.bucket && <span className="nv-balkje"><span className={"nv-balkvul " + kleur(n)} style={{ width: `${Math.max(takPct, 3)}%` }} /></span>}
         {!isDicht && (
           <div className="nv-kolomlijst">
-            {tak.length === 1 && !n.bucket && <div className={"nv-item " + kleur(n)} style={{ paddingLeft: "var(--s-3)" }}><span className="nv-caret nv-caret-leeg" /><a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer">{n.url}</a><span className="nv-spacer" /><Cijfers n={n} /></div>}
+            {/* De pagina van het menu-item zelf. Die stond hier alleen als de tak
+                verder leeg was; had een kolom kinderen, dan zag je van de
+                hoofdpagina (Tuinontwerp, Tuinaanleg, Over Ons) alleen de naam in
+                de kop en geen woorden, score of voortgang. Juist die pagina's zijn
+                de zwaarste van de site, dus die stonden ongemeten in beeld. Nu
+                heeft elke menupagina dezelfde drie kolommetjes en dezelfde
+                planningsknop als de pagina's eronder. */}
+            {!n.bucket && (
+              <div className={"nv-item " + kleur(n)} style={{ paddingLeft: "var(--s-3)" }}>
+                <span className="nv-caret nv-caret-leeg" />
+                <a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer" title={n.url}>{padVan(n.url)}</a>
+                <span className="nv-spacer" />
+                {!n.live && <span className="nv-badge-mist" title="Deze pagina bestaat nog niet">nieuw</span>}
+                <Cijfers n={n} />
+                <span className="nv-acties"><PlanKnop n={n} /></span>
+              </div>
+            )}
             {kids.map((k) => <Regel key={k.url} n={k} diepte={0} keten={[n.url]} />)}
             {gescand.teveel > 0 && n.bucket && <div className="nv-muted" style={{ padding: "var(--s-1) var(--s-2)" }}>+ {gescand.teveel} pagina&rsquo;s niet getoond</div>}
             {blik === "beoogd" && !n.bucket && (nieuwIn === n.url ? (

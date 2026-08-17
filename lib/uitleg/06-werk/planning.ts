@@ -2,20 +2,23 @@ import type { Uitklapper } from "../types";
 
 export const BLOKKEN: Uitklapper[] = [
   {
-    titel: "De planning: per dag, per week en over alle klanten",
-    kern: "Vandaag bovenaan, plannen door te slepen, afvinken in de kaart.",
+    titel: "De planning: één lijst, op datum",
+    kern: "Alles onder elkaar, eerstvolgende datum bovenaan, slepen verzet de dag.",
     tekst:
-      "De planning kijkt op twee manieren naar hetzelfde werk. **Per moment**: kaarten voor Te laat, Vandaag, " +
-      "Morgen, Verder deze week, Volgende week, Later, en wat nog geen dag heeft. **Per week**: een kaart per " +
-      "week, zoals een klassieke weekplanning. Vandaag staat standaard open, de rest klap je zelf open en die " +
-      "keuze blijft staan.\n\n" +
-      "Binnen een kaart staat het werk gegroepeerd per klant, met een kopregel en een streep ernaast, zodat " +
-      "je ziet wat bij elkaar hoort. Op het tabblad Taken zie je alleen deze klant; op de volle-breedte-versie " +
-      "zie je alle klanten door elkaar, want een werkdag begint niet bij een klant maar bij een dag.\n\n" +
-      "**Slepen betekent overal hetzelfde: je verzet de dag.** Laat je een taak op Morgen los, dan staat hij " +
-      "morgen. Laat je hem op een week los, dan houdt hij dezelfde weekdag, of hij krijgt de maandag als hij " +
-      "nog geen dag had. Zo kan de datum nooit iets anders zeggen dan het vak waar de taak in staat. De dag " +
-      "kiezen kan ook rechtstreeks, met een uitklapbare maandkalender op de regel.\n\n" +
+      "De planning is één lijst. Alles staat onder elkaar op volgorde van datum: de eerstvolgende " +
+      "bovenaan, wat over de datum heen is staat daar vanzelf boven met een rood streepje ernaast, en " +
+      "wat nog geen datum heeft staat onderaan onder het kopje **Nog geen datum**.\n\n" +
+      "Daarvoor waren het er twee tegelijk: zeven vakken (Te laat, Vandaag, Morgen, Verder deze week, " +
+      "Volgende week, Later, Nog geen dag) én daaronder nog een kaart per week, met dezelfde taken erin. " +
+      "Eén taak stond dus op twee plekken op hetzelfde scherm, allebei met een eigen open-of-dicht stand, " +
+      "en je scrolde langs zes koppen voor je bij het werk was. Wie wil weten wat er te doen staat, wil " +
+      "een lijst, geen indeling.\n\n" +
+      "**Slepen betekent één ding: je verzet de dag.** Laat je een taak op een andere taak los, dan neemt " +
+      "hij diens datum over en gaat hij ernaast staan; twee taken op dezelfde dag houden hun eigen " +
+      "volgorde. Laat je hem onderaan los, bij wat nog geen datum heeft, dan raakt hij zijn dag kwijt. De " +
+      "dag kiezen kan ook rechtstreeks, met de datumknop op de regel.\n\n" +
+      "Op het tabblad Taken zie je alleen deze klant; op de volle-breedte-versie zie je alle klanten, daar " +
+      "gegroepeerd per klant zodat je ziet van wie iets is.\n\n" +
       "De planning is bewust een **signaalscherm** en geen bedieningspaneel: één regel per taak, met " +
       "welke pagina, de zeven fases als gekleurde letters, de volgende stap en de dag. Die letters zijn expres " +
       "geen knoppen. Afvinken hoort in de kaart waar het werk gebeurt, en dan kleuren ze hier vanzelf mee. " +

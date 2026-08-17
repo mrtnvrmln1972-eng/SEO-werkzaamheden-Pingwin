@@ -4558,7 +4558,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .nv-taktotaal { font-size: var(--fs-xs, 11px); font-weight: 700; color: var(--muted, #6f645a); background: #f0ebe5; border-radius: var(--r-full, 99px); padding: 1px 8px; margin-left: auto; flex: 0 0 auto; }
 .nv-badge-mist { font-size: var(--fs-xs, 10px); font-weight: 700; text-transform: uppercase; color: #b3261e; background: #fdf3f2; border-radius: var(--r-full, 99px); padding: 1px 7px; white-space: nowrap; }
 .nv-pct { font-size: var(--fs-xs, 11px); font-weight: 700; color: var(--muted, #6f645a); width: 32px; text-align: right; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
-.nv-acties { display: flex; gap: 4px; width: 44px; justify-content: flex-end; flex: 0 0 auto; }
+/* De actieknoppen rechts. Dit had een vaste breedte van 44px, maar "+ planning"
+   en "in planning" zijn breder; die liepen dus over hun eigen vak heen en gingen
+   dwars door het percentage ernaast staan. Nu een minimum in plaats van een vaste
+   maat: de knop krijgt de ruimte die hij nodig heeft en de kolommen blijven
+   uitlijnen omdat het minimum voor elke regel hetzelfde is. */
+.nv-acties { display: flex; gap: 4px; min-width: 78px; justify-content: flex-end; flex: 0 0 auto; }
 .nv-mini { width: 19px; height: 19px; border-radius: 50%; border: 1px solid #1c7a3f; color: #1c7a3f; background: #fff; font-size: 10px; cursor: pointer; padding: 0; opacity: 0; transition: opacity 0.15s; }
 .nv-item:hover .nv-mini { opacity: 1; }
 /* "+ planning": een pagina vanuit de roadmap als projectkaart wegzetten.
@@ -5537,7 +5542,6 @@ a.wb-pad:hover { text-decoration: underline; }
 .pl-kop { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s-4); flex-wrap: wrap; }
 .pl-titel { font-size: var(--fs-xl); line-height: var(--lh-xl); font-weight: 800; color: var(--dark); }
 .pl-sub { font-size: var(--fs-sm); line-height: var(--lh-sm); }
-.pl-telaat { color: #B3261E; font-weight: 700; }
 .pl-kopacties { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; justify-content: flex-end; }
 .pl-leeg { padding: var(--s-6) 0; font-size: var(--fs-sm); }
 
@@ -5580,14 +5584,32 @@ a.wb-pad:hover { text-decoration: underline; }
 .pl-cardbody { padding: 0 var(--s-4) var(--s-3); }
 .pl-vakleeg { font-size: var(--fs-sm); padding: var(--s-2) 0 var(--s-3); }
 
-/* Te laat, vandaag en de huidige week springen eruit; de rest blijft rustig. */
-.pl-card-telaat { border-left: 3px solid #B3261E; }
-.pl-card-telaat .pl-cardtitel { color: #B3261E; }
-.pl-card-telaat .pl-aantal { background: #FDECEA; color: #B3261E; }
-.pl-card-vandaag { border-left: 3px solid var(--orange); }
-.pl-card-vandaag .pl-aantal { background: var(--orange-light); color: var(--orange-dark); }
-.pl-card-nu { border-left: 3px solid var(--orange); }
-.pl-card.pl-drop { outline: 2px solid var(--orange); outline-offset: 2px; background: #fdece1; }
+.pl-card.pl-drop { outline: 2px solid var(--orange); outline-offset: 2px; background: var(--orange-light); }
+
+/* ── Eén lijst, op datum ──
+   De planning had zeven vakken (Te laat, Vandaag, Morgen, ...) én daaronder nog
+   een kaart per week, met dezelfde taken erin. Beide indelingen zijn weg: alles
+   staat nu onder elkaar op datum. Wat daarvan over moest blijven is het signaal
+   "dit is over de datum heen"; dat zat in de kaartkop en zit nu op de regel. */
+.pl-lijst { padding: 0; overflow: visible; }
+.pl-lijstkop {
+  display: flex; align-items: center; gap: var(--s-3);
+  padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--border);
+}
+.pl-lijsttitel { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--gray); }
+.pl-lijstkop .btn { margin-left: auto; }
+.pl-lijst > .wb-doel, .pl-lijst > .pl-groep { margin-left: var(--s-4); margin-right: var(--s-4); }
+/* De staart: alles zonder datum, en tegelijk het sleepdoel om een dag eraf te
+   halen. Een lijntje met een kopje erboven, geen tweede kaart: het hoort bij
+   dezelfde lijst en mag er niet als een aparte indeling uitzien. */
+.pl-staart { border-top: 1px solid var(--border); margin-top: var(--s-3); padding: var(--s-3) var(--s-4) var(--s-2); }
+.pl-staart.pl-drop { outline: 2px solid var(--orange); outline-offset: -2px; background: var(--orange-light); }
+.pl-staartkop { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }
+.pl-staarttitel { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray); }
+/* Over de datum heen en nog open. Een streepje links, meer niet: het staat door
+   de sortering toch al bovenaan, dus het hoeft niet te schreeuwen. */
+.wb-doel-telaat { border-left: 3px solid var(--bad); padding-left: var(--s-2); }
+.pl-telaat { color: var(--bad); font-weight: 700; }
 
 /* De klantgroep binnen een kaart: een kopregel met een kleurstreep ernaast, zodat
    je ziet waar het werk van de ene klant ophoudt en dat van de volgende begint. */

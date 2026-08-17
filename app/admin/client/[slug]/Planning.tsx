@@ -1,23 +1,24 @@
 "use client";
 
 // ═══════════════════════════════════════════════════════════
-// DE PLANNING
+// DE PLANNING: ÉÉN LIJST, OP DATUM
 // ═══════════════════════════════════════════════════════════
-// Eén scherm, twee manieren om naar hetzelfde werk te kijken:
+// Alles onder elkaar, op volgorde van datum: de eerstvolgende bovenaan, en wat
+// nog geen datum heeft daaronder. Verder niets: geen kaart per moment, geen
+// kaart per week, geen blok dat open of dicht kan.
 //
-//  1. WANNEER: kaarten per moment. Te laat, Vandaag, Morgen, Verder deze week,
-//     Volgende week, Later, en wat nog geen dag heeft. Daar begint een werkdag.
-//  2. WELKE WEEK: kaarten per week, zoals de oude weekplanning, maar dan als
-//     regels in plaats van als kolommen.
+// Dat wás er wel, en het waren er zelfs twee tegelijk: zeven vakken (Te laat,
+// Vandaag, Morgen, Verder deze week, Volgende week, Later, Nog geen dag) én
+// daaronder nog eens een kaart per week, met dezelfde taken erin. Eén taak stond
+// dus op twee plekken op hetzelfde scherm, allebei met een eigen open-of-dicht
+// stand, en je scrolde langs zes koppen voordat je bij het werk was. Wie wil
+// weten wat er te doen staat, wil een lijst, geen indeling.
 //
-// Binnen elke kaart staat het werk gegroepeerd per klant, met een kopregel en
-// een kleurstreep, zodat je ziet wat bij elkaar hoort. Bij één klant blijven die
-// kopjes weg; dan zou de groep alleen maar ruis zijn.
-//
-// Slepen werkt overal en betekent altijd hetzelfde: je verzet de dag. Laat je
-// een taak op "Morgen" los, dan staat hij morgen. Laat je hem op een week los,
-// dan houdt hij zijn weekdag, of hij krijgt de maandag als hij nog geen dag had.
-// Zo kan de datum nooit iets anders zeggen dan het vak waarin de taak staat.
+// Wat de plek van een taak bepaalt, is nu alleen zijn datum. Slepen betekent dus
+// nog steeds precies één ding: je verzet de dag. Laat je een taak op een andere
+// taak los, dan neemt hij diens datum over en gaat hij ernaast staan; laat je
+// hem onderaan los, bij wat nog geen datum heeft, dan raakt hij zijn dag kwijt.
+// De datum kiezen kan ook rechtstreeks, met de datumknop op de regel.
 //
 // Dit scherm SIGNALEERT; het is geen bedieningspaneel. De zeven fase-letters
 // vertellen waar het werk staat en zijn expres geen knoppen: afvinken hoort in
@@ -29,10 +30,8 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { volgendeFase, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
-import {
-  mondayOfISOWeek, isoVan, weekVanIso, datumNaVerplaatsing, dagenTussen, isoVanDatum,
-} from "../../../../lib/week-datum";
-import { nieuweVolgorde, bewaarVolgorde, opVolgorde } from "../../../../lib/weekplan-slepen";
+import { weekVanIso } from "../../../../lib/week-datum";
+import { nieuweVolgorde, bewaarVolgorde } from "../../../../lib/weekplan-slepen";
 import { isKorteTitel } from "../../../../lib/kaart-titel";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 import MailUitKaart from "./MailUitKaart";
@@ -51,30 +50,8 @@ type Taak = {
 type Pages = Record<string, Record<string, WpPageInfo>>;   // slug → urlKey → pagina
 type Current = { year: number; week: number };
 
-const dm = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", timeZone: "UTC" });
-const dagNaam = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("nl-NL", { weekday: "long", timeZone: "UTC" });
 const pad = (u?: string | null) => { if (!u) return ""; try { return new URL(u).pathname; } catch { return u; } };
 const zonderHtml = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim();
-const plus = (iso: string, dagen: number) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + dagen);
-  return isoVanDatum(d);
-};
-
-// De momenten waarop werk kan staan. De volgorde hier is de volgorde op het scherm.
-type Vak = "telaat" | "vandaag" | "morgen" | "week" | "volgende" | "later" | "geen";
-const VAKKEN: { key: Vak; titel: string; uitleg: string }[] = [
-  { key: "telaat", titel: "Te laat", uitleg: "de dag is voorbij en het staat nog open" },
-  { key: "vandaag", titel: "Vandaag", uitleg: "" },
-  { key: "morgen", titel: "Morgen", uitleg: "" },
-  { key: "week", titel: "Verder deze week", uitleg: "" },
-  { key: "volgende", titel: "Volgende week", uitleg: "" },
-  { key: "later", titel: "Later", uitleg: "" },
-  { key: "geen", titel: "Nog geen dag gekozen", uitleg: "staat wel in een week, maar niet op een dag" },
-];
-// Standaard open: waar je vandaag iets mee moet. De rest klap je zelf open, en
-// die keuze onthouden we. Zonder dit scrolt een drukke week je van je eigen dag af.
-const STANDAARD_OPEN: Vak[] = ["telaat", "vandaag"];
 
 export default function Planning({
   slug, clientName, clientEmail, alleKlanten, kaal, onGoToPage, onGoToTab, onOpenMailDate, reloadSignal,
@@ -139,32 +116,13 @@ export default function Planning({
   const [alleen, setAlleen] = useState(false);
   const breed = !!alleKlanten && !alleen;
 
-  // Welke kaarten staan open. Per soort onthouden, zodat je indeling blijft staan.
-  const [dicht, setDicht] = useState<Record<string, boolean>>({});
-  useEffect(() => {
-    try {
-      const s = localStorage.getItem("pingwin-planning-dicht");
-      if (s) setDicht(JSON.parse(s) as Record<string, boolean>);
-      else setDicht(Object.fromEntries(VAKKEN.filter((v) => !STANDAARD_OPEN.includes(v.key)).map((v) => [v.key, true])));
-    } catch {
-      setDicht(Object.fromEntries(VAKKEN.filter((v) => !STANDAARD_OPEN.includes(v.key)).map((v) => [v.key, true])));
-    }
-  }, []);
-  function klap(sleutel: string) {
-    setDicht((d) => {
-      const n = { ...d, [sleutel]: !d[sleutel] };
-      try { localStorage.setItem("pingwin-planning-dicht", JSON.stringify(n)); } catch { /* geen opslag */ }
-      return n;
-    });
-  }
-
   // Slepen: welke taak heb je vast, en boven welk vak of welke regel hang je.
   const [sleep, setSleep] = useState<Taak | null>(null);
-  const [bovenVak, setBovenVak] = useState<string | null>(null);
+  const [bovenStaart, setBovenStaart] = useState(false);   // boven de "nog geen datum"-zone
   const [bovenRij, setBovenRij] = useState<string | null>(null);
-  const sleepKlaar = () => { setSleep(null); setBovenVak(null); setBovenRij(null); };
+  const sleepKlaar = () => { setSleep(null); setBovenStaart(false); setBovenRij(null); };
 
-  // Zelf een taak toevoegen, per week.
+  // Zelf een taak toevoegen.
   const [nieuwVoor, setNieuwVoor] = useState<string | null>(null);
   const [nieuwTaak, setNieuwTaak] = useState("");
   const [nieuwBezig, setNieuwBezig] = useState(false);
@@ -323,31 +281,19 @@ export default function Planning({
     return kandidaten.find((x) => tekst.includes(x.p))?.url;
   }
 
-  async function maakTaak(doel: { jaar: number; week: number } | { dag: string }) {
+  async function maakTaak() {
     const taak = nieuwTaak.trim();
     if (!taak || nieuwBezig) return;
-    const dag = "dag" in doel ? doel.dag : "";
-    const w = "dag" in doel ? (weekVanIso(doel.dag) || nu) : { year: doel.jaar, week: doel.week };
     setNieuwBezig(true); setNieuwFout("");
     try {
-      // De server rekent in "over hoeveel weken", dus dat leiden we af uit de
-      // maandag van deze week ten opzichte van die van de huidige week.
-      const nuMaandag = mondayOfISOWeek(nu.year, nu.week);
-      const seq = Math.max(1, Math.round((mondayOfISOWeek(w.year, w.week).getTime() - nuMaandag.getTime()) / (7 * 864e5)) + 1);
+      // Zonder datum erbij: hij komt onderaan bij "nog geen datum" te staan, en
+      // daar kies je hem zelf een dag. Dat is één handeling minder dan eerst een
+      // vak of een week moeten kiezen voordat je mag typen.
       const d = await fetch("/api/admin/weekplan/add", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, taak, url: paginaUitTekst(taak), week: seq }),
+        body: JSON.stringify({ slug, taak, url: paginaUitTekst(taak), week: 1 }),
       }).then((r) => r.json());
       if (!d?.ok) { setNieuwFout(d?.error || "Toevoegen lukte niet."); return; }
-      // Toegevoegd vanuit een dagkaart? Dan krijgt hij meteen die dag, anders
-      // zou hij onderaan bij "Nog geen dag gekozen" belanden terwijl je hem net
-      // bewust op vandaag zette.
-      if (dag && Array.isArray(d.ids)) {
-        await Promise.all(d.ids.map((id: number) => fetch("/api/admin/weekplan", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slug, id, datum: dag, weekYear: w.year, weekNo: w.week }),
-        }).catch(() => {})));
-      }
       setNieuwTaak(""); setNieuwVoor(null);
       await laad();
     } catch { setNieuwFout("Toevoegen lukte niet."); }
@@ -363,8 +309,8 @@ export default function Planning({
    * datumknop, het werk komt sowieso langs Maarten, en over welke pagina het
    * gaat leest `paginaUitTekst` gewoon uit wat je typt.
    */
-  function nieuwFormulier(doel: { jaar: number; week: number } | { dag: string }) {
-    const verstuur = () => { if (nieuwTaak.trim()) void maakTaak(doel); };
+  function nieuwFormulier() {
+    const verstuur = () => { if (nieuwTaak.trim()) void maakTaak(); };
     return (
       <div className="pl-nieuw">
         <input className="pl-nieuw-taak" value={nieuwTaak} autoFocus
@@ -373,8 +319,8 @@ export default function Planning({
           onKeyDown={(e) => { if (e.key === "Enter") verstuur(); if (e.key === "Escape") setNieuwVoor(null); }} />
         <div className="pl-nieuw-rij">
           <span className="pl-nieuw-spacer" />
-          <button type="button" className="ghost-btn small" onClick={() => setNieuwVoor(null)}>Annuleren</button>
-          <button type="button" className="primary-btn small"
+          <button type="button" className="btn btn-ghost btn-klein" onClick={() => setNieuwVoor(null)}>Annuleren</button>
+          <button type="button" className="btn btn-primary btn-klein"
             disabled={!nieuwTaak.trim() || nieuwBezig} onClick={verstuur}>
             {nieuwBezig ? "Bezig…" : "Toevoegen"}
           </button>
@@ -385,117 +331,63 @@ export default function Planning({
   }
 
   /**
-   * Loslaten op een week. De volgorde binnen die week verschuift mee, en de dag
-   * verhuist: dezelfde weekdag als hij er een had, anders de maandag. De som
-   * staat in lib/week-datum.ts, zodat geen twee schermen iets anders uitrekenen.
+   * Loslaten op een andere taak. Die taak bepaalt de datum, en als het dezelfde
+   * klant is ook de plek in de rij. Zo blijft slepen precies één ding betekenen:
+   * je verzet de dag. Twee taken op dezelfde dag houden hun eigen volgorde, want
+   * die staat als sortOrder per week in de database.
    */
-  async function laatLosOpWeek(t: Taak, doelId: number | null, jaar: number, week: number) {
-    if (week <= 0) {
-      setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, weekYear: 0, weekNo: 0, datum: null } : x)));
-      await stuur(t, { weekYear: 0, weekNo: 0, datum: "" });
-      return;
-    }
-    // Herordenen kan alleen binnen de kaarten van dezelfde klant; sort_order is
-    // een volgorde per klant, niet over klanten heen.
+  async function laatLosOpRij(t: Taak, doel: Taak) {
+    if (zelfde(t, doel)) return;
+    const iso = doel.datum || "";
+    const week = weekVanIso(iso);
+    setTaken((ts) => ts.map((x) => (zelfde(x, t)
+      ? { ...x, datum: iso || null, ...(week ? { weekYear: week.year, weekNo: week.week } : {}) }
+      : x)));
+    await stuur(t, { datum: iso, ...(week ? { weekYear: week.year, weekNo: week.week } : {}) });
+    // De volgorde loopt per klant én per week; over klanten heen herordenen kan
+    // dus niet, en dan is achteraan aankomen het eerlijke antwoord.
+    if (!week || doel.slug !== t.slug) return;
     const vanKlant = taken.filter((x) => x.slug === t.slug);
-    const genummerd = nieuweVolgorde(vanKlant, t.id, doelId, jaar, week);
+    const genummerd = nieuweVolgorde(vanKlant, t.id, doel.id, week.year, week.week);
     if (genummerd.length === 0) return;
     const perId = new Map(genummerd.map((x) => [x.id, x]));
     setTaken((ts) => ts.map((x) => (x.slug === t.slug && perId.has(x.id) ? { ...x, ...perId.get(x.id)! } : x)));
-    await bewaarVolgorde(t.slug, jaar, week, genummerd);
-    const nieuweDatum = datumNaVerplaatsing(t.datum, jaar, week);
-    setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, datum: nieuweDatum } : x)));
-    await stuur(t, { datum: nieuweDatum });
+    await bewaarVolgorde(t.slug, week.year, week.week, genummerd);
+  }
+
+  /** Loslaten onderaan, bij wat nog geen datum heeft: de dag gaat eraf. */
+  async function haalDatumEraf(t: Taak) {
+    if (!t.datum) return;
+    setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, datum: null } : x)));
+    await stuur(t, { datum: "" });
   }
 
   // ── Indelen ──
   const vandaag = vandaagIso();
-  const nu = current || isoVan(new Date());
-  const maandagNu = mondayOfISOWeek(nu.year, nu.week).getTime();
-  const zondagNu = plus(isoVanDatum(mondayOfISOWeek(nu.year, nu.week)), 6);
-
-  /** Op welke dag komt een taak te staan als je hem op dit vak loslaat. */
-  function doeldatum(vak: Vak): string | null {
-    if (vak === "vandaag") return vandaag;
-    if (vak === "morgen") return plus(vandaag, 1);
-    if (vak === "week") { const d = plus(vandaag, 2); return d <= zondagNu ? d : null; }
-    if (vak === "volgende") return isoVanDatum(mondayOfISOWeek(nu.year, nu.week + 1));
-    if (vak === "later") return isoVanDatum(mondayOfISOWeek(nu.year, nu.week + 2));
-    if (vak === "geen") return "";
-    return null;                                  // "Te laat" is geen plek om iets neer te leggen
-  }
 
   const zichtbaar = useMemo(
     () => taken.filter((t) => t.status !== "klaar" && (breed || t.slug === slug)),
     [taken, breed, slug],
   );
 
-  const vakken = useMemo(() => {
-    const uit = new Map<Vak, Taak[]>(VAKKEN.map((v) => [v.key, []]));
-    for (const t of zichtbaar) {
-      let vak: Vak;
-      if (t.datum) {
-        const dagen = dagenTussen(vandaag, t.datum);
-        const w = weekVanIso(t.datum)!;
-        // Van maandag tot maandag rekenen; met weeknummers gaat dat mis rond de
-        // jaarwisseling, want week 1 komt ná week 52 maar is een kleiner getal.
-        const weken = Math.round((mondayOfISOWeek(w.year, w.week).getTime() - maandagNu) / (7 * 864e5));
-        if (dagen < 0) vak = "telaat";
-        else if (dagen === 0) vak = "vandaag";
-        else if (dagen === 1) vak = "morgen";
-        else if (weken <= 0) vak = "week";
-        else if (weken === 1) vak = "volgende";
-        else vak = "later";
-      } else vak = "geen";
-      uit.get(vak)!.push(t);
-    }
-    for (const lijst of uit.values()) {
-      lijst.sort((a, b) => (a.datum || "").localeCompare(b.datum || "")
-        || a.klant.localeCompare(b.klant) || (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id);
-    }
-    return uit;
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [zichtbaar, vandaag, maandagNu]);
-
-  // Per week groeperen. De huidige week en de week daarna staan er altijd, ook
-  // leeg, anders is er geen plek om werk naartoe te schuiven.
-  const weken = useMemo(() => {
-    const map = new Map<number, Taak[]>();
-    for (const t of zichtbaar) {
-      const k = t.weekNo > 0 ? t.weekYear * 100 + t.weekNo : 0;
-      if (!map.has(k)) map.set(k, []);
-      map.get(k)!.push(t);
-    }
-    for (const stap of [0, 1]) {
-      const m = mondayOfISOWeek(nu.year, nu.week);
-      m.setUTCDate(m.getUTCDate() + stap * 7);
-      const iso = isoVan(m);
-      const k = iso.year * 100 + iso.week;
-      if (!map.has(k)) map.set(k, []);
-    }
-    return [...map.entries()].sort((a, b) => a[0] - b[0]).map(([k, lijst]) => {
-      const jaar = Math.floor(k / 100), week = k % 100;
-      const maandag = week ? mondayOfISOWeek(jaar, week) : null;
-      return {
-        k, jaar, week, maandag,
-        zondag: maandag ? new Date(maandag.getTime() + 6 * 864e5) : null,
-        nu: jaar === nu.year && week === nu.week,
-        verleden: !!maandag && maandag.getTime() < maandagNu,
-        lijst: opVolgorde(lijst),
-      };
-    });
-    /* eslint-disable-next-line react-hooks/exhaustive-deps */
-  }, [zichtbaar, nu.year, nu.week, maandagNu]);
-
-  /** Rijen groeperen per klant, op naam. Bij één klant blijft het één groep. */
-  function perKlant(lijst: Taak[]): { slug: string; klant: string; rijen: Taak[] }[] {
-    const map = new Map<string, { slug: string; klant: string; rijen: Taak[] }>();
-    for (const t of lijst) {
-      if (!map.has(t.slug)) map.set(t.slug, { slug: t.slug, klant: t.klant, rijen: [] });
-      map.get(t.slug)!.rijen.push(t);
-    }
-    return [...map.values()].sort((a, b) => a.klant.localeCompare(b.klant));
-  }
+  /**
+   * Eén lijst, op datum. De eerstvolgende datum bovaan, wat al voorbij is staat
+   * daar vanzelf bóven (want een oudere datum is kleiner), en wat nog geen datum
+   * heeft komt onderaan. Binnen dezelfde dag telt de volgorde die je zelf
+   * gesleept hebt, en pas daarna de klantnaam.
+   */
+  const metDatum = useMemo(
+    () => zichtbaar.filter((t) => !!t.datum).sort((a, b) =>
+      (a.datum || "").localeCompare(b.datum || "")
+      || (a.sortOrder || 0) - (b.sortOrder || 0)
+      || a.klant.localeCompare(b.klant) || a.id - b.id),
+    [zichtbaar],
+  );
+  const zonderDatum = useMemo(
+    () => zichtbaar.filter((t) => !t.datum).sort((a, b) =>
+      (a.sortOrder || 0) - (b.sortOrder || 0) || a.klant.localeCompare(b.klant) || a.id - b.id),
+    [zichtbaar],
+  );
 
   const infoVan = (t: Taak): WpPageInfo | undefined => (t.url ? pages[t.slug]?.[urlKey(t.url)] : undefined);
 
@@ -509,32 +401,37 @@ export default function Planning({
   }
 
   // ── De regel ──
-  function regel(t: Taak, opties?: { inWeek?: { jaar: number; week: number } }) {
+  function regel(t: Taak) {
     const sleutel = `${t.slug}:${t.id}`;
     const p = infoVan(t);
     const stippen = p ? FASE_VOLGORDE.map((f) => !!p[f.key]) : null;
     const eerstOpen = stippen ? stippen.indexOf(false) : -1;
-    // Binnen een week kun je op een regel loslaten om de volgorde te bepalen; in
-    // de dagkaarten heeft dat geen zin, want daar bepaalt de dag de volgorde.
-    const rijDoel = opties?.inWeek ? {
+    // Elke regel is nu een sleepdoel: de taak die je loslaat neemt de datum van
+    // deze regel over. Vroeger kon dat alleen binnen een weekkaart, want daar
+    // bepaalde de kaart de dag en de regel alleen de volgorde eronder.
+    const rijDoel = {
       onDragOver: (e: DragEvent) => {
-        if (!sleep || (sleep.id === t.id && sleep.slug === t.slug) || sleep.slug !== t.slug) return;
+        if (!sleep || zelfde(sleep, t)) return;
         e.preventDefault(); e.stopPropagation();
-        setBovenRij(sleutel); setBovenVak(`week:${opties.inWeek!.jaar}:${opties.inWeek!.week}`);
+        setBovenRij(sleutel); setBovenStaart(false);
       },
       onDrop: (e: DragEvent) => {
         if (!sleep) return;
         e.preventDefault(); e.stopPropagation();
-        // Boven een regel van een ándere klant loslaten kan geen volgorde
-        // betekenen (de volgorde loopt per klant), dus dan gaat hij achteraan.
-        void laatLosOpWeek(sleep, sleep.slug === t.slug ? t.id : null, opties.inWeek!.jaar, opties.inWeek!.week);
+        void laatLosOpRij(sleep, t);
         sleepKlaar();
       },
-    } : {};
+    };
+    // Een dag die voorbij is terwijl het werk nog openstaat: dat was het vak
+    // "Te laat". Dat signaal mag niet verdwijnen doordat de vakken verdwijnen,
+    // dus staat het nu als merkje op de regel zelf. Door de sortering op datum
+    // staan die regels sowieso bovenaan.
+    const teLaatRij = !!t.datum && t.datum < vandaag;
     return (
       <div key={sleutel} id={`kaart-${sleutel}`}
         className={"wb-doel"
           + (open === sleutel ? " wb-doel-open" : "")
+          + (teLaatRij ? " wb-doel-telaat" : "")
           + (bovenRij === sleutel && sleep && !zelfde(sleep, t) ? " wb-doel-aan" : "")}
         {...rijDoel}>
         <div className={"wb-rij" + (open === sleutel ? " wb-rij-open" : "") + (sleep && zelfde(sleep, t) ? " wb-sleept" : "")}
@@ -635,20 +532,36 @@ export default function Planning({
     );
   }
 
-  /** De rijen van een kaart, gegroepeerd per klant met een kopregel erboven. */
-  function groepen(lijst: Taak[], opties?: { inWeek?: { jaar: number; week: number } }) {
-    const g = perKlant(lijst);
-    if (!breed) return <>{lijst.map((t) => regel(t, opties))}</>;
+  /** Rijen groeperen per klant, op naam. Bij één klant blijft het één groep. */
+  function perKlant(lijst: Taak[]): { slug: string; klant: string; rijen: Taak[] }[] {
+    const map = new Map<string, { slug: string; klant: string; rijen: Taak[] }>();
+    for (const t of lijst) {
+      if (!map.has(t.slug)) map.set(t.slug, { slug: t.slug, klant: t.klant, rijen: [] });
+      map.get(t.slug)!.rijen.push(t);
+    }
+    return [...map.values()].sort((a, b) => a.klant.localeCompare(b.klant));
+  }
+
+  /**
+   * De rijen van een lijst. Kijk je naar één klant, dan is het gewoon de lijst;
+   * over alle klanten heen zou je anders niet zien van wie iets is.
+   *
+   * Let op: bij "alle klanten" groepeert dit binnen de lijst, dus de datum-
+   * volgorde geldt dan pér klant. Dat is met opzet: een naam boven een losse
+   * regel, telkens opnieuw, leest slechter dan een blokje per klant.
+   */
+  function rijen(lijst: Taak[]) {
+    if (!breed) return <>{lijst.map((t) => regel(t))}</>;
     return (
       <>
-        {g.map((k) => (
+        {perKlant(lijst).map((k) => (
           <div key={k.slug} className="pl-groep">
             <div className="pl-groepkop">
               <a href={`/admin/client/${k.slug}?tab=werkzaamheden`} className="pl-groepnaam"
                 title={`Naar de cockpit van ${k.klant}`}>{k.klant}</a>
               <span className="pl-groepaantal">{k.rijen.length}</span>
             </div>
-            {k.rijen.map((t) => regel(t, opties))}
+            {k.rijen.map((t) => regel(t))}
           </div>
         ))}
       </>
@@ -656,11 +569,8 @@ export default function Planning({
   }
 
   const totaal = zichtbaar.length;
-  const teLaat = vakken.get("telaat")!.length;
-  const vandaagAantal = vakken.get("vandaag")!.length;
-  // "Per week" staat standaard dicht: wat vandaag of te laat is, staat al in de
-  // vakken hierboven; dit blok is er voor als je verder vooruit wilt kijken.
-  const weekBlokDicht = dicht["blok:week"] ?? true;
+  const teLaat = metDatum.filter((t) => t.datum! < vandaag).length;
+  const vandaagAantal = metDatum.filter((t) => t.datum === vandaag).length;
 
   return (
     <div className="pl">
@@ -705,101 +615,48 @@ export default function Planning({
       {fout && <div className="login-error">{fout}</div>}
       {laden && <div className="muted pl-leeg">Bezig met laden…</div>}
 
-      {/* ── Wanneer: een kaart per moment ── */}
       {!laden && (
-        <div className="pl-blok">
-          {VAKKEN.map((v) => {
-            const lijst = vakken.get(v.key)!;
-            const doel = doeldatum(v.key);
-            const sleutel = `vak:${v.key}`;
-            // Lege kaarten blijven weg, behalve "Vandaag" (dat je niets hebt is
-            // ook een antwoord) en behalve terwijl je sleept: dan moet elk vak
-            // een plek zijn om iets neer te leggen.
-            if (lijst.length === 0 && v.key !== "vandaag" && !(sleep && doel !== null)) return null;
-            const dichtNu = !!dicht[v.key];
-            return (
-              <div key={v.key}
-                className={"card pl-card pl-card-" + v.key + (bovenVak === sleutel ? " pl-drop" : "")}
-                onDragOver={(e) => { if (!sleep || doel === null) return; e.preventDefault(); setBovenVak(sleutel); setBovenRij(null); }}
-                onDrop={(e) => {
-                  if (!sleep || doel === null) return;
-                  e.preventDefault();
-                  void zetDatum(sleep, doel);
-                  sleepKlaar();
-                }}>
-                <button type="button" className="pl-cardkop" onClick={() => klap(v.key)}>
-                  <span className="pl-caret">{dichtNu ? "▸" : "▾"}</span>
-                  <span className="pl-cardtitel">{v.titel}</span>
-                  <span className="pl-aantal">{lijst.length}</span>
-                  {v.key === "vandaag" && <span className="pl-datumlabel">{langDatum(vandaag)}</span>}
-                  {v.key === "morgen" && <span className="pl-datumlabel">{dagNaam(plus(vandaag, 1))} {dm(new Date(`${plus(vandaag, 1)}T00:00:00Z`))}</span>}
-                  {v.uitleg && <span className="pl-uitleg muted">{v.uitleg}</span>}
-                  {doel !== null && <span className="pl-sleepdoel muted">{doel === "" ? "hier loslaten haalt de dag eraf" : `hier loslaten zet hem op ${langDatum(doel)}`}</span>}
-                  {/* Zelf een taak toevoegen, meteen op de goede dag. */}
-                  {doel && (
-                    <span className="pl-plus" role="button" title={`Zelf een taak toevoegen op ${langDatum(doel)}`}
-                      onClick={(e) => { e.stopPropagation(); setNieuwVoor(nieuwVoor === sleutel ? null : sleutel); setNieuwFout(""); }}>+</span>
-                  )}
-                </button>
-                {nieuwVoor === sleutel && doel && nieuwFormulier({ dag: doel })}
-                {!dichtNu && (
-                  <div className="pl-cardbody">
-                    {lijst.length === 0
-                      ? <div className="muted pl-vakleeg">{v.key === "vandaag" ? "Niets voor vandaag ingepland." : "Nog niets."}</div>
-                      : groepen(lijst)}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+        <div className="pl-lijst card">
+          {/* Toevoegen staat bovenaan de lijst en niet meer per vak of per week:
+              met één lijst is er nog maar één plek waar iets bij kan komen. */}
+          <div className="pl-lijstkop">
+            <span className="pl-lijsttitel">
+              {totaal} {totaal === 1 ? "taak" : "taken"} open
+              {teLaat > 0 && <span className="pl-telaat"> &middot; {teLaat} over de datum heen</span>}
+            </span>
+            <button type="button" className="btn btn-ghost btn-klein"
+              onClick={() => { setNieuwVoor(nieuwVoor ? null : "nieuw"); setNieuwFout(""); }}>
+              {nieuwVoor ? "Annuleren" : "Taak toevoegen"}
+            </button>
+          </div>
+          {nieuwVoor && nieuwFormulier()}
 
-      {/* ── Welke week: een kaart per week ── */}
-      {!laden && (
-        <div className="pl-blok">
-          <button type="button" className="pl-bloktitel-btn" onClick={() => klap("blok:week")}>
-            <span className="pl-caret">{weekBlokDicht ? "▸" : "▾"}</span>
-            <span className="pl-bloktitel">Per week</span>
-            <span className="pl-aantal">{weken.reduce((n, w) => n + w.lijst.length, 0)}</span>
-          </button>
-          {!weekBlokDicht && weken.map((w) => {
-            const sleutel = `week:${w.jaar}:${w.week}`;
-            // Alle weken staan standaard dicht, ook de huidige; wat vandaag/deze
-            // week speelt zie je al in de vakken hierboven ("Vandaag", "Te laat").
-            const dichtNu = dicht[sleutel] ?? true;
-            return (
-              <div key={w.k}
-                className={"card pl-card" + (w.nu ? " pl-card-nu" : "") + (bovenVak === sleutel && !bovenRij ? " pl-drop" : "")}
-                onDragOver={(e) => { if (!sleep) return; e.preventDefault(); setBovenVak(sleutel); setBovenRij(null); }}
-                onDrop={(e) => {
-                  if (!sleep) return;
-                  e.preventDefault();
-                  void laatLosOpWeek(sleep, null, w.jaar, w.week);
-                  sleepKlaar();
-                }}>
-                <button type="button" className="pl-cardkop" onClick={() => klap(sleutel)}>
-                  <span className="pl-caret">{dichtNu ? "▸" : "▾"}</span>
-                  <span className="pl-cardtitel">{w.week ? `Week ${w.week}` : "Ongepland"}</span>
-                  <span className="pl-aantal">{w.lijst.length}</span>
-                  {w.maandag && w.zondag && <span className="pl-datumlabel">{dm(w.maandag)} &ndash; {dm(w.zondag)}</span>}
-                  {w.nu && <span className="pl-nulabel">nu</span>}
-                  {w.week > 0 && (
-                    <span className="pl-plus" role="button" title={`Zelf een taak toevoegen aan week ${w.week}`}
-                      onClick={(e) => { e.stopPropagation(); setNieuwVoor(nieuwVoor === sleutel ? null : sleutel); setNieuwFout(""); }}>+</span>
-                  )}
-                </button>
-                {nieuwVoor === sleutel && nieuwFormulier({ jaar: w.jaar, week: w.week })}
-                {!dichtNu && (
-                  <div className="pl-cardbody">
-                    {w.lijst.length === 0
-                      ? <div className="muted pl-vakleeg">Nog niets in deze week. Sleep hier iets naartoe of gebruik het plusje.</div>
-                      : groepen(w.lijst, { inWeek: { jaar: w.jaar, week: w.week } })}
-                  </div>
-                )}
+          {totaal === 0 && <div className="muted pl-vakleeg">Niets openstaand.</div>}
+
+          {rijen(metDatum)}
+
+          {/* De staart: alles zonder datum. Ook het sleepdoel om een dag eraf te
+              halen, want dat kan nergens anders meer sinds de vakken weg zijn.
+              Hij staat er ook als hij leeg is zodra je sleept, anders is er geen
+              plek om iets naartoe te schuiven. */}
+          {(zonderDatum.length > 0 || (sleep && sleep.datum)) && (
+            <div className={"pl-staart" + (bovenStaart ? " pl-drop" : "")}
+              onDragOver={(e) => { if (!sleep?.datum) return; e.preventDefault(); setBovenStaart(true); setBovenRij(null); }}
+              onDragLeave={() => setBovenStaart(false)}
+              onDrop={(e) => {
+                if (!sleep) return;
+                e.preventDefault();
+                void haalDatumEraf(sleep);
+                sleepKlaar();
+              }}>
+              <div className="pl-staartkop">
+                <span className="pl-staarttitel">Nog geen datum</span>
+                <span className="pl-aantal">{zonderDatum.length}</span>
+                {sleep?.datum && <span className="pl-sleepdoel muted">hier loslaten haalt de dag eraf</span>}
               </div>
-            );
-          })}
+              {rijen(zonderDatum)}
+            </div>
+          )}
         </div>
       )}
 
