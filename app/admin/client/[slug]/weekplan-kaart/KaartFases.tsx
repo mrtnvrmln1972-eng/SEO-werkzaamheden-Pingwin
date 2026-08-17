@@ -245,11 +245,11 @@ export default function KaartFases({
     }
     if (key === "structured" && schemaRunning) return { label: "Bezig…", cls: "wp-fase-bezig" };
     if (page && page[key]) return { label: "✓", cls: "wp-fase-klaar" };
-    // Bouw en publicatie bleef rood zolang de tekst niet live stond, ook als Maarten
-    // zijn deel allang gedaan had en het bij de sitebouwer lag. Rood las dan als
-    // "er moet nog iets van jou komen", terwijl er juist gewacht werd. Er zit een
-    // stand tussen: doorgezet naar de developer, nog niet live.
-    if (key === "bouw" && naarDev) return { label: "Bij de developer", cls: "wp-fase-wacht" };
+    // De Implementatie-rij zei drie keer hetzelfde: een chip "Bij de developer",
+    // een knop "✓ Bij de developer" en een vinkje "(ligt bij dev)". Er is er nog
+    // één over, het vinkje "Bij dev" in deze rij, en dat is de plek waar je die
+    // stand zet én leest. De chip hiernaast gaat weer alleen over de fase zelf:
+    // af of niet af, net als bij de andere zes rijen.
     // Was grijze tekst "Nog niet". Een kruisje in dezelfde pilvorm leest sneller:
     // rood is niet af, groen is af, en je hoeft niets te lezen om dat te zien.
     return { label: "✕", cls: "wp-fase-open" };
@@ -303,18 +303,7 @@ export default function KaartFases({
             <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy}
               title="Zet de geldende copy als concept (nog niet live) in de site. De bestaande, live pagina blijft ongewijzigd; publiceren doe je zelf in WordPress."
               onClick={() => void zetConceptInSite()}>
-              {busy === "concept" ? "Plaatsen…" : "Concept in site"}
-            </button>
-          )}
-          {/* Developer: zelfde doorzet-venster als de knop onderaan de kaart (met
-              de Drive-documenten van deze pagina erbij), nu ook direct bij de fase
-              waar hij hoort. Staat de kaart al bij de developer, dan haalt dezelfde
-              knop hem er weer af. */}
-          {dev && (
-            <button type="button" className={"btn btn-ghost btn-klein" + (naarDev ? " wp-act-aan" : "")} disabled={dev.bezig}
-              title={naarDev ? "Staat op de developerlijst. Klik om hem er weer af te halen." : "Zet deze kaart klaar voor de developer: de opdracht, de pagina en de documenten."}
-              onClick={() => void dev.zetNaarDev()}>
-              {dev.bezig ? "Bezig…" : naarDev ? "✓ Bij de developer" : "Developer"}
+              {busy === "concept" ? "Plaatsen…" : "Maak concept"}
             </button>
           )}
           {/* Gedaan?: her-fetcht de live pagina en meet of de afgesproken wijziging
@@ -333,16 +322,20 @@ export default function KaartFases({
             </button>
           )}
           <button type="button" className="btn btn-ghost btn-klein" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
-          {/* Ligt bij dev: alleen een stand, geen actie. Je zet hem aan als het
-              werk bij de sitebouwer ligt en je verder niets hoeft te sturen. Het
-              schrijft dezelfde vlag als de Developer-knop ernaast (die het pakket
-              mét opdracht en documenten doorzet), dus de fase-chip rechts, de
-              kaart en de developerlijst blijven één stand tonen. */}
+          {/* Bij dev: de enige plek in deze rij die over de developer gaat. Er
+              stonden er drie (een knop "Developer" die het doorzet-venster opende,
+              dit vinkje, en de chip rechts die óók "Bij de developer" zei), en die
+              zeiden alle drie hetzelfde. Aan of uit is genoeg om te weten waar het
+              werk ligt. Het pakket mét opdracht en documenten doorzetten (en de
+              sitebouwer mailen) blijft onderaan de kaart staan, in het groepje
+              "wat stuur ik weg"; dat is een actie, geen stand. Beide schrijven
+              dezelfde vlag, dus de kaart en de developerlijst kunnen niet uit
+              elkaar lopen. */}
           {dev && (
             <label className="wp-fase-dev" title={naarDev ? "Ligt bij de developer. Klik om die stand weg te halen." : "Zet aan als deze pagina bij de developer ligt."}>
               <input type="checkbox" checked={naarDev} disabled={dev.bezig}
                 onChange={(e) => void dev.markeerNaarDev(e.target.checked)} />
-              <span>(ligt bij dev)</span>
+              <span>Bij dev</span>
             </label>
           )}
         </>

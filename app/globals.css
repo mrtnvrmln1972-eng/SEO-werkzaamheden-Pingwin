@@ -4163,6 +4163,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-info-rest > summary::before { content: "▸ "; color: var(--orange); }
 .wp-info-rest[open] > summary::before { content: "▾ "; }
 .wp-info-rest > summary:hover { color: var(--orange-dark); }
+/* "Waarom deze pagina" en "Aanpak en afspraken" zitten achter dezelfde dichte
+   regel; opengeklapt houden ze hun twee kolommen, met wat lucht onder de kop. */
+.wp-info-verhaal { margin-top: var(--s-0); }
+.wp-info-verhaal > .wp-info-doel { margin-top: var(--s-2); }
 
 /* Sturing per fase pas bij het openklappen; anders lees je de instructie voor
    Copy terwijl je bij Analyse zit. */

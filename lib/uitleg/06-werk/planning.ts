@@ -73,6 +73,18 @@ export const BLOKKEN: Uitklapper[] = [
       "lijst blijft compleet (hernoemen, voorvertonen, weggooien, aanwijzen welke versie geldt), maar hij " +
       "staat dicht. Hij gaat vanzelf open als er meerdere versies van hetzelfde soort liggen en je nog niet " +
       "hebt aangewezen welke geldt, want daar wachten de mail en de sitebouwer op. In dat geval staat het " +
-      "tijdstip erbij, anders zijn drie documenten van dezelfde dag niet uit elkaar te houden.",
+      "tijdstip erbij, anders zijn drie documenten van dezelfde dag niet uit elkaar te houden.\n\n" +
+      "**\"Waarom deze pagina\" en \"Aanpak en afspraken\" staan sinds 17 augustus 2026 óók onder een dichte " +
+      "regel** (\"Achtergrond en afspraken\"). Ze vulden het halve scherm met de stand van de zoekwoorden op " +
+      "het moment dat de kaart werd gemaakt, en dat is bevroren tekst: de posities en vertoningen erin " +
+      "kloppen na een paar weken niet meer, terwijl wat er echt met de pagina gebeurt in de wijzigingen en " +
+      "in de rankings van díe pagina staat. Helemaal weghalen kan niet, want precies deze tekst reist als " +
+      "sturing mee naar de kaart-chat en naar de documenten; verdwijnt hij van het scherm, dan werken die " +
+      "motoren met een opdracht die jij niet meer kunt lezen of bijstellen. Eén klik en hij staat er weer.\n\n" +
+      "**Het klokje \"herinner me over X dagen\" is bij elke taak weggehaald.** Elke regel had er een, en die " +
+      "herinneringen kwamen allemaal bij het belletje in de kopbalk terecht. Een taak in de planning heeft " +
+      "al een datum; een tweede, onzichtbare wekker erbij maakt van de takenlijst een tweede lijst om af te " +
+      "werken. Wil je jezelf laten porren over iets dat bij de sitebouwer ligt, dan kan dat nog steeds in " +
+      "het doorzet-venster.",
   },
 ];

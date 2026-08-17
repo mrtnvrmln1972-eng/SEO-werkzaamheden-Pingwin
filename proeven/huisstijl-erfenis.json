@@ -18,7 +18,6 @@
     "app/admin/client/[slug]/DriveMapKiezer.tsx",
     "app/admin/client/[slug]/GmbPanel.tsx",
     "app/admin/client/[slug]/HelpHint.tsx",
-    "app/admin/client/[slug]/HerinnerKnop.tsx",
     "app/admin/client/[slug]/ImportAnalysis.tsx",
     "app/admin/client/[slug]/InvoiceAlert.tsx",
     "app/admin/client/[slug]/Kennisbank.tsx",

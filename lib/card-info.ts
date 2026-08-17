@@ -537,7 +537,23 @@ export function eerdereNotitiesHtml(toelichting: string, pageUrl?: string, taak?
   return { html: linkifyHtml(lijst(info.rest, "wp-punt-lijst", mails), domain), aantal: info.rest.length };
 }
 
-export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean, verbergVerhaal?: boolean): string {
+// ═══════════════════════════════════════════════════════════
+// "WAAROM DEZE PAGINA" EN "AANPAK EN AFSPRAKEN" GAAN DICHT (17-08-2026)
+// ═══════════════════════════════════════════════════════════
+// Die twee vakken stonden altijd open bovenaan de projectkaart en vulden het
+// halve scherm met de stand van de zoekwoorden op het moment dat de kaart werd
+// gemaakt. Dat is bevroren tekst: de posities en vertoningen erin kloppen na een
+// paar weken niet meer, en wat er echt met de pagina gebeurt lees je in de
+// wijzigingen en in de rankings van díe pagina, niet hier.
+//
+// Weggooien is toch niet goed: precies deze tekst reist als sturing mee naar de
+// kaart-chat en naar de documenten (analyse, blauwdruk, copy). Zou hij helemaal
+// van het scherm verdwijnen, dan werken die motoren met een opdracht die jij
+// niet meer kunt lezen of corrigeren. Daarom één dichte regel: van het scherm
+// af, maar één klik terug te halen. `verhaalDicht` zet dat aan; de projectkaart
+// gebruikt het, de andere plek (de takenkaart in ActionCard) staat zelf al
+// achter een uitklapper en laat het dus gewoon open staan.
+export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: string, cijfers?: string, mails?: MailLinks, herkomst?: HerkomstContext, zonderNotities?: boolean, ruw?: boolean, verhaalDicht?: boolean): string {
   const domain = (() => { try { return pageUrl ? new URL(pageUrl).host : ""; } catch { return ""; } })();
   // Kant-en-klare inhoud (bijv. een contentagenda): de Achtergrond/Aanpak-per-fase-
   // indeling hieronder knipt per regel en zou een tabel in losse pipe-regels breken.
@@ -555,7 +571,7 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   // dossier met echte inhoud, dan wint dat: twee kaartjes die hetzelfde punt op
   // een ander moment beschrijven is dubbelop, niet extra informatie. Zonder
   // dossier (een verse kaart, of een taak zonder pagina) blijft dit de enige bron.
-  if (info.achtergrond.length && !verbergVerhaal) {
+  if (info.achtergrond.length) {
     kaarten.push(infoKaart(ICO_VLAG, "Waarom deze pagina", lijst(info.achtergrond, "wp-check-lijst", mails)));
   }
   // Losse "opdracht"-regels (vroeger een eigen vak "Opdrachten in deze kaart")
@@ -563,10 +579,14 @@ export function cardInfoHtml(toelichting: string, pageUrl?: string, taak?: strin
   // de herkomst (chat, mail, scan, handmatig) nergens zichtbaar was, dus geen
   // apart, ongecontroleerd vak meer. Gewoon aanpak, als de rest.
   const aanpak = ontdubbel([...info.overig, ...info.afspraken]);
-  if (aanpak.length && !verbergVerhaal) {
+  if (aanpak.length) {
     kaarten.push(infoKaart(ICO_KLEMBORD, "Aanpak en afspraken", lijst(aanpak, "wp-punt-lijst", mails)));
   }
-  const kolommen = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
+  const vakken = kaarten.length ? `<div class="wp-info-doel${kaarten.length === 1 ? " wp-info-een" : ""}">${kaarten.join("")}</div>` : "";
+  const kolommen = !vakken ? ""
+    : verhaalDicht
+      ? `<details class="wp-info-rest wp-info-verhaal"><summary>Achtergrond en afspraken (${info.achtergrond.length + aanpak.length})</summary>${vakken}</details>`
+      : vakken;
 
   // De cijfers komen uit de METING, nooit uit geschreven tekst. Zolang een getal in
   // een zin stond, konden er twee metingen naast elkaar blijven staan (positie 27.9

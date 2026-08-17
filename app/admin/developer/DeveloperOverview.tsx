@@ -317,18 +317,23 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   rows.forEach((r, idx) => { if (r.ownerDone) return; if (r.execDate) { if (!tasksByDay.has(r.execDate)) tasksByDay.set(r.execDate, []); tasksByDay.get(r.execDate)!.push({ r, idx }); } });
   const undated = rows.map((r, idx) => ({ r, idx })).filter((x) => !x.r.ownerDone && !x.r.execDate);
 
-  // De weghaal-knop, in de rij én op de weekkaart dezelfde. Onomkeerbaar, dus
-  // .btn-danger, en het label zegt wat er echt gebeurt: een zelf aangemaakte taak
-  // gaat weg, een doorgezette kaart gaat alleen van deze lijst af.
+  // De weghaal-knop, in de rij én op de weekkaart dezelfde: een kruisje, zoals
+  // overal in het dashboard waar je een regel weghaalt (de takenlijst, de
+  // documenten in het taakvenster). Stond hier als volle rode knop "Van de
+  // lijst" / "Weggooien" naast drie andere knoppen, en die vierde knop maakte de
+  // rij zo breed dat het meest voorkomende handeltje het zwaarst oogde. Wat er
+  // gebeurt staat nog steeds in de tooltip én in de bevestigingsvraag, en die
+  // vraag blijft: een zelf aangemaakte taak gaat echt weg, een doorgezette kaart
+  // gaat alleen van deze lijst af en blijft in de weekplanning staan.
   const wegKnop = (r: Row) => {
     const bezig = wegBezig === r.clientSlug + "|" + r.taskKey;
     return (
-      <button type="button" className="btn btn-danger btn-klein" disabled={bezig}
+      <button type="button" className="wp-icon wp-del" disabled={bezig}
         onClick={(e) => { e.stopPropagation(); void taakVanLijst(r); }}
         title={r.eigen
-          ? "Deze taak bestaat alleen hier en wordt echt weggegooid."
-          : "Haalt de taak van de developerlijst af. De kaart zelf blijft in de weekplanning staan."}>
-        {bezig ? "Bezig…" : r.eigen ? "Weggooien" : "Van de lijst"}
+          ? "Weggooien: deze taak bestaat alleen hier."
+          : "Van de developerlijst halen. De kaart zelf blijft in de weekplanning staan."}>
+        {bezig ? "…" : "×"}
       </button>
     );
   };
@@ -388,12 +393,13 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         <col style={{ width: "72px" }} />
         <col style={{ width: "80px" }} />
         <col style={{ width: "150px" }} />
-        {/* De knoppenrij (Bekijk, Mail, Controleer, Van de lijst) staat op één
+        {/* De knoppenrij (Bekijk, Mail, Controleer, kruisje) staat op één
             regelhoogte en mag niet omslaan; deze kolom is dus zo breed dat alle
             vier erin passen. De tabel staat op table-layout: fixed, dus zonder
             deze breedte valt de laatste knop buiten beeld in plaats van dat de
-            kolom meegroeit. */}
-        <col style={{ width: "376px" }} />
+            kolom meegroeit. Smaller dan hiervoor omdat de vierde knop een
+            kruisje werd. */}
+        <col style={{ width: "292px" }} />
       </colgroup>
       <thead>
         <tr>

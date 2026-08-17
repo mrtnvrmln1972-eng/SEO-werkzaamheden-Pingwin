@@ -336,7 +336,9 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
   return (
     <div className="nv-wrap">
       <div className="nv-kop">
-        <a className="nv-terug" href={`/admin/client/${slug}?tab=paginas`}>&larr; terug naar de cockpit</a>
+        {/* Terug gaat naar Taken, niet naar Pagina's: dit scherm bekijk je terwijl
+            je aan het werk bent, en dat werk staat op de takenpagina. */}
+        <a className="nv-terug" href={`/admin/client/${slug}?tab=werkzaamheden`}>&larr; terug naar de cockpit</a>
         <h1>Navigatie &amp; voortgang: {clientName}</h1>
         <div className="nv-cijfers">
           <span className="nv-cijfer"><strong>{totaalPct}%</strong> gemiddeld af</span>

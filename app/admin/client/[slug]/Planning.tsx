@@ -37,7 +37,6 @@ import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 import MailUitKaart from "./MailUitKaart";
 import { useMailDatumLinks } from "./useMailDatumLinks";
 import DatumKiezer, { vandaagIso, langDatum } from "./DatumKiezer";
-import HerinnerKnop from "./HerinnerKnop";
 import { haalVooraf } from "../../../../lib/vooraf";
 
 type Taak = {
@@ -505,7 +504,11 @@ export default function Planning({
               kolommen na hem één op, met een uitgerekte datumknop en kruisje
               tot gevolg. */}
           <span className="wb-next">{!stippen ? volgende(t) : ""}</span>
-          <HerinnerKnop slug={t.slug} id={t.id} />
+          {/* Het klokje "herinner me over X dagen" stond bij élke taak, en die
+              herinneringen belandden allemaal bij het belletje in de kopbalk.
+              Een taak in de planning heeft al een datum; nog een tweede,
+              onzichtbare wekker erbij maakt van de takenlijst een tweede
+              lijst om af te werken. Weg, bij alle taken. */}
           <DatumKiezer waarde={t.datum} onKies={(iso) => void zetDatum(t, iso)} />
           <button type="button" className="wp-icon wp-del" title="Verwijderen"
             onClick={(e) => { e.stopPropagation(); void verwijder(t); }}>×</button>

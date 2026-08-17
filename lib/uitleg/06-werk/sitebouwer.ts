@@ -41,8 +41,9 @@ export const BLOKKEN: Uitklapper[] = [
       "werd bewaard op een manier die alleen werkte als de taak al eerder was gesleept of ingepland. Elke " +
       "taak houdt nu bij welke documenten er níet meer bij horen. Het document zelf blijft gewoon bestaan en " +
       "blijft bij de pagina staan; alleen deze ene taak draagt hem niet meer mee.\n\n" +
-      "**Een taak van de lijst halen kan uit de rij zelf.** Naast \"Bekijk\", \"Mail\" en \"Controleer\" staat " +
-      "nu \"Van de lijst\" (bij een taak die je hier zelf aanmaakte: \"Weggooien\"), met dezelfde vraag om " +
+      "**Een taak van de lijst halen kan uit de rij zelf, met een kruisje.** Achter \"Bekijk\", \"Mail\" en " +
+      "\"Controleer\" staat een kruisje, precies zoals overal in het dashboard waar je een regel weghaalt, met " +
+      "dezelfde vraag om " +
       "bevestiging als in het venster. Een zelf aangemaakte taak bestaat alleen daar en gaat echt weg; een " +
       "doorgezette kaart gaat alleen van de developerlijst af en blijft in de weekplanning staan. Daarvoor " +
       "moest je voor de meest gebruikte handeling eerst een venster openen.",

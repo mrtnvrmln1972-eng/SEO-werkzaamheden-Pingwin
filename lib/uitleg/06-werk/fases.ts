@@ -54,13 +54,15 @@ export const BLOKKEN: Uitklapper[] = [
       "**Elk document landt automatisch als Word-bestand in de Drive-map van de klant**: de analyse, de " +
       "blauwdruk en de copy worden na het genereren meteen geüpload en gedeeld, met de deel-link erbij " +
       "vastgelegd als werkzaamheid.\n\n" +
-      "**De Implementatie-rij is de hele bouwstap in één regel: \"Concept in site\", \"Developer\", \"Gedaan?\", " +
-      "\"Mail\" en het vinkje \"(ligt bij dev)\".** \"Concept in site\" zet de geldende copy als concept-pagina " +
+      "**De Implementatie-rij is de hele bouwstap in één regel: \"Maak concept\", \"Gedaan?\", " +
+      "\"Mail\" en het vinkje \"Bij dev\".** \"Maak concept\" zet de geldende copy als concept-pagina " +
       "in de site van de klant; de live pagina blijft ongemoeid, publiceren doe je zelf in WordPress. " +
-      "\"Developer\" opent " +
-      "hetzelfde doorzet-venster als de knop onderaan de kaart: daar kies je welke Drive-documenten meegaan " +
-      "en wat de sitebouwer moet doen. Het vinkje ernaast zegt alleen \"dit ligt bij de developer\", zonder " +
-      "iets door te sturen; het schrijft dezelfde stand als die knop, dus de kaart en de developerlijst " +
+      "Het vinkje \"Bij dev\" zegt waar het werk ligt, meer niet: aan als de sitebouwer aan zet is, uit als " +
+      "het weer bij jou ligt. Tot 17 augustus 2026 stond diezelfde stand hier drie keer (een knop " +
+      "\"Developer\", dit vinkje, en de statuspil rechts die óók \"Bij de developer\" zei); daar is er één " +
+      "van over. Het pakket écht doorzetten, met de opdracht en de Drive-documenten erbij, doe je met de " +
+      "knop \"Developer\" onderaan de kaart, bij \"Mail\": dat is een actie, en die hoort in het groepje " +
+      "dingen die je wegstuurt. Allebei schrijven ze dezelfde stand, dus de kaart en de developerlijst " +
       "kunnen niet uit elkaar lopen. \"Gedaan?\" her-fetcht de live pagina en meet of de afgesproken " +
       "wijziging er echt staat; staat hij " +
       "er, dan vinkt Implementatie zichzelf af en kun je meteen door naar Structured data. Diezelfde meting " +

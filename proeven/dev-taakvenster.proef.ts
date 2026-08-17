@@ -84,9 +84,10 @@ check(
   "Naast Bekijk, Mail en Controleer hoort de meest gebruikte actie te staan.",
 );
 check(
-  "die knop is als onomkeerbaar vormgegeven",
-  /btn btn-danger btn-klein/.test(scherm),
-  "Knopconventie: onomkeerbaar is .btn-danger, en dit haalt werk van de lijst.",
+  "weghalen is een kruisje, net als overal elders",
+  /const wegKnop[\s\S]{0,900}wp-icon wp-del[\s\S]{0,900}"×"/.test(scherm),
+  "Een regel weghalen doe je in dit dashboard met een kruisje (.wp-icon.wp-del),\n"
+  + "      niet met een vierde volle knop naast Bekijk, Mail en Controleer.",
 );
 check(
   "weghalen vraagt eerst om bevestiging",

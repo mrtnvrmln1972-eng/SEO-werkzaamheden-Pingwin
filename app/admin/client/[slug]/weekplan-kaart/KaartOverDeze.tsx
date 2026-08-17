@@ -82,7 +82,9 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
               if (tekst) onLijstPunt(tekst);
             }
           }}
-          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw) }} />
+          /* Laatste vlag: "Waarom deze pagina" en "Aanpak en afspraken" gaan
+             achter één dichte regel. Zie de uitleg boven cardInfoHtml. */
+          dangerouslySetInnerHTML={{ __html: cardInfoHtml(t.toelichting, t.url, t.taak, cijferRegel(page), mailLinks, undefined, true, t.ruw, true) }} />
       )}
       {/* Je eigen aantekeningen. Los van de kaarttekst die de assistent
           schreef: geen automatische stap raakt dit veld aan. */}
