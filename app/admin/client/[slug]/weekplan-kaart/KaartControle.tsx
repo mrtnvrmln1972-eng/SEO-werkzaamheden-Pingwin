@@ -1,8 +1,11 @@
 "use client";
 
-// "Is dit doorgevoerd?": meet de live pagina op de punten die bij het doorzetten
-// zijn afgesproken. Het antwoord blijft staan tot je de kaart sluit; de vaste
-// plek ervan is de kaarttekst en de tijdlijn.
+// De doorgevoerd-meting: legt de live pagina naast de punten die bij het
+// doorzetten zijn afgesproken. Op de kaart zit hij achter "Gedaan?" in de
+// Implementatie-rij (tot 17-08-2026 stond dezelfde meting daarnaast nog een
+// keer als "Is dit doorgevoerd?" in de kaartkop); op de developerlijst heet hij
+// nog wel zo. Het antwoord blijft staan tot je de kaart sluit; de vaste plek
+// ervan is de kaarttekst en de tijdlijn.
 
 import { useState } from "react";
 

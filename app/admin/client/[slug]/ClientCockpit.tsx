@@ -746,6 +746,18 @@ export default function ClientCockpit({
             })()}
             </>)}
 
+            {/* Het vrije overzichtsveld (heette "Zoekwoorden & links"). Het stond
+                een tijd op het Dossier-tabblad, omdat een afspraak die maanden
+                meegaat geen taak van deze week is. In de praktijk is het breder
+                dan zoekwoorden alleen: het is de plek waar je losse aantekeningen
+                over deze klant kwijt kunt, en die wil je zien terwijl je aan het
+                werk bent. Dus terug op Taken, onder de mails en boven "Waar we
+                naartoe werken", en met een naam die de inhoud dekt. Eén plek, niet
+                twee: op het Dossier staat hij niet meer. */}
+            <div className="cockpit-card strategy-card">
+              <FocusBlock slug={client.slug} standalone titel="Overzicht" />
+            </div>
+
             {/* Waar we naartoe werken: de koers, wat er nu opgepakt wordt, en de
                 plekken waar werk klaarligt.
 
@@ -800,14 +812,10 @@ export default function ClientCockpit({
               Ze gaan niet over pagina's maar over wie het bedrijf is, en bijna
               elke motor leest ze. Zelfde code als daar, dus één bron. */}
           <PagesPanel alleenProfiel slug={client.slug} initialProfile={client.seoProfile || ""} domain={client.domain || ""} />
-          {/* De afgesproken zoekwoorden en landingspagina's. Dit stond op Taken,
-              maar een afspraak die maanden meegaat is geen taak van deze week.
-              De site-brede strategie-sessies blijven wél op Taken: daar maak je
-              met één klik een taak van een actiepunt, dus die hangen echt aan de
-              takenlijst vast. */}
-          <div className="cockpit-card strategy-card">
-            <FocusBlock slug={client.slug} standalone titel="Zoekwoorden & links" />
-          </div>
+          {/* Hier stond het vrije veld "Zoekwoorden & links". Dat heet nu
+              "Overzicht" en staat weer op Taken, in de rechterkolom onder de
+              mails: je houdt het bij terwijl je werkt, niet terwijl je het
+              dossier naleest. Eén plek, dus hier niet nog een keer. */}
           <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
           {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
               achter een knopje in een scan-blok. Zelfde component als daar. */}

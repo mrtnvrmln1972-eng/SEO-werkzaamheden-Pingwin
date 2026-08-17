@@ -47,13 +47,13 @@ export const HOOFDSTUK: Hoofdstuk = {
         "onderaan verstopt en is iets heel anders: dat is geen dossierkennis maar het scherm dat je deelt. Dat " +
         "heet nu **Klantweergave** en staat in de groep \"wat hebben we geleverd\", naast de documenten. Oude " +
         "links naar Klantgegevens komen gewoon op het dossier uit.\n\n" +
-        "**Het klantprofiel en de strategie staan in het dossier.** Het klantprofiel (met de tone of " +
-        "voice) stond boven de paginalijst, en 'Zoekwoorden & links' stond bij Taken. Allebei horen ze bij de " +
-        "vraag wie deze klant is: het profiel is de vaste briefing die bijna elke motor leest, en de " +
-        "zoekwoord- en linkstrategie is een afspraak die maanden meegaat, geen taak van deze week. Op Taken " +
-        "staat nu alleen nog de verwijzing ernaartoe, zodat het veld op precies één plek woont. De " +
-        "site-brede strategie-sessies blijven wél bij Taken, want daar maak je met één klik een taak van een " +
-        "actiepunt.\n\n" +
+        "**Het klantprofiel staat in het dossier, het vrije veld \"Overzicht\" staat bij Taken.** Het " +
+        "klantprofiel (met de tone of voice) stond boven de paginalijst en hoort bij de vraag wie deze klant " +
+        "is: het is de vaste briefing die bijna elke motor leest. Het vrije tekstveld dat vroeger " +
+        "'Zoekwoorden & links' heette, is een tijd met datzelfde argument naar het dossier verhuisd, maar " +
+        "in de praktijk staat er veel meer in dan zoekwoorden en houd je het bij terwijl je werkt. Sinds " +
+        "17 augustus 2026 heet het daarom **Overzicht** en staat het weer bij Taken, in de rechterkolom " +
+        "onder de mails en boven \"Waar we naartoe werken\". Eén plek, niet twee.\n\n" +
         "In dat tekstveld kun je naast vet, bullets en links ook een **afvinklijstje** maken (selecteer een " +
         "rijtje regels en klik 'vinklijst', dan wordt elke regel een eigen vinkpunt) en een **uitklapper** " +
         "(een onderwerp met een driehoekje, met alles wat erbij hoort eronder). Elk onderdeel is te " +

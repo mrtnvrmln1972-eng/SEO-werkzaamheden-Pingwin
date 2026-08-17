@@ -376,14 +376,10 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
                   </a>
                 );
               })}
-              <a className="btn btn-quiet btn-klein koers-bron" href={`/admin/client/${slug}?tab=klant`}
-                title="De afgesproken zoekwoorden en landingspagina's staan in het dossier van deze klant"
-                onClick={(e) => {
-                  if (!onGaNaarTab || e.metaKey || e.ctrlKey || e.shiftKey) return;
-                  e.preventDefault(); onGaNaarTab("klant");
-                }}>
-                Zoekwoorden &amp; links staan in het Dossier
-              </a>
+              {/* Hier stond een verwijzing "Zoekwoorden & links staan in het
+                  Dossier". Dat veld heet nu "Overzicht" en staat één blok hoger
+                  in dezelfde kolom, dus een doorklikje ernaartoe is een omweg
+                  naar iets dat al in beeld is. */}
             </div>
             {posten === null && <div className="koers-bronnen-laden">Bezig met tellen…</div>}
           </div>

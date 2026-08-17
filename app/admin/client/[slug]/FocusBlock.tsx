@@ -176,7 +176,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel, k
       <>
         <button type="button" className="strategy-head" onClick={() => { if (open) bewaarDirect(); setOpen((v) => !v); }}>
           <span className="strategy-caret">{open ? "▾" : "▸"}</span>
-          <span className="strategy-title">{titel || "Zoekwoorden & links"}</span>
+          <span className="strategy-title">{titel || "Overzicht"}</span>
         </button>
         {/* Verborgen in plaats van weggehaald: zo blijft wat je typte staan als je
             het blok even dichtklapt, en gaat er niets verloren tussen twee klikken. */}

@@ -46,7 +46,26 @@ export function useNaarDev({ slug, t, setFoutje }: { slug: string; t: WpTask; se
     finally { setBezig(false); }
   }
 
-  return { naarDev, setNaarDev, bezig, venster, setVenster, zetNaarDev };
+  // Alleen de vlag omzetten, zonder het doorzet-venster. Voor het vinkje "ligt
+  // bij dev" in de Implementatie-rij: dat zegt "hij ligt daar", het stuurt niets
+  // door. Zelfde vlag als de knop hierboven, dus de kaart, de fase-chip en de
+  // developerlijst blijven één stand tonen in plaats van twee die uit elkaar
+  // kunnen lopen.
+  async function markeerNaarDev(aan: boolean) {
+    if (bezig) return;
+    setBezig(true);
+    try {
+      const d = await fetch("/api/admin/weekplan", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id, naarDev: aan }),
+      }).then((r) => r.json());
+      if (d?.ok) setNaarDev(aan);
+      else setFoutje(d?.error || "De stand bij de developer bijwerken mislukte.");
+    } catch { setFoutje("De stand bij de developer bijwerken mislukte."); }
+    finally { setBezig(false); }
+  }
+
+  return { naarDev, setNaarDev, bezig, venster, setVenster, zetNaarDev, markeerNaarDev };
 }
 
 export type NaarDev = ReturnType<typeof useNaarDev>;

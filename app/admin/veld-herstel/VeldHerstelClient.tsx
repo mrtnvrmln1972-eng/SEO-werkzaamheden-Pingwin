@@ -8,7 +8,7 @@ type Versie = { id: number; veld: string; html: string; bewaardOp: string };
 
 type VeldSleutel = "html" | "prioHtml" | "koersHtml";
 const VELDEN: VeldSleutel[] = ["html", "prioHtml", "koersHtml"];
-const VELDNAAM: Record<string, string> = { html: "Zoekwoorden & links", prioHtml: "Wat we nu oppakken", koersHtml: "De koers" };
+const VELDNAAM: Record<string, string> = { html: "Overzicht", prioHtml: "Wat we nu oppakken", koersHtml: "De koers" };
 
 // Een korte, leesbare samenvatting van wat er in zo'n bewaarde versie zit, zodat
 // je de juiste kunt herkennen zonder alles open te klappen.
@@ -97,7 +97,7 @@ export default function VeldHerstelClient({ klanten }: { klanten: { slug: string
         <div className="beheer-kop">
           <h1 className="beheer-h1">Een tekstveld terugzetten</h1>
           <p className="beheer-uitleg">
-            De velden <strong>Zoekwoorden &amp; links</strong>, <strong>Wat we nu oppakken</strong> en
+            De velden <strong>Overzicht</strong>, <strong>Wat we nu oppakken</strong> en
             <strong> De koers</strong> slaan tijdens het typen vanzelf op. Sinds 11 augustus 2026 bewaart elke opslag eerst wat er stond, zodat een ongeluk
             nooit meer definitief is. Kies een klant en zet een eerdere versie terug.
           </p>
@@ -169,7 +169,7 @@ export default function VeldHerstelClient({ klanten }: { klanten: { slug: string
             </p>
             <select className="wp-docdrop-input" value={plakVeld}
               onChange={(e) => setPlakVeld(VELDEN.includes(e.target.value as VeldSleutel) ? (e.target.value as VeldSleutel) : "html")}>
-              <option value="html">Zoekwoorden &amp; links</option>
+              <option value="html">Overzicht</option>
               <option value="prioHtml">Wat we nu oppakken</option>
               <option value="koersHtml">De koers</option>
             </select>

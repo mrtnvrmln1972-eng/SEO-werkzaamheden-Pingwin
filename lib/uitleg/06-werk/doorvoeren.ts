@@ -11,7 +11,8 @@ export const BLOKKEN: Uitklapper[] = [
       "Alt-teksten hangen in WordPress aan de afbeelding zelf. Dat werkt goed voor unieke afbeeldingen; een " +
       "afbeelding die op meerdere plekken staat zou site-breed dezelfde alt krijgen en gaat daarom niet " +
       "automatisch, maar wordt in de werklijst voor de sitebouwer gemarkeerd.\n\n" +
-      "**En op de projectkaart staat de knop \"Is dit doorgevoerd?\"** Die meet de live pagina op precies de " +
+      "**En op de projectkaart staat in de Implementatie-rij de knop \"Gedaan?\"** (op de developerlijst heet " +
+      "dezelfde knop \"Is dit doorgevoerd?\"). Die meet de live pagina op precies de " +
       "punten die bij het doorzetten zijn afgesproken: staat hij live, staan de geschreven koppen erop, staat " +
       "de structured data erop. Het antwoord landt op drie plekken: bovenin de kaart met het bewijs per punt, " +
       "als één regel in de kaarttekst die de vorige controle vervángt, en in de tijdlijn met de pagina als " +
@@ -21,7 +22,7 @@ export const BLOKKEN: Uitklapper[] = [
       "site ons of laadt de pagina niet, dan is de uitslag \"kon ik niet meten\" en verandert er niets. " +
       "Beweren dat iets niet gedaan is terwijl je het niet gezien hebt, is erger dan niets weten. De aanleiding " +
       "is concreet: in januari 2026 kon niemand vaststellen of zes interne links nu wel of niet verdwenen waren.\n\n" +
-      "**Sinds 11 augustus 2026 telt \"Is dit doorgevoerd?\" ook echt mee als bewijs voor de copy.** Eerder " +
+      "**Sinds 11 augustus 2026 telt die meting ook echt mee als bewijs voor de copy.** Eerder " +
       "controleerde de knop alleen wat er bij het doorzetten was afgesproken; is dat destijds alleen \"staat hij " +
       "live\" geweest, dan werd de copy zelf nooit vergeleken, ook niet als er inmiddels een copy-document lag. " +
       "En zelfs wanneer de koppen wél gemeten werden, verdween die uitslag in de kaarttekst en wist de rest van " +

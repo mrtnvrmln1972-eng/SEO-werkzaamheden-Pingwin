@@ -79,8 +79,17 @@ const cockpit = fs.readFileSync(path.join(WORTEL, "app/admin/client/[slug]/Clien
 const klantTab = cockpit.slice(cockpit.indexOf('{tab === "klant" &&'), cockpit.indexOf('{paginasVisited &&'));
 check("het klantprofiel staat op de tab Klantgegevens", /alleenProfiel/.test(klantTab),
   "PagesPanel hoort daar met alleenProfiel te staan; anders is het profiel terug bij de paginalijst.");
-check("de zoekwoord- en linkstrategie staat op de tab Klantgegevens", /FocusBlock/.test(klantTab),
-  "Een afspraak die maanden meegaat hoort bij de klant, niet bij de taken van deze week.");
+// Het vrije tekstveld (heette "Zoekwoorden & links", heet nu "Overzicht") stond
+// hier een tijd bij, met het argument dat een afspraak die maanden meegaat geen
+// taak van deze week is. Op 17-08-2026 teruggedraaid op verzoek: er staat veel
+// meer in dan zoekwoorden, en je houdt het bij terwijl je werkt. Wat blijft
+// gelden is de reden dat deze proef bestaat, en dat is niet "waar staat het"
+// maar "staat het op precies één plek". Dus: op Taken, en nergens anders.
+const takenTab = cockpit.slice(cockpit.indexOf('{tab === "werkzaamheden" &&'), cockpit.indexOf('{tab === "resultaten" &&'));
+check("het Overzicht-veld staat op de tab Taken", /<FocusBlock[^>]*titel="Overzicht"/.test(takenTab),
+  "Het vrije tekstveld hoort in de rechterkolom van Taken te staan, onder de mails en boven \"Waar we naartoe werken\".");
+check("het Overzicht-veld staat niet óók op de tab Klantgegevens", !/FocusBlock/.test(klantTab),
+  "Twee plekken voor hetzelfde veld betekent dat je altijd de verkeerde openhebt.");
 
 const pages = fs.readFileSync(path.join(WORTEL, "app/admin/client/[slug]/PagesPanel.tsx"), "utf8");
 const keerGetoond = (pages.match(/\{profielBlok\}/g) || []).length;

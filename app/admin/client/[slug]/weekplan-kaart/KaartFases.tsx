@@ -60,9 +60,11 @@ export default function KaartFases({
       Implementatie-rij opent precies dat venster, met dezelfde Drive-documenten
       erbij, in plaats van een tweede, eigen versie ervan te bouwen. */
   dev: NaarDev;
-  /** Dezelfde "Is dit doorgevoerd?"-meting als bovenaan de kaart. De
-      Implementatie-rij gebruikt hem voor de knop "Gedaan": mist die knop deze
-      prop (kaarten zonder pagina), dan verschijnt hij simpelweg niet. */
+  /** De meting die de live pagina naast de afspraak legt. Hij hing ook als
+      "Is dit doorgevoerd?" in de kaartkop; dat was dezelfde meting met een
+      andere naam, dus die knop is weg en dit is de enige plek. De knop
+      "Gedaan?" in de Implementatie-rij gebruikt hem; mist deze prop (kaarten
+      zonder pagina), dan verschijnt die knop simpelweg niet. */
   doorgevoerd?: { controle: Meting; bezig: boolean; meet: () => Promise<Meting> };
 }) {
   const [run, setRun] = useState<RunInfo>(null);
@@ -75,6 +77,8 @@ export default function KaartFases({
   // vinkje op het weekbord, dus beide schermen blijven gelijk lopen.
   const [vinkBezig, setVinkBezig] = useState<string>("");
   const [verifyMsg, setVerifyMsg] = useState<{ tekst: string; ok: boolean } | null>(null);
+  // De link naar het zojuist geplaatste concept, zodat je er meteen heen kunt.
+  const [conceptLink, setConceptLink] = useState<string>("");
   // Geen Drive-map gekozen en toch een document starten: de knop laat even
   // opvallen dat de mapkiezer daarom opengaat (de echte poort zit in
   // ensureDriveMap hieronder, dit is alleen het visuele signaal erbij).
@@ -153,7 +157,7 @@ export default function KaartFases({
 
   async function werkelijkStartDocStep(steps: ("analyse" | "blauwdruk" | "copy")[], negeerPoort = false) {
     if (busy || runActive) return;
-    setBusy(steps.join("+")); setFoutje(""); setMelding("");
+    setBusy(steps.join("+")); setFoutje(""); setMelding(""); setConceptLink("");
     try {
       // Gerichte sturing: achtergrond + de sturing van deze fase(s) + de laatste
       // chat-conclusie, niet de hele kaarttekst (scherpere documenten, minder ruis).
@@ -168,7 +172,7 @@ export default function KaartFases({
   // voor het advies aan de andere cluster-pagina's (half plan), in één klik.
   async function startGelieerde() {
     if (busy) return;
-    setBusy("gelieerde"); setFoutje(""); setMelding("");
+    setBusy("gelieerde"); setFoutje(""); setMelding(""); setConceptLink("");
     try {
       const d = await fetch("/api/admin/page-cluster-run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url }) }).then((r) => r.json());
       if (!d?.ok) setFoutje(d?.error || "Starten mislukt.");
@@ -185,6 +189,20 @@ export default function KaartFases({
         await zetFase("gelieerde", true);
       }
     } catch { setFoutje("Starten mislukt, probeer het nog een keer."); } finally { setBusy(""); }
+  }
+
+  // "Concept in site": de geldende copy als concept-pagina in de site zetten.
+  // Zelfde motor als de knop die hiervoor in het documentenblok stond, dus geen
+  // tweede weg naar hetzelfde; de link naar het geplaatste concept komt in de
+  // meldingsregel onderaan dit blok, waar ook de andere uitkomsten staan.
+  async function zetConceptInSite() {
+    if (busy) return;
+    setBusy("concept"); setFoutje(""); setMelding(""); setConceptLink("");
+    try {
+      const d = await fetch("/api/admin/copy-doorvoeren", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url }) }).then((r) => r.json());
+      if (!d?.ok) setFoutje(d?.error || "Het concept plaatsen lukte niet.");
+      else { setMelding(d.detail || "De copy staat als concept in de site."); setConceptLink(d.previewUrl || ""); }
+    } catch { setFoutje("Het concept plaatsen lukte niet; probeer het nog een keer."); } finally { setBusy(""); }
   }
 
   async function startSchema() {
@@ -274,6 +292,20 @@ export default function KaartFases({
       const gedaanBezig = doorgevoerd?.bezig;
       return (
         <>
+          {/* Concept in site: zet de geldende copy als concept-pagina in de site
+              van de klant (de live pagina blijft ongemoeid; publiceren doe je in
+              WordPress zelf). Deze knop stond onderin het documentenblok bovenaan
+              de kaart, dus ver van de fase waar hij bij hoort: hij ís de eerste
+              stap van Implementatie. Daar stond hij ook alleen als er een
+              aangewezen copy-versie lag, terwijl de motor erachter zelf de
+              geldende copy opzoekt. */}
+          {t.url && p.copy && (
+            <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy}
+              title="Zet de geldende copy als concept (nog niet live) in de site. De bestaande, live pagina blijft ongewijzigd; publiceren doe je zelf in WordPress."
+              onClick={() => void zetConceptInSite()}>
+              {busy === "concept" ? "Plaatsen…" : "Concept in site"}
+            </button>
+          )}
           {/* Developer: zelfde doorzet-venster als de knop onderaan de kaart (met
               de Drive-documenten van deze pagina erbij), nu ook direct bij de fase
               waar hij hoort. Staat de kaart al bij de developer, dan haalt dezelfde
@@ -285,17 +317,34 @@ export default function KaartFases({
               {dev.bezig ? "Bezig…" : naarDev ? "✓ Bij de developer" : "Developer"}
             </button>
           )}
-          {/* Gedaan: her-fetcht de live pagina en meet of de afgesproken wijziging
+          {/* Gedaan?: her-fetcht de live pagina en meet of de afgesproken wijziging
               er echt staat. Klopt dat, dan vinkt hij Implementatie meteen af, zodat
-              je door kunt naar Structured data zonder dat apart te hoeven doen. */}
+              je door kunt naar Structured data zonder dat apart te hoeven doen.
+              Het vraagteken hoort in het label: de knop vinkt niets zomaar af, hij
+              stelt de vraag aan de live pagina en het antwoord verschijnt bovenin
+              de kaart. Dit is dezelfde meting als "Is dit doorgevoerd?" die tot
+              17-08-2026 in de kaartkop stond; die is weg, want twee knoppen voor
+              één meting betekent dat je altijd de verkeerde zoekt. */}
           {doorgevoerd && (
             <button type="button" className="btn btn-ghost btn-klein" disabled={!!gedaanBezig || vinkBezig === "bouw"}
-              title="Controleert of de wijziging al echt live staat; is dat zo, dan wordt Implementatie meteen afgevinkt."
+              title="Meet de live pagina op wat er is afgesproken. Staat alles er echt, dan wordt Implementatie meteen afgevinkt; het bewijs komt bovenin de kaart."
               onClick={() => void (async () => { const m = await doorgevoerd.meet(); if (m?.alles) await zetFase("bouw", true); })()}>
-              {gedaanBezig ? "Checken…" : "Gedaan"}
+              {gedaanBezig ? "Checken…" : "Gedaan?"}
             </button>
           )}
           <button type="button" className="btn btn-ghost btn-klein" title="Mail over de bouw of publicatie (ontvanger kies je in het venster)" onClick={() => onMail("dev")}>Mail</button>
+          {/* Ligt bij dev: alleen een stand, geen actie. Je zet hem aan als het
+              werk bij de sitebouwer ligt en je verder niets hoeft te sturen. Het
+              schrijft dezelfde vlag als de Developer-knop ernaast (die het pakket
+              mét opdracht en documenten doorzet), dus de fase-chip rechts, de
+              kaart en de developerlijst blijven één stand tonen. */}
+          {dev && (
+            <label className="wp-fase-dev" title={naarDev ? "Ligt bij de developer. Klik om die stand weg te halen." : "Zet aan als deze pagina bij de developer ligt."}>
+              <input type="checkbox" checked={naarDev} disabled={dev.bezig}
+                onChange={(e) => void dev.markeerNaarDev(e.target.checked)} />
+              <span>(ligt bij dev)</span>
+            </label>
+          )}
         </>
       );
     }
@@ -432,7 +481,12 @@ export default function KaartFases({
           </div>
         )}
         {foutje && <div className="wp-fase-fouttekst">{foutje}</div>}
-        {melding && <div className="wp-fase-melding">{melding}</div>}
+        {melding && (
+          <div className="wp-fase-melding">
+            {melding}
+            {conceptLink && <> <a href={conceptLink} target="_blank" rel="noreferrer">Bekijk het concept</a></>}
+          </div>
+        )}
       </div>
     </>
   );

@@ -375,7 +375,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
             </>
           ) : (
             <>
-              <button type="button" className="wp-fase-btn" disabled={!!busy} title="De AI bouwt een voorstel voor de beoogde eindstructuur uit de live pagina's, je Zoekwoorden & links-afspraken en de zoekwoorddata; jij bevestigt." onClick={() => void post({ action: "voorstel" }, "voorstel")}>{busy === "voorstel" ? "Voorstel maken… (halve minuut)" : "Stel de structuur voor"}</button>
+              <button type="button" className="wp-fase-btn" disabled={!!busy} title="De AI bouwt een voorstel voor de beoogde eindstructuur uit de live pagina's, je afspraken uit het Overzicht-veld en de zoekwoorddata; jij bevestigt." onClick={() => void post({ action: "voorstel" }, "voorstel")}>{busy === "voorstel" ? "Voorstel maken… (halve minuut)" : "Stel de structuur voor"}</button>
               {nieuwIn === "" ? (
                 <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
                   onChange={(e) => setNieuwPad(e.target.value)}

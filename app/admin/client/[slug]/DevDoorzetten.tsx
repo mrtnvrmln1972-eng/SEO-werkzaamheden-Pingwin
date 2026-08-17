@@ -130,7 +130,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
             {puntKeuzes.length > 0 && (
               <div className="dev-veld">
                 <span className="dev-veld-label">
-                  Wat moet er straks meetbaar af zijn <span className="muted">(hier meet de knop &ldquo;Is dit doorgevoerd?&rdquo; later op)</span>
+                  Wat moet er straks meetbaar af zijn <span className="muted">(hier meet de knop &ldquo;Gedaan?&rdquo; op de kaart later op)</span>
                 </span>
                 <div className="dev-doc-keuze">
                   {puntKeuzes.map((p) => (

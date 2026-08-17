@@ -87,8 +87,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
         <div className="wp-card-main">
           <KaartKop slug={slug} t={t} open={open} inRij={inRij}
             onToggleOpen={onToggleOpen} onRemove={onRemove}
-            busy={busy} setBusy={setBusy} setFoutje={setFoutje} refreshBoard={refreshBoard}
-            controleBezig={doorgevoerd.bezig} onControle={() => void doorgevoerd.meet()} />
+            setFoutje={setFoutje} refreshBoard={refreshBoard} />
 
           {open && doorgevoerd.controle && <ControleUitslag controle={doorgevoerd.controle} onMail={onMail} />}
 

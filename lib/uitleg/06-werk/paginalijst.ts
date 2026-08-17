@@ -14,7 +14,7 @@ export const BLOKKEN: Uitklapper[] = [
       "zonder sitemap-vermelding krijgt het label **niet in sitemap**: dat is zelf een bevinding, want zo'n " +
       "pagina bestaat wel maar wordt door de site niet opgegeven, en dat maakt hem voor Google slechter " +
       "vindbaar. Boven de lijst staat hoeveel van zulke pagina's er zijn.\n\n" +
-      "Sinds 12 augustus 2026 hoort daar de **sitemap-check** bij (link bij Zoekwoorden & links en bij de " +
+      "Sinds 12 augustus 2026 hoort daar de **sitemap-check** bij (link bij het Overzicht-veld en bij de " +
       "paginalijst): die haalt de sitemap van de klant vers op en laat drie dingen zien: of de sitemap zelf " +
       "bereikbaar is en of robots.txt ernaar verwijst, welke live pagina's erin missen (met hun vertoningen, " +
       "belangrijkste bovenaan), en welke regels erin naar een omgeleide of verdwenen pagina wijzen. Daarmee " +

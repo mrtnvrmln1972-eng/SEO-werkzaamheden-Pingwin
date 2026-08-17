@@ -54,11 +54,19 @@ export const BLOKKEN: Uitklapper[] = [
       "**Elk document landt automatisch als Word-bestand in de Drive-map van de klant**: de analyse, de " +
       "blauwdruk en de copy worden na het genereren meteen geüpload en gedeeld, met de deel-link erbij " +
       "vastgelegd als werkzaamheid.\n\n" +
-      "**De Implementatie-rij heeft nu ook \"Developer\" en \"Gedaan\" naast Mail.** \"Developer\" opent " +
+      "**De Implementatie-rij is de hele bouwstap in één regel: \"Concept in site\", \"Developer\", \"Gedaan?\", " +
+      "\"Mail\" en het vinkje \"(ligt bij dev)\".** \"Concept in site\" zet de geldende copy als concept-pagina " +
+      "in de site van de klant; de live pagina blijft ongemoeid, publiceren doe je zelf in WordPress. " +
+      "\"Developer\" opent " +
       "hetzelfde doorzet-venster als de knop onderaan de kaart: daar kies je welke Drive-documenten meegaan " +
-      "en wat de sitebouwer moet doen. \"Gedaan\" her-fetcht de live pagina en meet of de afgesproken " +
-      "wijziging er echt staat (dezelfde meting als \"Is dit doorgevoerd?\" bovenaan de kaart); staat hij " +
-      "er, dan vinkt Implementatie zichzelf af en kun je meteen door naar Structured data. Bij die meting " +
+      "en wat de sitebouwer moet doen. Het vinkje ernaast zegt alleen \"dit ligt bij de developer\", zonder " +
+      "iets door te sturen; het schrijft dezelfde stand als die knop, dus de kaart en de developerlijst " +
+      "kunnen niet uit elkaar lopen. \"Gedaan?\" her-fetcht de live pagina en meet of de afgesproken " +
+      "wijziging er echt staat; staat hij " +
+      "er, dan vinkt Implementatie zichzelf af en kun je meteen door naar Structured data. Diezelfde meting " +
+      "stond tot 17 augustus 2026 óók bovenaan de kaart als \"Is dit doorgevoerd?\"; twee namen voor één " +
+      "meting, dus die knop is weg. Weg is ook \"Opschonen\" in de kaartkop, dat de kaarttekst herschreef " +
+      "naar het vaste formaat: de kaarten waarvoor dat nodig was zijn opgeruimd en nieuwe komen al goed binnen. Bij die meting " +
       "staat nu ook een klikbare link naar het document waarmee vergeleken is (meestal het copy-document), " +
       "zodat je nooit hoeft te gokken welke tekst als bron gold.\n\n" +
       "**Het copy-document gaat standaard mee, naar de developer én in de mail.** Zowel het doorzet-venster " +

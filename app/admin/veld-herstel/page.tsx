@@ -9,7 +9,7 @@ import VeldHerstelClient from "./VeldHerstelClient";
 // ═══════════════════════════════════════════════════════════
 // /admin/veld-herstel — EEN TEKSTVELD TERUGZETTEN
 // ═══════════════════════════════════════════════════════════
-// De velden "Zoekwoorden & links" en "Top Prio's" slaan tijdens het typen
+// De velden "Overzicht" (heette "Zoekwoorden & links") en "Top Prio's" slaan tijdens het typen
 // automatisch op. Dat is prettig tot er iets misgaat: er was geen enkele
 // geschiedenis, dus toen op 11 augustus 2026 een fout in het slepen inhoud
 // buiten het tekstvak zette, schreef die automatische opslag een half leeg
