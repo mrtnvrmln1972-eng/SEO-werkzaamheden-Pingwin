@@ -5,12 +5,12 @@
     "classnamen": 2888
   },
   "kleuren": {
-    "verschillend": 331,
+    "verschillend": 330,
     "benoemd": 42,
     "los": [
       {
         "waarde": "#fff",
-        "aantal": 139
+        "aantal": 108
       },
       {
         "waarde": "#1c7a3f",
@@ -18,7 +18,7 @@
       },
       {
         "waarde": "#2e7d32",
-        "aantal": 42
+        "aantal": 41
       },
       {
         "waarde": "#b3261e",
@@ -57,15 +57,15 @@
         "aantal": 10
       },
       {
-        "waarde": "#e7f6ea",
-        "aantal": 10
-      },
-      {
         "waarde": "#8a7a6c",
         "aantal": 9
       },
       {
         "waarde": "#2b2b2b",
+        "aantal": 8
+      },
+      {
+        "waarde": "#e7f6ea",
         "aantal": 8
       },
       {
@@ -177,10 +177,6 @@
         "aantal": 4
       },
       {
-        "waarde": "#444",
-        "aantal": 4
-      },
-      {
         "waarde": "#6d28d9",
         "aantal": 4
       },
@@ -246,6 +242,10 @@
       },
       {
         "waarde": "#3b4a9e",
+        "aantal": 3
+      },
+      {
+        "waarde": "#444",
         "aantal": 3
       },
       {
@@ -822,10 +822,6 @@
       },
       {
         "waarde": "#e0dcd7",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e0e0e0",
         "aantal": 1
       },
       {
@@ -2678,7 +2674,7 @@
   "kleurNaastToken": [
     {
       "waarde": "#fff",
-      "aantal": 139,
+      "aantal": 108,
       "dichtst": "--white",
       "afstand": 0,
       "stapel": "gelijk"
@@ -2692,7 +2688,7 @@
     },
     {
       "waarde": "#2e7d32",
-      "aantal": 42,
+      "aantal": 41,
       "dichtst": "--good",
       "afstand": 0,
       "stapel": "gelijk"
@@ -2761,13 +2757,6 @@
       "stapel": "gelijk"
     },
     {
-      "waarde": "#e7f6ea",
-      "aantal": 10,
-      "dichtst": "--good-light",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#8a7a6c",
       "aantal": 9,
       "dichtst": "--brand-taupe",
@@ -2780,6 +2769,13 @@
       "dichtst": "--brand-charcoal",
       "afstand": 16,
       "stapel": "bijna"
+    },
+    {
+      "waarde": "#e7f6ea",
+      "aantal": 8,
+      "dichtst": "--good-light",
+      "afstand": 0,
+      "stapel": "gelijk"
     },
     {
       "waarde": "#8a5a00",
@@ -2971,13 +2967,6 @@
       "stapel": "gelijk"
     },
     {
-      "waarde": "#444",
-      "aantal": 4,
-      "dichtst": "--muted",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#6d28d9",
       "aantal": 4,
       "dichtst": "--link",
@@ -3095,6 +3084,13 @@
       "dichtst": "--text-secondary",
       "afstand": 101,
       "stapel": "anders"
+    },
+    {
+      "waarde": "#444",
+      "aantal": 3,
+      "dichtst": "--muted",
+      "afstand": 0,
+      "stapel": "gelijk"
     },
     {
       "waarde": "#8a8d91",
@@ -4103,13 +4099,6 @@
       "dichtst": "--border",
       "afstand": 15,
       "stapel": "bijna"
-    },
-    {
-      "waarde": "#e0e0e0",
-      "aantal": 1,
-      "dichtst": "--border",
-      "afstand": 0,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#e2f2e5",
@@ -5238,7 +5227,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 240,
-    "schaalGebruik": 6305
+    "gebruik": 842,
+    "schaalGebruik": 5739
   }
 }

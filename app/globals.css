@@ -447,7 +447,7 @@ body {
   border-radius: 2px; display: inline-block;
 }
 .task-table-wrap {
-  background: var(--white); border-radius: 12px; overflow: visible;
+  background: var(--kleur-kaart); border-radius: 12px; overflow: visible;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 32px;
 }
 /* In het klantdashboard zit de tabel al in de .dashboard-tasks box: geen dubbele rand/schaduw. */
@@ -477,9 +477,9 @@ tbody td:last-child { text-align: center; }
   font-weight: 700; color: var(--orange-dark); text-transform: uppercase;
   letter-spacing: 1px; border-left: 4px solid var(--orange);
 }
-.task-desc { font-size: 12px; color: var(--gray); margin-top: 3px; }
+.task-desc { font-size: 12px; color: var(--kleur-tekst-stil); margin-top: 3px; }
 /* Klantdashboard: links klassiek blauw + onderstreept */
-.task-table-wrap td a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
+.task-table-wrap td a { color: var(--kleur-link); text-decoration: underline; text-underline-offset: 2px; }
 .task-table-wrap td a:hover { color: #0b4ea8; }
 .badge-done {
   display: inline-block; padding: 4px 12px; border-radius: 20px;
@@ -521,21 +521,21 @@ tbody td:last-child { text-align: center; }
 .task-name { display: inline-flex; align-items: center; gap: 8px; }
 /* Zelfde lettertype/grootte als de taakcel in de werkzaamheden-tab */
 .task-name-text { font-size: 13px; font-weight: 400; color: var(--dark); }
-.task-name-text a { color: var(--link); text-decoration: underline; text-underline-offset: 2px; }
-.task-check-dash { color: #2E7D32; font-weight: 800; font-size: 14px; line-height: 1; flex: 0 0 auto; }
+.task-name-text a { color: var(--kleur-link); text-decoration: underline; text-underline-offset: 2px; }
+.task-check-dash { color: var(--kleur-goed); font-weight: 800; font-size: 14px; line-height: 1; flex: 0 0 auto; }
 .task-help-wrap { position: relative; display: inline-flex; }
-.task-help { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gray-light); color: var(--gray); font-size: 11px; font-weight: 700; cursor: help; flex: 0 0 auto; }
+.task-help { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--kleur-rustig); color: var(--kleur-tekst-stil); font-size: 11px; font-weight: 700; cursor: help; flex: 0 0 auto; }
 /* Oranje gevuld als er een toelichting in staat (zoals in de werkzaamheden-tab) */
-.task-help.has { background: var(--orange); color: #fff; }
-.task-help:hover, .task-help:focus { background: var(--orange-dark); color: #fff; outline: none; }
-.task-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); background: #fff; color: var(--dark); padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; font-weight: 400; line-height: 1.5; text-align: left; white-space: normal; width: max-content; max-width: 300px; box-shadow: 0 8px 22px rgba(0,0,0,0.16); opacity: 0; visibility: hidden; transition: opacity 0.12s; z-index: 50; pointer-events: none; }
+.task-help.has { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); }
+.task-help:hover, .task-help:focus { background: var(--kleur-accent-diep); color: var(--kleur-tekst-op-vlak); outline: none; }
+.task-tip { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); background: var(--kleur-kaart); color: var(--dark); padding: 10px 12px; border: 1px solid var(--kleur-rand); border-radius: 8px; font-size: 12.5px; font-weight: 400; line-height: 1.5; text-align: left; white-space: normal; width: max-content; max-width: 300px; box-shadow: 0 8px 22px rgba(0,0,0,0.16); opacity: 0; visibility: hidden; transition: opacity 0.12s; z-index: 50; pointer-events: none; }
 .task-help-wrap:hover .task-tip, .task-help:focus + .task-tip { opacity: 1; visibility: visible; }
-.task-tip a { color: var(--orange); text-decoration: underline; }
+.task-tip a { color: var(--kleur-accent); text-decoration: underline; }
 .task-tip p { margin: 0 0 6px; }
 .task-tip ul, .task-tip ol { margin: 4px 0 4px; padding-left: 18px; }
 .task-tip :last-child { margin-bottom: 0; }
 /* Totaalregel onder de werkzaamheden in het klantdashboard */
-.task-total-row td { font-weight: 700; color: var(--dark); border-top: 2px solid var(--border); background: var(--gray-light); }
+.task-total-row td { font-weight: 700; color: var(--dark); border-top: 2px solid var(--kleur-rand); background: var(--kleur-rustig); }
 .muted { color: var(--muted); font-size: 12px; }
 
 /* Footer */
@@ -1120,14 +1120,14 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .dev-doc-open { font-size: var(--fs-xs); color: var(--pingwin); text-decoration: underline; }
 
 /* De kaarttitel bijstellen: potloodje in de kop, invulveld als je klikt. */
-.wp-titel-pen { border: 0; background: none; padding: 0 var(--s-1); margin-left: var(--s-1); color: var(--gray); cursor: pointer; font-size: var(--fs-xs); opacity: 0; transition: opacity .12s ease; }
+.wp-titel-pen { border: 0; background: none; padding: 0 var(--ruimte-krap); margin-left: var(--ruimte-krap); color: var(--kleur-tekst-stil); cursor: pointer; font-size: var(--type-label); opacity: 0; transition: opacity .12s ease; }
 .wp-card-taak:hover .wp-titel-pen { opacity: 1; }
 .wb-wat:hover .wp-titel-pen { opacity: 1; }
 .wp-titel-pen:hover { color: var(--pingwin); }
-.wp-titel-bewerk { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.wp-titel-bewerk { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
 .wp-titel-bewerk input {
-  flex: 1 1 260px; padding: var(--s-1) var(--s-2); border: 1px solid var(--border); border-radius: var(--r-sm);
-  font: inherit; font-size: var(--fs-sm); line-height: var(--lh-sm); background: var(--bg); color: inherit;
+  flex: 1 1 260px; padding: var(--ruimte-krap) var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein);
+  font: inherit; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); background: var(--bg); color: inherit;
 }
 .dev-pool { margin-top: 14px; border: 1px dashed var(--border); border-radius: 8px; padding: 12px; background: var(--white); }
 .dev-pool-head { font-size: 12px; font-weight: 700; color: var(--gray); margin-bottom: 8px; }
@@ -1502,20 +1502,20 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .canni-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
 .pcd-btn.wp-mini { padding: 2px 8px; font-size: 11px; border-radius: 6px; border-width: 1px; font-weight: 600; white-space: nowrap; cursor: pointer; }
 .pcd-btn.wp-mini:disabled { opacity: 0.55; cursor: default; }
-.pcd-btn.wp-ghost { border-color: var(--border); color: var(--gray); background: #fff; }
-.pcd-btn.wp-ghost:hover:not(:disabled) { border-color: #c33; color: #c33; background: #fff; }
+.pcd-btn.wp-ghost { border-color: var(--kleur-rand); color: var(--kleur-tekst-stil); background: var(--kleur-kaart); }
+.pcd-btn.wp-ghost:hover:not(:disabled) { border-color: #c33; color: #c33; background: var(--kleur-kaart); }
 /* Afgewezen rij: grijs, aanbeveling doorgestreept in Actie/Doel/Reden. */
 .pch-canni-md tr.canni-rejected td { opacity: 0.5; }
 .pch-canni-md tr.canni-rejected td:nth-child(n+6) { text-decoration: line-through; }
 .pch-canni-md tr.canni-rejected .canni-actions { text-decoration: none; opacity: 1; }
 /* Doorgezet naar pagina's: blauw accent (bewust opgeschoven, niet vergeten). */
 .pcd-btn.pcd-blue { border-color: #2286C7; color: #17679a; background: #eaf4fb; }
-.pcd-btn.wp-ghost-blue { border-color: var(--border); color: #17679a; background: #fff; }
+.pcd-btn.wp-ghost-blue { border-color: var(--kleur-rand); color: #17679a; background: var(--kleur-kaart); }
 .pcd-btn.wp-ghost-blue:hover:not(:disabled) { border-color: #2286C7; background: #eaf4fb; }
 .pch-canni-md tr.canni-deferred td { background: #f4f9fd; }
 /* Als taak ingepland: paars accent (groter werk op de kortetermijnplanning). */
 .pcd-btn.pcd-purple { border-color: #3B4A9E; color: #32407f; background: #eef0fa; }
-.pcd-btn.wp-ghost-purple { border-color: var(--border); color: #32407f; background: #fff; }
+.pcd-btn.wp-ghost-purple { border-color: var(--kleur-rand); color: #32407f; background: var(--kleur-kaart); }
 .pcd-btn.wp-ghost-purple:hover:not(:disabled) { border-color: #3B4A9E; background: #eef0fa; }
 .pch-canni-md tr.canni-tasked td { background: #f5f6fc; }
 /* Diepere duiding in de check-overlay. */
@@ -1916,7 +1916,7 @@ button.ck-collapse-head {
 /* De eigen stijl van .chat-table (witte kop, kleinere letter) is weg: tabellen in
    lopende tekst hebben nu één uiterlijk, hierboven bij .md-table. */
 .task-toggle { background: none; border: none; padding: 0; cursor: pointer; font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin: 12px 0 5px; display: block; }
-.task-toggle:hover { color: var(--orange-dark); }
+.task-toggle:hover { color: var(--kleur-accent-diep); }
 .chat-input { display: flex; gap: 8px; margin-top: 12px; }
 .chat-input input {
   flex: 1; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 10px 12px;
@@ -2254,8 +2254,8 @@ button.ck-collapse-head {
 /* Werkzaamheden-editor */
 .task-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 .task-table th, .task-table td { overflow: hidden; }
-.task-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--white); background: var(--dark); padding: 8px 8px; white-space: nowrap; position: sticky; top: 130px; z-index: 49; }
-.task-table td { border-bottom: 1px solid var(--border); padding: 4px 6px; vertical-align: top; }
+.task-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--kleur-tekst-op-vlak); background: var(--dark); padding: 8px 8px; white-space: nowrap; position: sticky; top: 130px; z-index: 49; }
+.task-table td { border-bottom: 1px solid var(--kleur-rand); padding: 4px 6px; vertical-align: top; }
 .task-table tr.dragging td { opacity: 0.35; }
 /* Slepen: een geanimeerde oranje invoeglijn + een gaatje dat opengaat op de plek
    waar de taak zal landen, zodat je precies ziet waar hij komt. */
@@ -2266,8 +2266,8 @@ button.ck-collapse-head {
   50% { box-shadow: inset 0 3px 0 rgba(246, 113, 44, 0.4); }
 }
 .task-table input, .task-table select { width: 100%; font-family: 'Montserrat', sans-serif; font-size: 13px; padding: 5px 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; }
-.task-table input:hover, .task-table select:hover { border-color: var(--border); }
-.task-table input:focus, .task-table select:focus { outline: none; border-color: var(--orange); background: var(--white); }
+.task-table input:hover, .task-table select:hover { border-color: var(--kleur-rand); }
+.task-table input:focus, .task-table select:focus { outline: none; border-color: var(--kleur-rand-accent); background: var(--kleur-kaart); }
 /* Checkboxes in een task-table mogen NIET de tekstveld-stijl (width:100%, transparant)
    krijgen, anders verdwijnt/verrekt het vinkvakje (o.a. de developer-lijst). */
 .task-table input[type="checkbox"] { width: auto; height: auto; padding: 0; border: none; background: none; cursor: pointer; }
@@ -2275,7 +2275,7 @@ button.ck-collapse-head {
 .task-table .cell-num input { width: 100%; text-align: right; }
 .task-table .cell-link { display: flex; align-items: center; gap: 4px; }
 .task-table .cell-link input { flex: 1 1 auto; min-width: 0; }
-.task-table .cell-link a { color: var(--orange-dark); text-decoration: none; flex: 0 0 auto; }
+.task-table .cell-link a { color: var(--kleur-accent-diep); text-decoration: none; flex: 0 0 auto; }
 .task-table .cell-check { text-align: center; }
 .drag-handle { cursor: grab; color: var(--gray); user-select: none; text-align: center; }
 .drag-handle:active { cursor: grabbing; }
@@ -2319,11 +2319,11 @@ button.ck-collapse-head {
 .month-card { margin-bottom: 24px; }
 .month-card-count { color: var(--gray); font-weight: 500; font-size: 14px; }
 .month-cards { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
-.task-card { border: 1px solid var(--border); border-left: 4px solid var(--orange); border-radius: 8px; padding: 14px 16px; background: #fafafa; }
+.task-card { border: 1px solid var(--kleur-rand); border-left: 4px solid var(--kleur-accent); border-radius: 8px; padding: 14px 16px; background: #fafafa; }
 .task-card.dev-card { border-left-color: #6b7280; }
 .task-table tr.dev-row { background: #eef2f7; }
 .task-table tr.dev-row:hover { background: #e4ebf3; }
-.task-table tr.mailed-row { background: var(--orange-light); }
+.task-table tr.mailed-row { background: var(--kleur-accent-vlak); }
 .task-table tr.mailed-row:hover { background: #fbe0c7; }
 @keyframes rowPulse { 0%, 100% { background: var(--orange-light); } 50% { background: #f9c89b; } }
 .task-table tr.highlight-row { animation: rowPulse 0.9s ease 0s 5; }
@@ -2431,7 +2431,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .month-card-title { font-weight: 700; font-size: 16px; text-transform: capitalize; color: var(--dark); }
 .month-card-uren { font-size: 13px; color: var(--gray); font-weight: 600; }
 .task-section { margin-bottom: 16px; }
-.task-section-head { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--orange-dark); margin-bottom: 4px; }
+.task-section-head { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--kleur-accent-diep); margin-bottom: 4px; }
 .budget-block { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px, 1fr)); gap: 10px; background: var(--orange-light); border: 1px solid #F4D9C9; border-radius: 8px; padding: 14px; margin-top: 8px; }
 .budget-block > div { display: flex; flex-direction: column; font-size: 12px; }
 .budget-block span { color: var(--gray); }
@@ -2575,7 +2575,7 @@ tbody tr.row-done:hover { background: #E2F1E2; }
 .sov-tasks-list li a:hover { text-decoration: underline; }
 .task-month { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin: 12px 0 5px; }
 .task-month:first-of-type { margin-top: 0; }
-.sov-tasks-list .task-done a { color: var(--gray); text-decoration: line-through; }
+.sov-tasks-list .task-done a { color: var(--kleur-tekst-stil); text-decoration: line-through; }
 .wie-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border-radius: 8px; margin-right: 6px; }
 .wie-badge.seo { background: var(--orange-light); color: var(--orange-dark); }
 .wie-badge.dev { background: #E8F0FE; color: #1A56B0; }
@@ -3401,8 +3401,8 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .ovc-lijstkeuze { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12.5px; border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 9px; padding: 7px 10px; background: #fffdfb; }
 /* Vast rechts per regel (geen float, dus nooit zwevend in het midden van de kaart). */
 .wp-card-info.wp-info-net li { position: relative; padding-right: 30px; }
-.wp-info-lijstbtn { font-family: inherit; position: absolute; right: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--orange); color: var(--orange); background: #fff; font-size: var(--fs-sm); line-height: 16px; text-align: center; cursor: pointer; padding: 0; opacity: 0.6; }
-.wp-info-lijstbtn:hover { background: var(--orange); color: #fff; opacity: 1; }
+.wp-info-lijstbtn { font-family: inherit; position: absolute; right: 0; top: 1px; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--kleur-accent); color: var(--kleur-accent); background: var(--kleur-kaart); font-size: var(--type-bijschrift); line-height: 16px; text-align: center; cursor: pointer; padding: 0; opacity: 0.6; }
+.wp-info-lijstbtn:hover { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); opacity: 1; }
 /* Status-stipjes in plaats van emoji's (retroactief op oude antwoorden). */
 .st-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 2px; vertical-align: baseline; }
 .st-dot.st-ok { background: #1c7a3f; }
@@ -3416,23 +3416,23 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 
 /* Documenten op de kaart: dropzone, voorstel en versie-archief. */
 .wp-docs { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
-.wp-docdrop { border: 1.5px dashed var(--card-border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); background: #fffdfb; transition: border-color 0.12s, background 0.12s; }
-.wp-docdrop-actief { border-color: var(--orange); background: #fff6f1; }
+.wp-docdrop { border: 1.5px dashed var(--kleur-rand-zacht); border-radius: var(--ronding-knop); padding: var(--ruimte-regel) var(--ruimte-groep); display: flex; flex-wrap: wrap; align-items: center; gap: var(--ruimte-regel); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); background: #fffdfb; transition: border-color 0.12s, background 0.12s; }
+.wp-docdrop-actief { border-color: var(--kleur-rand-accent); background: #fff6f1; }
 .wp-docdrop-tekst { color: var(--muted, #8a7a6c); }
 .wp-docdrop-of { color: var(--muted, #8a7a6c); }
 .wp-docdrop-linkrij { display: inline-flex; gap: 6px; align-items: center; flex: 1; min-width: 220px; }
-.wp-docdrop-input { flex: 1; min-width: 140px; border: 1px solid var(--border); border-radius: var(--r-sm); padding: var(--s-1) var(--s-3); font-size: var(--fs-sm); line-height: var(--lh-sm); font-family: inherit; }
-.wp-docdrop-input:focus { outline: none; border-color: var(--orange); }
-.wp-docvoorstel { border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; background: #fff; }
+.wp-docdrop-input { flex: 1; min-width: 140px; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-family: inherit; }
+.wp-docdrop-input:focus { outline: none; border-color: var(--kleur-rand-accent); }
+.wp-docvoorstel { border: 1px solid var(--kleur-rand-zacht); border-left: 3px solid var(--kleur-accent); border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; gap: 7px; background: var(--kleur-kaart); }
 .wp-docvoorstel-kop { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; flex-wrap: wrap; }
 /* De vraag zelf is gewone tekst; alleen de kop en de keuze mogen opvallen. */
-.wp-docvoorstel-kop > span { font-weight: 400; color: var(--gray); }
-.wp-docvoorstel-kind { border: 1px solid var(--card-border); border-radius: 8px; padding: 3px 7px; font-size: 12.5px; font-family: inherit; }
+.wp-docvoorstel-kop > span { font-weight: 400; color: var(--kleur-tekst-stil); }
+.wp-docvoorstel-kind { border: 1px solid var(--kleur-rand-zacht); border-radius: 8px; padding: 3px 7px; font-size: 12.5px; font-family: inherit; }
 .wp-doc-vergelijk { font-weight: 400; font-size: 12px; color: #1c7a3f; }
 .wp-doc-vergelijk.wp-doc-ouder { color: #b3261e; }
 .wp-docvoorstel-tekst { font-size: 12.5px; line-height: 1.5; }
 .wp-docvoorstel-acties { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 11.5px; }
-.wp-fase-btn-primair { background: var(--orange); color: #fff; border-color: var(--orange); }
+.wp-fase-btn-primair { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); border-color: var(--kleur-rand-accent); }
 .wp-doc-ok { font-size: 12.5px; color: #1c7a3f; }
 .wp-doc-fout { font-size: 12.5px; color: #b3261e; }
 /* Copy als concept naar de site (R6): knop + terugmelding, los van de doclijst
@@ -3444,54 +3444,54 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
    bereik je al via de fase-rijen eronder, dus als altijd-open lijst was dit
    ruis op elke kaart. Zelfde vorm als de andere uitklappers op de kaart
    (.wp-info-rest), zodat het één systeem blijft. */
-.wp-doc-vouw { margin-top: var(--s-3); }
+.wp-doc-vouw { margin-top: var(--ruimte-regel); }
 .wp-doc-vouw > summary {
-  cursor: pointer; font-size: var(--fs-xs); line-height: var(--lh-xs);
-  color: var(--gray); font-weight: 600; list-style: none;
-  display: flex; align-items: center; gap: var(--s-2);
+  cursor: pointer; font-size: var(--type-label); line-height: var(--regel-label);
+  color: var(--kleur-tekst-stil); font-weight: 600; list-style: none;
+  display: flex; align-items: center; gap: var(--ruimte-naast);
 }
 .wp-doc-vouw > summary::-webkit-details-marker { display: none; }
-.wp-doc-vouw > summary::before { content: "▸"; color: var(--orange); }
+.wp-doc-vouw > summary::before { content: "▸"; color: var(--kleur-accent); }
 .wp-doc-vouw[open] > summary::before { content: "▾"; }
-.wp-doc-vouw > summary:hover { color: var(--orange-dark); }
+.wp-doc-vouw > summary:hover { color: var(--kleur-accent-diep); }
 /* Er ligt meer dan één versie van hetzelfde soort en je hebt nog niet gekozen:
    dan wacht de mail en de sitebouwer daarop, dus dat mag opvallen. */
-.wp-doc-vouw-let { color: var(--orange-dark); font-weight: 700; }
-.wp-doclijst { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-2); }
-.wp-docrij { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2);
-  padding: var(--s-2) var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-md);
-  background: var(--white); font-size: var(--fs-sm); line-height: var(--lh-sm); cursor: default; }
+.wp-doc-vouw-let { color: var(--kleur-accent-diep); font-weight: 700; }
+.wp-doclijst { list-style: none; margin: var(--ruimte-regel) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-naast); }
+.wp-docrij { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-naast);
+  padding: var(--ruimte-naast) var(--ruimte-regel); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop);
+  background: var(--kleur-kaart); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); cursor: default; }
 .wp-docrij:focus { outline: none; }
-.wp-docrij-aan { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(241, 88, 41, .12); }
+.wp-docrij-aan { border-color: var(--kleur-rand-accent); box-shadow: 0 0 0 2px rgba(241, 88, 41, .12); }
 .wp-docrij-geldt { background: #fffaf6; }
-.wp-docrij-datum { color: var(--muted); min-width: 3.5rem; }
-.wp-docrij-kind { color: var(--muted); }
-.wp-docrij-naam { border: 0; background: none; padding: 0; font: inherit; color: var(--body-text);
+.wp-docrij-datum { color: var(--kleur-tekst-zacht); min-width: 3.5rem; }
+.wp-docrij-kind { color: var(--kleur-tekst-zacht); }
+.wp-docrij-naam { border: 0; background: none; padding: 0; font: inherit; color: var(--kleur-tekst);
   font-weight: 600; text-align: left; cursor: text; flex: 1 1 8rem; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wp-docrij-naam:hover { text-decoration: underline dotted; }
-.wp-docrij-naaminvoer { flex: 1 1 8rem; min-width: 0; font: inherit; padding: var(--s-1) var(--s-2);
-  border: 1px solid var(--orange); border-radius: var(--r-sm); }
-.wp-docrij-acties { display: flex; align-items: center; gap: var(--s-2); margin-left: auto; }
-.wp-docrij-geldt-vink { display: flex; align-items: center; gap: var(--s-1); color: var(--muted); white-space: nowrap; }
-.wp-docrij-geldt .wp-docrij-geldt-vink { color: var(--orange); font-weight: 600; }
+.wp-docrij-naaminvoer { flex: 1 1 8rem; min-width: 0; font: inherit; padding: var(--ruimte-krap) var(--ruimte-naast);
+  border: 1px solid var(--kleur-accent); border-radius: var(--ronding-klein); }
+.wp-docrij-acties { display: flex; align-items: center; gap: var(--ruimte-naast); margin-left: auto; }
+.wp-docrij-geldt-vink { display: flex; align-items: center; gap: var(--ruimte-krap); color: var(--kleur-tekst-zacht); white-space: nowrap; }
+.wp-docrij-geldt .wp-docrij-geldt-vink { color: var(--kleur-accent); font-weight: 600; }
 /* Is er maar één document van een soort, dan is "geldt" geen keuze maar een feit:
    hetzelfde woord, zonder aankruisvakje dat suggereert dat je nog iets moet doen. */
-.wp-docrij-geldt-vast { color: var(--orange); font-weight: 600; white-space: nowrap; }
+.wp-docrij-geldt-vast { color: var(--kleur-accent); font-weight: 600; white-space: nowrap; }
 
 /* De uitkomst van de criteria-toets, onder de regel waar hij bij hoort. */
-.wp-toets { flex-basis: 100%; margin-top: var(--s-2); padding: var(--s-3);
-  border-radius: var(--r-md); border-left: 3px solid var(--card-border); background: #faf9f8; }
-.wp-toets ul { margin: var(--s-2) 0; padding-left: var(--s-4); }
+.wp-toets { flex-basis: 100%; margin-top: var(--ruimte-naast); padding: var(--ruimte-regel);
+  border-radius: var(--ronding-knop); border-left: 3px solid var(--kleur-rand-zacht); background: #faf9f8; }
+.wp-toets ul { margin: var(--ruimte-naast) 0; padding-left: var(--s-4); }
 .wp-toets-goed { border-left-color: #3E9E4C; }
-.wp-toets-letop { border-left-color: var(--orange); }
+.wp-toets-letop { border-left-color: var(--kleur-accent); }
 .wp-toets-fout { border-left-color: #C8442C; }
 
 /* Voorvertoning van een document (spatiebalk). */
 .wp-preview { width: min(56rem, 92vw); }
-.wp-preview-frame { width: 100%; height: min(70vh, 42rem); border: 1px solid var(--card-border);
-  border-radius: var(--r-md); background: var(--white); }
-.wp-preview-leeg { padding: var(--s-6) var(--s-4); text-align: center; }
+.wp-preview-frame { width: 100%; height: min(70vh, 42rem); border: 1px solid var(--kleur-rand-zacht);
+  border-radius: var(--ronding-knop); background: var(--kleur-kaart); }
+.wp-preview-leeg { padding: var(--ruimte-kaart) var(--ruimte-groep); text-align: center; }
 
 /* Sleepbare bijlagen bij een mail. */
 .mail-bijlagen { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
@@ -3503,19 +3503,19 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .mail-bijlage-naam { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Je eigen aantekeningen bij een taak. */
-.wp-notitie { margin-top: var(--s-4); }
-.wp-notitie-kop { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2);
-  font-size: var(--fs-xs); line-height: var(--lh-xs); text-transform: uppercase;
-  letter-spacing: .08em; font-weight: 700; color: var(--muted); }
+.wp-notitie { margin-top: var(--ruimte-groep); }
+.wp-notitie-kop { display: flex; align-items: center; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-naast);
+  font-size: var(--type-label); line-height: var(--regel-label); text-transform: uppercase;
+  letter-spacing: .08em; font-weight: 700; color: var(--kleur-tekst-zacht); }
 .wp-notitie-ok { color: #3E9E4C; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .wp-notitie-fout { color: #C8442C; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .wp-notitie-veld { min-height: 4.5rem; }
 
-.wp-docversie-lijst { list-style: none; padding: 6px 2px 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--fs-sm); }
+.wp-docversie-lijst { list-style: none; padding: 6px 2px 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: var(--type-bijschrift); }
 .wp-docversie-lijst li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.wp-docversie-bron { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 9px; }
+.wp-docversie-bron { font-size: var(--type-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 1px 7px; border-radius: 9px; }
 .wp-bron-klant { background: #eaf5ee; color: #1c7a3f; }
-.wp-bron-pingwin { background: #fdeee7; color: var(--orange); }
+.wp-bron-pingwin { background: #fdeee7; color: var(--kleur-accent); }
 .wp-docversie-kind { font-weight: 600; }
 .wp-docversie-sam { flex-basis: 100%; padding-left: 2px; }
 
@@ -3695,7 +3695,7 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-intro-acties .wp-fase-btn { padding: 6px 13px; font-size: 12px; }
 .wp-intro-acties .wp-link { font-size: 12.5px; }
 /* Werklijst-blok op de sitebouwer-kaart: knop, status en het document bij elkaar. */
-.wp-werklijst { border: 1px solid var(--card-border); border-left: 3px solid var(--orange); border-radius: 10px; padding: 10px 14px; margin: 10px 0; display: flex; flex-direction: column; gap: 7px; background: #fffdfb; font-size: 12.5px; }
+.wp-werklijst { border: 1px solid var(--kleur-rand-zacht); border-left: 3px solid var(--kleur-accent); border-radius: 10px; padding: 10px 14px; margin: 10px 0; display: flex; flex-direction: column; gap: 7px; background: #fffdfb; font-size: 12.5px; }
 .wp-werklijst-rij { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .wp-werklijst-sam { line-height: 1.5; }
 
@@ -3803,28 +3803,28 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .ovc-icontile { width: var(--s-10); height: var(--s-10); border-radius: var(--r-md); display: grid; place-items: center; flex: 0 0 auto; color: var(--accent); background: var(--grad-pingwin); border: 2px solid #fff; box-shadow: var(--shadow-sm); }
 .ovc-icontile svg { width: var(--s-5); height: var(--s-5); }
 /* Zelfde kop-ritme en typografie als de Bird's eye-kop (razorsharp uitgelijnd). */
-.wp-intro { display: flex; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.wp-intro { display: flex; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--kleur-rand); margin-bottom: 12px; }
 .wp-intro-titel { color: var(--dark); font-size: 14px; font-weight: 800; margin: 0 0 2px; }
 .wp-intro .muted { font-size: 12.5px; }
 .wp-col-icoon { margin-left: auto; width: 26px; height: 26px; color: #efc7b4; }
 /* Verticale week-sequence (kanban-lanes onder elkaar) */
 .wp-board { display: flex; flex-direction: column; gap: 10px; padding: 8px 0 4px; }
-.wp-col { background: var(--white); border: 1px solid var(--card-border); border-radius: var(--r-lg); overflow: hidden; }
-.wp-col.wp-current { border-color: var(--orange); box-shadow: 0 4px 16px rgba(231, 119, 63, 0.10); }
-.wp-col.wp-drop { border-color: var(--orange); background: #fdece1; }
+.wp-col { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-kaart); overflow: hidden; }
+.wp-col.wp-current { border-color: var(--kleur-rand-accent); box-shadow: 0 4px 16px rgba(231, 119, 63, 0.10); }
+.wp-col.wp-drop { border-color: var(--kleur-rand-accent); background: #fdece1; }
 /* Weekkop met een vleug van de Pingwin-gradient (blauw naar perzik). */
-.wp-col-head { padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--card-border); display: flex; align-items: center; gap: var(--s-3); background: linear-gradient(228deg, rgba(199, 226, 235, 0.30) 20%, rgba(248, 218, 188, 0.40) 85%); }
+.wp-col-head { padding: var(--ruimte-regel) var(--ruimte-groep); border-bottom: 1px solid var(--kleur-rand-zacht); display: flex; align-items: center; gap: var(--ruimte-regel); background: linear-gradient(228deg, rgba(199, 226, 235, 0.30) 20%, rgba(248, 218, 188, 0.40) 85%); }
 .wp-col-unplanned .wp-col-head { background: #f5f5f6; }
-.wp-col-wk { font-weight: 800; font-size: 16px; letter-spacing: -0.02em; color: var(--orange); }
-.wp-col.wp-current .wp-col-wk { color: var(--orange-dark); }
-.wp-col-nu { font-size: 11px; font-weight: 800; color: var(--orange-dark); background: #ffece2; border-radius: 8px; padding: 3px 9px; }
+.wp-col-wk { font-weight: 800; font-size: 16px; letter-spacing: -0.02em; color: var(--kleur-accent); }
+.wp-col.wp-current .wp-col-wk { color: var(--kleur-accent-diep); }
+.wp-col-nu { font-size: 11px; font-weight: 800; color: var(--kleur-accent-diep); background: #ffece2; border-radius: 8px; padding: 3px 9px; }
 .wp-col-dates { font-size: 12px; color: #555a5f; }
 .wp-col-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; min-height: 30px; }
-.wp-col-body:empty::after { content: "Sleep hier een taak naartoe"; color: var(--gray); font-size: 11.5px; opacity: 0.6; }
-.wp-caret { color: var(--orange); font-size: 14px; margin-right: 5px; display: inline-block; width: 14px; text-align: center; }
+.wp-col-body:empty::after { content: "Sleep hier een taak naartoe"; color: var(--kleur-tekst-stil); font-size: 11.5px; opacity: 0.6; }
+.wp-caret { color: var(--kleur-accent); font-size: 14px; margin-right: 5px; display: inline-block; width: 14px; text-align: center; }
 .wp-card-taak.wp-clickable { cursor: pointer; }
-.wp-card.wp-open { border-color: var(--orange); }
-.wp-card-info { margin: 6px 0 2px; padding: 8px 10px; background: var(--gray-light); border-radius: 7px; font-size: 12px; line-height: 1.55; color: var(--dark); white-space: pre-wrap; }
+.wp-card.wp-open { border-color: var(--kleur-rand-accent); }
+.wp-card-info { margin: 6px 0 2px; padding: 8px 10px; background: var(--kleur-rustig); border-radius: 7px; font-size: 12px; line-height: 1.55; color: var(--dark); white-space: pre-wrap; }
 .wp-card-info.md { white-space: normal; }
 .wp-card-info.md p { margin: 0 0 5px; }
 .wp-card-info.md ul { margin: 4px 0 4px 16px; padding: 0; }
@@ -3836,37 +3836,37 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
    had, een fractie kleiner dan de --fs-base die het dossierblok ernaast al
    gebruikt (pd-verhaal). Daardoor oogden "Waarom deze pagina"/"Opdrachten" en
    "Waar ... staat" als twee verschillende lettergroottes op dezelfde kaart. */
-.wp-card-info.wp-info-net { white-space: normal; max-width: 960px; background: transparent; padding: 0; font-size: var(--fs-base); line-height: var(--lh-base); }
-.wp-card-info.wp-info-net .wp-info-kop { color: var(--orange-dark); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin: 10px 0 4px; }
+.wp-card-info.wp-info-net { white-space: normal; max-width: 960px; background: transparent; padding: 0; font-size: var(--type-lopend); line-height: var(--regel-lopend); }
+.wp-card-info.wp-info-net .wp-info-kop { color: var(--kleur-accent-diep); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin: 10px 0 4px; }
 .wp-card-info.wp-info-net .wp-info-kop:first-child { margin-top: 0; }
 .wp-card-info.wp-info-net p { margin: 0 0 6px; }
 .wp-card-info.wp-info-net ul { margin: 2px 0 8px 16px; padding: 0; }
 .wp-card-info.wp-info-net li { margin: 3px 0; }
-.wp-card-info.wp-info-net a { color: var(--orange-dark); text-decoration: none; }
+.wp-card-info.wp-info-net a { color: var(--kleur-accent-diep); text-decoration: none; }
 .wp-card-info.wp-info-net a:hover { text-decoration: underline; }
 /* Doel-blok: twee sub-kaarten naast elkaar (Doel | Aanpak en taken), stijl voorbeeld. */
 .wp-info-doel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .wp-info-doel.wp-info-een { grid-template-columns: 1fr; }
 @media (max-width: 760px) { .wp-info-doel { grid-template-columns: 1fr; } }
-.wp-info-kaart { background: #fff; border: 1px solid var(--card-border); border-radius: var(--r-md); padding: var(--s-3) var(--s-4); }
+.wp-info-kaart { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); padding: var(--ruimte-regel) var(--ruimte-groep); }
 .wp-info-ruw { overflow-x: auto; }
 .wp-info-ruw .md-table { width: 100%; }
-.wp-info-kaarthead { display: flex; align-items: center; gap: var(--s-2); margin-bottom: var(--s-2); }
-.wp-info-icoon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; color: var(--orange); background: linear-gradient(145deg, #fff2e9, #fff8f3); border: 1px solid #f6d8c8; }
+.wp-info-kaarthead { display: flex; align-items: center; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-naast); }
+.wp-info-icoon { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 10px; color: var(--kleur-accent); background: linear-gradient(145deg, #fff2e9, #fff8f3); border: 1px solid #f6d8c8; }
 .wp-info-icoon svg { width: 16px; height: 16px; }
 /* Doel- en Aanpak-lijsten: één geometrie. Beide markers staan in dezelfde
    16px-kolom op dezelfde linkerlijn, de tekst begint op dezelfde x, en de
    rijen hebben gelijke tussenruimte. Vinkje = klaar, stip = punt. */
 .wp-check-lijst, .wp-punt-lijst { margin: 0; padding: 0; list-style: none; }
-.wp-check-lijst li, .wp-punt-lijst li { position: relative; padding-left: var(--s-6); margin: var(--s-2) 0; }
+.wp-check-lijst li, .wp-punt-lijst li { position: relative; padding-left: var(--s-6); margin: var(--ruimte-naast) 0; }
 .wp-check-lijst li:first-child, .wp-punt-lijst li:first-child { margin-top: 0; }
-.wp-check-lijst li::before { content: "✓"; position: absolute; left: 0; top: 1px; width: 16px; height: 16px; border-radius: var(--r-full); background: #ffe9dc; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 800; display: flex; align-items: center; justify-content: center; }
-.wp-punt-lijst li::before { content: ""; position: absolute; left: 5px; top: 6px; width: 6px; height: 6px; border-radius: var(--r-full); background: var(--orange); }
-.wp-info-banner { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 7px 11px; border-radius: 10px; background: #fff3ec; color: var(--orange-dark); font-size: 11.5px; }
+.wp-check-lijst li::before { content: "✓"; position: absolute; left: 0; top: 1px; width: 16px; height: 16px; border-radius: var(--ronding-pil); background: #ffe9dc; color: var(--kleur-accent-diep); font-size: var(--type-label); font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.wp-punt-lijst li::before { content: ""; position: absolute; left: 5px; top: 6px; width: 6px; height: 6px; border-radius: var(--ronding-pil); background: var(--kleur-accent); }
+.wp-info-banner { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 7px 11px; border-radius: 10px; background: #fff3ec; color: var(--kleur-accent-diep); font-size: 11.5px; }
 .wp-info-banner svg { width: 15px; height: 15px; flex: 0 0 auto; }
 /* Iconen op fase-rijen en sectiekopjes. */
-.wp-fase-icoon { width: 16px; height: 16px; color: var(--orange); flex: 0 0 auto; }
-.wp-sectie-icoon { width: 14px; height: 14px; color: var(--orange); vertical-align: -2px; margin-right: 4px; }
+.wp-fase-icoon { width: 16px; height: 16px; color: var(--kleur-accent); flex: 0 0 auto; }
+.wp-sectie-icoon { width: 14px; height: 14px; color: var(--kleur-accent); vertical-align: -2px; margin-right: 4px; }
 .wp-sectie-metikoon { display: flex; align-items: center; margin: 0 0 5px; }
 /* Chat-toggle en Locatie naast elkaar. */
 .wp-onder-rij { display: flex; align-items: flex-start; gap: 26px; flex-wrap: wrap; margin: 8px 0 2px; }
@@ -3874,20 +3874,20 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-onder-blok { min-width: 0; }
 /* Pijplijn-stand op de pagina-kaart: nette pill-chips op de schaal-tokens.
    Eén vaste chip-maat en -ronding, zodat alle fase-rijen identiek ogen. */
-.wp-steps { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-2) 0; cursor: pointer; }
-.wp-step { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; border-radius: var(--r-full); padding: 2px var(--s-3); color: #2f2f31; background: linear-gradient(#f7f7f7, #eeeeee); border: 1px solid transparent; }
+.wp-steps { display: flex; flex-wrap: wrap; gap: var(--ruimte-naast); margin: var(--ruimte-naast) 0; cursor: pointer; }
+.wp-step { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700; border-radius: var(--ronding-pil); padding: 2px var(--ruimte-regel); color: #2f2f31; background: linear-gradient(#f7f7f7, #eeeeee); border: 1px solid transparent; }
 .wp-step-done { color: #1e9a4a; background: #eaf8ef; border-color: #ccefd8; }
-.wp-step-next { color: var(--orange-dark); background: #fffaf7; border-color: var(--orange); }
+.wp-step-next { color: var(--kleur-accent-diep); background: #fffaf7; border-color: var(--kleur-rand-accent); }
 .wp-steps:hover .wp-step-next { text-decoration: underline; }
 /* Sectiekopjes in de open kaart (TAKEN / LOCATIE-stijl uit het voorbeeld). */
-.wp-sectie-label { font-size: var(--fs-xs); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #5e6063; margin: 10px 0 5px; }
+.wp-sectie-label { font-size: var(--type-label); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: #5e6063; margin: 10px 0 5px; }
 /* Projectkaart: de 7 fases verticaal, met status, startknop en handmatig vinkje. */
-.wp-fases { margin: var(--s-2) 0 var(--s-1); border: 1px solid var(--card-border); border-radius: var(--r-md); background: #fff; }
-.wp-fase { padding: 2px var(--s-3); border-bottom: 1px solid var(--border); }
+.wp-fases { margin: var(--ruimte-naast) 0 var(--ruimte-krap); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); background: var(--kleur-kaart); }
+.wp-fase { padding: 2px var(--ruimte-regel); border-bottom: 1px solid var(--kleur-rand); }
 .wp-fase:last-of-type { border-bottom: none; }
-.wp-fase-rij { display: flex; align-items: center; gap: var(--s-1); min-height: 22px; }
+.wp-fase-rij { display: flex; align-items: center; gap: var(--ruimte-krap); min-height: 22px; }
 /* Vaste kolommen in de fase-rijen: labels, chips en knoppen recht onder elkaar. */
-.wp-fase-rij .wp-fase-label { flex: 0 0 130px; font-size: var(--fs-xs); }
+.wp-fase-rij .wp-fase-label { flex: 0 0 130px; font-size: var(--type-label); }
 .wp-fase-chip { min-width: 72px; display: inline-flex; justify-content: center; }
 /* De rij-knoppen (Start, Bespreek, Mail, ...) zijn `.btn.btn-ghost.btn-klein`,
    niet `.wp-fase-btn` (die klasse hoort hier niet bij, zie de knopconventie in
@@ -3896,160 +3896,160 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
    elkaar. Hier alleen kleur bij hover, en verder klein en rustig. */
 .wp-fases-kop .btn.btn-ghost.btn-klein,
 .wp-fase-rij .btn.btn-ghost.btn-klein {
-  padding: 1px var(--s-1); font-size: var(--fs-xs); font-weight: 600; line-height: 14px;
-  border-radius: var(--r-sm); border-color: var(--border); color: var(--muted); gap: 2px;
+  padding: 1px var(--ruimte-krap); font-size: var(--type-label); font-weight: 600; line-height: 14px;
+  border-radius: var(--ronding-klein); border-color: var(--kleur-rand); color: var(--kleur-tekst-zacht); gap: 2px;
 }
 .wp-fases-kop .btn.btn-ghost.btn-klein:hover:not(:disabled),
 .wp-fase-rij .btn.btn-ghost.btn-klein:hover:not(:disabled) {
-  border-color: var(--orange); color: var(--orange-dark); background: var(--orange-light);
+  border-color: var(--kleur-rand-accent); color: var(--kleur-accent-diep); background: var(--kleur-accent-vlak);
 }
-.wp-fase-rij .wp-fase-chip { min-width: 40px; padding: 0 var(--s-1); }
-.wp-fase-rij .wp-fase-chip.wp-fase-klaar, .wp-fase-rij .wp-fase-chip.wp-fase-open { min-width: 30px; font-size: var(--fs-xs); }
-.wp-fase-sturing { margin: 3px 0 1px 24px; font-size: var(--fs-xs); color: var(--muted); line-height: 1.5; }
-.wp-fase-btn-licht { color: var(--gray); border-color: #e3e3e3; }
-.wp-fase-label { font-size: var(--fs-sm); font-weight: 600; color: var(--dark); }
-.wp-fase-chip { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; border-radius: var(--r-full); padding: 1px var(--s-2); color: var(--muted); background: #f1f1ef; border: 1px solid var(--border); white-space: nowrap; }
+.wp-fase-rij .wp-fase-chip { min-width: 40px; padding: 0 var(--ruimte-krap); }
+.wp-fase-rij .wp-fase-chip.wp-fase-klaar, .wp-fase-rij .wp-fase-chip.wp-fase-open { min-width: 30px; font-size: var(--type-label); }
+.wp-fase-sturing { margin: 3px 0 1px 24px; font-size: var(--type-label); color: var(--kleur-tekst-zacht); line-height: 1.5; }
+.wp-fase-btn-licht { color: var(--kleur-tekst-stil); border-color: #e3e3e3; }
+.wp-fase-label { font-size: var(--type-bijschrift); font-weight: 600; color: var(--dark); }
+.wp-fase-chip { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700; border-radius: var(--ronding-pil); padding: 1px var(--ruimte-naast); color: var(--kleur-tekst-zacht); background: #f1f1ef; border: 1px solid var(--kleur-rand); white-space: nowrap; }
 .wp-fase-chip.wp-fase-klaar { color: #1b7f3b; background: #e7f6ec; border-color: #bfe6cc; }
 .wp-fase-chip.wp-fase-bezig { color: #8a6d00; background: #fff2cc; border-color: #eadb9a; }
 .wp-fase-chip.wp-fase-fout { color: #a12622; background: #fdecec; border-color: #f2c4c2; }
 /* Nog niet af: rood kruisje in dezelfde pilvorm als het groene vinkje. Zo hoef je
    niets te lezen om te zien wat er staat. */
-.wp-fase-chip.wp-fase-open { color: #a12622; background: #fdecec; border-color: #f2c4c2; min-width: 34px; font-size: var(--fs-sm); }
+.wp-fase-chip.wp-fase-open { color: #a12622; background: #fdecec; border-color: #f2c4c2; min-width: 34px; font-size: var(--type-bijschrift); }
 /* Klein linkje naar het document, achter de fasenaam. Vervangt drie volle
    "Document"-knoppen die de rij onrustig maakten. */
 .wp-fase-doclink {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600;
-  color: var(--orange-dark); text-decoration: none; margin-left: var(--s-1);
+  font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600;
+  color: var(--kleur-accent-diep); text-decoration: none; margin-left: var(--ruimte-krap);
 }
 .wp-fase-doclink:hover { text-decoration: underline; }
 
 /* ── Mailvenster: alles op de vaste schaal, onderwerp duidelijk apart ── */
 /* Staat er een mail uit het gesprek in het vak, dan zie je dat, met één klik om
    hem weg te halen als je liever zelf dicteert. */
-.wp-mail-bron { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); margin-bottom: var(--s-1); }
-.wp-mail-leeg { border: none; background: none; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; }
+.wp-mail-bron { display: flex; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-label); line-height: var(--regel-label); margin-bottom: var(--ruimte-krap); }
+.wp-mail-leeg { border: none; background: none; color: var(--kleur-accent-diep); font-size: var(--type-label); font-weight: 700; cursor: pointer; padding: 0; text-decoration: underline; }
 .wp-mail-leeg:hover { color: var(--accent); }
 /* Het blok dat meegaat, als voorbeeld onder je intro. Je ziet wat er weggaat. */
-.wp-mail-blok { margin-top: var(--s-3); border: 1px solid var(--card-border); border-radius: var(--r-md); background: #FAF8F6; }
-.wp-mail-blok-kop { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); padding: var(--s-2) var(--s-3); border-bottom: 1px solid var(--card-border); font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--gray); }
-.wp-mail-blok-body { padding: var(--s-3); max-height: 320px; overflow-y: auto; font-size: var(--fs-sm); line-height: var(--lh-sm); outline: none; }
-.wp-mail-blok-body:focus { background: #fff; box-shadow: inset 0 0 0 2px var(--orange-light); }
-.wp-mail-blok-body h3, .wp-mail-blok-body h4, .wp-mail-blok-body h5 { color: var(--orange-dark); }
+.wp-mail-blok { margin-top: var(--ruimte-regel); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); background: #FAF8F6; }
+.wp-mail-blok-kop { display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-naast); padding: var(--ruimte-naast) var(--ruimte-regel); border-bottom: 1px solid var(--kleur-rand-zacht); font-size: var(--type-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--kleur-tekst-stil); }
+.wp-mail-blok-body { padding: var(--ruimte-regel); max-height: 320px; overflow-y: auto; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); outline: none; }
+.wp-mail-blok-body:focus { background: var(--kleur-kaart); box-shadow: inset 0 0 0 2px var(--kleur-accent-vlak); }
+.wp-mail-blok-body h3, .wp-mail-blok-body h4, .wp-mail-blok-body h5 { color: var(--kleur-accent-diep); }
 .wp-mail-blok-body table { width: 100%; border-collapse: collapse; }
-.wp-mail-blok-body th, .wp-mail-blok-body td { border: 1px solid var(--card-border); padding: 4px 8px; text-align: left; }
+.wp-mail-blok-body th, .wp-mail-blok-body td { border: 1px solid var(--kleur-rand-zacht); padding: 4px 8px; text-align: left; }
 /* "Zet dit blok in een mail" onder een los antwoord in de chat. */
 .ovc-blokmail { margin-top: var(--s-2); border: 1px solid var(--card-border); background: #fff; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; padding: 3px var(--s-3); border-radius: var(--r-full); cursor: pointer; opacity: 0.75; transition: opacity 0.15s; }
 .ovc-msg:hover .ovc-blokmail { opacity: 1; }
 .ovc-blokmail:hover { background: var(--orange-light); border-color: var(--orange); }
-.wp-mail-onderwerp { display: flex; align-items: center; gap: var(--s-3); margin: var(--s-3) 0; }
+.wp-mail-onderwerp { display: flex; align-items: center; gap: var(--ruimte-regel); margin: var(--ruimte-regel) 0; }
 .wp-mail-onderwerp-label {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
-  text-transform: uppercase; letter-spacing: 0.6px; color: var(--gray);
+  font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.6px; color: var(--kleur-tekst-stil);
   flex: 0 0 auto; min-width: 72px;
 }
 .wp-mail-onderwerp input {
-  flex: 1 1 auto; font: inherit; font-size: var(--fs-base); line-height: var(--lh-base);
-  font-weight: 600; color: var(--body-text);
-  border: 1px solid var(--border); border-radius: var(--r-md);
-  padding: var(--s-2) var(--s-3); background: #fff;
+  flex: 1 1 auto; font: inherit; font-size: var(--type-lopend); line-height: var(--regel-lopend);
+  font-weight: 600; color: var(--kleur-tekst);
+  border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop);
+  padding: var(--ruimte-naast) var(--ruimte-regel); background: var(--kleur-kaart);
 }
-.wp-mail-onderwerp input:focus { outline: none; border-color: var(--orange); }
+.wp-mail-onderwerp input:focus { outline: none; border-color: var(--kleur-rand-accent); }
 .wp-mail-edit { min-height: 180px; }
-.wp-mail-fout { margin: var(--s-2) 0; }
+.wp-mail-fout { margin: var(--ruimte-naast) 0; }
 .wp-mail-klaar {
-  margin: var(--s-2) 0; font-size: var(--fs-sm); line-height: var(--lh-sm);
-  color: #1e824c; background: #eaf6ef; border-radius: var(--r-sm); padding: var(--s-2) var(--s-3);
+  margin: var(--ruimte-naast) 0; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
+  color: #1e824c; background: #eaf6ef; border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel);
 }
 .wp-fase-spacer { flex: 1; }
-.wp-fase-btn { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; border: 1px solid var(--border); background: #fff; border-radius: var(--r-sm); padding: var(--s-1) var(--s-3); cursor: pointer; color: var(--dark); white-space: nowrap; }
-.wp-fase-btn:hover:not(:disabled) { border-color: var(--orange); color: var(--orange-dark); }
+.wp-fase-btn { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600; border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-regel); cursor: pointer; color: var(--dark); white-space: nowrap; }
+.wp-fase-btn:hover:not(:disabled) { border-color: var(--kleur-rand-accent); color: var(--kleur-accent-diep); }
 .wp-fase-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .wp-fase-check { display: flex; align-items: center; }
-.wp-fase-check input { accent-color: var(--orange); cursor: pointer; }
-.wp-fase-hint { padding: 6px 9px; font-size: 11px; color: var(--orange-dark); background: var(--orange-light); border-top: 1px solid var(--border); border-radius: 0 0 8px 8px; }
-.wp-fase-fouttekst { padding: 6px 9px; font-size: var(--fs-xs); color: #a12622; }
-.wp-fase-melding { padding: 6px 9px; font-size: var(--fs-xs); font-weight: 600; color: #1b7f3b; background: #e7f6ec; border-top: 1px solid var(--border); }
+.wp-fase-check input { accent-color: var(--kleur-accent); cursor: pointer; }
+.wp-fase-hint { padding: 6px 9px; font-size: 11px; color: var(--kleur-accent-diep); background: var(--kleur-accent-vlak); border-top: 1px solid var(--kleur-rand); border-radius: 0 0 8px 8px; }
+.wp-fase-fouttekst { padding: 6px 9px; font-size: var(--type-label); color: #a12622; }
+.wp-fase-melding { padding: 6px 9px; font-size: var(--type-label); font-weight: 600; color: #1b7f3b; background: #e7f6ec; border-top: 1px solid var(--kleur-rand); }
 /* Alles-in-één-rij: label op dezelfde linkerlijn als de fase-labels (naast de
    checkbox-kolom), de startknop in dezelfde knoppenkolom als de fase-acties. */
 .wp-fase-alles { background: #fbfbfa; }
-.wp-fase-alles-label { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 600; color: var(--muted); margin-left: var(--s-6); }
-.wp-fase-alles .wp-fase-btn { min-width: 112px; margin-right: calc(72px + var(--s-2)); }
+.wp-fase-alles-label { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 600; color: var(--kleur-tekst-zacht); margin-left: var(--s-6); }
+.wp-fase-alles .wp-fase-btn { min-width: 112px; margin-right: calc(72px + var(--ruimte-naast)); }
 /* "Ruim op"-rij boven het Doel-blok. */
 /* "Ruim op" rechts uitgelijnd op dezelfde lijn als de kaartinhoud, niet zwevend links. */
-.wp-opruim-rij { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); margin: 0 0 var(--s-2); }
+.wp-opruim-rij { display: flex; align-items: center; justify-content: flex-end; gap: var(--ruimte-naast); margin: 0 0 var(--ruimte-naast); }
 .wp-opruim-rij .wp-fase-btn { padding: 3px 10px; font-size: 11px; opacity: 0.75; }
 .wp-opruim-rij .wp-fase-btn:hover { opacity: 1; }
-.wp-opruim-ok { font-size: var(--fs-xs); font-weight: 600; color: #1b7f3b; }
-.wp-opruim-fout { font-size: var(--fs-xs); color: #a12622; }
+.wp-opruim-ok { font-size: var(--type-label); font-weight: 600; color: #1b7f3b; }
+.wp-opruim-fout { font-size: var(--type-label); color: #a12622; }
 /* Verwijder-kruisje per onderwerp in de Bird's eye-lijst. */
 /* Het kruisje was zo licht dat je het moest zoeken, ook op een gewone rij. */
 .ovc-topic-del { margin-left: auto; flex: 0 0 auto; font-size: 17px; color: var(--muted); opacity: 0.75; }
 .ovc-topic-del:hover { opacity: 1; color: #c0392b; background: var(--gray-light); }
 /* Kaart-chat (zelfde geheugen als de pagina-chat in Pagina's). */
 .wp-chat { margin: 6px 0 4px; }
-.wp-chat-toggle { font-size: var(--fs-sm); font-weight: 600; color: var(--orange-dark); background: none; border: none; cursor: pointer; padding: 4px 0; }
+.wp-chat-toggle { font-size: var(--type-bijschrift); font-weight: 600; color: var(--kleur-accent-diep); background: none; border: none; cursor: pointer; padding: 4px 0; }
 .wp-chat-toggle:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* Zichtbare focus voor toetsenbord, overal hetzelfde (toegankelijkheid). */
 button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; border-radius: 4px; }
 /* Prominente chat-knop boven de fases (de chat voedt de fases eronder). */
-.wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: var(--s-1); border: 1px solid var(--border); border-radius: var(--r-full); padding: var(--s-1) var(--s-3); background: #fffaf7; font-size: var(--fs-xs); line-height: var(--lh-xs); margin: var(--s-1) 0 var(--s-2); }
-.wp-chat-toggle-groot:hover, .wp-chat-toggle-groot.wp-chat-open { background: var(--orange-light); }
+.wp-chat-toggle-groot { display: inline-flex; align-items: center; gap: var(--ruimte-krap); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-pil); padding: var(--ruimte-krap) var(--ruimte-regel); background: #fffaf7; font-size: var(--type-label); line-height: var(--regel-label); margin: var(--ruimte-krap) 0 var(--ruimte-naast); }
+.wp-chat-toggle-groot:hover, .wp-chat-toggle-groot.wp-chat-open { background: var(--kleur-accent-vlak); }
 /* "Chat over deze pagina" en "Pagina's" staan naast elkaar in dezelfde pilvorm:
    allebei "hier kijk ik verder". De tweede stond onderaan de kaart tussen de
    linkjes, in een andere vorm, terwijl het dezelfde soort stap is. */
-.wp-chat-kop { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
-.wp-chat-body { border: 1px solid var(--border); border-radius: 8px; background: var(--gray-light); padding: 8px; }
+.wp-chat-kop { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ruimte-naast); }
+.wp-chat-body { border: 1px solid var(--kleur-rand); border-radius: 8px; background: var(--kleur-rustig); padding: 8px; }
 /* De chat groeit gewoon mee met het gesprek; geen mini-scrollvenster. */
 .wp-chat-msgs { display: flex; flex-direction: column; gap: 6px; }
-.wp-chat-leeg { font-size: var(--fs-sm); padding: 4px 2px; }
+.wp-chat-leeg { font-size: var(--type-bijschrift); padding: 4px 2px; }
 .wp-chat-blok { position: relative; display: flex; flex-direction: column; }
 .wp-chat-blok-vraag { align-items: flex-end; }
 /* Het kruisje stond op onzichtbaar tot je er toevallig precies overheen zweefde,
    dus opruimen lukte niet. Nu altijd zichtbaar (gedimd), zoals elders. */
-.wp-chat-del { position: absolute; top: 2px; right: 2px; z-index: 2; border: none; background: rgba(255, 255, 255, 0.85); color: var(--gray); border-radius: 999px; width: 18px; height: 18px; line-height: 1; font-size: 12px; cursor: pointer; opacity: 0.35; transition: opacity 0.12s; }
+.wp-chat-del { position: absolute; top: 2px; right: 2px; z-index: 2; border: none; background: rgba(255, 255, 255, 0.85); color: var(--kleur-tekst-stil); border-radius: 999px; width: 18px; height: 18px; line-height: 1; font-size: 12px; cursor: pointer; opacity: 0.35; transition: opacity 0.12s; }
 .wp-chat-blok:hover .wp-chat-del { opacity: 1; }
 .wp-chat-del:hover { color: #c0392b; }
 /* Bevestigen in de rij zelf, nooit een browserpopup. */
-.wp-weg-vraag { position: absolute; top: 2px; right: 2px; z-index: 3; display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--fs-xs); color: var(--gray); background: #fff; border: 1px solid var(--card-border); border-radius: var(--r-sm); padding: 2px var(--s-2); }
-.wp-weg-vraag.wp-weg-naast { position: static; margin-left: var(--s-2); }
-.wp-weg-ja, .wp-weg-nee { border: 1px solid var(--card-border); background: #fff; cursor: pointer; font-size: var(--fs-xs); font-weight: 700; padding: 1px 7px; border-radius: var(--r-sm); }
+.wp-weg-vraag { position: absolute; top: 2px; right: 2px; z-index: 3; display: inline-flex; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-label); color: var(--kleur-tekst-stil); background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-klein); padding: 2px var(--ruimte-naast); }
+.wp-weg-vraag.wp-weg-naast { position: static; margin-left: var(--ruimte-naast); }
+.wp-weg-ja, .wp-weg-nee { border: 1px solid var(--kleur-rand-zacht); background: var(--kleur-kaart); cursor: pointer; font-size: var(--type-label); font-weight: 700; padding: 1px 7px; border-radius: var(--ronding-klein); }
 .wp-weg-ja { color: #B03A2E; border-color: #E6C3BD; }
 .wp-weg-ja:hover { background: #FBEDEA; }
-.wp-weg-nee { color: var(--gray); }
-.wp-weg-nee:hover { background: var(--orange-light); }
-.wp-chat-wis { margin-left: var(--s-2); border: none; background: none; color: var(--gray); font-size: var(--fs-md); line-height: 1; cursor: pointer; padding: 0 var(--s-1); border-radius: var(--r-sm); }
-.wp-chat-wis:hover { color: #c0392b; background: var(--orange-light); }
-.wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--orange-light); border: 1px solid var(--orange); border-radius: 8px; padding: 6px 9px; font-size: var(--fs-sm); }
-.wp-chat-antwoord { align-self: stretch; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: var(--fs-sm); line-height: 1.55; }
+.wp-weg-nee { color: var(--kleur-tekst-stil); }
+.wp-weg-nee:hover { background: var(--kleur-accent-vlak); }
+.wp-chat-wis { margin-left: var(--ruimte-naast); border: none; background: none; color: var(--kleur-tekst-stil); font-size: var(--type-kaartkop); line-height: 1; cursor: pointer; padding: 0 var(--ruimte-krap); border-radius: var(--ronding-klein); }
+.wp-chat-wis:hover { color: #c0392b; background: var(--kleur-accent-vlak); }
+.wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--kleur-accent-vlak); border: 1px solid var(--kleur-accent); border-radius: 8px; padding: 6px 9px; font-size: var(--type-bijschrift); }
+.wp-chat-antwoord { align-self: stretch; background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: 8px; padding: 7px 10px; font-size: var(--type-bijschrift); line-height: 1.55; }
 .wp-chat-antwoord ul { margin: 4px 0 4px 16px; padding: 0; }
 /* Een mislukte vraag, gemeld op de plek waar je hem stelde. */
-.wp-chat-fout { margin-top: var(--s-2); display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; background: #FBEDEA; border: 1px solid #E6C3BD; border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); }
-.wp-chat-fout-tekst { font-size: var(--fs-xs); line-height: var(--lh-xs); color: #A12622; flex: 1 1 12rem; }
-.wp-chat-acties { margin-top: 6px; display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.wp-chat-fout { margin-top: var(--ruimte-naast); display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-naast); flex-wrap: wrap; background: #FBEDEA; border: 1px solid #E6C3BD; border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); }
+.wp-chat-fout-tekst { font-size: var(--type-label); line-height: var(--regel-label); color: #A12622; flex: 1 1 12rem; }
+.wp-chat-acties { margin-top: 6px; display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
 .wp-chat-input { display: flex; gap: 6px; margin-top: 8px; }
-.wp-chat-input input { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 6px 9px; font-size: var(--fs-sm); font-family: inherit; }
-.wp-chat-input input:focus { outline: none; border-color: var(--orange); }
+.wp-chat-input input { flex: 1; border: 1px solid var(--kleur-rand); border-radius: 7px; padding: 6px 9px; font-size: var(--type-bijschrift); font-family: inherit; }
+.wp-chat-input input:focus { outline: none; border-color: var(--kleur-rand-accent); }
 /* Mail-modal v2: ontvanger-pills, e-mailveld, instructie en document-links. */
 .wp-mail-aud { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
-.wp-aud-pill { font-size: 11px; font-weight: 600; border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 3px 11px; cursor: pointer; color: var(--dark); }
-.wp-aud-pill.wp-aud-actief { color: var(--orange-dark); background: var(--orange-light); border-color: var(--orange); }
+.wp-aud-pill { font-size: 11px; font-weight: 600; border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); border-radius: 999px; padding: 3px 11px; cursor: pointer; color: var(--dark); }
+.wp-aud-pill.wp-aud-actief { color: var(--kleur-accent-diep); background: var(--kleur-accent-vlak); border-color: var(--kleur-rand-accent); }
 /* Het adresveld met naamvoorstellen: de lijst hangt onder het invulvak, dus het
    omhulsel moet de breedte van het vak innemen en het ankerpunt zijn. */
 .wp-mail-toveld { flex: 1; min-width: 180px; }
 .wp-mail-toveld .wp-mail-to { flex: none; width: 100%; }
-.wp-mail-to { flex: 1; min-width: 180px; border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
-.wp-mail-to:focus { outline: none; border-color: var(--orange); }
+.wp-mail-to { flex: 1; min-width: 180px; border: 1px solid var(--kleur-rand); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
+.wp-mail-to:focus { outline: none; border-color: var(--kleur-rand-accent); }
 .wp-mail-links { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
-.wp-mail-linkchip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; border: 1px solid var(--border); border-radius: 6px; padding: 2px 8px; cursor: pointer; background: #fff; }
-.wp-mail-linkchip input { accent-color: var(--orange); }
+.wp-mail-linkchip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; border: 1px solid var(--kleur-rand); border-radius: 6px; padding: 2px 8px; cursor: pointer; background: var(--kleur-kaart); }
+.wp-mail-linkchip input { accent-color: var(--kleur-accent); }
 .wp-mail-instrrij { display: flex; gap: 6px; margin: 4px 0 6px; }
-.wp-mail-instr { flex: 1; border: 1px solid var(--border); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
-.wp-mail-instr:focus { outline: none; border-color: var(--orange); }
-.wp-card { background: #fff; border: 1px solid var(--card-border); border-radius: var(--r-lg); padding: var(--s-4); box-shadow: var(--shadow-sm); }
+.wp-mail-instr { flex: 1; border: 1px solid var(--kleur-rand); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-family: inherit; }
+.wp-mail-instr:focus { outline: none; border-color: var(--kleur-rand-accent); }
+.wp-card { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-kaart); padding: var(--ruimte-groep); box-shadow: var(--diepte-rust); }
 /* Weekplanning-bord: accentstreepje links en een vaste kop, in dichte én open
    staat, zodat altijd duidelijk is waar je klikt om te toggelen. */
-.wp-board .wp-card { border-left: 3px solid var(--orange); border-radius: 14px; }
-.wp-board .wp-card.wp-open .wp-kop-rij { border-bottom: 1px solid #f0ebe5; padding-bottom: var(--s-2); margin-bottom: var(--s-2); }
+.wp-board .wp-card { border-left: 3px solid var(--kleur-accent); border-radius: 14px; }
+.wp-board .wp-card.wp-open .wp-kop-rij { border-bottom: 1px solid #f0ebe5; padding-bottom: var(--ruimte-naast); margin-bottom: var(--ruimte-naast); }
 /* Kaart-grid: puntjes | inhoud op volle breedte (clean, alles uitgelijnd). */
 .wp-card-grid { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; }
 /* Zonder sleephandvat (de kaart hangt dan onder een planningsregel die er al een
@@ -4065,13 +4065,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* De knopjes bovenin een kaart (Is dit doorgevoerd?, Opschonen) mogen kleiner
    dan de gewone .btn-klein elders: hier staan ze naast elkaar in een smalle
    kopbalk, niet los in een paneel. */
-.wp-kop-acties .btn.btn-ghost.btn-klein { padding: var(--s-1) var(--s-2); font-size: var(--fs-xs); }
-.wp-onder-regel { align-items: center; justify-content: flex-end; margin-top: var(--s-3); padding-top: var(--s-3); border-top: 1px solid #ececec; }
+.wp-kop-acties .btn.btn-ghost.btn-klein { padding: var(--ruimte-krap) var(--ruimte-naast); font-size: var(--type-label); }
+.wp-onder-regel { align-items: center; justify-content: flex-end; margin-top: var(--ruimte-regel); padding-top: var(--ruimte-regel); border-top: 1px solid #ececec; }
 /* Twee groepjes op de onderste regel: links "waar kan ik heen", rechts "wat stuur
    ik weg". Stonden eerder als zes gelijke pilletjes naast elkaar, waardoor Mail er
    even onschuldig bij stond als een link naar de live pagina. */
-.wp-onder-groep { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
-.wp-onder-scheiding { width: 1px; align-self: stretch; min-height: 18px; background: #e0e0e0; margin: 0 var(--s-1); }
+.wp-onder-groep { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--ruimte-naast); }
+.wp-onder-scheiding { width: 1px; align-self: stretch; min-height: 18px; background: var(--kleur-rand); margin: 0 var(--ruimte-krap); }
 .wp-onder-lab { font-size: var(--fs-xs, 10.5px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #8a8a8a); }
 /* Document-pil in dezelfde maat als de andere fase-pillen; status-pil (✓/Nog niet)
    helemaal rechts, klein en gecentreerd. De breedte zelf staat bij
@@ -4083,53 +4083,53 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    bestand en werd door de regel hierboven weer breed getrokken. Daardoor stond de
    hele statuskolom scheef. Nu staan ze samen, ná die regel, dus gelijk. */
 .wp-fase-chip.wp-fase-klaar,
-.wp-fase-chip.wp-fase-open { min-width: 34px; font-size: var(--fs-sm); }
+.wp-fase-chip.wp-fase-open { min-width: 34px; font-size: var(--type-bijschrift); }
 /* Doorgezet naar de sitebouwer, nog niet live: geen rood (dat leest als "jij moet
    nog iets doen") maar oranje wachtend. Tekstchip, dus wel de volle breedte. */
 .wp-fase-chip.wp-fase-wacht { color: #8a5000; background: #fff1e2; border-color: #f3d3b0; min-width: 62px; }
-.wp-maildatum { color: var(--orange-dark); font-weight: 600; text-decoration: underline dotted; cursor: pointer; }
+.wp-maildatum { color: var(--kleur-accent-diep); font-weight: 600; text-decoration: underline dotted; cursor: pointer; }
 .wp-maildatum:hover { text-decoration: underline; }
 .wp-card-grip { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: 5px; text-align: center; align-self: start; margin-top: 2px; }
-.wp-card-grip:hover { background: var(--gray-light); color: var(--dark); }
+.wp-card-grip:hover { background: var(--kleur-rustig); color: var(--dark); }
 .wp-card-grip:active { cursor: grabbing; }
-.wp-card-tile { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; color: var(--orange); background: linear-gradient(180deg, #fff8f3, #fff1e8); border: 1px solid #ffe0d2; cursor: pointer; }
+.wp-card-tile { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; color: var(--kleur-accent); background: linear-gradient(180deg, #fff8f3, #fff1e8); border: 1px solid #ffe0d2; cursor: pointer; }
 .wp-tile-svg { width: 21px; height: 21px; }
 .wp-card-acties-kolom { display: flex; flex-direction: column; align-items: stretch; gap: 6px; justify-content: flex-end; align-self: stretch; }
 .wp-meta-rij { display: flex; align-items: center; gap: 6px; margin-top: 9px; }
 .wp-card.wp-klaar { opacity: 0.62; }
 /* Titel, subtitel, chips en links allemaal op exact dezelfde linkerlijn: het
    caret hangt in de goot links van de tekst in plaats van de tekst in te duwen. */
-.wp-card-taak { position: relative; font-size: var(--fs-base); font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; color: var(--dark); }
+.wp-card-taak { position: relative; font-size: var(--type-lopend); font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; color: var(--dark); }
 .wp-card-taak { padding-left: 18px; }
 .wp-card-taak .wp-caret { position: absolute; left: 0; top: 0; margin-right: 0; }
-.wp-card-sub { font-size: var(--fs-sm); color: #45484c; margin: 1px 0 2px 0; line-height: 1.4; }
+.wp-card-sub { font-size: var(--type-bijschrift); color: #45484c; margin: 1px 0 2px 0; line-height: 1.4; }
 .wp-card.wp-klaar .wp-card-taak { text-decoration: line-through; }
-.wp-card-url { display: inline-block; margin-top: 3px; font-size: 11.5px; color: var(--orange-dark); text-decoration: underline; word-break: break-all; }
+.wp-card-url { display: inline-block; margin-top: 3px; font-size: 11.5px; color: var(--kleur-accent-diep); text-decoration: underline; word-break: break-all; }
 /* Rijke kaart-koppelingen (C3b): pagina, copy, bronmail, deep-link naar dashboard. */
-.wp-card-links { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: var(--s-2) 0 0; }
-.wp-link { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; color: var(--orange); text-decoration: none; border: 1px solid var(--border); border-radius: var(--r-full); padding: var(--s-1) var(--s-3); background: #fff; }
-.wp-link:hover { border-color: var(--orange); background: var(--orange-light); color: var(--orange-dark); }
+.wp-card-links { display: flex; flex-wrap: wrap; gap: var(--ruimte-naast); margin: var(--ruimte-naast) 0 0; }
+.wp-link { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600; color: var(--kleur-accent); text-decoration: none; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-pil); padding: var(--ruimte-krap) var(--ruimte-regel); background: var(--kleur-kaart); }
+.wp-link:hover { border-color: var(--kleur-rand-accent); background: var(--kleur-accent-vlak); color: var(--kleur-accent-diep); }
 .wp-link-btn { cursor: pointer; font-family: inherit; }
 .tvk-links { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 4px; }
 .wp-card-foot { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px solid #ececec; flex-wrap: wrap; }
 .wp-wie { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 8px; }
-.wp-wie.wie-seo { background: rgba(231, 119, 63, 0.14); color: var(--orange-dark); }
+.wp-wie.wie-seo { background: rgba(231, 119, 63, 0.14); color: var(--kleur-accent-diep); }
 .wp-wie.wie-dev { background: #e5edff; color: #2a4bad; }
-.wp-status { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700; padding: 1px var(--s-2); border-radius: var(--r-full); border: none; cursor: pointer; }
+.wp-status { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700; padding: 1px var(--ruimte-naast); border-radius: var(--ronding-pil); border: none; cursor: pointer; }
 .wp-status-gepland { background: #ececec; color: #555; }
 .wp-status-bezig { background: #fff2cc; color: #8a6d00; }
 .wp-status-klaar { background: #dcf5e3; color: #1c7a3f; }
 .wp-card-actions { margin-left: auto; display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; }
-.wp-icon { border: none; background: transparent; cursor: pointer; font-size: 13px; color: var(--gray); padding: 2px 4px; border-radius: 5px; line-height: 1; }
-.wp-icon:hover { background: var(--gray-light); color: var(--dark); }
+.wp-icon { border: none; background: transparent; cursor: pointer; font-size: 13px; color: var(--kleur-tekst-stil); padding: 2px 4px; border-radius: 5px; line-height: 1; }
+.wp-icon:hover { background: var(--kleur-rustig); color: var(--dark); }
 .wp-del:hover { color: #c0392b; }
 /* Kleine tekstknoppen op de taakkaart (mail klant/dev, open in Pagina's) */
-.wp-act { border: 1px solid var(--border); background: var(--white); cursor: pointer; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; color: #5b5b5d; padding: var(--s-1) var(--s-3); border-radius: var(--r-full); white-space: nowrap; }
-.wp-act:hover { background: var(--gray-light); color: var(--dark); }
-.wp-act-klant { color: var(--orange); border-color: #f2c9b0; }
-.wp-act-klant:hover { background: var(--orange-light); color: var(--orange-dark); }
-.wp-act-aan { background: #e7f6ea; border-color: #1c7a3f; color: #1c7a3f; }
-.wp-act-aan:hover { background: #e7f6ea; color: #1c7a3f; }
+.wp-act { border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); cursor: pointer; font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600; color: #5b5b5d; padding: var(--ruimte-krap) var(--ruimte-regel); border-radius: var(--ronding-pil); white-space: nowrap; }
+.wp-act:hover { background: var(--kleur-rustig); color: var(--dark); }
+.wp-act-klant { color: var(--kleur-accent); border-color: #f2c9b0; }
+.wp-act-klant:hover { background: var(--kleur-accent-vlak); color: var(--kleur-accent-diep); }
+.wp-act-aan { background: var(--kleur-goed-vlak); border-color: #1c7a3f; color: #1c7a3f; }
+.wp-act-aan:hover { background: var(--kleur-goed-vlak); color: #1c7a3f; }
 
 /* "Mail naar klant"-composer (overlay met bewerkbare preview) */
 /* Zwevend in het midden, met ruimte rondom. Het venster stond eerder vast aan de
@@ -4137,28 +4137,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    schuift de kop onder de kopbalk door en zie je niet meer waar je in zit. Nu
    past het venster altijd binnen het scherm (de inhoud scrolt binnenin) en blijft
    de kop met het kruisje bovenaan staan. */
-.wp-mail-overlay { position: fixed; inset: 0; z-index: 10002; background: rgba(0,0,0,0.28); display: flex; align-items: center; justify-content: center; padding: var(--s-6) var(--s-4); overflow-y: auto; }
-.wp-mail-modal { background: var(--white); border: 1px solid var(--border); border-radius: 14px; width: 100%; max-width: 640px; padding: 0 20px 16px; box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+.wp-mail-overlay { position: fixed; inset: 0; z-index: 10002; background: rgba(0,0,0,0.28); display: flex; align-items: center; justify-content: center; padding: var(--s-6) var(--ruimte-groep); overflow-y: auto; }
+.wp-mail-modal { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: 14px; width: 100%; max-width: 640px; padding: 0 20px 16px; box-shadow: 0 18px 50px rgba(0,0,0,0.25);
   max-height: calc(100vh - var(--s-12)); overflow-y: auto; overscroll-behavior: contain; }
-.wp-mail-head { position: sticky; top: 0; z-index: 1; background: var(--white); margin: 0 -20px; padding: 18px 20px 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-.wp-mail-title { font-weight: 800; color: var(--orange-dark); font-size: 15px; }
+.wp-mail-head { position: sticky; top: 0; z-index: 1; background: var(--kleur-kaart); margin: 0 -20px; padding: 18px 20px 6px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wp-mail-title { font-weight: 800; color: var(--kleur-accent-diep); font-size: 15px; }
 .wp-mail-sub { font-size: 13px; margin-top: 4px; }
 .wp-mail-hint { font-size: 12px; margin: 6px 0 10px; }
-.wp-mail-edit { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; background: #fffdfb; outline: none; }
-.wp-mail-edit:focus { border-color: var(--orange); }
+.wp-mail-edit { border: 1px solid var(--kleur-rand); border-radius: 10px; padding: 12px 14px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; background: #fffdfb; outline: none; }
+.wp-mail-edit:focus { border-color: var(--kleur-rand-accent); }
 /* Een meegestuurd document staat in de mail als klikbare naam, niet als een
    Google Docs-adres van honderd tekens. Wat je hier ziet is wat de ontvanger
    krijgt, dus het hoort er ook als link uit te zien. */
-.wp-mail-edit a { color: var(--link); text-decoration: underline; cursor: pointer; }
+.wp-mail-edit a { color: var(--kleur-link); text-decoration: underline; cursor: pointer; }
 .wp-mail-linkblok div { margin-top: 2px; }
-.wp-mail-edit:empty::before { content: attr(data-placeholder); color: var(--gray); }
-.wp-mail-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--s-2); margin-top: var(--s-3); flex-wrap: wrap; }
+.wp-mail-edit:empty::before { content: attr(data-placeholder); color: var(--kleur-tekst-stil); }
+.wp-mail-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--ruimte-naast); margin-top: var(--ruimte-regel); flex-wrap: wrap; }
 /* Herinnering om achter een reactie aan te gaan: links in de voet, zodat de
    verstuurknop rechts blijft staan waar hij altijd stond. */
-.wp-mail-herinner { display: flex; align-items: center; gap: var(--s-2); margin-right: auto;
-  font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); }
-.wp-mail-herinner input[type="number"] { width: 3.5rem; padding: var(--s-1) var(--s-2);
-  border: 1px solid var(--border); border-radius: var(--r-sm); font: inherit; text-align: center; }
+.wp-mail-herinner { display: flex; align-items: center; gap: var(--ruimte-naast); margin-right: auto;
+  font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
+.wp-mail-herinner input[type="number"] { width: 3.5rem; padding: var(--ruimte-krap) var(--ruimte-naast);
+  border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); font: inherit; text-align: center; }
 .wp-mail-herinner input[type="number"]:disabled { opacity: .5; }
 /* Staan er twee van deze checkboxen in dezelfde voet (zoals bij het doorzetten
    naar de developer: "mail erachteraan" én "herinner me"), dan hoort alleen de
@@ -4244,39 +4244,39 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* Cijfers op de kaart: uit de meting, één vaste plek, dus nooit meer twee
    metingen die elkaar tegenspreken. */
 .wp-info-cijfers {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
-  background: var(--gray-light); border-radius: var(--r-sm);
-  padding: var(--s-1) var(--s-3); margin-bottom: var(--s-3);
-  display: inline-flex; align-items: center; gap: var(--s-2);
+  font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
+  background: var(--kleur-rustig); border-radius: var(--ronding-klein);
+  padding: var(--ruimte-krap) var(--ruimte-regel); margin-bottom: var(--ruimte-regel);
+  display: inline-flex; align-items: center; gap: var(--ruimte-naast);
 }
 /* Twee getallen op één kaart spraken elkaar tegen: de verse meting bovenaan en een
    ouder getal in een geschreven zin eronder. Beide houden hun eigen label, zodat
    je nooit meer hoeft te raden welke van nu is. */
 .wp-cijfer-nu-lab, .wp-cijfer-toen-lab {
   font-size: 9.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
-  border-radius: var(--r-full); padding: 1px 6px; white-space: nowrap;
+  border-radius: var(--ronding-pil); padding: 1px 6px; white-space: nowrap;
 }
 .wp-cijfer-nu-lab { color: #1b7f3b; background: #e7f6ec; border: 1px solid #bfe6cc; }
-.wp-cijfer-toen-lab { color: var(--gray); background: #efedea; border: 1px solid #e0dcd7; margin-left: 4px; }
+.wp-cijfer-toen-lab { color: var(--kleur-tekst-stil); background: #efedea; border: 1px solid #e0dcd7; margin-left: 4px; }
 .wp-cijfer-toen { white-space: nowrap; }
 
 /* Wat niet in de begrensde kaart past: ingeklapt, niets weggegooid. */
-.wp-info-rest { margin-top: var(--s-3); }
+.wp-info-rest { margin-top: var(--ruimte-regel); }
 .wp-info-rest > summary {
-  cursor: pointer; font-size: var(--fs-xs); line-height: var(--lh-xs);
-  color: var(--gray); font-weight: 600; list-style: none;
+  cursor: pointer; font-size: var(--type-label); line-height: var(--regel-label);
+  color: var(--kleur-tekst-stil); font-weight: 600; list-style: none;
 }
 .wp-info-rest > summary::-webkit-details-marker { display: none; }
-.wp-info-rest > summary::before { content: "▸ "; color: var(--orange); }
+.wp-info-rest > summary::before { content: "▸ "; color: var(--kleur-accent); }
 .wp-info-rest[open] > summary::before { content: "▾ "; }
-.wp-info-rest > summary:hover { color: var(--orange-dark); }
+.wp-info-rest > summary:hover { color: var(--kleur-accent-diep); }
 
 /* Sturing per fase pas bij het openklappen; anders lees je de instructie voor
    Copy terwijl je bij Analyse zit. */
 .wp-fase-uitleg {
-  background: none; border: none; padding: 0 var(--s-1); cursor: pointer;
-  font: inherit; font-size: var(--fs-xs); line-height: var(--lh-xs);
-  color: var(--orange-dark); font-weight: 600;
+  background: none; border: none; padding: 0 var(--ruimte-krap); cursor: pointer;
+  font: inherit; font-size: var(--type-label); line-height: var(--regel-label);
+  color: var(--kleur-accent-diep); font-weight: 600;
 }
 .wp-fase-uitleg:hover { text-decoration: underline; }
 .act-card { border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 10px; background: #fff; padding: 10px 12px; }
@@ -4301,30 +4301,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-group { margin-top: 14px; }
 .wp-group:first-of-type { margin-top: 8px; }
 .wp-group-head { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
-.wp-head-bezig { color: var(--orange-dark); }
-.wp-head-gepland { color: var(--link); }
+.wp-head-bezig { color: var(--kleur-accent-diep); }
+.wp-head-gepland { color: var(--kleur-link); }
 .wp-head-gedaan { color: #1e824c; }
 .wp-head-toggle { width: 100%; background: none; border: none; padding: 0; cursor: pointer; justify-content: space-between; font: inherit; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; }
-.wp-count { font-size: 11px; font-weight: 700; color: var(--gray); background: #f0f0f0; border-radius: 9px; padding: 1px 8px; }
+.wp-count { font-size: 11px; font-weight: 700; color: var(--kleur-tekst-stil); background: #f0f0f0; border-radius: 9px; padding: 1px 8px; }
 /* BELANGRIJK: alleen voor het werkplan-paneel. Ongescoped overschreef deze
    regel stiekem de padding van de weekplan-projectkaarten (zelfde classnaam),
    waardoor die altijd te krap stonden. */
-.wp-panel .wp-card { border: 1px solid var(--border); border-radius: var(--r-md); background: #fff; padding: var(--s-2) var(--s-3); margin-bottom: var(--s-2); }
+.wp-panel .wp-card { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); background: var(--kleur-kaart); padding: var(--ruimte-naast) var(--ruimte-regel); margin-bottom: var(--ruimte-naast); }
 .wp-panel .wp-card:last-child { margin-bottom: 0; }
 .wp-card-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.wp-slug { font-size: 13px; font-weight: 700; color: var(--link); text-decoration: none; word-break: break-word; }
+.wp-slug { font-size: 13px; font-weight: 700; color: var(--kleur-link); text-decoration: none; word-break: break-word; }
 .wp-slug:hover { text-decoration: underline; }
 .wp-chip { font-size: 10px; font-weight: 700; border-radius: 6px; padding: 1px 7px; }
 .wp-chip-plan { color: #8a5a00; background: #fff3d9; }
-.wp-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--gray); margin-top: 4px; }
-.wp-kw { font-weight: 600; color: #444; }
+.wp-meta { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--kleur-tekst-stil); margin-top: 4px; }
+.wp-kw { font-weight: 600; color: var(--kleur-tekst-zacht); }
 .wp-docs { color: #1e824c; }
 .wp-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.wp-btn { font-family: inherit; font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 7px; border: 1px solid var(--orange); background: var(--orange); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
-.wp-btn:hover { background: var(--orange-dark); border-color: var(--orange-dark); }
+.wp-btn { font-family: inherit; font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 7px; border: 1px solid var(--kleur-accent); background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); cursor: pointer; text-decoration: none; display: inline-block; }
+.wp-btn:hover { background: var(--kleur-accent-diep); border-color: var(--kleur-accent-diep); }
 .wp-btn.busy { opacity: 0.6; pointer-events: none; }
-.wp-btn-ghost { background: #fff; color: var(--gray); border-color: var(--border); }
-.wp-btn-ghost:hover { background: var(--orange-light); color: var(--orange-dark); border-color: var(--orange); }
+.wp-btn-ghost { background: var(--kleur-kaart); color: var(--kleur-tekst-stil); border-color: var(--kleur-rand); }
+.wp-btn-ghost:hover { background: var(--kleur-accent-vlak); color: var(--kleur-accent-diep); border-color: var(--kleur-rand-accent); }
 .wp-msg { margin-top: 7px; font-size: 12px; color: #1e824c; line-height: 1.4; }
 .wp-msg-err { color: #b3261e; }
 
@@ -4335,23 +4335,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    sitebouwer). De meting eronder maakt dat oordeel navolgbaar. */
 .wp-head-geschreven { color: #8a5a00; }
 .wp-chip-geschreven { color: #8a5a00; background: #fff3d9; }
-.wp-chip-onbekend { color: var(--gray); background: var(--gray-light); }
+.wp-chip-onbekend { color: var(--kleur-tekst-stil); background: var(--kleur-rustig); }
 
 /* Sitebouwer-veld op de Klant-tab. */
 .dev-veld { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
 .dev-veld .compose-input { flex: 1 1 240px; min-width: 200px; }
 .dev-veld-msg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); }
-.wp-live-meting { margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); }
-.wp-check-btn { font-size: var(--fs-xs); font-weight: 600; padding: var(--s-1) var(--s-3); border-radius: var(--r-sm); text-transform: none; letter-spacing: 0; }
-.wp-check-msg { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted); background: var(--orange-light); border-radius: var(--r-sm); padding: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
+.wp-live-meting { margin-top: var(--ruimte-krap); font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
+.wp-check-btn { font-size: var(--type-label); font-weight: 600; padding: var(--ruimte-krap) var(--ruimte-regel); border-radius: var(--ronding-klein); text-transform: none; letter-spacing: 0; }
+.wp-check-msg { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); background: var(--kleur-accent-vlak); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); margin-bottom: var(--ruimte-regel); }
 
 /* Documenten als klikbare chips in plaats van kale tekst ("docs: analyse, copy").
    Elke verwijzing naar een document is één klik weg; harde opmaakregel. */
-.wp-doc-chips { display: inline-flex; flex-wrap: wrap; gap: var(--s-1); }
-.wp-doc-chip { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; border-radius: var(--r-sm); padding: 0 var(--s-2); text-decoration: none; color: #1e824c; background: #eaf6ef; border: 1px solid #cfe8da; }
-.wp-doc-chip:hover { background: #1e824c; border-color: #1e824c; color: #fff; }
-.wp-doc-chip-leeg { color: var(--gray); background: var(--gray-light); border-color: var(--border); cursor: default; }
-.wp-doc-chip-leeg:hover { background: var(--gray-light); border-color: var(--border); color: var(--gray); }
+.wp-doc-chips { display: inline-flex; flex-wrap: wrap; gap: var(--ruimte-krap); }
+.wp-doc-chip { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600; border-radius: var(--ronding-klein); padding: 0 var(--ruimte-naast); text-decoration: none; color: #1e824c; background: #eaf6ef; border: 1px solid #cfe8da; }
+.wp-doc-chip:hover { background: #1e824c; border-color: #1e824c; color: var(--kleur-tekst-op-vlak); }
+.wp-doc-chip-leeg { color: var(--kleur-tekst-stil); background: var(--kleur-rustig); border-color: var(--kleur-rand); cursor: default; }
+.wp-doc-chip-leeg:hover { background: var(--kleur-rustig); border-color: var(--kleur-rand); color: var(--kleur-tekst-stil); }
 
 /* ── Documenten-tab: alles wat we voor deze klant maakten, per maand ── */
 .doc-samenvatting { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin-bottom: var(--s-4); }
@@ -4454,13 +4454,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* De fase-bullet vervangt het aankruisvakje: hij zegt iets, hij doet niets. */
 .wp-fase-bullet {
   width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto;
-  border: 1.5px solid var(--border); background: #fff;
+  border: 1.5px solid var(--kleur-rand); background: var(--kleur-kaart);
 }
 .wp-fase-bullet.aan { border-color: #1e824c; background: #1e824c; }
 
 /* Een mailverwijzing is voortaan een echte link. Kennen we de mail niet, dan is het
    gewone tekst: liever geen aanwijzing dan een oranje woord dat nergens heen gaat. */
-.wp-maillink { color: var(--orange-dark); font-weight: 600; text-decoration: none; }
+.wp-maillink { color: var(--kleur-accent-diep); font-weight: 600; text-decoration: none; }
 .wp-maillink:hover { text-decoration: underline; }
 
 /* "Eén volgende zet" op een werkplan-kaart */
@@ -4495,7 +4495,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* Links de naam, rechts de verse meting: één regel, want het is één zin ("dit
    is de pagina, en zo staat hij er nu voor"). */
 .wp-overdeze-kop { font-size: var(--fs-xs, 10.5px); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted, #5e6063);
-  display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); flex-wrap: wrap; }
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-naast); flex-wrap: wrap; }
 /* De meting is een cijfer, geen kopje: de hoofdletters en de letterafstand van
    de kopregel horen er niet overheen te lopen, en de marge van de losse balk
    die hij hiervoor was moet eraf. */
@@ -4504,7 +4504,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* Achtergrond en afspraken, documenten, oude versies: één rij knoppen, hooguit
    één open, en het paneel eronder is de volle breedte van de kaart. Hiervoor
    had elk van de drie zijn eigen klepje op zijn eigen plek in de kaart. */
-.wp-vouwrij { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
+.wp-vouwrij { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ruimte-naast); }
 /* De knoppen in deze rij zijn gewoon `btn btn-quiet btn-klein`. Hier staat
    alleen wat de rij er extra van vraagt: compacter, en hoe een openstaande knop
    eruitziet. Dat waren drie eigen knopnamen (wp-vouwknop, -aan, -pijl), en dat
@@ -4512,8 +4512,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
    Open of dicht staat nu in `aria-expanded`, dus de stand zit in de knop zelf en
    niet in een tweede classnaam ernaast; een schermlezer hoort hem meteen mee.
    Het pijltje is dezelfde `.strategy-caret` als in elke andere uitklapper. */
-.wp-vouwrij .btn { font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600; padding: var(--s-1) var(--s-2); gap: var(--s-1); }
-.wp-vouwrij .btn[aria-expanded="true"] { background: var(--orange-light); border-color: var(--orange-light); color: var(--orange-dark); }
+.wp-vouwrij .btn { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600; padding: var(--ruimte-krap) var(--ruimte-naast); gap: var(--ruimte-krap); }
+.wp-vouwrij .btn[aria-expanded="true"] { background: var(--kleur-accent-vlak); border-color: var(--kleur-accent-vlak); color: var(--kleur-accent-diep); }
 .wp-vouwpaneel { width: 100%; }
 
 /* "Alles in één keer" hoort bij de eerste drie fases samen, niet in de Copy-rij:
@@ -5219,24 +5219,24 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    oranje uit de kennisbank-chip) maakt in één oogopslag duidelijk dat dit een
    drop-doel is, ook al is hij klein. Klik opent het volledige blok eronder. */
 .wp-docchip {
-  display: inline-flex; align-items: center; gap: var(--s-1);
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 600;
-  padding: 2px var(--s-2); border-radius: var(--r-sm);
-  border: 1px dashed var(--orange); background: var(--brand-orange-faint); color: var(--orange-dark);
+  display: inline-flex; align-items: center; gap: var(--ruimte-krap);
+  font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600;
+  padding: 2px var(--ruimte-naast); border-radius: var(--ronding-klein);
+  border: 1px dashed var(--kleur-accent); background: var(--kleur-accent-waas); color: var(--kleur-accent-diep);
   cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s;
 }
-.wp-docchip:hover:not(:disabled), .wp-docchip-actief { background: var(--orange-light); border-color: var(--orange-dark); }
+.wp-docchip:hover:not(:disabled), .wp-docchip-actief { background: var(--kleur-accent-vlak); border-color: var(--kleur-accent-diep); }
 .wp-docchip:disabled { opacity: 0.6; cursor: default; }
 .wp-docdrop-verborgen { display: none; }
 .wp-docdrop-kies {
   border: 0; background: transparent; padding: 0; cursor: pointer;
-  color: var(--orange-dark); text-decoration: underline; text-underline-offset: 2px;
+  color: var(--kleur-accent-diep); text-decoration: underline; text-underline-offset: 2px;
   font-size: inherit; font-family: inherit;
 }
-.wp-docdrop-kies:hover:not(:disabled) { color: var(--orange); }
+.wp-docdrop-kies:hover:not(:disabled) { color: var(--kleur-accent); }
 .wp-docdrop-kies:disabled { opacity: .5; cursor: default; }
 .wp-docvoorstel-tekst.md p { margin: 0; }
-.wp-docvoorstel-tekst.md p + p { margin-top: var(--s-2); }
+.wp-docvoorstel-tekst.md p + p { margin-top: var(--ruimte-naast); }
 
 /* Taak die al in de weekplanning staat: één grijs regeltje in het chatantwoord.
    De volledige kaart hoort maar op één plek te staan, en dat is het bord. */
@@ -5265,8 +5265,8 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    Elke kaart is nu zelf een doelgebied; de streep toont waar hij terechtkomt. */
 .wp-kaart-doel { position: relative; }
 .wp-kaart-doel-aan::before {
-  content: ""; position: absolute; left: 0; right: 0; top: calc(var(--s-1) * -1);
-  height: 3px; border-radius: var(--r-full); background: var(--orange, #F15829);
+  content: ""; position: absolute; left: 0; right: 0; top: calc(var(--ruimte-krap) * -1);
+  height: 3px; border-radius: var(--ronding-pil); background: var(--orange, #F15829);
   box-shadow: 0 0 0 3px rgba(241, 88, 41, 0.18);
 }
 
@@ -5320,21 +5320,21 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    de weekkop, dan is de week al gekozen op het moment dat je klikt. */
 .wp-col-plus {
   width: 20px; height: 20px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--border); background: #fff; color: var(--gray);
-  border-radius: var(--r-sm); font-size: 15px; font-weight: 700; cursor: pointer; padding: 0;
+  border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); color: var(--kleur-tekst-stil);
+  border-radius: var(--ronding-klein); font-size: 15px; font-weight: 700; cursor: pointer; padding: 0;
 }
-.wp-col-plus:hover { border-color: var(--orange); color: var(--orange); background: var(--orange-light); }
-.wp-nieuw { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); margin-bottom: var(--s-2);
-  background: #fff; border: 1px solid var(--orange); border-radius: var(--r-md); }
+.wp-col-plus:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); background: var(--kleur-accent-vlak); }
+.wp-nieuw { display: flex; flex-direction: column; gap: var(--ruimte-naast); padding: var(--ruimte-regel); margin-bottom: var(--ruimte-naast);
+  background: var(--kleur-kaart); border: 1px solid var(--kleur-accent); border-radius: var(--ronding-knop); }
 .wp-nieuw input, .wp-nieuw select {
-  font: inherit; font-size: var(--fs-sm); padding: 6px var(--s-2);
-  border: 1px solid var(--border); border-radius: var(--r-sm); background: #fff; color: inherit; width: 100%;
+  font: inherit; font-size: var(--type-bijschrift); padding: 6px var(--ruimte-naast);
+  border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart); color: inherit; width: 100%;
 }
 .wp-nieuw-taak { font-weight: 600; }
-.wp-nieuw-rij { display: flex; align-items: center; gap: var(--s-2); }
+.wp-nieuw-rij { display: flex; align-items: center; gap: var(--ruimte-naast); }
 .wp-nieuw-rij select { width: auto; }
 /* Een zelf aangemaakte taak heeft nog geen achtergrond; dan wijst dit de weg. */
-.wp-overdeze-leeg { font-size: var(--fs-sm); line-height: var(--lh-sm); padding: var(--s-1) 0; }
+.wp-overdeze-leeg { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); padding: var(--ruimte-krap) 0; }
 
 /* ── Overview: drie blokken onder één kop ──
    Links stond alles onder elkaar open (de assistent met al zijn onderwerpen, en
@@ -5612,8 +5612,8 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    geen rand, geen vlak, gewoon een klein kruisje rechts. Rood pas als je erop
    staat, want dan gaat het ergens over. Alleen hier; elders (in de kaartkop)
    houdt hetzelfde .wp-del zijn knopvorm, want daar staat hij tussen knoppen. */
-.wb-rij .wp-del { border-color: transparent; background: transparent; color: var(--gray); }
-.wb-rij .wp-del:hover:not(:disabled) { background: transparent; border-color: transparent; color: var(--red); }
+.wb-rij .wp-del { border-color: transparent; background: transparent; color: var(--kleur-tekst-stil); }
+.wb-rij .wp-del:hover:not(:disabled) { background: transparent; border-color: transparent; color: var(--kleur-fout); }
 .wb-rij-open { background: var(--orange-light); }
 .wb-rij.wb-sleept { opacity: 0.45; }
 .wb-greep { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: 13px; line-height: 1; padding: 3px 2px; border-radius: var(--r-sm); text-align: center; }
@@ -5816,7 +5816,7 @@ a.wb-pad:hover { text-decoration: underline; }
 .pl-nieuw-rij { display: flex; align-items: center; gap: var(--s-2); }
 .pl-nieuw-spacer { flex: 1; }
 
-.wp-bordlink { margin-left: var(--s-3); font-size: var(--fs-xs); font-weight: 700; color: var(--orange-dark); text-decoration: underline; }
+.wp-bordlink { margin-left: var(--ruimte-regel); font-size: var(--type-label); font-weight: 700; color: var(--kleur-accent-diep); text-decoration: underline; }
 .wp-bordlink:hover { color: var(--accent); }
 
 /* ── De publieke deelpagina van het opruimrapport ──────────────────────────
@@ -5872,14 +5872,14 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
    in een eigen classnaam: dat scheelt weer een knopsoort, en een schermlezer
    zegt nu zelf of hij ingedrukt staat. */
 .wp-fase-rij .btn[aria-pressed="true"],
-.wp-fase-rij .btn[aria-pressed="true"]:hover:not(:disabled) { background: var(--red-light); border-color: var(--red); color: var(--red); }
+.wp-fase-rij .btn[aria-pressed="true"]:hover:not(:disabled) { background: var(--kleur-fout-vlak); border-color: var(--kleur-fout); color: var(--kleur-fout); }
 
 /* ── De volledige projectkaart binnen het weekbord ──
    Het is dezelfde kaart als op het tabblad Taken, met alle infoblokken, fases,
    knoppen en de chat; alleen strakker gezet. Zo hoeft er geen tweede, magere
    versie naast te bestaan die vanzelf achterloopt. */
 .wb-kaart { padding: 0 var(--s-2) var(--s-3) 34px; border-bottom: 1px solid var(--card-border); background: #FFFDFB; }
-.wb-kaart .wp-card { border: 1px solid var(--card-border); border-radius: var(--r-md); box-shadow: none; margin: 0; padding: var(--s-3); }
+.wb-kaart .wp-card { border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); box-shadow: none; margin: 0; padding: var(--ruimte-regel); }
 
 /* ── De opengeklapte taak staat los van de rij eronder ──────────────────────
    Klap je een taak open, dan liep hij visueel door in de volgende regel: de taak
@@ -6775,11 +6775,11 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .btn.btn-ghost.btn-klein { font-size: var(--fs-sm); padding: var(--s-2) var(--s-3); }
 
 /* De uitzonderingen die moeten blijven winnen. */
-.wp-fase-btn.wp-fase-btn-primair { background: var(--orange); border-color: var(--orange); color: var(--white); }
+.wp-fase-btn.wp-fase-btn-primair { background: var(--kleur-accent); border-color: var(--kleur-rand-accent); color: var(--kleur-tekst-op-vlak); }
 .btn-ghost.btn-ghost-aan { background: #e7f6ea; border-color: #1c7a3f; color: #1c7a3f; }
 .wp-icon.wp-del:hover:not(:disabled) { background: #FDECEA; border-color: #B3261E; color: #B3261E; }
 /* Een pictogramknop blijft vierkant genoeg om als icoon te lezen. */
-.wp-icon, .wp-titel-pen { padding: 0 var(--s-2); min-width: 22px; height: 22px; }
+.wp-icon, .wp-titel-pen { padding: 0 var(--ruimte-naast); min-width: 22px; height: 22px; }
 /* Een <a> kent geen `disabled`; deze klasse doet er hetzelfde mee (gedimd, niet
    klikbaar) als .btn:disabled voor een echte knop. */
 .btn-uit { opacity: 0.45; pointer-events: none; cursor: default; }
@@ -6787,23 +6787,23 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 /* ═══ DE PROJECTKAART IN DE PLANNING ═══════════════════════════════════════ */
 /* Hangt de kaart onder een regel, dan zegt die regel de titel, het pad en de
    fase-letters al. Wat overblijft is een dunne actiebalk. */
-.wp-kop-balk { justify-content: flex-end; padding-bottom: var(--s-2); }
+.wp-kop-balk { justify-content: flex-end; padding-bottom: var(--ruimte-naast); }
 .wp-kop-balk .wp-kop-tekst { flex: 1 1 auto; min-width: 0; }
-.wp-kop-balk .wp-kop-acties { flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
+.wp-kop-balk .wp-kop-acties { flex-wrap: wrap; justify-content: flex-end; gap: var(--ruimte-naast); }
 /* De fase-letters en het tweede sleephandvat staan in de regel erboven al. */
 .wb-rij-open .wb-rail { visibility: hidden; }
 .wb-kaart .wp-card-grip { display: none; }
 
 /* Het archief: rustige regels met de datum ervoor, en lange links breken af in
    plaats van buiten de kaart te lopen. */
-.wp-archief { list-style: none; margin: var(--s-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-3); }
-.wp-archief li { display: flex; flex-direction: column; gap: 2px; padding-left: var(--s-3); border-left: 2px solid var(--card-border); }
-.wp-archief-kop { display: flex; align-items: baseline; gap: var(--s-2); }
-.wp-archief-datum { font-size: var(--fs-xs); font-weight: 800; color: var(--gray); }
-.wp-archief-soort { font-size: var(--fs-xs); color: var(--gray); }
-.wp-archief-tekst { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--dark); white-space: pre-wrap; }
+.wp-archief { list-style: none; margin: var(--ruimte-naast) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-regel); }
+.wp-archief li { display: flex; flex-direction: column; gap: 2px; padding-left: var(--ruimte-regel); border-left: 2px solid var(--kleur-rand-zacht); }
+.wp-archief-kop { display: flex; align-items: baseline; gap: var(--ruimte-naast); }
+.wp-archief-datum { font-size: var(--type-label); font-weight: 800; color: var(--kleur-tekst-stil); }
+.wp-archief-soort { font-size: var(--type-label); color: var(--kleur-tekst-stil); }
+.wp-archief-tekst { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--dark); white-space: pre-wrap; }
 /* De waarschuwing boven het archief: dit is oude tekst, geen geldende afspraak. */
-.wp-archief-uitleg { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); margin: var(--s-2) 0 0; }
+.wp-archief-uitleg { font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); margin: var(--ruimte-naast) 0 0; }
 /* Een lange mail-link is één woord zonder spaties en duwde de kaart uit beeld.
    LET OP, dit ging op 6 augustus 2026 mis: hier stond `overflow-wrap: anywhere`
    op de héle kaart (.wp-card). Die eigenschap breekt niet alleen lange woorden
@@ -6819,11 +6819,11 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .wp-info-rest li { overflow-wrap: break-word; word-break: break-word; }
 
 /* Ingeklapte blokken in de kaart: zelfde rustige kop als de rest. */
-.wp-inklap > summary { cursor: pointer; font-size: var(--fs-xs); font-weight: 700; color: var(--gray); padding: var(--s-2) 0; list-style: none; }
+.wp-inklap > summary { cursor: pointer; font-size: var(--type-label); font-weight: 700; color: var(--kleur-tekst-stil); padding: var(--ruimte-naast) 0; list-style: none; }
 .wp-inklap > summary::-webkit-details-marker { display: none; }
-.wp-inklap > summary::before { content: "▸ "; color: var(--orange); }
+.wp-inklap > summary::before { content: "▸ "; color: var(--kleur-accent); }
 .wp-inklap[open] > summary::before { content: "▾ "; }
-.wp-inklap > summary:hover { color: var(--orange-dark); }
+.wp-inklap > summary:hover { color: var(--kleur-accent-diep); }
 
 /* De poort-blokkade op het profielscherm: oplossen waar je staat, niet elders. */
 .gmb-poort {
@@ -7102,25 +7102,25 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 /* De uitslag van "Is dit doorgevoerd?": per punt het oordeel met het bewijs
    ernaast. Bewust geen kleurvlak over de hele kaart; het is een meting, geen
    waarschuwing. */
-.wp-controle { margin: var(--s-2) 0 var(--s-3); padding: var(--s-3); border: 1px solid var(--card-border); border-left: 3px solid var(--gray); border-radius: var(--r-md); background: var(--white); }
+.wp-controle { margin: var(--ruimte-naast) 0 var(--ruimte-regel); padding: var(--ruimte-regel); border: 1px solid var(--kleur-rand-zacht); border-left: 3px solid var(--kleur-tekst-stil); border-radius: var(--ronding-knop); background: var(--kleur-kaart); }
 .wp-controle-ok { border-left-color: #1c7a3f; }
 .wp-controle-niet { border-left-color: #B3261E; }
-.wp-controle-kop { font-size: var(--fs-sm); line-height: var(--lh-sm); font-weight: 700; color: var(--dark); }
-.wp-controle-lijst { list-style: none; margin: var(--s-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
-.wp-controle-punt { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--s-2); font-size: var(--fs-xs); line-height: var(--lh-xs); }
-.wp-controle-punt::before { content: "•"; font-weight: 800; color: var(--gray); }
+.wp-controle-kop { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 700; color: var(--dark); }
+.wp-controle-lijst { list-style: none; margin: var(--ruimte-naast) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+.wp-controle-punt { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--ruimte-naast); font-size: var(--type-label); line-height: var(--regel-label); }
+.wp-controle-punt::before { content: "•"; font-weight: 800; color: var(--kleur-tekst-stil); }
 .wp-cp-goed::before { content: "✓"; color: #1c7a3f; }
 .wp-cp-niet::before { content: "✕"; color: #B3261E; }
-.wp-cp-onmeetbaar::before { content: "?"; color: var(--gray); }
+.wp-cp-onmeetbaar::before { content: "?"; color: var(--kleur-tekst-stil); }
 .wp-controle-label { color: var(--dark); }
-.wp-controle .btn-ghost { margin-top: var(--s-2); }
+.wp-controle .btn-ghost { margin-top: var(--ruimte-naast); }
 /* Het bewijs onder een controlepunt: welke koppen we zochten en welke er misten.
    Dicht by default, want het getal volstaat meestal; open zodra je wilt weten
    waarom een uitkomst is wat hij is. */
-.wp-controle-details { flex-basis: 100%; margin-top: var(--s-1); font-size: var(--fs-xs); line-height: var(--lh-xs); }
+.wp-controle-details { flex-basis: 100%; margin-top: var(--ruimte-krap); font-size: var(--type-label); line-height: var(--regel-label); }
 .wp-controle-details > summary { cursor: pointer; color: var(--brand); }
-.wp-controle-bron { margin: var(--s-1) 0 0; }
-.wp-controle-koppen { list-style: none; margin: var(--s-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--s-1); }
+.wp-controle-bron { margin: var(--ruimte-krap) 0 0; }
+.wp-controle-koppen { list-style: none; margin: var(--ruimte-krap) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-krap); }
 .wp-controle-koppen > li { padding-left: var(--s-4); position: relative; color: var(--dark); }
 .wp-controle-koppen > li::before { position: absolute; left: 0; font-weight: 800; }
 .wp-kop-ok::before { content: "\2713"; color: #1c7a3f; }
