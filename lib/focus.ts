@@ -181,12 +181,9 @@ export async function saveFocus(slug: string, focus: Partial<ClientFocus>): Prom
   return { html, prioHtml, koersHtml, links, gewijzigd, verwerktTot };
 }
 
-/**
- * "Dit lijstje is bij" vastleggen. Alleen dít zet de stempel, en alleen op een
- * klik van Maarten: overnemen van een voorstel, of zeggen dat het al klopte.
- */
-export async function markeerOppakVerwerkt(slug: string): Promise<string> {
-  const nu = new Date().toISOString();
-  await saveFocus(slug, { verwerktTot: nu });
-  return nu;
-}
+/* De stempel "dit lijstje is bij" hoorde bij de strook "Wat we nu oppakken", en
+   die is er op 18-08-2026 uit. Het veld `verwerktTot` blijft hieronder wél
+   bestaan en wordt bij het opslaan netjes doorgegeven: bij elke klant die hem
+   ooit gezet heeft staat hij in de opgeslagen gegevens, en een veld stilletjes
+   uit de opslag laten vallen is precies hoe je later een gat in de gegevens
+   ontdekt. Niets leest hem nog. */

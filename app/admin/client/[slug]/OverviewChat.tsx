@@ -14,7 +14,14 @@ import MailVenster from "./MailVenster";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst; bronnen?: Bron[] };
-type Topic = { thread: string; count: number; title: string; summary: string; done: boolean };
+type Topic = { thread: string; count: number; title: string; summary: string; done: boolean; updatedAt: string };
+
+/** "16 aug", zoals je het zelf zou opschrijven. Leeg als de datum onbruikbaar is. */
+function korteDatum(iso: string): string {
+  const d = new Date(iso || "");
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+}
 
 // ── Diep denken ──
 // De bird's eye draait op het zware model, want dit is het gesprek waarin de opzet
@@ -222,13 +229,22 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
 
   // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
   // "gedaan" onderaan.
-  function normalizeTopics(threads: { thread: string; count?: number; title?: string; summary?: string; done?: boolean }[]): Topic[] {
+  function normalizeTopics(threads: { thread: string; count?: number; title?: string; summary?: string; done?: boolean; updatedAt?: string }[]): Topic[] {
     // De eigen gesprekken van projectkaarten ("overzicht:kaart:<id>") horen bij
     // die kaart, niet in deze onderwerpenlijst.
     const mine = threads.filter((t) => t.thread.startsWith("overzicht") && !t.thread.startsWith("overzicht:kaart:"));
-    const list: Topic[] = mine.map((t) => ({ thread: t.thread, count: t.count || 0, title: t.title || "", summary: t.summary || "", done: !!t.done }));
-    if (!list.some((t) => t.thread === BASE)) list.unshift({ thread: BASE, count: 0, title: "", summary: "", done: false });
-    return list.sort((a, b) => Number(a.done) - Number(b.done));
+    const list: Topic[] = mine.map((t) => ({
+      thread: t.thread, count: t.count || 0, title: t.title || "",
+      summary: t.summary || "", done: !!t.done, updatedAt: t.updatedAt || "",
+    }));
+    // Hier werd "Algemeen" bijgemaakt als hij ontbrak, want "er moet er altijd
+    // één zijn". Dat is niet meer waar sinds je zelf "+ Nieuw onderwerp" kunt
+    // klikken, en het maakte hem onverwijderbaar: gooide je hem weg, dan stond
+    // hij er bij de volgende keer laden gewoon weer, leeg (18-08-2026).
+    // Openstaand eerst, en daarbinnen het laatst gewijzigde bovenaan: dan zie je
+    // meteen waar je gebleven was.
+    return list.sort((a, b) =>
+      Number(a.done) - Number(b.done) || Date.parse(b.updatedAt || "") - Date.parse(a.updatedAt || ""));
   }
 
   // Groeit mee en springt naar het laatste bericht van het open onderwerp.
@@ -261,7 +277,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   // samenvatting worden daarna automatisch ingevuld.
   function newTopic() {
     const t = "overzicht:~" + Date.now().toString(36);
-    setTopics((ts) => [{ thread: t, count: 0, title: "", summary: "", done: false }, ...ts]);
+    setTopics((ts) => [{ thread: t, count: 0, title: "", summary: "", done: false, updatedAt: new Date().toISOString() }, ...ts]);
     setOpen(t); setMessages([]); setError(""); setInput(""); setTitleDraft("");
   }
 
@@ -279,16 +295,14 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     await fetch("/api/admin/overview/topic", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread, done }) }).catch(() => {});
   }
 
+  // Het kruisje verwijdert een onderwerp, ook "Algemeen". Dat laatste kon niet:
+  // die rij werd bij elke keer laden opnieuw aangemaakt, dus het kruisje maakte
+  // hem alleen leeg en hij bleef staan. Er is geen reden meer voor een gesprek
+  // dat altijd moet bestaan, want "+ Nieuw onderwerp" maakt er zo een (18-08-2026).
   async function clearChat(thread: string) {
     setBevestig(null);
     setMessages([]); setOpen(null);
-    // Ook de titel weg. Het eerste gesprek blijft als rij bestaan (er moet er altijd
-    // één zijn), maar met alleen de inhoud gewist bleef de oude titel staan en zag je
-    // dus precies hetzelfde als daarvoor: het leek alsof er niets gebeurde, terwijl
-    // het gesprek wél leeg was.
-    setTopics((ts) => ts
-      .filter((x) => x.thread !== thread || x.thread === BASE)
-      .map((x) => x.thread === thread ? { ...x, count: 0, summary: "", title: "", done: false } : x));
+    setTopics((ts) => ts.filter((x) => x.thread !== thread));
     await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
   }
 
@@ -421,22 +435,23 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     : <span className="ovc-topic-title">{titleOf(t)}</span>}
                   {!isOpen && t.summary && <span className="ovc-topic-sum">{t.summary}</span>}
                 </div>
-                {/* Het eerste gesprek (de basis) mag niet verdwijnen, want er moet er
-                    altijd één zijn. Maar het kruisje werd daarvoor helemáál weggelaten,
-                    en dan lijkt die rij gewoon kapot: je zoekt een knop die er niet is.
-                    Nu staat hij er wel en maakt hij dat onderwerp leeg in plaats van
-                    het weg te gooien. Dat kon clearChat al. */}
+                {/* De datum van het laatste bericht. Die stond nergens, en dan is
+                    een gesprek van gisteren niet te onderscheiden van een gesprek
+                    van drie weken terug: precies het verschil dat bepaalt welke
+                    versie van een strategie nog geldt (18-08-2026). */}
+                {korteDatum(t.updatedAt) && <span className="ovc-topic-datum">{korteDatum(t.updatedAt)}</span>}
+                {/* Elk onderwerp is te verwijderen, "Algemeen" ook. */}
                 {/* De bevestiging staat in de rij zelf. Het was een browser-popup, en
                     die valt buiten de huisstijl en leest als een systeemmelding. */}
                 {bevestig === t.thread ? (
                   <span className="ovc-topic-bevestig" onClick={(e) => e.stopPropagation()}>
-                    <span>{t.thread === BASE ? "Leegmaken?" : "Verwijderen?"}</span>
+                    <span>Verwijderen?</span>
                     <button type="button" className="ovc-bev-ja" onClick={() => void clearChat(t.thread)}>Ja</button>
                     <button type="button" className="ovc-bev-nee" onClick={() => setBevestig(null)}>Nee</button>
                   </span>
                 ) : (
                   <button type="button" className="wp-icon wp-del ovc-topic-del"
-                    title={t.thread === BASE ? "Dit onderwerp leegmaken (het eerste gesprek blijft bestaan)" : "Dit onderwerp verwijderen"}
+                    title="Dit onderwerp verwijderen"
                     onClick={(e) => { e.stopPropagation(); setBevestig(t.thread); }}>×</button>
                 )}
               </div>

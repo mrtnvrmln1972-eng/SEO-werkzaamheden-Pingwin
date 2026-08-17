@@ -773,9 +773,7 @@ export default function ClientCockpit({
                 staan bij Klantgegevens". Dat was een doodlopende regel, met
                 bovendien de oude tabnaam erin (de tab heet inmiddels Dossier). De
                 weg ernaartoe staat tussen de doorklikjes in dit blok. */}
-            <KoersBlok slug={client.slug}
-              onWeekplanChanged={() => setWeekplanReload((n) => n + 1)}
-              onGaNaarTab={(t) => changeTab(validTab(t))} />
+            <KoersBlok slug={client.slug} onGaNaarTab={(t) => changeTab(validTab(t))} />
 
             </div>
             </div>

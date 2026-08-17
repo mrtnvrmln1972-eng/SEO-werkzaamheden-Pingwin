@@ -40,9 +40,6 @@ const koers = lees("app/admin/client/[slug]/KoersBlok.tsx");
 check("de koers is een eigen veld", /soort="koers"/.test(koers),
   "Zonder soort=koers schrijft het blok in het verkeerde veld.");
 
-check("het oppak-lijstje wordt getoond", /soort="prio"/.test(koers),
-  "Het veld prioHtml voedt elke chatvraag; als het nergens op het scherm staat, stuurt het zonder dat je het kunt zien.");
-
 check("de tellingen komen uit de werkvoorraad-route", /\/api\/admin\/werkvoorraad/.test(koers),
   "De chips horen te tellen wat er ligt, niet zelf iets te berekenen.");
 
@@ -67,48 +64,63 @@ check("de werkvoorraad-route start geen enkele motor", gestart.length === 0,
 check("een motor die nooit draaide geeft geen 0 terug", /aantal: number \| null/.test(voorraad) && /=== null \? null/.test(voorraad),
   "Een niet-gedraaide motor hoort null te geven, zodat de chip 'nog niet gedraaid' kan tonen.");
 
-// ── Het oppak-lijstje moet zijn eigen ouderdom laten zien ──
-// Dit veld is een notitieblok en verandert dus alleen als er iemand in typt. Bij
-// Kamsteeg stond er daardoor op 17 augustus 2026 nog het oude lijstje terwijl de
-// strategie een dag eerder in een gesprek volledig herzien was. Niets op het
-// scherm liet dat zien, en die verouderde tekst ging óók nog eens bij élke
-// chatvraag mee als "wat Maarten zelf bovenaan heeft gezet". Een lijstje zonder
-// datum is precies het lijstje waarvan je niet doorhebt dat het achterloopt.
-check("het oppak-lijstje toont wanneer het is bijgewerkt", /bijgewerkt \$\{korteDatum/.test(koers),
-  "Zonder datum is een verouderd lijstje niet van een vers lijstje te onderscheiden.");
+// ── Wat er NIET terug mag komen ──────────────────────────────────────────────
+// Hier stonden zeven controles op "Wat we nu oppakken": dat het zijn datum
+// toonde, dat het meldde wat er daarna nog besloten was, dat de verwerkt-stempel
+// niet meeschoof met het automatisch opslaan, dat het voorstel nooit zichzelf
+// opsloeg. Stuk voor stuk terechte reparaties op een strook die er op
+// 18 augustus 2026 helemaal uit is.
+//
+// Waarom hij eruit is: het was handwerk MET een generator, MET een
+// verouderings-seintje, MET een streep-in-de-tijd. Vier mechanismen voor één
+// veld, en de uitkomst was dat er bij Kamsteeg een strategie stond die op
+// 5 augustus klopte en op 16 augustus herzien was, met vier rode uitroeptekens
+// erboven waarvan er één naar precies dat ingehaalde gesprek wees. De
+// bovenliggende regel is de gewone: één plek per ding. De koers is de grote
+// lijn, de knoppen eronder zijn waar het werk vandaan komt, en de planning is
+// wat we doen. Daar zat niets tussen.
+//
+// Deze proef bewaakt nu dat het niet terugsluipt.
+const wegGehaald = [
+  ["het lijstje zelf", /soort="prio"/],
+  ["de generator", /oppak-voorstel/],
+  ["het verouderings-seintje", /oppak-stand/],
+  ["de streep in de tijd", /oppak-verwerkt|markeerOppakVerwerkt/],
+];
+for (const [wat, patroon] of wegGehaald as [string, RegExp][]) {
+  check(`${wat} is niet teruggekomen op de takenpagina`, !patroon.test(koers),
+    "Dit hoorde bij 'Wat we nu oppakken'. Die strook is er bewust uit; zie de uitleg\n"
+    + "       bovenaan KoersBlok.tsx voordat je hem terugzet.");
+}
 
-check("het oppak-lijstje meldt wat er daarna nog is besloten", /\/api\/admin\/oppak-stand/.test(koers),
-  "Zonder dit seintje kan een herziene strategie ongemerkt naast het lijstje blijven liggen.");
+// De assistent las dat veld bij élke vraag mee als "wat Maarten nu oppakt".
+// Omdat het alleen veranderde als er iemand in typte, gaf het stelselmatig een
+// verouderd beeld door: het gesprek dat de strategie herzag zat te praten tegen
+// de oude versie in zijn eigen geheugen. De koers doet hetzelfde werk en wordt
+// wél bijgehouden.
+const chatLib = lees("lib/chat.ts");
+check("de chat leest de koers mee", /koersHtml/.test(chatLib),
+  "Zonder de koers mist het gesprek het enige stuk richting dat Maarten zelf schrijft.");
+check("de chat leest het oude oppak-lijstje niet meer mee", !/prioHtml/.test(chatLib),
+  "Dat veld wordt niet meer bijgehouden; meesturen betekent de assistent een verouderd beeld geven.");
 
-// Aangeraakt is niet hetzelfde als bijgewerkt. Bij Kamsteeg is op 17 augustus
-// 2026 een komma in het lijstje veranderd ná het gesprek waarin de hele
-// strategie herzien was; ging het seintje op de wijzigdatum af, dan noemde het
-// lijstje zichzelf daarmee "bij" terwijl er nog exact hetzelfde verouderde plan
-// stond. Alleen een klik van Maarten mag die grens verzetten.
-const standLib = lees("lib/oppak-stand.ts");
-check("het seintje gaat af op wat verwerkt is, niet op wanneer er getypt is",
-  /const grens = verwerktTot/.test(standLib),
-  "Op de wijzigdatum wist één komma het seintje terwijl de inhoud verouderd blijft.");
+// ── De koers staat open ──
+// Hij zat achter een uitklapper omdat dit blok met drie stroken de planning van
+// het scherm af duwde. Met één strook is dat weg, en een koers die je moet
+// openklikken is een koers die je niet leest.
+check("de koers staat open in plaats van achter een uitklapper", /ov-blok-open/.test(koers),
+  "De koers is de reden dat dit blok bestaat; die hoort niet dichtgeklapt te beginnen.");
 
-const focusLib = lees("lib/focus.ts");
-check("de verwerkt-stempel schuift niet mee met het automatisch opslaan",
-  /typeof focus\.verwerktTot === "string" \? focus\.verwerktTot : huidig\.verwerktTot/.test(focusLib),
-  "Dit veld slaat tijdens het typen op; schuift de stempel mee, dan wist typen het seintje.");
-
-const stand = lees("app/api/admin/oppak-stand/route.ts");
-check("de stand-route start geen enkele motor en geen model", !/callClaude|getPrioriteitenScan|getMetaKansen/.test(stand),
-  "Deze route draait bij élke keer openen van de takenpagina en mag dus niets kosten.");
-
-// Zelfde harde grens als bij de koers-controle: het voorstel is een voorstel.
-// Een lijstje dat zichzelf mag overschrijven is na twee rondes niet meer van
-// Maarten, en dan is het het automatisch samengeraapte lijstje dat hier juist
-// niet gewenst is.
-const voorstelRoute = lees("app/api/admin/oppak-voorstel/route.ts");
-check("het voorstel wordt nooit zelf opgeslagen", !/saveFocus/.test(voorstelRoute),
-  "Deze route mag alleen een voorstel teruggeven; overnemen gebeurt op Maartens klik.");
-
-check("het voorstel leest de gesprekken die nieuwer zijn dan het lijstje", /getOppakStand/.test(voorstelRoute) && /getChatHistory/.test(voorstelRoute),
-  "Zonder de nieuwere gesprekken stelt hij het oude lijstje opnieuw voor.");
+// ── De chats laten zien wanneer ze voor het laatst liepen ──
+// Zonder datum is een gesprek van drie weken terug niet te onderscheiden van dat
+// van gisteren, en dat is precies het verschil dat bepaalt welke versie van een
+// strategie nog geldt.
+const chatScherm = lees("app/admin/client/[slug]/OverviewChat.tsx");
+check("elk gespreksonderwerp toont zijn datum", /ovc-topic-datum/.test(chatScherm),
+  "Zonder datum weet je niet welk gesprek het laatste woord had.");
+check("elk gespreksonderwerp is te verwijderen, ook het eerste", !/thread === BASE \? "Leegmaken/.test(chatScherm),
+  "Het eerste gesprek werd bij elke keer laden opnieuw aangemaakt, dus het kruisje\n"
+  + "       maakte hem alleen leeg en hij bleef staan.");
 
 console.log(fouten === 0
   ? "\nDe takenpagina vertelt nog steeds waar we naartoe werken."

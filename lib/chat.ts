@@ -304,16 +304,19 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   if (client.cockpit?.workDocUrl) links.push(`Werkdocument: ${client.cockpit.workDocUrl}`);
   if (client.cockpit?.resultsUrl) links.push(`Resultaten: ${client.cockpit.resultsUrl}`);
   if (links.length) parts.push("\n=== SNELLE LINKS (leesbaar met lees_document) ===\n" + links.join("\n"));
-  // De koers en het oppak-lijstje: Maartens eigen woorden, bovenaan de takenpagina.
-  // Dit is het kortste en meest sturende stuk context dat er is, dus het gaat
-  // altijd mee. De koers eerst: die zegt waar we naartoe werken, en pas daarna
-  // waar de aandacht nu ligt.
+  // De koers: Maartens eigen woorden over waar we met deze klant naartoe werken.
+  // Het kortste en meest sturende stuk context dat er is, dus het gaat altijd mee.
+  //
+  // Hier ging óók "Wat we nu oppakken" mee. Dat veld is er op 18-08-2026 uit, en
+  // dat is een verbetering voor dit gesprek: het was handwerk dat alleen
+  // veranderde als er iemand in typte, dus het gaf de assistent stelselmatig een
+  // verouderd beeld door. Bij Kamsteeg zat een gesprek dat de strategie herzag
+  // daardoor te praten tegen de oude versie in zijn eigen geheugen. De koers doet
+  // hetzelfde werk en wordt wél bijgehouden.
   try {
     const f = await getFocus(client.slug);
     const k = htmlNaarTekst(f.koersHtml).trim();
-    if (k) parts.push("\n=== DE KOERS (wat Maarten zelf heeft opgeschreven over waar we met deze klant naartoe werken; leidend boven elke afgeleide aanname) ===\n" + k.slice(0, 2000));
-    const p = htmlNaarTekst(f.prioHtml).trim();
-    if (p) parts.push("\n=== WAT WE NU OPPAKKEN (wat Maarten zelf bovenaan heeft gezet; laat dit meewegen in wat je voorstelt) ===\n" + p.slice(0, 2000));
+    if (k) parts.push("\n=== DE KOERS (wat Maarten zelf heeft opgeschreven over waar we met deze klant naartoe werken; leidend boven elke afgeleide aanname) ===\n" + k.slice(0, 2500));
   } catch { /* aanvulling */ }
   const prof = (client.seoProfile || "").trim();
   if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));

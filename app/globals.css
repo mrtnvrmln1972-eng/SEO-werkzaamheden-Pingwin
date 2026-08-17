@@ -3076,6 +3076,10 @@ button.org-sec-kop:hover { color: var(--orange-dark); }
 .ovc-topic-title { font-weight: 800; font-size: var(--fs-base); line-height: var(--lh-xs); color: var(--orange); }
 .ovc-topic.done .ovc-topic-title { color: var(--gray); text-decoration: line-through; }
 .ovc-topic-sum { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* De datum van het laatste bericht, rechts naast de titel. Stil, want hij is
+   naslag; maar hij moet er staan, anders lijkt een gesprek van drie weken terug
+   net zo actueel als dat van gisteren. */
+.ovc-topic-datum { flex: none; font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray); white-space: nowrap; margin-top: 2px; }
 .ovc-title-inline { border: none; background: transparent; font-family: inherit; font-weight: 800; font-size: var(--fs-base); line-height: var(--lh-xs); color: var(--orange); padding: 0; width: 100%; }
 .ovc-title-inline:focus { outline: none; border-bottom: 1px solid var(--orange); }
 .ovc-title-inline::placeholder { color: var(--gray); font-weight: 500; }
@@ -5221,15 +5225,19 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    de takenpagina één vorm houdt in plaats van per blok een eigen vorm te krijgen.
    Alleen wat hier écht anders is staat hieronder; de rest erft. */
 .koers-card { margin-bottom: var(--s-4); }
-/* De regels uit "Wat we nu oppakken", elk met één knop naar de planning. */
-.koers-regels { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-3); }
-.koers-regel {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
-  padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
-  background: var(--white);
+/* De strook "Wat we nu oppakken" is er op 18-08-2026 uit, met alles wat eromheen
+   gebouwd was. De opmaak van dat lijstje en van het voorstel eronder is hier dus
+   ook weg; zie de uitleg bovenaan KoersBlok.tsx. */
+/* Een strook die altijd openstaat heeft geen kopregel om op te klikken; hij
+   krijgt zijn lucht hier. */
+.ov-blok-open { padding: var(--s-3) 0 var(--s-4); }
+.ov-blok-open:first-of-type { padding-top: 0; }
+.koers-bronnen-blok { padding-bottom: var(--s-2); }
+.koers-bronnen-kop {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--gray); text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: var(--s-2);
 }
-.koers-regel-tekst { font-size: var(--fs-sm); line-height: var(--lh-sm); min-width: 0; }
-.koers-regel-klaar { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--good); white-space: nowrap; }
 /* De chips naar de plekken waar werk klaarligt. Echte links, dus cmd-klik opent
    ze in een nieuw tabblad, precies zoals de rest van de navigatie. */
 .koers-bronnen { display: flex; flex-wrap: wrap; gap: var(--s-2); }
@@ -5243,18 +5251,6 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    dan hoort het juist stil te blijven: dat is geen werkvoorraad. */
 .koers-bron-telling.vol { background: var(--orange); color: var(--white); }
 .koers-bronnen-laden { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin-top: var(--s-2); }
-/* Het voorstel om het oppak-lijstje bij te werken. Staat bewust bóven het veld
-   met de oude tekst en niet eroverheen: je vergelijkt oud met nieuw en beslist,
-   in plaats van te moeten onthouden wat er stond. */
-.koers-voorstel {
-  margin-top: var(--s-3); padding: var(--s-3);
-  border: 1px solid var(--orange); border-radius: var(--r-md); background: var(--white);
-}
-.koers-voorstel-kop {
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
-  color: var(--orange); text-transform: uppercase; letter-spacing: .04em;
-  margin-bottom: var(--s-2);
-}
 
 /* Zonder eigen kaart en kop: die staan al op het blok eromheen. */
 .ovc-kaal, .wp-kaal { padding: 0; border: 0; background: transparent; box-shadow: none; }
