@@ -43,7 +43,7 @@ function buildMonthTasks(tasks: TaskRow[]): MonthTasks {
   return { thisMonth, nextMonth, thisLabel: thisM, nextLabel: nextM };
 }
 
-export default async function ClientCockpitPage({ params, searchParams }: { params: { slug: string }; searchParams: { tab?: string; highlight?: string; page?: string } }) {
+export default async function ClientCockpitPage({ params, searchParams }: { params: { slug: string }; searchParams: { tab?: string; highlight?: string; page?: string; strategie?: string } }) {
   const scope = await getScopeFromCookie(cookies().get(ADMIN_COOKIE)?.value, cookies().get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) redirect("/admin/login");
   // Gast zonder toegang tot deze klant: terug naar het overzicht.
@@ -125,6 +125,7 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
       initialTab={searchParams.tab}
       initialPage={searchParams.page}
       highlight={searchParams.highlight}
+      initialStrategie={searchParams.strategie}
       showMailSections={mailSections}
     />
     </>

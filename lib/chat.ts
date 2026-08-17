@@ -304,12 +304,16 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   if (client.cockpit?.workDocUrl) links.push(`Werkdocument: ${client.cockpit.workDocUrl}`);
   if (client.cockpit?.resultsUrl) links.push(`Resultaten: ${client.cockpit.resultsUrl}`);
   if (links.length) parts.push("\n=== SNELLE LINKS (leesbaar met lees_document) ===\n" + links.join("\n"));
-  // Top Prio's: Maartens eigen prioriteitenlijstje. Dat bereikte tot nu toe geen
-  // enkele prompt, terwijl het juist stuurt waar de aandacht heen moet.
+  // De koers en het oppak-lijstje: Maartens eigen woorden, bovenaan de takenpagina.
+  // Dit is het kortste en meest sturende stuk context dat er is, dus het gaat
+  // altijd mee. De koers eerst: die zegt waar we naartoe werken, en pas daarna
+  // waar de aandacht nu ligt.
   try {
     const f = await getFocus(client.slug);
+    const k = htmlNaarTekst(f.koersHtml).trim();
+    if (k) parts.push("\n=== DE KOERS (wat Maarten zelf heeft opgeschreven over waar we met deze klant naartoe werken; leidend boven elke afgeleide aanname) ===\n" + k.slice(0, 2000));
     const p = htmlNaarTekst(f.prioHtml).trim();
-    if (p) parts.push("\n=== TOP PRIO'S (wat Maarten zelf bovenaan heeft gezet; laat dit meewegen in wat je voorstelt) ===\n" + p.slice(0, 2000));
+    if (p) parts.push("\n=== WAT WE NU OPPAKKEN (wat Maarten zelf bovenaan heeft gezet; laat dit meewegen in wat je voorstelt) ===\n" + p.slice(0, 2000));
   } catch { /* aanvulling */ }
   const prof = (client.seoProfile || "").trim();
   if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));

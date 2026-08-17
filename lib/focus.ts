@@ -14,7 +14,7 @@ import { sanitizeHtml as sanitize, escapeHtml as esc } from "./veilige-html";
 // wordt automatisch omgezet naar opgemaakte HTML, zodat niets verloren gaat.
 export type FocusKeyword = { kw: string; url: string };
 export type FocusLink = { label: string; url: string };
-export type ClientFocus = { html: string; prioHtml: string; links: FocusLink[] };
+export type ClientFocus = { html: string; prioHtml: string; koersHtml: string; links: FocusLink[] };
 
 function legacyToHtml(d: { keywords?: FocusKeyword[]; links?: FocusLink[] }): string {
   let h = "";
@@ -41,14 +41,19 @@ function schoneLinks(links: unknown): FocusLink[] {
 export async function getFocus(slug: string): Promise<ClientFocus> {
   await ensureSchema();
   const { rows } = await sql`SELECT data FROM client_focus WHERE client_slug = ${slug} LIMIT 1`;
-  const d = rows[0]?.data as { html?: string; prioHtml?: string; keywords?: FocusKeyword[]; links?: FocusLink[] } | undefined;
-  if (!d) return { html: "", prioHtml: "", links: [] };
+  const d = rows[0]?.data as { html?: string; prioHtml?: string; koersHtml?: string; keywords?: FocusKeyword[]; links?: FocusLink[] } | undefined;
+  if (!d) return { html: "", prioHtml: "", koersHtml: "", links: [] };
   const html = typeof d.html === "string" ? d.html : legacyToHtml(d);
   // De losse linkkolom is nieuw sinds deze wijziging. Een rij van vóór "html"
   // bestond (de oude, ongemigreerde vorm) had zijn links al in legacyToHtml
   // verwerkt; die niet nog een keer als aparte kolom tonen.
   const links = typeof d.html === "string" ? schoneLinks(d.links) : [];
-  return { html: sanitize(html), prioHtml: sanitize(typeof d.prioHtml === "string" ? d.prioHtml : ""), links };
+  return {
+    html: sanitize(html),
+    prioHtml: sanitize(typeof d.prioHtml === "string" ? d.prioHtml : ""),
+    koersHtml: sanitize(typeof d.koersHtml === "string" ? d.koersHtml : ""),
+    links,
+  };
 }
 
 // ── Vangnet: de vorige inhoud bewaren vóór elke overschrijving ──
@@ -60,7 +65,7 @@ const HISTORIE_PER_VELD = 20;
 
 export type FocusVersie = { id: number; veld: string; html: string; bewaardOp: string };
 
-async function bewaarVorige(slug: string, veld: "html" | "prioHtml", vorige: string): Promise<void> {
+async function bewaarVorige(slug: string, veld: "html" | "prioHtml" | "koersHtml", vorige: string): Promise<void> {
   // Een lege of ongewijzigde inhoud levert geen bruikbaar herstelpunt op.
   if (!vorige.trim()) return;
   try {
@@ -101,14 +106,16 @@ export async function saveFocus(slug: string, focus: Partial<ClientFocus>): Prom
   const huidig = await getFocus(slug);
   const html = sanitize(typeof focus.html === "string" ? focus.html : huidig.html);
   const prioHtml = sanitize(typeof focus.prioHtml === "string" ? focus.prioHtml : huidig.prioHtml);
+  const koersHtml = sanitize(typeof focus.koersHtml === "string" ? focus.koersHtml : huidig.koersHtml);
   const links = Array.isArray(focus.links) ? schoneLinks(focus.links) : huidig.links;
   // Verandert een tekstveld écht, bewaar dan eerst wat er stond.
   if (html !== huidig.html) await bewaarVorige(slug, "html", huidig.html);
   if (prioHtml !== huidig.prioHtml) await bewaarVorige(slug, "prioHtml", huidig.prioHtml);
-  const json = JSON.stringify({ html, prioHtml, links });
+  if (koersHtml !== huidig.koersHtml) await bewaarVorige(slug, "koersHtml", huidig.koersHtml);
+  const json = JSON.stringify({ html, prioHtml, koersHtml, links });
   await sql`
     INSERT INTO client_focus (client_slug, data, updated_at)
     VALUES (${slug}, ${json}::jsonb, now())
     ON CONFLICT (client_slug) DO UPDATE SET data = ${json}::jsonb, updated_at = now()`;
-  return { html, prioHtml, links };
+  return { html, prioHtml, koersHtml, links };
 }

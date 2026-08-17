@@ -42,6 +42,8 @@ import OverviewChat from "./OverviewChat";
 import Planning from "./Planning";
 import KlantTabs, { type Tab } from "./KlantTabs";
 import FocusBlock from "./FocusBlock";
+import KoersBlok from "./KoersBlok";
+import StrategyPanel from "./StrategyPanel";
 import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
@@ -96,8 +98,8 @@ export default function ClientCockpit({
   client, emails: initialEmails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   msConfigured, msConnected, myEmail, allClients,
   googleConfigured, googleConnected, chatConfigured, tasks, initialTab, initialPage, highlight,
-  showMailSections = true,
-}: { client: ClientConfig; initialTab?: string; initialPage?: string; highlight?: string; showMailSections?: boolean } & CockpitData) {
+  initialStrategie, showMailSections = true,
+}: { client: ClientConfig; initialTab?: string; initialPage?: string; highlight?: string; initialStrategie?: string; showMailSections?: boolean } & CockpitData) {
   // Live mail komt NA het tonen binnen (achtergrond-verversing): het scherm opent
   // met de opgeslagen mails, en zodra Microsoft antwoordt worden ze ververst.
   const [emails, setEmails] = useState(initialEmails);
@@ -494,6 +496,19 @@ export default function ClientCockpit({
                 langs dingen die je op dat moment niet nodig had. Nu één kop met drie
                 blokken die dicht beginnen, zodat je zelf kiest wat je openzet. */}
             <div className="tk-wide">
+            {/* Waar we naartoe werken: de koers, wat er nu opgepakt wordt, en de
+                plekken waar werk klaarligt. Staat bovenaan en over de volle
+                breedte, want dit is de vraag waarmee je hier binnenkomt; de twee
+                kolommen eronder zijn het uitvoeren. */}
+            <KoersBlok slug={client.slug}
+              onWeekplanChanged={() => setWeekplanReload((n) => n + 1)}
+              onGaNaarTab={(t) => changeTab(validTab(t))} />
+            {/* De strategiegesprekken uit de assistent, met per actiepunt één klik
+                naar de takenlijst. Dit blok bestond al en werd door de chat ook
+                beloofd ("je vindt hem bovenaan het Taken-tabblad"), maar hing na
+                de herindeling nergens meer op het scherm. */}
+            <StrategyPanel slug={client.slug}
+              openSessionId={initialStrategie ? Number(initialStrategie) || undefined : undefined} />
             <div className="tk-grid">
             <div className="tk-links">
             <div className="cockpit-card ovc-card">
@@ -738,18 +753,11 @@ export default function ClientCockpit({
             })()}
             </>)}
 
-            {/* Zoekwoorden & links: zelfde vormgeving en inhoud als voorheen in het
-                losse zijpaneel-tabje, nu als toggle direct onder Laatste mails. */}
-            {/* Het veld zelf staat nu bij Klantgegevens, want het is een afspraak
-                over deze klant en geen taak van deze week. Hier blijft alleen de
-                weg ernaartoe staan: één plek waar het woont, geen tweede kopie
-                die na een maand iets anders zegt. */}
-            <div className="cockpit-card strategy-card">
-              <button type="button" className="strategy-head" onClick={() => changeTab("klant")}>
-                <span className="strategy-caret">&rarr;</span>
-                <span className="strategy-title">Zoekwoorden &amp; links staan bij Klantgegevens</span>
-              </button>
-            </div>
+            {/* Hier stond een kaartje met alleen een kop: "Zoekwoorden & links staan
+                bij Klantgegevens". Dat was een doodlopende regel onderaan de
+                rechterkolom, met bovendien de oude tabnaam erin (de tab heet
+                inmiddels Dossier). De weg ernaartoe staat nu tussen de andere
+                doorklikjes in het koersblok bovenaan, waar je hem zoekt. */}
 
             </div>
             </div>

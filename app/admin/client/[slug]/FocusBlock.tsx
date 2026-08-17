@@ -6,24 +6,33 @@ import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 /**
  * Eén vrij opmaakbaar tekstveld per klant, met knoppenbalk en automatisch opslaan.
  *
- * Twee soorten, allebei van dezelfde makelij: "focus" is het blok Zoekwoorden &
- * links, "prio" is Top Prio's. Bewust hetzelfde component, zodat er geen tweede
- * half-werkende editor naast komt te staan met een eigen plakgedrag en een eigen
- * opmaak. Ze delen één rij in de database, elk met een eigen sleutel.
+ * Drie soorten, alle drie van dezelfde makelij: "focus" is het blok Zoekwoorden &
+ * links, "prio" is Wat we nu oppakken, "koers" is de korte koers bovenaan Taken.
+ * Bewust hetzelfde component, zodat er geen tweede half-werkende editor naast komt
+ * te staan met een eigen plakgedrag en een eigen opmaak. Ze delen één rij in de
+ * database, elk met een eigen sleutel.
  */
-export default function FocusBlock({ slug, standalone, soort = "focus", titel }: {
+export default function FocusBlock({ slug, standalone, soort = "focus", titel, kaal, onInhoud }: {
   slug: string;
   standalone?: boolean;
-  soort?: "focus" | "prio";
+  soort?: "focus" | "prio" | "koers";
   titel?: string;
+  /** Zonder eigen kop of inklap: het veld zit al in een blok dat zijn eigen kop heeft. */
+  kaal?: boolean;
+  /** Geeft de laatste inhoud door, zodat een blok eromheen er regels uit kan halen. */
+  onInhoud?: (html: string) => void;
 }) {
-  const veld = soort === "prio" ? "prioHtml" : "html";
+  const veld = soort === "prio" ? "prioHtml" : soort === "koers" ? "koersHtml" : "html";
   const [initialHtml, setInitialHtml] = useState<string | null>(null);
   // Standaard dicht; openklappen via de kop.
   const [open, setOpen] = useState(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const laatsteHtmlRef = useRef<string | null>(null);
   const bewaardRef = useRef<string | null>(null);
+  // Via een ref, niet rechtstreeks: anders zou een nieuwe functie van de ouder
+  // het laden opnieuw starten en het veld leegflitsen tijdens het typen.
+  const onInhoudRef = useRef(onInhoud);
+  onInhoudRef.current = onInhoud;
 
   // Laad de opgeslagen inhoud.
   useEffect(() => {
@@ -41,6 +50,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
         const html = d.ok ? (d.focus?.[veld] || "") : "";
         bewaardRef.current = html;
         setInitialHtml(html);
+        onInhoudRef.current?.(html);
       })
       .catch(() => { if (!off) { bewaardRef.current = ""; setInitialHtml(""); } });
     return () => { off = true; };
@@ -81,6 +91,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
 
   function triggerSave(html: string) {
     laatsteHtmlRef.current = html;
+    onInhoudRef.current?.(html);
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => bewaarDirect(), 400);
   }
@@ -121,6 +132,11 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel }:
   const veldBlok = initialHtml === null
     ? <div className="focus-rich focus-loading" />
     : <RijkTekstVeld waarde={laatsteHtmlRef.current ?? initialHtml} onChange={triggerSave} />;
+
+  // Kaal: het veld zonder eigen kop, voor een blok dat zijn eigen kop al heeft
+  // (het koersblok bovenaan Taken). Zonder deze stand zou daar een tweede titel
+  // boven dezelfde inhoud komen te staan.
+  if (kaal) return veldBlok;
 
   if (standalone) {
     // Zelfde huisstijl als de andere inklapbare kaarten (Actuele stand van

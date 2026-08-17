@@ -57,6 +57,17 @@ const ERF_EMOJI = new Set(ERFENIS.emoji);
 // bedieningstekens, en die horen klein en kaal te zijn.
 const TEKEN_KNOP = /^[\s×✕✓✔☑☐▾▴▸▪▶◀←→↑↓⋮⋯•·+\-–—?!()0-9]*$/u;
 
+// De inklapkop van een paneel is óók geen knop in de huisstijl. Hij voert niets
+// uit op de data, hij vouwt een blok open of dicht, en hij is de volle breedte
+// met een eigen achtergrond; een .btn eromheen zou hem juist kapotmaken.
+//
+// Bewust ÉÉN vaste klassenaam en geen patroon: `strategy-head` staat één keer
+// in globals.css en wordt door de hele cockpit gedeeld. Zo blijft dit een
+// benoemd onderdeel van het systeem en geen achterdeur waardoor "mijn knop is
+// nou eenmaal anders" alsnog binnenkomt. Verzint een scherm een eigen kop-klasse,
+// dan is deze proef nog steeds rood, en dat hoort ook.
+const KOP_KNOP = /\bstrategy-head\b/;
+
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/u;
 
 /**
@@ -136,8 +147,9 @@ for (const rel of alleTsx("app")) {
     const tekst = label(k.inhoud);
     const isTeken = TEKEN_KNOP.test(tekst) && tekst.length <= 3;
 
-    // 1. Het knopsysteem. Een teken-knopje (kruisje, vinkje) mag kaal blijven.
-    if (!isTeken && !/\bbtn\b/.test(klasseTekst)) {
+    // 1. Het knopsysteem. Een teken-knopje (kruisje, vinkje) en de gedeelde
+    //    inklapkop van een paneel mogen kaal blijven.
+    if (!isTeken && !KOP_KNOP.test(klasseTekst) && !/\bbtn\b/.test(klasseTekst)) {
       fouten.push({
         soort: "systeem",
         melding: `${rel}:${k.regel} knop "${tekst.slice(0, 30)}" gebruikt het knopsysteem niet (className: ${klasseTekst.trim().slice(0, 40) || "geen"})`,
@@ -191,7 +203,7 @@ const onnodig = [...ERF_SYSTEEM].filter((rel) => {
     const klasseTekst = klasse ? `${klasse[1] || ""} ${klasse[2] || ""}` : "";
     const tekst = label(k.inhoud);
     const isTeken = TEKEN_KNOP.test(tekst) && tekst.length <= 3;
-    const systeemOk = isTeken || /\bbtn\b/.test(klasseTekst);
+    const systeemOk = isTeken || KOP_KNOP.test(klasseTekst) || /\bbtn\b/.test(klasseTekst);
     const emojiOk = !(/[A-Za-zÀ-ÿ]{3,}/.test(tekst) && EMOJI.test(alleTekst(k.inhoud)));
     return systeemOk && emojiOk;
   });

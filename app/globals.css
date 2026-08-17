@@ -5176,6 +5176,34 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .ov-blok { border-top: 1px solid var(--border); }
 .ov-blok:first-of-type { border-top: 0; }
 .ov-blok .strategy-body { padding-top: var(--s-2); }
+/* ── Waar we naartoe werken: het koersblok bovenaan Taken ──
+   Zelfde bouw als de Overview-kaart ernaast (ovc-card met ov-blok-stroken), zodat
+   de takenpagina één vorm houdt in plaats van per blok een eigen vorm te krijgen.
+   Alleen wat hier écht anders is staat hieronder; de rest erft. */
+.koers-card { margin-bottom: var(--s-4); }
+/* De regels uit "Wat we nu oppakken", elk met één knop naar de planning. */
+.koers-regels { display: flex; flex-direction: column; gap: var(--s-1); margin-top: var(--s-3); }
+.koers-regel {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+  padding: var(--s-2) var(--s-3); border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--white);
+}
+.koers-regel-tekst { font-size: var(--fs-sm); line-height: var(--lh-sm); min-width: 0; }
+.koers-regel-klaar { font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--good); white-space: nowrap; }
+/* De chips naar de plekken waar werk klaarligt. Echte links, dus cmd-klik opent
+   ze in een nieuw tabblad, precies zoals de rest van de navigatie. */
+.koers-bronnen { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.koers-bron { text-decoration: none; }
+.koers-bron-telling {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  padding: 0 var(--s-2); border-radius: var(--r-full);
+  background: var(--gray-light); color: var(--gray);
+}
+/* Ligt er echt iets, dan valt het cijfer op. Staat er 0 of "nog niet gedraaid",
+   dan hoort het juist stil te blijven: dat is geen werkvoorraad. */
+.koers-bron-telling.vol { background: var(--orange); color: var(--white); }
+.koers-bronnen-laden { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin-top: var(--s-2); }
+
 /* Zonder eigen kaart en kop: die staan al op het blok eromheen. */
 .ovc-kaal, .wp-kaal { padding: 0; border: 0; background: transparent; box-shadow: none; }
 .ovc-kaal-acties { display: flex; justify-content: flex-end; margin-bottom: var(--s-2); }

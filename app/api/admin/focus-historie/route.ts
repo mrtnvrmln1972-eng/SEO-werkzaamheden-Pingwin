@@ -40,25 +40,30 @@ export async function POST(req: NextRequest) {
   // of zelf aangeleverde HTML. Die tweede wordt er bewust BOVENOP gezet in
   // plaats van eroverheen: bedoeld voor inhoud die verdween voordat er versies
   // bewaard werden, en dan mag de handeling zelf nooit iets kunnen wissen.
-  let veld = body.veld === "prioHtml" ? "prioHtml" : "html";
+  // De drie tekstvelden die deze rij delen. Eén lijst, zodat een vierde veld hier
+  // niet stilletjes op "html" terechtkomt en de verkeerde inhoud overschrijft.
+  const VELDEN = ["html", "prioHtml", "koersHtml"] as const;
+  type Veld = (typeof VELDEN)[number];
+  const leesVeld = (v: unknown): Veld => (VELDEN as readonly string[]).includes(String(v)) ? (v as Veld) : "html";
+  let veld: Veld = leesVeld(body.veld);
   let html: string | null = null;
 
   if (body.id !== undefined) {
     const id = Number(body.id);
     const versie = (await getFocusHistorie(slug)).find((v) => v.id === id);
     if (!versie) return NextResponse.json({ ok: false, error: "Die versie bestaat niet meer." }, { status: 404 });
-    veld = versie.veld === "prioHtml" ? "prioHtml" : "html";
+    veld = leesVeld(versie.veld);
     html = versie.html;
   } else if (typeof body.html === "string" && body.html.trim()) {
     const { getFocus } = await import("../../../../lib/focus");
     const nu = await getFocus(slug);
-    const bestaand = veld === "prioHtml" ? nu.prioHtml : nu.html;
+    const bestaand = nu[veld];
     html = `${body.html}${bestaand ? `<p><br></p>${bestaand}` : ""}`;
   }
 
   if (html === null) return NextResponse.json({ ok: false, error: "Niets om terug te zetten." }, { status: 400 });
   // Terugzetten loopt via saveFocus, dus de huidige inhoud gaat zelf ook weer de
   // geschiedenis in: een verkeerd gekozen herstelpunt is óók terug te draaien.
-  const focus = await saveFocus(slug, veld === "prioHtml" ? { prioHtml: html } : { html });
+  const focus = await saveFocus(slug, { [veld]: html });
   return NextResponse.json({ ok: true, focus });
 }

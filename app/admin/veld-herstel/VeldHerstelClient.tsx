@@ -6,7 +6,9 @@ import { sanitizeHtml } from "../../../lib/veilige-html";
 
 type Versie = { id: number; veld: string; html: string; bewaardOp: string };
 
-const VELDNAAM: Record<string, string> = { html: "Zoekwoorden & links", prioHtml: "Top Prio's" };
+type VeldSleutel = "html" | "prioHtml" | "koersHtml";
+const VELDEN: VeldSleutel[] = ["html", "prioHtml", "koersHtml"];
+const VELDNAAM: Record<string, string> = { html: "Zoekwoorden & links", prioHtml: "Wat we nu oppakken", koersHtml: "De koers" };
 
 // Een korte, leesbare samenvatting van wat er in zo'n bewaarde versie zit, zodat
 // je de juiste kunt herkennen zonder alles open te klappen.
@@ -29,7 +31,7 @@ export default function VeldHerstelClient({ klanten }: { klanten: { slug: string
   const [bekijk, setBekijk] = useState<number | null>(null);
   // Voor inhoud die verloren ging vóór er versies bewaard werden: plak hier de
   // teruggevonden tekst. Eenmalig bedoeld, daarom staat het onderaan.
-  const [plakVeld, setPlakVeld] = useState<"html" | "prioHtml">("html");
+  const [plakVeld, setPlakVeld] = useState<VeldSleutel>("html");
   const [plakTekst, setPlakTekst] = useState("");
 
   useEffect(() => {
@@ -95,8 +97,8 @@ export default function VeldHerstelClient({ klanten }: { klanten: { slug: string
         <div className="beheer-kop">
           <h1 className="beheer-h1">Een tekstveld terugzetten</h1>
           <p className="beheer-uitleg">
-            De velden <strong>Zoekwoorden &amp; links</strong> en <strong>Top Prio&apos;s</strong> slaan tijdens het
-            typen vanzelf op. Sinds 11 augustus 2026 bewaart elke opslag eerst wat er stond, zodat een ongeluk
+            De velden <strong>Zoekwoorden &amp; links</strong>, <strong>Wat we nu oppakken</strong> en
+            <strong> De koers</strong> slaan tijdens het typen vanzelf op. Sinds 11 augustus 2026 bewaart elke opslag eerst wat er stond, zodat een ongeluk
             nooit meer definitief is. Kies een klant en zet een eerdere versie terug.
           </p>
           <p className="beheer-uitleg">
@@ -166,9 +168,10 @@ export default function VeldHerstelClient({ klanten }: { klanten: { slug: string
               dus zelf nooit iets wissen.
             </p>
             <select className="wp-docdrop-input" value={plakVeld}
-              onChange={(e) => setPlakVeld(e.target.value === "prioHtml" ? "prioHtml" : "html")}>
+              onChange={(e) => setPlakVeld(VELDEN.includes(e.target.value as VeldSleutel) ? (e.target.value as VeldSleutel) : "html")}>
               <option value="html">Zoekwoorden &amp; links</option>
-              <option value="prioHtml">Top Prio&apos;s</option>
+              <option value="prioHtml">Wat we nu oppakken</option>
+              <option value="koersHtml">De koers</option>
             </select>
             <textarea className="beheer-bewerk" rows={6} value={plakTekst} spellCheck={false}
               placeholder="Plak hier de teruggevonden tekst…"

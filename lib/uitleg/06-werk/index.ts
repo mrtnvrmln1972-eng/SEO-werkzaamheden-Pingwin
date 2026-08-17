@@ -1,3 +1,4 @@
+import { BLOKKEN as koers } from "./koers";
 import { BLOKKEN as notificaties } from "./notificaties";
 import { BLOKKEN as fases } from "./fases";
 import { BLOKKEN as planning } from "./planning";
@@ -18,6 +19,7 @@ export const HOOFDSTUK: Hoofdstuk = {
     "Een advies dat niet wordt uitgevoerd is geen advies. Daarom zit de hele weg van signaal naar live " +
     "wijziging in hetzelfde systeem, met een vaste voortgang per pagina.",
   uitklappers: [
+    ...koers,
     ...notificaties,
     ...fases,
     ...planning,
