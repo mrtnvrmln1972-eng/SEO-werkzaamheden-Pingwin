@@ -271,7 +271,22 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
           <SoortLijst kop="Lettergroottes buiten de schaal" soort={meting.lettergroottes} eenheid="" />
           <SoortLijst kop="Afstanden buiten de schaal" soort={meting.afstanden} eenheid="" />
           <SoortLijst kop="Rondingen" soort={meting.rondingen} eenheid="" />
-          <SoortLijst kop="Schaduwen" soort={meting.schaduwen} eenheid="" kort />
+
+          {/* Schaduwen als tekst waren een muur van afgekapte code: 45 regels
+              monospace waar je niets uit opmaakt. Een schaduw is iets dat je
+              ziet, dus toon je hem. Zo valt in één blik op dat het merendeel
+              hetzelfde bedoelt en alleen anders is opgeschreven, en dat is
+              precies de vraag die dit scherm moet beantwoorden. */}
+          <h3 className="stijl-h3">
+            Schaduwen ({meting.schaduwen.verschillend} tegenover {meting.schaduwen.benoemd} in de schaal)
+          </h3>
+          <div className="stijl-schaduwen">
+            {meting.schaduwen.los.map((s) => (
+              <div key={s.waarde} className="stijl-schaduwtegel" style={{ boxShadow: s.waarde }} title={`${s.waarde} — ${s.aantal}×`}>
+                {s.aantal}
+              </div>
+            ))}
+          </div>
 
           <h3 className="stijl-h3">Hoe vaak hetzelfde onderdeel opnieuw is uitgevonden</h3>
           <p className="stijl-p stijl-p-klein">
@@ -322,14 +337,14 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
 }
 
 /** Eén soort waarde als lijst: wat er is, hoe vaak, en hoeveel er zouden moeten zijn. */
-function SoortLijst({ kop, soort, eenheid, kort }: { kop: string; soort: Soort; eenheid: string; kort?: boolean }) {
+function SoortLijst({ kop, soort, eenheid }: { kop: string; soort: Soort; eenheid: string }) {
   return (
     <>
       <h3 className="stijl-h3">{kop} ({soort.verschillend} tegenover {soort.benoemd} in de schaal)</h3>
       <div className="stijl-waarden">
         {soort.los.map((w) => (
           <span key={w.waarde} className="stijl-waarde" title={`${w.aantal} plekken`}>
-            <code className={kort ? "stijl-code stijl-code-kort" : "stijl-code"}>{w.waarde}{eenheid}</code>
+            <code className="stijl-code">{w.waarde}{eenheid}</code>
             <span className="stijl-waarde-aantal">{w.aantal}</span>
           </span>
         ))}

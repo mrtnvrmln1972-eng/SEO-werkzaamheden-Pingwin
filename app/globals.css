@@ -8091,7 +8091,17 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   background: var(--gray-light); color: var(--muted);
   padding: var(--s-0) var(--s-1); border-radius: var(--r-sm);
 }
-.stijl-code-kort { max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Schaduwen tonen we, we schrijven ze niet op: 45 regels afgekapte code zegt
+   niets, 45 blokjes naast elkaar zegt in één blik dat het merendeel hetzelfde
+   bedoelt. Het getal in het blokje is hoe vaak die schaduw voorkomt. */
+.stijl-schaduwen { display: flex; flex-wrap: wrap; gap: var(--s-5); padding: var(--s-2) var(--s-0); }
+.stijl-schaduwtegel {
+  width: var(--s-12); height: var(--s-10); border-radius: var(--r-md);
+  background: var(--white); border: 1px solid var(--card-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
+  font-variant-numeric: tabular-nums; flex: none; cursor: help;
+}
 .stijl-voet {
   margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--card-border);
   font-size: var(--fs-xs); line-height: var(--lh-xs); color: var(--gray);
