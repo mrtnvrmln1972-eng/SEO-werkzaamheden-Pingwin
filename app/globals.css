@@ -94,67 +94,180 @@
   --shadow-sm: 0 1px 3px rgba(51, 48, 46, 0.06);
   --shadow-md: 0 4px 16px rgba(51, 48, 46, 0.07), 0 1px 3px rgba(51, 48, 46, 0.05);
   --shadow-lg: 0 8px 24px rgba(51, 48, 46, 0.10), 0 2px 6px rgba(51, 48, 46, 0.06);
+
+  /* Eén groen vlak met een naam. Deze kleur stond al tien keer los in het
+     bestand (naast twee bijna-gelijke varianten), als achtergrond van "dit is
+     goed". Hier krijgt hij een naam zodat die drie er straks één worden. */
+  --good-light: #E7F6EA;
+
+  /* ══════════════════════════════════════════════════════════════
+     DE BETEKENISLAAG: WAAR EEN WAARDE VOOR DIENT
+     ══════════════════════════════════════════════════════════════
+     Alles hierboven zegt HOE GROOT of WELKE KLEUR iets is: --fs-sm, --s-4,
+     --orange. Dat is genoeg om consequent te zijn, en te weinig om iets te
+     kunnen veranderen. Wil je "alle bijschriften een tikje groter", dan moet
+     je weten wélke van de honderden --fs-sm-gebruiken een bijschrift is, en
+     dat staat nergens. Dus verandert er niets, of er verandert per ongeluk
+     ook iets anders mee.
+
+     Deze laag zegt WAARVOOR een waarde dient. Een bijschrift is
+     --type-bijschrift, en of dat 12,5 of 13 pixels is staat op één plek.
+     Vanaf hier is een ontwerpwijziging één regel in plaats van een zoektocht.
+
+     TWEE REGELS DIE DEZE LAAG ECHT MAKEN
+     ────────────────────────────────────
+     1. Een naam hieronder wijst ALTIJD naar een token hierboven, nooit naar
+        een eigen waarde. Zodra hier een losse pixel of hex verschijnt, is dit
+        geen betekenislaag meer maar een tweede schaal ernaast, en dan hebben
+        we het probleem verdubbeld in plaats van opgelost.
+     2. Nieuwe opmaak gebruikt deze namen, niet de schaal eronder. De schaal
+        blijft bestaan (de bestaande schermen leunen erop en die zetten we
+        scherm voor scherm om), maar hij is vanaf nu de motorruimte.
+
+     `proeven/stijl-teller.proef.ts` bewaakt allebei: hij wordt rood als een
+     naam hieronder een eigen waarde krijgt, en hij houdt een vloer bij onder
+     het aantal plekken dat de betekenislaag gebruikt, zodat die alleen kan
+     stijgen. Een laag die alleen in een document leeft, wordt overgeslagen
+     zodra iemand haast heeft; dat is in dit project inmiddels zes keer de
+     les geweest.
+
+     De namen volgen hoe de tokens in de praktijk al gebruikt worden, niet hoe
+     ze zouden moeten heten. Nagemeten voordat ze gekozen zijn: --gray staat
+     398 keer als tekstkleur en één keer als vlak, --border 304 keer als rand,
+     --orange-light 92 keer als vlak. De rollen bestonden dus al, ze hadden
+     alleen geen naam.
+     ══════════════════════════════════════════════════════════════ */
+
+  /* ── Vlakken: waar iets op ligt ── */
+  --kleur-pagina: var(--app-bg);              /* de achtergrond van het scherm */
+  --kleur-kaart: var(--white);                /* een kaart of paneel */
+  --kleur-rustig: var(--gray-light);          /* een stil vlak bínnen een kaart */
+  --kleur-accent-waas: var(--brand-orange-faint); /* nauwelijks getint, voor nadruk zonder lawaai */
+  --kleur-accent-vlak: var(--orange-light);   /* duidelijk oranje vlak */
+
+  /* ── Tekst ── */
+  --kleur-tekst: var(--body-text);            /* lopende tekst */
+  --kleur-tekst-zacht: var(--muted);          /* iets minder nadruk */
+  --kleur-tekst-stil: var(--gray);            /* bijschrift, label, meta */
+  --kleur-tekst-op-vlak: var(--white);        /* tekst óp een gekleurd vlak */
+  --kleur-kop: var(--brand-charcoal);         /* een kop boven een blok */
+
+  /* ── Accent: de Pingwin-kleur, in zijn drie rollen ── */
+  --kleur-accent: var(--orange);              /* het accent zelf: rand, vlak, icoon */
+  --kleur-accent-diep: var(--orange-dark);    /* accent als tekst, en als hover */
+
+  /* ── Randen ── */
+  --kleur-rand: var(--border);                /* gewone scheiding */
+  --kleur-rand-zacht: var(--card-border);     /* de warme rand om een kaart */
+  --kleur-rand-accent: var(--orange);         /* een rand die aandacht vraagt */
+
+  /* ── Links ── */
+  --kleur-link: var(--link);
+
+  /* ── Status: goed, fout, let op ── */
+  --kleur-goed: var(--good);
+  --kleur-goed-vlak: var(--good-light);
+  --kleur-fout: var(--red);
+  --kleur-fout-vlak: var(--red-light);
+  --kleur-let-op: var(--warn-dark);
+  --kleur-let-op-vlak: var(--highlight-manual);
+
+  /* ── Tekstmaten: welke rol de tekst speelt ── */
+  --type-paginakop: var(--fs-xl);    --regel-paginakop: var(--lh-xl);
+  --type-sectiekop: var(--fs-lg);    --regel-sectiekop: var(--lh-lg);
+  --type-kaartkop: var(--fs-md);     --regel-kaartkop: var(--lh-md);
+  --type-lopend: var(--fs-base);     --regel-lopend: var(--lh-base);
+  --type-bijschrift: var(--fs-sm);   --regel-bijschrift: var(--lh-sm);
+  --type-label: var(--fs-xs);        --regel-label: var(--lh-xs);
+
+  /* ── Ruimte: waartússen ── */
+  --ruimte-scherm: var(--s-8);   /* de rand van de pagina */
+  --ruimte-kaart: var(--s-6);    /* de binnenkant van een kaart */
+  --ruimte-blok: var(--s-6);     /* tussen twee blokken onder elkaar */
+  --ruimte-regel: var(--s-3);    /* tussen regels in een lijst */
+  --ruimte-naast: var(--s-2);    /* tussen dingen die naast elkaar staan */
+  --ruimte-krap: var(--s-1);     /* tussen een teken en zijn label */
+
+  /* ── Rondingen: waarvan ── */
+  --ronding-klein: var(--r-sm);  /* badge, klein knopje */
+  --ronding-knop: var(--r-md);   /* knop, invoerveld, sub-kaart */
+  --ronding-kaart: var(--r-lg);  /* kaart en paneel */
+  --ronding-pil: var(--r-full);  /* pil en ronde chip */
+
+  /* ── Diepte: hoe ver iets van de pagina af ligt ── */
+  --diepte-rust: var(--shadow-sm);     /* ligt bijna plat */
+  --diepte-kaart: var(--shadow-md);    /* een kaart */
+  --diepte-zwevend: var(--shadow-lg);  /* een venster of menu erboven */
 }
 
-/* ── Design-fundament: gedeelde bouwstenen (batch 1) ──────────────
-   Herbruikbare basisclasses op de schaal-tokens hierboven. Nieuwe UI
-   bouwt hiermee; bestaande schermen migreren per batch. */
+/* ── Design-fundament: gedeelde bouwstenen ────────────────────────
+   Herbruikbare basisclasses. Deze staan sinds 18-08-2026 op de BETEKENISLAAG
+   (--kleur-*, --type-*, --ruimte-*, --ronding-*, --diepte-*) en niet meer op
+   de schaal eronder.
+
+   Waarom juist hier begonnen: elk scherm dat .card, .btn of .chip gebruikt
+   erft die betekenis vanzelf mee, zonder dat dat scherm zelf verbouwd hoeft
+   te worden. Eén wijziging hier is dus meteen overal zichtbaar, en dat is
+   precies de eigenschap waar de hele omzetting om draait.
+
+   Er verandert visueel NIETS: elke naam wijst naar exact dezelfde waarde als
+   eerst. Dat is de bedoeling van deze stap, niet een gemiste kans. */
 
 /* Kaart: de standaard witte container met rand, ronding en schaduw. */
 .card {
-  background: var(--white);
-  border: 1px solid var(--card-border);
-  border-radius: var(--r-lg);
-  padding: var(--s-6);
-  box-shadow: var(--shadow-md);
+  background: var(--kleur-kaart);
+  border: 1px solid var(--kleur-rand-zacht);
+  border-radius: var(--ronding-kaart);
+  padding: var(--ruimte-kaart);
+  box-shadow: var(--diepte-kaart);
 }
 
 /* Sectie binnen een kaart: vaste verticale ademruimte tussen blokken. */
-.section { margin-bottom: var(--s-6); }
+.section { margin-bottom: var(--ruimte-blok); }
 .section:last-child { margin-bottom: 0; }
 
 /* Rij: elementen naast elkaar, verticaal gecentreerd, vaste tussenruimte. */
-.row { display: flex; align-items: center; gap: var(--s-3); }
+.row { display: flex; align-items: center; gap: var(--ruimte-regel); }
 
 /* Chip: kleine status- of labelpil. */
 .chip {
-  display: inline-flex; align-items: center; gap: var(--s-1);
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
-  padding: 2px var(--s-2); border-radius: var(--r-full);
-  background: var(--gray-light); color: var(--gray);
+  display: inline-flex; align-items: center; gap: var(--ruimte-krap);
+  font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700;
+  padding: 2px var(--ruimte-naast); border-radius: var(--ronding-pil);
+  background: var(--kleur-rustig); color: var(--kleur-tekst-stil);
 }
 /* AANTAL-BADGES: ÉÉN REGEL, OVERAL — org-sec-aantal, kb-groep-aantal en
    kb-tab-aantal waren drie keer bijna dezelfde regel; nu delen ze .chip's
    vorm. Zelfde idioom als "DOORZICHTIGE KNOPPEN" verderop in dit bestand. */
 .org-sec-aantal, .kb-groep-aantal, .kb-tab-aantal {
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
-  padding: 2px var(--s-2); border-radius: var(--r-full);
-  background: var(--gray-light); color: var(--gray);
+  font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700;
+  padding: 2px var(--ruimte-naast); border-radius: var(--ronding-pil);
+  background: var(--kleur-rustig); color: var(--kleur-tekst-stil);
 }
 
-/* Knop: standaard actieknop op de tokens; .btn-primary is de oranje variant. */
+/* Knop: standaard actieknop; .btn-primary is de oranje variant. */
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--ruimte-naast);
   font-family: 'Montserrat', sans-serif;
-  font-size: var(--fs-base); line-height: var(--lh-base); font-weight: 700;
-  padding: var(--s-2) var(--s-4); border-radius: var(--r-md);
-  border: 1px solid var(--border); background: var(--white); color: var(--gray);
+  font-size: var(--type-lopend); line-height: var(--regel-lopend); font-weight: 700;
+  padding: var(--ruimte-naast) var(--s-4); border-radius: var(--ronding-knop);
+  border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); color: var(--kleur-tekst-stil);
   cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
-.btn:hover { border-color: var(--orange); color: var(--orange-dark); }
+.btn:hover { border-color: var(--kleur-accent); color: var(--kleur-accent-diep); }
 .btn:disabled { opacity: 0.6; cursor: default; }
-.btn:focus-visible { outline: 2px solid var(--orange-dark); outline-offset: 2px; }
-.btn-primary { background: var(--orange); border-color: var(--orange); color: var(--white); }
-.btn-primary:hover { background: var(--orange-dark); border-color: var(--orange-dark); color: var(--white); }
+.btn:focus-visible { outline: 2px solid var(--kleur-accent-diep); outline-offset: 2px; }
+.btn-primary { background: var(--kleur-accent); border-color: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); }
+.btn-primary:hover { background: var(--kleur-accent-diep); border-color: var(--kleur-accent-diep); color: var(--kleur-tekst-op-vlak); }
 /* .btn-ghost (secundaire knop) staat verderop in dit bestand, bij "DOORZICHTIGE KNOPPEN". */
 /* Stil: voor een knop die geen actie op de data is maar informatief/verwijzend
    (bijv. "laatste stand van iets"), zodat hij niet met een echte actieknop verward wordt. */
-.btn-quiet { background: transparent; border-color: transparent; color: var(--gray); }
-.btn-quiet:hover:not(:disabled) { background: var(--gray-light); border-color: var(--gray-light); color: var(--gray); }
+.btn-quiet { background: transparent; border-color: transparent; color: var(--kleur-tekst-stil); }
+.btn-quiet:hover:not(:disabled) { background: var(--kleur-rustig); border-color: var(--kleur-rustig); color: var(--kleur-tekst-stil); }
 /* Destructief: voor een knop die iets onomkeerbaars doet (verwijderen, loskoppelen). */
-.btn-danger { background: transparent; border-color: var(--red); color: var(--red); }
-.btn-danger:hover:not(:disabled) { background: var(--red-light); border-color: var(--red); color: var(--red); }
+.btn-danger { background: transparent; border-color: var(--kleur-fout); color: var(--kleur-fout); }
+.btn-danger:hover:not(:disabled) { background: var(--kleur-fout-vlak); border-color: var(--kleur-fout); color: var(--kleur-fout); }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -6195,7 +6308,7 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
   padding: 0 var(--s-3);
   font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--muted);
 }
-.btn-klein { padding: var(--s-2) var(--s-3); font-size: var(--fs-sm); align-self: flex-start; }
+.btn-klein { padding: var(--ruimte-naast) var(--ruimte-regel); font-size: var(--type-bijschrift); align-self: flex-start; }
 
 /* ── De volledige beschrijving, bij het punt zelf ─────────────────
    Stond eerst als link naar /uitleg#agenda, en dan zocht je in een lang
@@ -6605,10 +6718,10 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .wp-titel-pen,
 .pd-ververs,
 .ghost-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-1);
-  font-family: inherit; font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
-  padding: var(--s-1) var(--s-3); border-radius: var(--r-full);
-  border: 1px solid var(--orange); background: transparent; color: var(--orange-dark);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--ruimte-krap);
+  font-family: inherit; font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700;
+  padding: var(--ruimte-krap) var(--ruimte-regel); border-radius: var(--ronding-pil);
+  border: 1px solid var(--kleur-rand-accent); background: transparent; color: var(--kleur-accent-diep);
   cursor: pointer; white-space: nowrap;
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
@@ -6619,7 +6732,7 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .wp-icon:hover:not(:disabled),
 .wp-titel-pen:hover:not(:disabled),
 .pd-ververs:hover:not(:disabled),
-.ghost-btn:hover:not(:disabled) { background: var(--orange-light); border-color: var(--orange-dark); color: var(--orange-dark); }
+.ghost-btn:hover:not(:disabled) { background: var(--kleur-accent-vlak); border-color: var(--kleur-accent-diep); color: var(--kleur-accent-diep); }
 .btn-ghost:disabled,
 .wp-fase-btn:disabled,
 .wp-act:disabled,
@@ -8283,3 +8396,17 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   font-variant-numeric: tabular-nums; min-width: var(--s-6); text-align: right;
 }
 .stijl-werkregel-pad { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* De betekenislaag op /admin/stijl: welke naam waarnaar wijst, plus hoeveel van
+   de opmaak hem gebruikt. Staat zelf op de betekenislaag, want een scherm dat
+   over de laag gaat en er zelf naast bouwt spreekt zichzelf tegen. */
+.stijl-aandeel { margin-top: var(--ruimte-kaart); }
+.stijl-aandeel-kop { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ruimte-naast); }
+.stijl-betekenis {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--ruimte-naast) var(--ruimte-kaart);
+}
+.stijl-betekenisregel { display: flex; align-items: center; gap: var(--ruimte-naast); min-width: 0; }
+.stijl-betekenis-pijl {
+  font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
+}

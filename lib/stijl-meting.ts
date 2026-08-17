@@ -94,7 +94,34 @@ export type Meting = {
   tokens: { naam: string; waarde: string }[];
   /** Elke losse kleur naast de token die er het dichtst bij ligt. */
   kleurNaastToken: KleurNaast[];
+  /** De betekenislaag: namen die zeggen waarvóór een waarde dient. */
+  betekenis: {
+    namen: { naam: string; wijstNaar: string; groep: string }[];
+    /** Namen die een eigen waarde kregen in plaats van naar een token te wijzen. Hoort leeg te blijven. */
+    eigenWaarde: string[];
+    /** Hoe vaak de opmaak de betekenislaag gebruikt. Dit getal mag alleen stijgen. */
+    gebruik: number;
+    /** Hoe vaak de opmaak nog rechtstreeks op de schaal eronder zit. */
+    schaalGebruik: number;
+  };
 };
+
+/**
+ * De voorvoegsels van de betekenislaag. Een token dat hiermee begint zegt
+ * waarvóór een waarde dient; al het andere zegt alleen hoe groot of welke
+ * kleur hij is. Bewust een expliciete lijst en niet "de waarde begint met
+ * var(", want --pingwin doet dat ook en dat is gewoon een alias.
+ */
+const BETEKENIS_GROEPEN: { voorvoegsel: string; groep: string }[] = [
+  { voorvoegsel: "--kleur-", groep: "Kleur" },
+  { voorvoegsel: "--type-", groep: "Tekstmaat" },
+  { voorvoegsel: "--regel-", groep: "Regelhoogte" },
+  { voorvoegsel: "--ruimte-", groep: "Ruimte" },
+  { voorvoegsel: "--ronding-", groep: "Ronding" },
+  { voorvoegsel: "--diepte-", groep: "Diepte" },
+];
+
+const isBetekenis = (naam: string) => BETEKENIS_GROEPEN.some((g) => naam.startsWith(g.voorvoegsel));
 
 const lees = (p: string) => fs.readFileSync(path.join(WORTEL, p), "utf8");
 
@@ -349,5 +376,43 @@ export function meet(): Meting {
     inline: { totaal: inlineTotaal, metVasteWaarde: inlineVast, perBestand: inlinePerBestand },
     tokens,
     kleurNaastToken: legNaastTokens(losseKleuren, tokens),
+    betekenis: meetBetekenislaag(rest, tokens),
+  };
+}
+
+/**
+ * De stand van de betekenislaag: welke namen er zijn, of ze allemaal naar een
+ * token wijzen, en hoeveel van de opmaak hem al gebruikt.
+ *
+ * Dat laatste getal is de reden dat deze meting bestaat. Een laag die netjes
+ * gedefinieerd is en door niemand gebruikt wordt is geen fundament maar een
+ * vierde stapel naast de drie die er al lagen, en dan is het probleem groter
+ * geworden in plaats van kleiner. Het aantal gebruiken is dus een vloer die
+ * alleen mag stijgen, precies zoals het aantal losse waarden een plafond is
+ * dat alleen mag dalen.
+ */
+function meetBetekenislaag(rest: string, tokens: { naam: string; waarde: string }[]): Meting["betekenis"] {
+  const namen = tokens
+    .filter((t) => isBetekenis(t.naam))
+    .map((t) => ({
+      naam: t.naam,
+      wijstNaar: t.waarde.trim(),
+      groep: BETEKENIS_GROEPEN.find((g) => t.naam.startsWith(g.voorvoegsel))?.groep ?? "Overig",
+    }));
+
+  // Een naam in de betekenislaag hoort naar een token te wijzen, nooit naar een
+  // eigen waarde. Zodra dat wél gebeurt is het geen laag erbovenop meer maar een
+  // tweede schaal ernaast, en dan lopen ze uit elkaar zoals alles wat hier twee
+  // keer los is uitgeschreven.
+  const eigenWaarde = namen
+    .filter((n) => !n.wijstNaar.startsWith("var(--"))
+    .map((n) => `${n.naam}: ${n.wijstNaar}`);
+
+  const alleGebruiken = [...rest.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]);
+  return {
+    namen,
+    eigenWaarde,
+    gebruik: alleGebruiken.filter(isBetekenis).length,
+    schaalGebruik: alleGebruiken.filter((n) => !isBetekenis(n)).length,
   };
 }

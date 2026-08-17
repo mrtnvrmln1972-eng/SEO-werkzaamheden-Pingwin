@@ -65,6 +65,14 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
   const opTeRuimen = meting.kleurNaastToken.filter((k) => k.stapel !== "anders" && k.stapel !== "doorzichtig");
   const opTeRuimenPlekken = opTeRuimen.reduce((a, b) => a + b.aantal, 0);
 
+  // De betekenislaag. Het aandeel is met opzet klein aan het begin: de laag is
+  // net gelegd en alleen de gedeelde bouwstenen staan erop. Het getal eerlijk
+  // tonen is het punt, want een laag die niemand gebruikt is geen fundament.
+  const betekenis = meting.betekenis;
+  const totaalGebruik = betekenis.gebruik + betekenis.schaalGebruik;
+  const aandeelBreedte = `${Math.max(1, Math.round((betekenis.gebruik / Math.max(totaalGebruik, 1)) * 100))}%`;
+  const groepen = [...new Set(betekenis.namen.map((n) => n.groep))];
+
   const zichtbareKleuren = alleKleuren ? meting.kleuren.los : meting.kleuren.los.slice(0, 72);
 
   return (
@@ -173,6 +181,50 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
               );
             })}
           </div>
+        </div>
+
+        {/* ── De betekenislaag ── */}
+        <div className="card section">
+          <h2 className="stijl-h2">De betekenislaag: waar een waarde voor dient</h2>
+          <p className="stijl-p">
+            De schaal hieronder zegt hoe groot iets is en welke kleur het heeft. Dat is genoeg om
+            consequent te zijn, en te weinig om iets te kunnen veranderen: wil je alle bijschriften
+            een tikje groter, dan moet je weten wélke van de honderden gebruiken een bijschrift is,
+            en dat staat nergens. Deze {betekenis.namen.length} namen zeggen dat wel. Vanaf hier is
+            een ontwerpwijziging één regel in plaats van een zoektocht.
+          </p>
+          <div className="stijl-aandeel">
+            <div className="stijl-aandeel-kop">
+              <span className="stijl-meter-naam">Hoeveel van de opmaak hem al gebruikt</span>
+              <span className="stijl-meter-cijfer">{betekenis.gebruik}<span className="stijl-meter-doel"> van {(betekenis.gebruik + betekenis.schaalGebruik).toLocaleString("nl-NL")} plekken</span></span>
+            </div>
+            <div className="stijl-balk">
+              <div className="stijl-balk-vul" style={{ width: aandeelBreedte }} />
+            </div>
+            <div className="stijl-meter-uitleg">
+              Dit getal mag alleen stijgen; zakt het, dan stopt de bouw. De gedeelde bouwstenen
+              (kaart, knop, label, rij) staan er al op, dus elk scherm dat die gebruikt erft de
+              betekenis mee zonder zelf verbouwd te worden. De rest volgt scherm voor scherm.
+            </div>
+          </div>
+          {groepen.map((groep) => (
+            <div key={groep}>
+              <h3 className="stijl-h3">{groep}</h3>
+              <div className="stijl-betekenis">
+                {betekenis.namen.filter((n) => n.groep === groep).map((n) => {
+                  const vlak = `var(${n.naam})`;
+                  return (
+                    <div key={n.naam} className="stijl-betekenisregel">
+                      {groep === "Kleur" && <span className="stijl-stip" style={{ background: vlak }} />}
+                      <code className="stijl-code">{n.naam}</code>
+                      <span className="stijl-betekenis-pijl">wordt</span>
+                      <code className="stijl-code">{n.wijstNaar}</code>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* ── De bedoeling ── */}

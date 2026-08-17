@@ -5,7 +5,10 @@
     "wordt rood als je erboven komt, en ook als je er ruim onder duikt zonder het plafond mee te",
     "verlagen (want dan glipt de winst er later weer uit).",
     "De beginstand hieronder is de gemeten werkelijkheid op 17-08-2026. Niet mooi, wel eerlijk:",
-    "je kunt alleen dalen vanaf waar je staat. Het doel per soort staat in 'doel'."
+    "je kunt alleen dalen vanaf waar je staat. Het doel per soort staat in 'doel'.",
+    "Naast het plafond staat er sinds 18-08-2026 een VLOER: hoeveel plekken de betekenislaag",
+    "(--kleur-*, --type-*, --ruimte-*, --ronding-*, --diepte-*) gebruiken. Dat getal mag alleen",
+    "stijgen. Een laag die niemand gebruikt is geen fundament maar een vierde stapel ernaast."
   ],
   "plafond": {
     "kleuren": 331,
@@ -24,5 +27,8 @@
     "afstanden": 10,
     "knopklassen": 8,
     "inlineOpmaak": 0
+  },
+  "vloer": {
+    "betekenislaag": 68
   }
 }

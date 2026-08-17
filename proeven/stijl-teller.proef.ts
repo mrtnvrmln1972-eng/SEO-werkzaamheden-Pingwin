@@ -43,9 +43,10 @@ function checkWaar(naam: string, waar: boolean, toelichting = "") {
 
 const WORTEL = path.join(__dirname, "..");
 const plafondBestand = path.join(WORTEL, "proeven", "stijl-plafond.json");
-const { plafond, doel } = JSON.parse(fs.readFileSync(plafondBestand, "utf8")) as {
+const { plafond, doel, vloer } = JSON.parse(fs.readFileSync(plafondBestand, "utf8")) as {
   plafond: Record<string, number>;
   doel: Record<string, number>;
+  vloer: Record<string, number>;
 };
 
 const meting = meet();
@@ -98,6 +99,35 @@ checkWaar(
   teLaag.length === 0,
   `Er is opgeruimd, mooi. Leg het vast in proeven/stijl-plafond.json, anders glipt de winst er later weer in:\n       ${teLaag.join(",\n       ")}`
 );
+
+// ── De betekenislaag: bestaat hij nog, en wordt hij gebruikt? ──
+// Toegevoegd op 18-08-2026, en dit is het deel dat het verschil maakt tussen
+// een fundament en een vierde stapel. De laag --kleur-*/--type-*/--ruimte-*
+// zegt waarvóór een waarde dient, in plaats van alleen hoe groot hij is. Zo'n
+// laag is precies zo veel waard als het aantal plekken dat hem gebruikt: nul
+// gebruik betekent dat er nu vier manieren bestaan om een kleur te kiezen in
+// plaats van drie, en dan is dit een verslechtering geweest.
+const { betekenis } = meting;
+
+checkWaar(
+  `de betekenislaag wijst alleen naar tokens (${betekenis.namen.length} namen)`,
+  betekenis.eigenWaarde.length === 0,
+  `Deze naam heeft een eigen waarde in plaats van een verwijzing:\n       ${betekenis.eigenWaarde.join("\n       ")}\n       Laat hem naar een token uit de schaal wijzen (var(--…)). Een betekenislaag met eigen waarden is geen laag erbovenop maar een tweede schaal ernaast.`
+);
+
+const aandeel = Math.round((betekenis.gebruik / (betekenis.gebruik + betekenis.schaalGebruik)) * 1000) / 10;
+checkWaar(
+  `de betekenislaag wordt gebruikt: ${betekenis.gebruik} plekken (${aandeel}% van de opmaak, vloer ${vloer.betekenislaag})`,
+  betekenis.gebruik >= vloer.betekenislaag - speling(vloer.betekenislaag),
+  `Het gebruik van de betekenislaag is gezakt. Dat betekent dat er opmaak is teruggezet op de kale schaal (--fs-*, --s-*, --orange). Zet het terug, of, als het weghalen klopte, verlaag de vloer in proeven/stijl-plafond.json naar ${betekenis.gebruik}.`
+);
+if (betekenis.gebruik > vloer.betekenislaag) {
+  checkWaar(
+    "de vloer staat strak tegen het gebruik aan",
+    betekenis.gebruik <= vloer.betekenislaag + speling(vloer.betekenislaag),
+    `Er is opmaak omgezet naar de betekenislaag, mooi. Leg het vast: zet "betekenislaag" in proeven/stijl-plafond.json op ${betekenis.gebruik}, zodat het niet stilletjes weer terugzakt.`
+  );
+}
 
 // ── De inventaris die /admin/stijl toont, moet kloppen met de werkelijkheid ──
 // Dat bestand wordt bij de bouw geschreven (scripts/stijl-inventaris.ts). Staat

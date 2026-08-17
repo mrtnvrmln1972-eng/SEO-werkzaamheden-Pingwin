@@ -1,12 +1,12 @@
 {
   "css": {
-    "regels": 8274,
-    "stijlregels": 4376,
-    "classnamen": 2893
+    "regels": 8401,
+    "stijlregels": 4381,
+    "classnamen": 2898
   },
   "kleuren": {
     "verschillend": 331,
-    "benoemd": 41,
+    "benoemd": 42,
     "los": [
       {
         "waarde": "#fff",
@@ -2261,7 +2261,7 @@
     }
   ],
   "inline": {
-    "totaal": 616,
+    "totaal": 618,
     "metVasteWaarde": 50,
     "perBestand": [
       {
@@ -2602,6 +2602,198 @@
     {
       "naam": "--shadow-lg",
       "waarde": "0 8px 24px rgba(51, 48, 46, 0.10), 0 2px 6px rgba(51, 48, 46, 0.06)"
+    },
+    {
+      "naam": "--good-light",
+      "waarde": "#E7F6EA"
+    },
+    {
+      "naam": "--kleur-pagina",
+      "waarde": "var(--app-bg)"
+    },
+    {
+      "naam": "--kleur-kaart",
+      "waarde": "var(--white)"
+    },
+    {
+      "naam": "--kleur-rustig",
+      "waarde": "var(--gray-light)"
+    },
+    {
+      "naam": "--kleur-accent-waas",
+      "waarde": "var(--brand-orange-faint)"
+    },
+    {
+      "naam": "--kleur-accent-vlak",
+      "waarde": "var(--orange-light)"
+    },
+    {
+      "naam": "--kleur-tekst",
+      "waarde": "var(--body-text)"
+    },
+    {
+      "naam": "--kleur-tekst-zacht",
+      "waarde": "var(--muted)"
+    },
+    {
+      "naam": "--kleur-tekst-stil",
+      "waarde": "var(--gray)"
+    },
+    {
+      "naam": "--kleur-tekst-op-vlak",
+      "waarde": "var(--white)"
+    },
+    {
+      "naam": "--kleur-kop",
+      "waarde": "var(--brand-charcoal)"
+    },
+    {
+      "naam": "--kleur-accent",
+      "waarde": "var(--orange)"
+    },
+    {
+      "naam": "--kleur-accent-diep",
+      "waarde": "var(--orange-dark)"
+    },
+    {
+      "naam": "--kleur-rand",
+      "waarde": "var(--border)"
+    },
+    {
+      "naam": "--kleur-rand-zacht",
+      "waarde": "var(--card-border)"
+    },
+    {
+      "naam": "--kleur-rand-accent",
+      "waarde": "var(--orange)"
+    },
+    {
+      "naam": "--kleur-link",
+      "waarde": "var(--link)"
+    },
+    {
+      "naam": "--kleur-goed",
+      "waarde": "var(--good)"
+    },
+    {
+      "naam": "--kleur-goed-vlak",
+      "waarde": "var(--good-light)"
+    },
+    {
+      "naam": "--kleur-fout",
+      "waarde": "var(--red)"
+    },
+    {
+      "naam": "--kleur-fout-vlak",
+      "waarde": "var(--red-light)"
+    },
+    {
+      "naam": "--kleur-let-op",
+      "waarde": "var(--warn-dark)"
+    },
+    {
+      "naam": "--kleur-let-op-vlak",
+      "waarde": "var(--highlight-manual)"
+    },
+    {
+      "naam": "--type-paginakop",
+      "waarde": "var(--fs-xl)"
+    },
+    {
+      "naam": "--regel-paginakop",
+      "waarde": "var(--lh-xl)"
+    },
+    {
+      "naam": "--type-sectiekop",
+      "waarde": "var(--fs-lg)"
+    },
+    {
+      "naam": "--regel-sectiekop",
+      "waarde": "var(--lh-lg)"
+    },
+    {
+      "naam": "--type-kaartkop",
+      "waarde": "var(--fs-md)"
+    },
+    {
+      "naam": "--regel-kaartkop",
+      "waarde": "var(--lh-md)"
+    },
+    {
+      "naam": "--type-lopend",
+      "waarde": "var(--fs-base)"
+    },
+    {
+      "naam": "--regel-lopend",
+      "waarde": "var(--lh-base)"
+    },
+    {
+      "naam": "--type-bijschrift",
+      "waarde": "var(--fs-sm)"
+    },
+    {
+      "naam": "--regel-bijschrift",
+      "waarde": "var(--lh-sm)"
+    },
+    {
+      "naam": "--type-label",
+      "waarde": "var(--fs-xs)"
+    },
+    {
+      "naam": "--regel-label",
+      "waarde": "var(--lh-xs)"
+    },
+    {
+      "naam": "--ruimte-scherm",
+      "waarde": "var(--s-8)"
+    },
+    {
+      "naam": "--ruimte-kaart",
+      "waarde": "var(--s-6)"
+    },
+    {
+      "naam": "--ruimte-blok",
+      "waarde": "var(--s-6)"
+    },
+    {
+      "naam": "--ruimte-regel",
+      "waarde": "var(--s-3)"
+    },
+    {
+      "naam": "--ruimte-naast",
+      "waarde": "var(--s-2)"
+    },
+    {
+      "naam": "--ruimte-krap",
+      "waarde": "var(--s-1)"
+    },
+    {
+      "naam": "--ronding-klein",
+      "waarde": "var(--r-sm)"
+    },
+    {
+      "naam": "--ronding-knop",
+      "waarde": "var(--r-md)"
+    },
+    {
+      "naam": "--ronding-kaart",
+      "waarde": "var(--r-lg)"
+    },
+    {
+      "naam": "--ronding-pil",
+      "waarde": "var(--r-full)"
+    },
+    {
+      "naam": "--diepte-rust",
+      "waarde": "var(--shadow-sm)"
+    },
+    {
+      "naam": "--diepte-kaart",
+      "waarde": "var(--shadow-md)"
+    },
+    {
+      "naam": "--diepte-zwevend",
+      "waarde": "var(--shadow-lg)"
     }
   ],
   "kleurNaastToken": [
@@ -2692,9 +2884,9 @@
     {
       "waarde": "#e7f6ea",
       "aantal": 10,
-      "dichtst": "--brand-teal-light",
-      "afstand": 22,
-      "stapel": "bijna"
+      "dichtst": "--good-light",
+      "afstand": 0,
+      "stapel": "gelijk"
     },
     {
       "waarde": "#8a7a6c",
@@ -2720,8 +2912,8 @@
     {
       "waarde": "#eaf6ef",
       "aantal": 7,
-      "dichtst": "--brand-teal-light",
-      "afstand": 18,
+      "dichtst": "--good-light",
+      "afstand": 9,
       "stapel": "bijna"
     },
     {
@@ -2748,8 +2940,8 @@
     {
       "waarde": "#eaf5ee",
       "aantal": 6,
-      "dichtst": "--brand-teal-light",
-      "afstand": 19,
+      "dichtst": "--good-light",
+      "afstand": 8,
       "stapel": "bijna"
     },
     {
@@ -2825,16 +3017,16 @@
     {
       "waarde": "#e7f4e8",
       "aantal": 5,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 21,
+      "dichtst": "--good-light",
+      "afstand": 5,
       "stapel": "bijna"
     },
     {
       "waarde": "#e8f5e9",
       "aantal": 5,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 21,
-      "stapel": "bijna"
+      "dichtst": "--good-light",
+      "afstand": 3,
+      "stapel": "gelijk"
     },
     {
       "waarde": "#f0ebe5",
@@ -2930,9 +3122,9 @@
     {
       "waarde": "#e7f6ec",
       "aantal": 4,
-      "dichtst": "--brand-teal-light",
-      "afstand": 20,
-      "stapel": "bijna"
+      "dichtst": "--good-light",
+      "afstand": 3,
+      "stapel": "gelijk"
     },
     {
       "waarde": "#ede9fe",
@@ -2944,8 +3136,8 @@
     {
       "waarde": "#eef7ee",
       "aantal": 4,
-      "dichtst": "--gray-light",
-      "afstand": 16,
+      "dichtst": "--good-light",
+      "afstand": 13,
       "stapel": "bijna"
     },
     {
@@ -3063,9 +3255,9 @@
     {
       "waarde": "#dcf5e3",
       "aantal": 3,
-      "dichtst": "--brand-teal-light",
-      "afstand": 35,
-      "stapel": "familie"
+      "dichtst": "--good-light",
+      "afstand": 21,
+      "stapel": "bijna"
     },
     {
       "waarde": "#e5edff",
@@ -3084,15 +3276,15 @@
     {
       "waarde": "#e6f4ea",
       "aantal": 3,
-      "dichtst": "--brand-teal-light",
-      "afstand": 22,
+      "dichtst": "--good-light",
+      "afstand": 4,
       "stapel": "bijna"
     },
     {
       "waarde": "#e6f6ec",
       "aantal": 3,
-      "dichtst": "--brand-teal-light",
-      "afstand": 19,
+      "dichtst": "--good-light",
+      "afstand": 3,
       "stapel": "bijna"
     },
     {
@@ -3112,8 +3304,8 @@
     {
       "waarde": "#eef8ee",
       "aantal": 3,
-      "dichtst": "--gray-light",
-      "afstand": 17,
+      "dichtst": "--good-light",
+      "afstand": 14,
       "stapel": "bijna"
     },
     {
@@ -3336,8 +3528,8 @@
     {
       "waarde": "#e2f1e2",
       "aantal": 2,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 29,
+      "dichtst": "--good-light",
+      "afstand": 18,
       "stapel": "bijna"
     },
     {
@@ -3350,8 +3542,8 @@
     {
       "waarde": "#e7f6e7",
       "aantal": 2,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 24,
+      "dichtst": "--good-light",
+      "afstand": 4,
       "stapel": "bijna"
     },
     {
@@ -3364,8 +3556,8 @@
     {
       "waarde": "#e8f5ec",
       "aantal": 2,
-      "dichtst": "--brand-teal-light",
-      "afstand": 20,
+      "dichtst": "--good-light",
+      "afstand": 4,
       "stapel": "bijna"
     },
     {
@@ -4043,8 +4235,8 @@
     {
       "waarde": "#e2f2e5",
       "aantal": 1,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 28,
+      "dichtst": "--good-light",
+      "afstand": 14,
       "stapel": "bijna"
     },
     {
@@ -4099,8 +4291,8 @@
     {
       "waarde": "#e6f2ec",
       "aantal": 1,
-      "dichtst": "--brand-teal-light",
-      "afstand": 20,
+      "dichtst": "--good-light",
+      "afstand": 9,
       "stapel": "bijna"
     },
     {
@@ -4120,8 +4312,8 @@
     {
       "waarde": "#e7f5ec",
       "aantal": 1,
-      "dichtst": "--brand-teal-light",
-      "afstand": 20,
+      "dichtst": "--good-light",
+      "afstand": 4,
       "stapel": "bijna"
     },
     {
@@ -4141,8 +4333,8 @@
     {
       "waarde": "#eaf8ef",
       "aantal": 1,
-      "dichtst": "--brand-teal-light",
-      "afstand": 19,
+      "dichtst": "--good-light",
+      "afstand": 10,
       "stapel": "bijna"
     },
     {
@@ -4155,8 +4347,8 @@
     {
       "waarde": "#ecf7ee",
       "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 19,
+      "dichtst": "--good-light",
+      "afstand": 10,
       "stapel": "bijna"
     },
     {
@@ -4922,5 +5114,247 @@
       "afstand": 0,
       "stapel": "doorzichtig"
     }
-  ]
+  ],
+  "betekenis": {
+    "namen": [
+      {
+        "naam": "--kleur-pagina",
+        "wijstNaar": "var(--app-bg)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-kaart",
+        "wijstNaar": "var(--white)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-rustig",
+        "wijstNaar": "var(--gray-light)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-accent-waas",
+        "wijstNaar": "var(--brand-orange-faint)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-accent-vlak",
+        "wijstNaar": "var(--orange-light)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-tekst",
+        "wijstNaar": "var(--body-text)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-tekst-zacht",
+        "wijstNaar": "var(--muted)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-tekst-stil",
+        "wijstNaar": "var(--gray)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-tekst-op-vlak",
+        "wijstNaar": "var(--white)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-kop",
+        "wijstNaar": "var(--brand-charcoal)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-accent",
+        "wijstNaar": "var(--orange)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-accent-diep",
+        "wijstNaar": "var(--orange-dark)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-rand",
+        "wijstNaar": "var(--border)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-rand-zacht",
+        "wijstNaar": "var(--card-border)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-rand-accent",
+        "wijstNaar": "var(--orange)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-link",
+        "wijstNaar": "var(--link)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-goed",
+        "wijstNaar": "var(--good)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-goed-vlak",
+        "wijstNaar": "var(--good-light)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-fout",
+        "wijstNaar": "var(--red)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-fout-vlak",
+        "wijstNaar": "var(--red-light)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-let-op",
+        "wijstNaar": "var(--warn-dark)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-let-op-vlak",
+        "wijstNaar": "var(--highlight-manual)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--type-paginakop",
+        "wijstNaar": "var(--fs-xl)",
+        "groep": "Tekstmaat"
+      },
+      {
+        "naam": "--regel-paginakop",
+        "wijstNaar": "var(--lh-xl)",
+        "groep": "Regelhoogte"
+      },
+      {
+        "naam": "--type-sectiekop",
+        "wijstNaar": "var(--fs-lg)",
+        "groep": "Tekstmaat"
+      },
+      {
+        "naam": "--regel-sectiekop",
+        "wijstNaar": "var(--lh-lg)",
+        "groep": "Regelhoogte"
+      },
+      {
+        "naam": "--type-kaartkop",
+        "wijstNaar": "var(--fs-md)",
+        "groep": "Tekstmaat"
+      },
+      {
+        "naam": "--regel-kaartkop",
+        "wijstNaar": "var(--lh-md)",
+        "groep": "Regelhoogte"
+      },
+      {
+        "naam": "--type-lopend",
+        "wijstNaar": "var(--fs-base)",
+        "groep": "Tekstmaat"
+      },
+      {
+        "naam": "--regel-lopend",
+        "wijstNaar": "var(--lh-base)",
+        "groep": "Regelhoogte"
+      },
+      {
+        "naam": "--type-bijschrift",
+        "wijstNaar": "var(--fs-sm)",
+        "groep": "Tekstmaat"
+      },
+      {
+        "naam": "--regel-bijschrift",
+        "wijstNaar": "var(--lh-sm)",
+        "groep": "Regelhoogte"
+      },
+      {
+        "naam": "--type-label",
+        "wijstNaar": "var(--fs-xs)",
+        "groep": "Tekstmaat"
+      },
+      {
+        "naam": "--regel-label",
+        "wijstNaar": "var(--lh-xs)",
+        "groep": "Regelhoogte"
+      },
+      {
+        "naam": "--ruimte-scherm",
+        "wijstNaar": "var(--s-8)",
+        "groep": "Ruimte"
+      },
+      {
+        "naam": "--ruimte-kaart",
+        "wijstNaar": "var(--s-6)",
+        "groep": "Ruimte"
+      },
+      {
+        "naam": "--ruimte-blok",
+        "wijstNaar": "var(--s-6)",
+        "groep": "Ruimte"
+      },
+      {
+        "naam": "--ruimte-regel",
+        "wijstNaar": "var(--s-3)",
+        "groep": "Ruimte"
+      },
+      {
+        "naam": "--ruimte-naast",
+        "wijstNaar": "var(--s-2)",
+        "groep": "Ruimte"
+      },
+      {
+        "naam": "--ruimte-krap",
+        "wijstNaar": "var(--s-1)",
+        "groep": "Ruimte"
+      },
+      {
+        "naam": "--ronding-klein",
+        "wijstNaar": "var(--r-sm)",
+        "groep": "Ronding"
+      },
+      {
+        "naam": "--ronding-knop",
+        "wijstNaar": "var(--r-md)",
+        "groep": "Ronding"
+      },
+      {
+        "naam": "--ronding-kaart",
+        "wijstNaar": "var(--r-lg)",
+        "groep": "Ronding"
+      },
+      {
+        "naam": "--ronding-pil",
+        "wijstNaar": "var(--r-full)",
+        "groep": "Ronding"
+      },
+      {
+        "naam": "--diepte-rust",
+        "wijstNaar": "var(--shadow-sm)",
+        "groep": "Diepte"
+      },
+      {
+        "naam": "--diepte-kaart",
+        "wijstNaar": "var(--shadow-md)",
+        "groep": "Diepte"
+      },
+      {
+        "naam": "--diepte-zwevend",
+        "wijstNaar": "var(--shadow-lg)",
+        "groep": "Diepte"
+      }
+    ],
+    "eigenWaarde": [],
+    "gebruik": 68,
+    "schaalGebruik": 6491
+  }
 }
