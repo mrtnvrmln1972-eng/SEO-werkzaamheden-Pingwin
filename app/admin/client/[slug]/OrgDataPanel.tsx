@@ -299,7 +299,6 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
   const [open, setOpen] = useState(false);
-  const [devTo, setDevTo] = useState("");
   const [dataOpen, setDataOpen] = useState(false);
 
   // Vanaf het Fundament-paneel linkt "Structured data" hierheen. Dit kaartje
@@ -321,12 +320,12 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
     if (d?.ok) { bewaard.current = JSON.stringify(d.data); setData(d.data); setLocked(!!d.locked); setShareToken(d.shareToken || ""); setDevShareToken(d.devShareToken || ""); }
   }
   useEffect(() => { void laadOrg(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
-  // De sitebouwer/developer die je hier mailt is dezelfde als in het
-  // Werkzaamheden-tabblad: één plek waar het dashboard dat e-mailadres
-  // onthoudt (localStorage), zodat je het maar één keer hoeft te typen.
-  useEffect(() => {
-    try { setDevTo(localStorage.getItem("pingwin-dev-email") || "tony@pingwin.nl"); } catch { setDevTo("tony@pingwin.nl"); }
-  }, []);
+  // Het adres wordt NIET voorgevuld en NIET onthouden (ADRESVELD-REGEL, zie
+  // MailUitKaart.tsx). Hier stond het laatst gebruikte developer-adres, gedeeld
+  // over álle klanten, met een vast Pingwin-adres als terugval. Dat gedeelde
+  // geheugen zette bij de ene klant het adres van de developer van een andere
+  // klant klaar, en die twee waren elkaars concurrent. Typen met voorstellen
+  // uit de eigen contacten is één seconde werk; dit was een klant waard.
 
   const shareUrl = shareToken && typeof window !== "undefined" ? `${window.location.origin}/share/org/${shareToken}` : "";
   const devShareUrl = devShareToken && typeof window !== "undefined" ? `${window.location.origin}/share/org-dev/${devShareToken}` : "";
@@ -537,10 +536,9 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
         open={devPopOpen}
         onClose={() => setDevPopOpen(false)}
         titel="Delen met developer"
-        aanTo={devTo}
+        aanTo=""
         onderwerp={devPopSubject}
         berichtHtml={devPopHtml}
-        onthoudAls="pingwin-dev-email"
         extra={
           <div>
             <div className="muted" style={{ wordBreak: "break-word" }}>JSON-bestand: <a href={devLink} target="_blank" rel="noreferrer">{devLink}</a></div>
@@ -560,7 +558,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
         open={klantPopOpen}
         onClose={() => setKlantPopOpen(false)}
         titel="Delen met klant"
-        aanTo={clientEmail || ""}
+        aanTo=""
         onderwerp="Bedrijfsgegevens controleren voor jullie vindbaarheid"
         berichtHtml={klantPopHtml}
         extra={

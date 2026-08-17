@@ -33,10 +33,18 @@
  * Opent het eigen mailprogramma met een voorgevulde mail.
  * Geeft `false` terug als er geen ontvanger is (dan hoort de knop een melding
  * te tonen in plaats van te doen alsof er iets gebeurde).
+ *
+ * `ontvangerLeegMag`: open het mailvenster ook ZONDER adres, zodat de gebruiker
+ * de ontvanger in zijn eigen mailprogramma kiest. Dat is de juiste stand voor
+ * elke knop die vroeger een onthouden adres invulde: het dashboard hoort nooit
+ * te gokken naar wie een mail gaat (zie de ADRESVELD-REGEL in
+ * app/admin/client/[slug]/MailUitKaart.tsx). Voor een knop met een eigen
+ * adresveld in beeld blijft `false` juist: daar is een leeg veld een vergissing
+ * en hoort er een melding te komen.
  */
-export function openMailProgramma(opts: { aan: string; onderwerp: string; tekst: string }): boolean {
+export function openMailProgramma(opts: { aan: string; onderwerp: string; tekst: string; ontvangerLeegMag?: boolean }): boolean {
   const aan = (opts.aan || "").trim();
-  if (!aan) return false;
+  if (!aan && !opts.ontvangerLeegMag) return false;
   if (typeof document === "undefined") return false;
   const a = document.createElement("a");
   a.href = `mailto:${aan}?subject=${encodeURIComponent(opts.onderwerp || "")}&body=${encodeURIComponent(opts.tekst || "")}`;

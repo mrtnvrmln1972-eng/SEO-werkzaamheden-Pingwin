@@ -42,9 +42,6 @@ const MONTHS_SHORT = ["jan", "feb", "mrt", "apr", "mei", "jun", "jul", "aug", "s
 const DEV_WEKEN_TERUG = 8;
 const DEV_WEKEN_VOORUIT = 16;
 const DEV_WEEK_OFFSETS = Array.from({ length: DEV_WEKEN_TERUG + DEV_WEKEN_VOORUIT + 1 }, (_, i) => i - DEV_WEKEN_TERUG);
-const MAARTEN_EMAIL = "maarten@pingwin.nl";
-/** Het laatst gebruikte "aan"-adres van deze lijst; MailPopup onthoudt het na versturen. */
-const MAIL_AAN_SLEUTEL = "pingwin-devlijst-mail-aan";
 
 function esc(s: string): string {
   return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -130,13 +127,12 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       setControleVoor({ r, meting: { samenvatting: "De controle lukte niet.", punten: [], alles: false, meetbaar: false }, bezig: false });
     }
   }
-  // Het adres waar de mail standaard heen gaat. Maarten mailt hiermee zijn
-  // sitebouwer, de sitebouwer mailt hiermee Maarten terug, dus het adres staat
-  // niet vast: het onthoudt wat je de vorige keer gebruikte.
-  const [mailAan, setMailAan] = useState(MAARTEN_EMAIL);
-  useEffect(() => {
-    try { setMailAan(localStorage.getItem(MAIL_AAN_SLEUTEL) || MAARTEN_EMAIL); } catch { /* geen opslag */ }
-  }, []);
+  // Het adresveld begint leeg en blijft leeg tot je zelf typt (ADRESVELD-REGEL,
+  // zie app/admin/client/[slug]/MailUitKaart.tsx). Hier stond het laatst
+  // gebruikte adres uit het browsergeheugen, met een vast Pingwin-adres als
+  // terugval. Zulke voorinvulling is precies hoe bij een klant het adres van de
+  // developer van een ANDERE klant in beeld kwam; AdresVeld vult nu aan uit de
+  // eigen contacten zodra je twee letters typt.
 
   // Na aanmaken, bewerken of weggooien komt de hele lijst terug van de server.
   function zetLijst(list: DevTask[]) {
@@ -536,11 +532,9 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             open
             onClose={() => setMailVoor(null)}
             titel={`Mail over deze taak · ${mailVoor.r.clientName}`}
-            aanTo={mailAan}
+            aanTo=""
             onderwerp={`Dev-taak: ${stripText(mailVoor.r.taak).slice(0, 80)} (${mailVoor.r.clientName})`}
             berichtHtml={mailHtml(mailVoor.r, mailVoor.note)}
-            onthoudAls={MAIL_AAN_SLEUTEL}
-            onVerstuurd={() => { try { setMailAan(localStorage.getItem(MAIL_AAN_SLEUTEL) || mailAan); } catch { /* geen opslag */ } }}
           />
         )}
 

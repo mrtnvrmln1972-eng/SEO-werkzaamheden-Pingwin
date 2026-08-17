@@ -144,17 +144,18 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
   }
 
   // Opent de mailclient met de uitwerking (bijv. alt-teksten of meta-voorstel)
-  // voorgevuld, gericht aan de opgeslagen sitebouwer/developer.
+  // voorgevuld, met een LEEG adresveld: de ontvanger kies je in je eigen
+  // mailprogramma. Hier stond het onthouden developer-adres, gedeeld over alle
+  // klanten heen, waardoor je bij de ene klant het adres van de developer van
+  // een andere klant kon meekrijgen (ADRESVELD-REGEL, zie MailUitKaart.tsx).
   function mailToDev() {
     if (!result?.text) return;
-    let to = "";
-    try { to = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
     const subject = `${LABEL[action.type] || "SEO"}${action.url ? ` — ${shortUrl(action.url)}` : ""}`;
     const body = `Hoi,\n\nKun je dit doorvoeren op ${action.url || "de pagina"}?\n\n${result.text}\n\nDank!`;
-    // Staat er geen adres van de sitebouwer, dan opent er niets en zou de knop
-    // stilzwijgend niets doen. Dan liever de tekst op het klembord, met dezelfde
+    // Lukt het openen niet (geen mailprogramma gekoppeld), dan liever de tekst
+    // op het klembord dan een knop die stilzwijgend niets doet, met dezelfde
     // "Gekopieerd"-terugkoppeling als de knop ernaast.
-    if (!openMailProgramma({ aan: to, onderwerp: subject, tekst: body })) {
+    if (!openMailProgramma({ aan: "", onderwerp: subject, tekst: body, ontvangerLeegMag: true })) {
       navigator.clipboard?.writeText(`Onderwerp: ${subject}\n\n${body}`)
         .then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); })
         .catch(() => {});

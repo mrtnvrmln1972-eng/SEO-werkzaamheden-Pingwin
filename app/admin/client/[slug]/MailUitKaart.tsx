@@ -14,6 +14,31 @@
 // welke documenten meegaan, de assistent laten schrijven of zelf typen, en
 // versturen via Microsoft 365. Je concept blijft bewaard als je tussendoor
 // sluit.
+//
+// ───────────────────────────────────────────────────────────
+// ADRESVELD-REGEL: NOOIT VOORINVULLEN, NOOIT ONTHOUDEN (17-08-2026)
+// ───────────────────────────────────────────────────────────
+// Het adresveld begint leeg en blijft leeg tot Maarten er zelf iets in typt.
+// Geen enkele uitzondering, ook niet voor het adres van de klant zelf.
+//
+// Waarom zo hard: hier stond één gedeeld browsergeheugen (localStorage-sleutel
+// "pingwin-dev-email") met "het laatst gebruikte developer-adres". Dat was
+// niet per klant maar voor álle klanten tegelijk. Wie na een mail over klant A
+// een mail over klant B opende, kreeg het adres van klant A's developer al
+// ingevuld. Op 17 augustus 2026 stond zo bij Kamsteeg Tuinen het adres van
+// Paul Hoevenaars voorgevuld. Dat zijn concurrenten van elkaar, allebei klant
+// bij Pingwin; één klik op Versturen en ze wisten het van elkaar. Dat is niet
+// een ongemak maar het soort fout dat een klant kost, en die kans hoort nul te
+// zijn in plaats van klein.
+//
+// Wat ervoor in de plaats komt: AdresVeld stelt namen voor uit Maartens eigen
+// Microsoft 365-contacten zodra hij twee letters typt. Dus geen gok van het
+// systeem, wel hulp bij het typen. Het verschil is dat een voorstel pas een
+// adres wordt als hij hem aanwijst.
+//
+// Zet hier dus nooit een adres neer, uit welke bron ook (laatst gebruikt,
+// klantgegevens, een vast Pingwin-adres). proeven/mailadres-leeg.proef.ts
+// rekent dat na bij elke bouw, in élk mailvenster, niet alleen in dit bestand.
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -136,8 +161,10 @@ export default function MailUitKaart({
     // om wélke pagina het gaat, en die link overtypen was precies het werk dat
     // dit venster moest wegnemen.
     setLinks(t.url ? { pagina: true } : {});
-    let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
-    setTo(startAud === "klant" ? (clientEmail || "") : startAud === "dev" ? devTo : "");
+    // Het adresveld begint leeg, altijd. Zie de uitleg bij ADRESVELD-REGEL
+    // onderaan dit bestand: een onthouden adres uit een andere klant kwam hier
+    // terecht en zette twee concurrenten bijna in dezelfde mail.
+    setTo("");
     const concept = mailUitTekst((t.toelichting || "").replace(/<[^>]*>/g, ""));
     if (concept) {
       if (concept.onderwerp) setOnderwerp(concept.onderwerp);
@@ -323,7 +350,6 @@ export default function MailUitKaart({
     if (!tekst || verzendt) return;
     const adres = to.trim();
     if (!adres) { setErr("Vul eerst het e-mailadres van de ontvanger in."); return; }
-    if (aud === "dev") { try { localStorage.setItem("pingwin-dev-email", adres); } catch { /* geen opslag */ } }
     const ond = onderwerp.trim() || `SEO-taak${t.url ? ` — ${shortUrl(t.url)}` : ""}`;
     const mee = docLinks().filter((l) => links[l.key]).map((l) => ({ label: l.label, url: l.url }));
     setVerzendt(true); setErr("");
@@ -356,8 +382,9 @@ export default function MailUitKaart({
             <button key={k} type="button" className={"wp-aud-pill" + (aud === k ? " wp-aud-actief" : "")}
               onClick={() => {
                 setAud(k);
-                let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
-                setTo(k === "klant" ? (clientEmail || "") : k === "dev" ? devTo : "");
+                // Van ontvanger wisselen vult geen adres in en wist ook niets
+                // wat je zelf al hebt getypt. De keuze bepaalt alleen de toon en
+                // welke documenten meegaan, niet naar wie de mail gaat.
                 // Bewust geen herschrijving: dat zou ingesproken tekst wissen.
               }}>{label}</button>
           ))}

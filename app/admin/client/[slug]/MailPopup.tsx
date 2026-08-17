@@ -18,7 +18,7 @@ function stripHtml(html: string): string {
 }
 
 export default function MailPopup({
-  open, onClose, titel, aanTo, onderwerp, berichtHtml, onthoudAls, extra, onVerstuurd,
+  open, onClose, titel, aanTo, onderwerp, berichtHtml, extra, onVerstuurd,
 }: {
   open: boolean;
   onClose: () => void;
@@ -26,8 +26,12 @@ export default function MailPopup({
   aanTo: string;
   onderwerp: string;
   berichtHtml: string;
-  /** localStorage-sleutel om het "aan"-adres te onthouden na versturen (alleen voor de developer-mail). */
-  onthoudAls?: string;
+  // Er is met opzet GEEN "onthoud dit adres"-mogelijkheid meer. Die stond hier
+  // als onthoudAls en schreef het laatst gebruikte adres in het browsergeheugen,
+  // gedeeld over alle klanten heen; daardoor stond bij de ene klant het adres
+  // van de developer van een andere klant al ingevuld. Zie de ADRESVELD-REGEL
+  // in MailUitKaart.tsx. Zet hem nooit terug; het veld hoort leeg te beginnen en
+  // AdresVeld vult aan uit de eigen contacten.
   /** Extra inhoud boven het bericht: bijvoorbeeld een link met kopieerknop, of een JSON-voorbeeld. */
   extra?: React.ReactNode;
   onVerstuurd?: () => void;
@@ -104,7 +108,6 @@ export default function MailPopup({
       const res = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", to, subject: onderwerp, html: tekst() }) });
       const d = await res.json();
       if (d.ok) {
-        if (onthoudAls) { try { localStorage.setItem(onthoudAls, to.trim()); } catch { /* geen opslag */ } }
         setMsg(`Verstuurd naar ${(d.sentTo || []).join(", ") || to}.`);
         onVerstuurd?.();
         setTimeout(onClose, 1400);
@@ -114,7 +117,6 @@ export default function MailPopup({
 
   function openMailto() {
     if (!openMailProgramma({ aan: to, onderwerp, tekst: stripHtml(tekst()) })) { setMsg("Vul een ontvanger in."); return; }
-    if (onthoudAls) { try { localStorage.setItem(onthoudAls, to.trim()); } catch { /* geen opslag */ } }
     setMsg("Geopend in je mailprogramma; verstuur hem daar. Gebeurt er niets? Gebruik dan ‘Kopieer mailtekst’.");
   }
   async function copyTekst() {

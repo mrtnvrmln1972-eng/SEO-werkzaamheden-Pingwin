@@ -58,6 +58,16 @@ export const HOOFDSTUK: Hoofdstuk = {
         "Het adresveld stelt namen voor uit je eigen contacten: typ \"ma\" en Maarten wordt voorgesteld, kiezen " +
         "met de pijltjes of een klik. Dat zat alleen in het mailvenster van het Werkzaamheden-tabblad; het is nu " +
         "één veld dat elk mailvenster gebruikt.\n\n" +
+        "**Het adresveld begint altijd leeg, en dat is een harde regel zonder uitzonderingen.** Het dashboard " +
+        "vult nooit zelf een ontvanger in, ook niet het adres van de klant waar je op dat moment in zit. Reden: " +
+        "er zat één gedeeld geheugen in de browser met \"het laatst gebruikte adres van de sitebouwer\", en dat " +
+        "gold voor álle klanten tegelijk. Wie na een mail over de ene klant een mailvenster van een andere klant " +
+        "opende, begon dus met het adres uit de vorige mail. Op 17 augustus 2026 stond daardoor bij de ene klant " +
+        "het adres van een bedrijf klaar dat zijn directe concurrent is; één klik op versturen en die twee wisten " +
+        "van elkaar dat ze dezelfde SEO-partner hebben. Dat is geen ongemak maar het soort fout dat een klant " +
+        "kost, en die kans hoort nul te zijn in plaats van klein. Aanvullen gebeurt daarom alleen terwijl je " +
+        "typt, uit je eigen contacten, en een voorstel wordt pas een adres als jij hem aanwijst. Er is bewust " +
+        "geen uitzondering voor \"veilige\" adressen: zodra er één bij mag, komt de volgende er ongemerkt bij.\n\n" +
         "Daarnaast staat er bij een taak die van een projectkaart komt de knop \"Is dit doorgevoerd?\": dezelfde " +
         "meting als op de kaart zelf, maar dan met één klik vanuit de lijst, zodat je bij een terugkoppeling van " +
         "de sitebouwer niet eerst de kaart hoeft op te zoeken.",

@@ -17,6 +17,7 @@ import { linkifyHtml } from "../../../../lib/linkify";
 import { escapeHtml, isHtml, htmlNaarTekst } from "../../../../lib/veilige-html";
 import { openMailProgramma } from "../../../../lib/mailto-openen";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
+import AdresVeld from "./AdresVeld";
 
 type Item = { id: number; persoon: string; tekst: string; klaar: boolean; gedeeldAt: string | null; createdAt: string | null };
 
@@ -102,9 +103,10 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
   function mailOpenen(p: string) {
     setMailMsg("");
     setMailVoor(p);
-    let voor = p === "Klant" ? (clientEmail || "") : "";
-    if (!voor && p !== "Klant") { try { voor = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ } }
-    setMailAan(voor);
+    // Leeg beginnen, altijd (ADRESVELD-REGEL, zie MailUitKaart.tsx). Hier werd
+    // het laatst gebruikte developer-adres ingevuld, en dat geheugen was gedeeld
+    // over alle klanten heen.
+    setMailAan("");
   }
 
   function mailTekst(p: string): { onderwerp: string; aanhef: string; punten: Item[] } {
@@ -128,7 +130,6 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
     try {
       const d = await fetch("/api/admin/mail", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "compose", slug, to: mailAan.trim(), subject: onderwerp, html }) }).then((r) => r.json());
       if (d?.ok) {
-        if (p !== "Klant") { try { localStorage.setItem("pingwin-dev-email", mailAan.trim()); } catch { /* geen opslag */ } }
         setMailMsg(`Verstuurd naar ${(d.sentTo || []).join(", ") || mailAan.trim()}.`);
         setMailVoor(null);
         await post({ action: "gedeeld", persoon: p });
@@ -211,9 +212,12 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
                 {mailVoor === p && (
                   <div className="bl-mail">
                     <label className="bl-mail-label">Aan</label>
-                    <input className="wp-docdrop-input" value={mailAan} placeholder="naam@bedrijf.nl" autoFocus
-                      onChange={(e) => setMailAan(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Enter" && mailKan) void mailVersturen(p); }} />
+                    {/* Zelfde adresveld als in de mailvensters: het veld begint
+                        leeg en stelt namen voor uit de eigen contacten zodra je
+                        twee letters typt. Hier stond een kaal invulvak zonder
+                        die hulp, en dus was een voorgevuld adres verleidelijk. */}
+                    <AdresVeld waarde={mailAan} onChange={setMailAan} className="wp-docdrop-input"
+                      placeholder="naam@bedrijf.nl" />
                     {mailKan
                       ? <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={mailBusy || !mailAan.trim()} onClick={() => void mailVersturen(p)}>{mailBusy ? "Versturen…" : "Verstuur"}</button>
                       : <button type="button" className="wp-fase-btn" disabled={!mailAan.trim()} title="Geen mailkoppeling; dit opent je eigen mailprogramma zonder opmaak." onClick={() => mailProgramma(p)}>Open in mailprogramma</button>}

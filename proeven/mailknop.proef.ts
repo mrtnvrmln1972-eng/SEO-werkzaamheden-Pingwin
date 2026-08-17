@@ -75,7 +75,13 @@ function check(naam: string, waar: boolean) {
 check("helper maakt een echt <a>-element aan", /createElement\(\s*["']a["']\s*\)/.test(helper));
 check("helper klikt dat element aan", /\.click\(\)/.test(helper));
 check("helper ruimt het element weer op", /\.remove\(\)/.test(helper));
-check("helper geeft false terug zonder ontvanger", /if\s*\(\s*!aan\s*\)\s*return\s+false/.test(helper));
+// Zonder ontvanger nog steeds false, zodat een knop mét adresveld in beeld een
+// melding toont in plaats van te doen alsof er iets gebeurde. Sinds 17-08-2026
+// is er één uitzondering die de aanroeper expliciet moet vragen
+// (ontvangerLeegMag): knoppen die vroeger een onthouden adres invulden openen nu
+// een leeg mailvenster, want het dashboard hoort nooit te gokken naar wie een
+// mail gaat. Zie de ADRESVELD-REGEL in app/admin/client/[slug]/MailUitKaart.tsx.
+check("helper geeft false terug zonder ontvanger", /if\s*\(\s*!aan\s*(&&\s*!opts\.ontvangerLeegMag\s*)?\)\s*return\s+false/.test(helper));
 
 if (fouten > 0) {
   console.log(`\n${fouten} keer mis.`);

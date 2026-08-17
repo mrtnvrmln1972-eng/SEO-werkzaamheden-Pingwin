@@ -80,7 +80,9 @@ export default function MailVenster({
   onClose: () => void;
 }) {
   const [aud, setAud] = useState<"klant" | "dev" | "anders">("klant");
-  const [to, setTo] = useState(clientEmail || "");
+  // Leeg beginnen, altijd (ADRESVELD-REGEL, zie MailUitKaart.tsx). Het adres
+  // typt Maarten zelf, met voorstellen uit zijn eigen contacten.
+  const [to, setTo] = useState("");
   const [instr, setInstr] = useState("");
   const [gekozen, setGekozen] = useState<Record<string, boolean>>(() => {
     const v: Record<string, boolean> = {};
@@ -189,7 +191,6 @@ export default function MailVenster({
     if ((!tekst && !metBlok) || verzendt) return;
     const adres = to.trim();
     if (!adres) { setFout("Vul eerst het e-mailadres van de ontvanger in."); return; }
-    if (aud === "dev") { try { localStorage.setItem("pingwin-dev-email", adres); } catch { /* geen opslag */ } }
     const links = bijlagen.filter((b) => gekozen[b.key]).map((b) => ({ label: b.label, url: b.url }));
     setVerzendt(true); setFout("");
 
@@ -245,10 +246,11 @@ export default function MailVenster({
             <button key={a} type="button" className={"wp-aud-pill" + (aud === a ? " wp-aud-actief" : "")}
               onClick={() => {
                 setAud(a);
-                let devTo = ""; try { devTo = localStorage.getItem("pingwin-dev-email") || ""; } catch { /* geen opslag */ }
-                const adres = a === "klant" ? (clientEmail || "") : a === "dev" ? devTo : "";
-                setTo(adres);
-                // Bewust geen herschrijving: dat zou ingesproken tekst wissen.
+                // Geen adres invullen bij het wisselen van ontvanger, en ook
+                // niet wissen wat je zelf al typte. Zie de ADRESVELD-REGEL in
+                // MailUitKaart.tsx: een onthouden adres van een andere klant
+                // hoorde in dit veld thuis te kunnen komen, en dat was bijna een
+                // mail naar de concurrent van de klant.
               }}>{label}</button>
           ))}
           {/* Zelfde adresveld als in de andere mailvensters: typ "ma" en Maarten
