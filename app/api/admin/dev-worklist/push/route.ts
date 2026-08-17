@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
-import { getWorklistData, setWorklistMark, metaKey, altKey, type WorklistPage } from "../../../../../lib/dev-worklist";
-import { pushMetaToSite, pushAltTexts } from "../../../../../lib/wp-push";
+import { getWorklistData, setWorklistMark, altKey } from "../../../../../lib/dev-worklist";
+import { pushAltTexts } from "../../../../../lib/wp-push";
 import { normFile } from "../../../../../lib/image-classify";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-// De snelweg: meta's en alt-teksten rechtstreeks in WordPress zetten via de
+// De snelweg: alt-teksten rechtstreeks in de WordPress-mediabibliotheek zetten via de
 // bestaande koppeling, met terug-controle. Gelukte punten worden meteen
 // afgevinkt als "Pingwin (automatisch)".
 //
@@ -32,8 +32,10 @@ export async function POST(req: NextRequest) {
   const wat = String(body.wat || "").trim();
   const alleenUrl = String(body.url || "").trim();
   const alleenFile = String(body.file || "").trim();
-  const alleenVeld = String(body.veld || "").trim();
-  if (!slug || !["meta", "alt"].includes(wat)) return NextResponse.json({ ok: false, error: "Klant en soort (meta of alt) zijn verplicht." }, { status: 400 });
+  // Alleen nog alt-teksten. Meta's gingen hier ook doorheen; die horen sinds
+  // 18-08-2026 in Meta & CTR, waar ze ook goedgekeurd worden, met de knop
+  // "Doorvoeren op de site" ernaast (/api/admin/meta-ctr/push).
+  if (!slug || wat !== "alt") return NextResponse.json({ ok: false, error: "Deze route zet alleen alt-teksten door; meta's gaan via Meta & CTR." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
   const data = await getWorklistData(slug);
@@ -43,29 +45,7 @@ export async function POST(req: NextRequest) {
   const meldingen: string[] = [];
   const noteer = (regel: string) => { if (meldingen.length < 5) meldingen.push(regel); };
 
-  if (wat === "meta") {
-    const doelen: WorklistPage[] = alleenUrl ? data.pages.filter((p) => p.url === alleenUrl) : data.pages.slice(0, 60);
-    if (!doelen.length) return NextResponse.json({ ok: false, error: "Die pagina staat niet in de werklijst." }, { status: 400 });
-    afgekapt = !alleenUrl && data.pages.length > 60 ? data.pages.length - 60 : 0;
-    for (const p of doelen) {
-      try {
-        const doeTitle = p.newTitle && alleenVeld !== "desc";
-        const doeDesc = p.newDesc && alleenVeld !== "title";
-        if (!doeTitle && !doeDesc) continue;
-        const r = await pushMetaToSite(slug, p.url, { title: doeTitle ? p.newTitle : undefined, desc: doeDesc ? p.newDesc : undefined });
-        if (r.ok) {
-          gelukt++;
-          if (doeTitle) await setWorklistMark(slug, metaKey(p.url, "title"), true, "Pingwin (automatisch)", p.url);
-          if (doeDesc) await setWorklistMark(slug, metaKey(p.url, "desc"), true, "Pingwin (automatisch)", p.url);
-        } else { mislukt++; noteer(`${p.path}: ${r.detail}`); }
-      } catch (e) {
-        // Eén pagina die klapt (bijvoorbeeld geen koppeling) mag de rest niet
-        // meeslepen; we melden het en gaan door.
-        mislukt++;
-        noteer(`${p.path}: ${(e as Error).message}`);
-      }
-    }
-  } else {
+  {
     // Alt-teksten: één keer per afbeelding, want zo staat het ook in WordPress.
     const kandidaten = data.images.filter((a) => (!alleenFile || normFile(a.file) === normFile(alleenFile)));
     if (!kandidaten.length) return NextResponse.json({ ok: false, error: "Die afbeelding staat niet in de werklijst." }, { status: 400 });
@@ -97,8 +77,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const label = wat === "meta" ? "pagina's met meta's" : "alt-teksten";
-  const delen = [`${gelukt} ${label} doorgevoerd`];
+  const delen = [`${gelukt} alt-teksten doorgevoerd`];
   if (mislukt) delen.push(`${mislukt} mislukt`);
   if (zonderTekst) delen.push(`${zonderTekst} overgeslagen (nog geen alt-tekst geschreven)`);
   if (afgekapt) delen.push(`${afgekapt} niet meegenomen (maximaal 60 per keer)`);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getDevWorklist, runDevWorklist, getWorklistData, metaKey, altKey, setWorklistMark, setWorklistSoort } from "../../../../lib/dev-worklist";
+import { getDevWorklist, runDevWorklist, getWorklistData, altKey, setWorklistMark, setWorklistSoort } from "../../../../lib/dev-worklist";
 import { getClientBySlug } from "../../../../lib/clients";
 import type { ImageSoort } from "../../../../lib/image-classify";
 
@@ -20,13 +20,8 @@ export async function GET(req: NextRequest) {
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const data = await getWorklistData(slug);
   // Teller voor de kaart: hoeveel punten zijn gedaan en door ons live gecontroleerd.
-  const keys: string[] = [];
-  for (const p of data.pages) {
-    if (p.newTitle) keys.push(metaKey(p.url, "title"));
-    if (p.newDesc) keys.push(metaKey(p.url, "desc"));
-  }
   // Eén sleutel per afbeelding, niet per pagina: in WordPress is het ook één veld.
-  for (const a of data.images) keys.push(altKey(a.file));
+  const keys: string[] = data.images.map((a) => altKey(a.file));
   const gedaan = keys.filter((k) => data.marks[k]?.done || data.marks[k]?.verified).length;
   const geverifieerd = keys.filter((k) => data.marks[k]?.verified).length;
   // De kaart in de weekplanning heeft alleen de tellers nodig; de Pingwin-versie
@@ -39,9 +34,9 @@ export async function GET(req: NextRequest) {
   });
 }
 
-// Start de run: crawlt de live pagina's, schrijft meta's en alt-teksten, maakt
-// het Drive-document en de verzamelkaart. Draait binnen deze aanroep (max 300s);
-// de UI volgt de voortgang via GET.
+// Start de run: crawlt de live pagina's, schrijft de alt-teksten en maakt de
+// verzamelkaart. Draait binnen deze aanroep (max 300s); de UI volgt de
+// voortgang via GET.
 export async function POST(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   let body: Record<string, unknown>;
@@ -52,7 +47,7 @@ export async function POST(req: NextRequest) {
   const cur = await getDevWorklist(slug);
   if (cur.status === "running") return NextResponse.json({ ok: true, status: "running" });
   const r = await runDevWorklist(slug);
-  return NextResponse.json(r.ok ? { ok: true, status: "done", docLink: r.docLink || "" } : { ok: false, error: r.error || "Werklijst maken mislukt." }, r.ok ? undefined : { status: 500 });
+  return NextResponse.json(r.ok ? { ok: true, status: "done" } : { ok: false, error: r.error || "Werklijst maken mislukt." }, r.ok ? undefined : { status: 500 });
 }
 
 // Kleine wijzigingen vanuit de Pingwin-versie van de afwerkpagina: een punt

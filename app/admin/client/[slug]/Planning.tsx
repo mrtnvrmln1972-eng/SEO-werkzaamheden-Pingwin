@@ -128,7 +128,10 @@ export default function Planning({
   const [nieuwFout, setNieuwFout] = useState("");
   const [paginas, setPaginas] = useState<string[]>([]);
 
-  // Klant-brede knoppen.
+  // Klant-brede knoppen. De werklijst is een scherm in het dashboard zelf, geen
+  // document: daar staat elke alt-tekst met de foto erbij, afvinkbaar, en met
+  // een deelbare versie voor de sitebouwer.
+  const werklijstPad = `/admin/client/${slug}/werklijst`;
   const [wlBusy, setWlBusy] = useState(false);
   const [wlMsg, setWlMsg] = useState("");
   const [wlLink, setWlLink] = useState("");
@@ -189,13 +192,16 @@ export default function Planning({
     return () => { leeft = false; };
   }, [slug]);
 
-  // Laatste werklijst-stand tonen (link naar het document als die er is).
+  // Laatste werklijst-stand tonen, met de link naar de afvinklijst zelf. Dat was
+  // de link naar een Word-document in Drive; dat document is er niet meer, want
+  // een lijst van tientallen regels in een document leest niemand en afvinken
+  // kan er niet in.
   useEffect(() => {
     let leeft = true;
     fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
       if (!leeft || !d?.ok) return;
       if (d.status === "running") { setWlBusy(true); setWlMsg(""); void volgWerklijst(); }
-      else if (d.status === "done" && d.docLink) { setWlLink(d.docLink); setWlMsg("Open de werklijst"); }
+      else if (d.status === "done") { setWlLink(werklijstPad); setWlMsg("Open de werklijst"); }
     }).catch(() => {});
     return () => { leeft = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,7 +213,7 @@ export default function Planning({
       const d = await fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
       if (!d?.ok || d.status === "running") continue;
       setWlBusy(false);
-      if (d.status === "done") { setWlFout(false); setWlLink(d.docLink || ""); setWlMsg(d.docLink ? "Open de werklijst" : (d.result || "Werklijst klaar.")); void laad(); }
+      if (d.status === "done") { setWlFout(false); setWlLink(werklijstPad); setWlMsg("Open de werklijst"); void laad(); }
       else { setWlFout(true); setWlLink(""); setWlMsg(d.error || "Werklijst maken mislukt."); }
       return;
     }
@@ -593,7 +599,7 @@ export default function Planning({
             </div>
           )}
           <button type="button" className="ghost-btn small" disabled={wlBusy}
-            title="Crawlt de live pagina's en maakt één document voor de sitebouwer met kant-en-klare meta's en alt-teksten, plus één Dev-kaart in de planning."
+            title="Crawlt de live pagina's, kijkt naar elke afbeelding zonder alt-tekst en schrijft er één plakbare regel bij. Het resultaat is een afvinklijst die je met de sitebouwer kunt delen, plus één Dev-kaart in de planning. Meta's zitten er niet in; die staan bij Meta & CTR."
             onClick={startWerklijst}>{wlBusy ? "Werklijst maken…" : "Werklijst sitebouwer"}</button>
           {wlMsg && (wlLink
             ? <a className="wp-link" href={wlLink} target="_blank" rel="noreferrer">{wlMsg}</a>

@@ -39,7 +39,7 @@ console.log("\n── De nieuwe titel ──");
 check("de echte kaart wordt één regel", korteTitel(ECHT, URL, { live: false }), "/hovenier/etten-leur/ · herstellen");
 check("en die is kort", korteTitel(ECHT, URL, { live: false }).length <= 40, true);
 check("pad uit een volledige URL", padVan(URL), "/hovenier/etten-leur/");
-check("zonder pagina houdt hij zijn eigen woorden", korteTitel("Werklijst sitebouwer: meta's en alt-teksten", null), "Werklijst sitebouwer: meta's en alt-teksten");
+check("zonder pagina houdt hij zijn eigen woorden", korteTitel("Werklijst sitebouwer: alt-teksten", null), "Werklijst sitebouwer: alt-teksten");
 check("een lange titel zonder pagina wordt afgekapt", korteTitel("a".repeat(120), null).endsWith("…"), true);
 // Dit vond de proefstand op de echte data: een taak zonder pagina waarvan de
 // tekst met een pad-achtig woord begint, kreeg een verzonnen pagina toebedeeld.

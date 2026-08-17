@@ -5,12 +5,12 @@
 
 import { useEffect, useState } from "react";
 
-// Blok op de werklijst-sitebouwer-kaart: maak of ververs de site-brede werklijst
-// (alt-teksten kant-en-klaar plus de goedgekeurde meta's) en toon de status en het
-// document. De motor zet na afloop zelf de doc-link en samenvatting op de kaart.
+// Blok op de werklijst-sitebouwer-kaart: maak of ververs de site-brede lijst met
+// alt-teksten en toon de stand. De motor zet na afloop zelf de samenvatting op de
+// kaart. Meta's stonden hier ook in; die horen sinds 18-08-2026 in Meta & CTR,
+// waar ze gemaakt, goedgekeurd én doorgevoerd worden.
 export default function WerklijstBlok({ slug, refreshBoard }: { slug: string; refreshBoard: () => void }) {
   const [status, setStatus] = useState<string>("idle");
-  const [docLink, setDocLink] = useState("");
   const [resultaat, setResultaat] = useState("");
   const [fout, setFout] = useState("");
   const [shareToken, setShareToken] = useState("");
@@ -21,7 +21,7 @@ export default function WerklijstBlok({ slug, refreshBoard }: { slug: string; re
   async function haal(): Promise<string> {
     const d = await fetch(`/api/admin/dev-worklist?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
     if (d?.ok) {
-      setStatus(d.status || "idle"); setDocLink(d.docLink || ""); setResultaat(d.result || "");
+      setStatus(d.status || "idle"); setResultaat(d.result || "");
       setShareToken(d.shareToken || "");
       setTeller(d.totaal ? { totaal: d.totaal, gedaan: d.gedaan || 0, geverifieerd: d.geverifieerd || 0 } : null);
       if (d.status === "error") setFout(d.error || "");
@@ -77,7 +77,7 @@ export default function WerklijstBlok({ slug, refreshBoard }: { slug: string; re
         {teller && <span className="wp-werklijst-teller">{teller.gedaan}/{teller.totaal} gedaan · {teller.geverifieerd} gecontroleerd</span>}
         <span className="wp-fase-spacer" />
         <a className={"btn btn-primary btn-klein" + (klaar ? "" : " btn-uit")} href={klaar ? `/admin/client/${slug}/werklijst` : undefined} target="_blank" rel="noreferrer"
-          title={klaar ? "Onze eigen versie: de huidige meta naast de goedgekeurde tekst, met de knop Voer door in de site" : nogNiet}>Onze werklijst</a>
+          title={klaar ? "Onze eigen versie: elke afbeelding met de voorgestelde alt-tekst, en de knop om hem in de mediabibliotheek te zetten" : nogNiet}>Onze werklijst</a>
         <a className={"btn btn-ghost btn-klein" + (klaar ? "" : " btn-uit")} href={klaar ? `/share/werklijst/${shareToken}` : undefined} target="_blank" rel="noreferrer"
           title={klaar ? "De klikbare afwerkpagina om te delen met de sitebouwer (geen inlog nodig)" : nogNiet}>Voor de sitebouwer</a>
       </div>
@@ -85,7 +85,7 @@ export default function WerklijstBlok({ slug, refreshBoard }: { slug: string; re
       <div className="wp-werklijst-rij wp-werklijst-doen">
         <span className="wp-werklijst-groep">Doen</span>
         <button type="button" className="btn btn-ghost btn-klein" disabled={status === "running" || !!actieBusy}
-          title="Meet alle live pagina's opnieuw, schrijft de alt-teksten en haalt de goedgekeurde meta's uit Meta & CTR op; duurt een paar minuten" onClick={start}>
+          title="Meet alle live pagina's opnieuw en schrijft een alt-tekst bij elke afbeelding die er nog geen heeft; duurt een paar minuten" onClick={start}>
           {status === "running" ? "Bezig… (paar minuten)" : klaar ? "Ververs werklijst" : "Maak de werklijst"}
         </button>
         <button type="button" className="btn btn-ghost btn-klein" disabled={!klaar || !!actieBusy || status === "running"}
@@ -96,8 +96,8 @@ export default function WerklijstBlok({ slug, refreshBoard }: { slug: string; re
       {status === "running" && <div className="muted">De pagina's worden gemeten en de alt-teksten geschreven; dit duurt een paar minuten. Je kunt intussen gewoon verder.</div>}
       {resultaat && status === "done" && !actieMsg && <div className="wp-werklijst-sam">{resultaat}</div>}
       {fout && <div className="wp-doc-fout">{fout}</div>}
-      {!docLink && !shareToken && status !== "running" && !resultaat && (
-        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet per pagina de nieuwe meta&rsquo;s en alt-teksten klaar op een klikbare afwerkpagina voor de sitebouwer.</div>
+      {!shareToken && status !== "running" && !resultaat && (
+        <div className="muted">Nog geen werklijst gemaakt. De werklijst meet alle live pagina&rsquo;s en zet bij elke afbeelding zonder alt-tekst een voorstel klaar, op een klikbare afvinkpagina die je met de sitebouwer kunt delen.</div>
       )}
     </div>
   );

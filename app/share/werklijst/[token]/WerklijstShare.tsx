@@ -2,15 +2,17 @@
 
 // De pagina voor de bouwer: het ene adres voor alles wat de site in moet.
 //
-// Hij is twee keer van vorm veranderd, en dat is leerzaam. Eerst stond hier
+// Hij is drie keer van vorm veranderd, en dat is leerzaam. Eerst stond hier
 // alles, met de helft in het rood geblokkeerd: onwerkbaar. Daarna bleef alleen
-// een suggestielijst over foto's staan, omdat wij meta's en alt-teksten zelf
-// doorzetten. Maar dat kan alleen bij klanten met een WordPress-koppeling; bij
-// de rest kreeg de bouwer zijn eigenlijke werk per mail, los van deze pagina.
+// een suggestielijst over foto's staan, omdat wij de teksten zelf doorzetten.
+// Maar dat kan alleen bij klanten met een WordPress-koppeling; bij de rest kreeg
+// de bouwer zijn eigenlijke werk per mail, los van deze pagina.
 //
-// Nu staat hier per blok wat er te doen is: de goedgekeurde meta-teksten, de
-// alt-teksten, en de foto's die beter uniek konden zijn. Wat wij zelf doorvoeren
-// verschijnt hier niet, dus wat hij ziet is altijd echt zijn werk.
+// Nu staat hier per blok wat er te doen is: de alt-teksten, het doorgezette
+// paginawerk, en de foto's die beter uniek konden zijn. Wat wij zelf doorvoeren
+// verschijnt hier niet, dus wat hij ziet is altijd echt zijn werk. De meta's
+// stonden hier ook; die zijn er op 18-08-2026 uit, want die maken, keuren en
+// plaatsen wij in Meta & CTR.
 //
 // De lijst zelf komt uit app/_werklijst/WerklijstLijst.tsx, hetzelfde component
 // dat de cockpit gebruikt, maar zonder de admin-vlag (dus zonder de knoppen om

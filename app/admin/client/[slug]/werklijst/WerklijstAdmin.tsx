@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import WerklijstLijst, { mKey, aKey, type Pagina, type Alt, type Mark, type DubbelItem, type Doorvoer, type Overslag } from "../../../../_werklijst/WerklijstLijst";
+import WerklijstLijst, { aKey, type Pagina, type Alt, type Mark, type DubbelItem, type Doorvoer, type Overslag } from "../../../../_werklijst/WerklijstLijst";
 import type { ImageSoort } from "../../../../../lib/image-classify";
 
 export default function WerklijstAdmin({ slug }: { slug: string }) {
@@ -58,13 +58,13 @@ export default function WerklijstAdmin({ slug }: { slug: string }) {
     return d?.ok ? (d.melding || "Doorgevoerd.") : (d?.error || "Doorvoeren mislukte.");
   }
 
+  // Alleen alt-teksten nog: die zet dit scherm rechtstreeks in de
+  // mediabibliotheek. Meta's gingen hier ook doorheen; die horen sinds
+  // 18-08-2026 in Meta & CTR, met de knop "Doorvoeren op de site" ernaast.
   async function doorvoer(o: Doorvoer) {
-    const id = o.wat === "pagina" ? `pagina|${o.url}` : o.wat === "alt" ? aKey(o.file || "") : mKey(o.url || "", o.veld || "title");
-    setBezig(id); setMelding("");
+    setBezig(aKey(o.file || "")); setMelding("");
     try {
-      // "Deze pagina" gaat alleen nog over de meta's: alt-teksten hangen aan de
-      // afbeelding, niet aan de pagina, en staan in hun eigen blok.
-      setMelding(await push({ wat: o.wat === "pagina" ? "meta" : o.wat, url: o.url, file: o.file, veld: o.veld }));
+      setMelding(await push({ wat: "alt", url: o.url, file: o.file }));
       await laad();
     } finally { setBezig(""); }
   }
@@ -89,13 +89,13 @@ export default function WerklijstAdmin({ slug }: { slug: string }) {
       <div className="wl-kop">
         <div className="wl-logo">Pingwin <span>Online Marketing</span></div>
         <h1>Werklijst website{clientName ? ` ${clientName}` : ""}</h1>
-        <p className="wl-intro">Dit is de Pingwin-versie: je ziet per pagina wat er nu staat én ons voorstel, en je voert het per stuk door in de site. Bewust geen knop die alles in één keer doet: je kijkt eerst naar een tekst en zet hem dan pas live. Elk punt dat je doorvoert komt vanzelf in &ldquo;Wat we doen&rdquo; en onderaan het tabje Wijzigingen te staan, zodat je het effect kunt volgen. De sitebouwer ziet dezelfde lijst zonder deze knoppen.</p>
+        <p className="wl-intro">Dit is de Pingwin-versie van de alt-tekstenlijst: je ziet elke afbeelding met het voorstel erbij, en je zet hem per stuk in de mediabibliotheek. Bewust geen knop die alles in één keer doet: je kijkt eerst naar de foto en de tekst, en zet hem dan pas live. Elk punt dat je doorvoert komt vanzelf in &ldquo;Wat we doen&rdquo; en onderaan het tabje Wijzigingen te staan, zodat je het effect kunt volgen. De sitebouwer ziet dezelfde lijst zonder deze knoppen. Meta-titles en -descriptions staan hier niet: die maak, keur en plaats je op het tabje Meta &amp; CTR.</p>
         <div className="wl-adminbalk">
           <Link className="wl-terug" href={`/admin/client/${slug}`}>← terug naar de cockpit</Link>
           {shareToken && <a className="wl-terug" href={`/share/werklijst/${shareToken}`} target="_blank" rel="noreferrer">bekijk de versie van de sitebouwer</a>}
           <button type="button" className="wl-kopieer" disabled={checkBusy} onClick={() => void controle()}>{checkBusy ? "Controleren…" : "Controleer live"}</button>
         </div>
-        <p className="wl-let-op">Let op: doorvoeren zet de tekst meteen op de live site van de klant.</p>
+        <p className="wl-let-op">Let op: doorvoeren zet de alt-tekst meteen in de mediabibliotheek van de klant.</p>
         {melding && <p className="wl-checkmsg">{melding}</p>}
         {checkMsg && <p className="wl-checkmsg">{checkMsg}</p>}
       </div>

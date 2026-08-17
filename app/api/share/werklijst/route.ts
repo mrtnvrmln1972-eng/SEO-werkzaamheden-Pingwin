@@ -17,8 +17,8 @@ export async function GET(req: NextRequest) {
   const [data, client, wp] = await Promise.all([getWorklistData(slug), getClientBySlug(slug), getWpStatus(slug).catch(() => ({ connected: false, username: null }))]);
   // Wat wij zélf kunnen doorzetten, is geen werk voor de bouwer.
   //
-  // Is er een WordPress-koppeling, dan zetten wij de meta's en alt-teksten met
-  // een knop op de site; die blokken blijven hier dan leeg, zodat hij geen lijst
+  // Is er een WordPress-koppeling, dan zetten wij de alt-teksten met een knop in
+  // de mediabibliotheek; dat blok blijft hier dan leeg, zodat hij geen lijst
   // ziet waar hij niets mee hoeft. Zonder koppeling is het wél zijn werk en
   // staat alles er gewoon. Foto's vervangen kunnen wij nooit zelf, dus die
   // suggesties staan er altijd.

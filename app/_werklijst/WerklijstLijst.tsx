@@ -2,9 +2,15 @@
 
 // De werklijst in beeld, één component met twee gezichten.
 //
-//  - Sitebouwer (deelpagina, token): alleen de suggesties over beeld.
-//  - Pingwin (cockpit, ingelogd): de meta's en de alt-teksten, met de knoppen
-//    om ze direct in de site te zetten.
+//  - Sitebouwer (deelpagina, token): de alt-teksten en de suggesties over beeld.
+//  - Pingwin (cockpit, ingelogd): hetzelfde, plus de knoppen om een alt-tekst
+//    direct in de mediabibliotheek te zetten en de indeling van een foto om te
+//    zetten.
+//
+// De meta's stonden hier ook, als eigen blok met eigen doorvoerknoppen. Weg op
+// 18-08-2026: die ontstaan en worden goedgekeurd in Meta & CTR, en dáár staat
+// ook de knop "Doorvoeren op de site". Dezelfde goedkeuring op twee schermen
+// met twee knoppen betekent dat je nooit weet welke telt.
 //
 // Waarom de indeling zo is:
 //
@@ -25,12 +31,8 @@
 // rijen opnieuw op; de duimnageltjes zouden dan bij elke klik opnieuw laden.
 
 import { useMemo, useState, type ReactNode } from "react";
-import { metaPixelInfo } from "../../lib/meta-rules";
 import { SOORT_LABEL, normFile, type ImageSoort } from "../../lib/image-classify";
 
-/** Zelfde waarden als MetaStand in lib/dev-worklist.ts; hier los omdat dit een
- *  clientcomponent is en die geen serverbestand mag importeren. */
-export type MetaStand = "voorstel" | "goed" | "copydoc" | "wacht" | "mislukt";
 export type Alt = {
   file: string; src: string; alt: string; dubbel: boolean;
   soort: ImageSoort; reden: string; altNodig: boolean;
@@ -38,9 +40,7 @@ export type Alt = {
   gezien?: boolean; onderwerp?: string;
 };
 export type Pagina = {
-  url: string; path: string; curTitle: string; curDesc: string;
-  newTitle: string; newDesc: string; copyDoc: string;
-  titleStand?: MetaStand; descStand?: MetaStand;
+  url: string; path: string;
   beeldTotaal?: number; beeldRaak?: number; beeldOnderwerp?: string;
   alts?: Alt[];
 };
@@ -49,22 +49,12 @@ export type DubbelItem = { file: string; src: string; paths: string[] };
 export type Overslag = { altBeeld: number; paginas: number; perPagina: number };
 
 /** Sleutels moeten exact matchen met de server (lib/dev-worklist.ts). */
-const urlKeyOf = (u: string) => { try { const x = new URL(u); return (x.host + x.pathname).replace(/\/+$/, "").toLowerCase(); } catch { return (u || "").toLowerCase(); } };
-export const mKey = (url: string, veld: "title" | "desc") => `m|${urlKeyOf(url)}|${veld}`;
 /** Per bestand, niet per pagina: zo bewaart WordPress de alt-tekst ook. */
 export const aKey = (file: string) => `a|${normFile(file)}`;
 
-// Bewust géén bulk-opties meer (alles, alle meta's, alle alt-teksten): elk punt
-// gaat per stuk de site op, met een mens die er eerst naar kijkt.
-export type Doorvoer = { wat: "meta" | "alt" | "pagina"; url?: string; file?: string; veld?: "title" | "desc" };
-
-const STAND_LABEL: Record<MetaStand, string> = {
-  voorstel: "klaar om te plaatsen",
-  goed: "staat al goed",
-  copydoc: "staat in het copydocument",
-  wacht: "nog niets goedgekeurd",
-  mislukt: "nog niets goedgekeurd",
-};
+// Bewust géén bulk-optie: elk punt gaat per stuk de site op, met een mens die
+// er eerst naar kijkt.
+export type Doorvoer = { wat: "alt"; url?: string; file?: string };
 
 /** Duimnageltje dat zelf de link naar de afbeelding op ware grootte is. */
 function Duim({ src, file }: { src: string; file: string }) {
@@ -162,7 +152,7 @@ export type PaginaKlus = {
 
 type Props = {
   pages: Pagina[];
-  /** Doorgezette paginakaarten: het echte paginawerk, naast meta's en alt-teksten. */
+  /** Doorgezette paginakaarten: het echte paginawerk, naast de alt-teksten. */
   paginaklussen?: PaginaKlus[];
   images: Alt[];
   dubbel: DubbelItem[];
@@ -187,7 +177,7 @@ export default function WerklijstLijst(p: Props) {
   const paginaklussen = p.paginaklussen || [];
   const [openKlus, setOpenKlus] = useState(true);
   const [kopie, setKopie] = useState("");
-  const [openMeta, setOpenMeta] = useState(false);
+  const [openBeeld, setOpenBeeld] = useState(false);
   const [openAlt, setOpenAlt] = useState(false);
   const [openSug, setOpenSug] = useState(false);
   const [openPagina, setOpenPagina] = useState<Record<string, boolean>>({});
@@ -200,68 +190,16 @@ export default function WerklijstLijst(p: Props) {
 
   const af = (key: string) => !!(marks[key]?.done || marks[key]?.verified);
 
-  // Tellers. Meta's tellen per pagina-veld, alt-teksten per afbeelding.
+  // Eén teller: alt-teksten, per afbeelding.
   const telling = useMemo(() => {
-    const metaKeys: string[] = [];
-    for (const pg of pages) {
-      if (pg.newTitle) metaKeys.push(mKey(pg.url, "title"));
-      if (pg.newDesc) metaKeys.push(mKey(pg.url, "desc"));
-    }
     const altKeys = images.filter((a) => a.altNodig !== false).map((a) => aKey(a.file));
     return {
-      metaTotaal: metaKeys.length,
-      metaGedaan: metaKeys.filter(af).length,
       altTotaal: altKeys.length,
       altGedaan: altKeys.filter(af).length,
       zonderTekst: images.filter((a) => a.altNodig !== false && !a.alt.trim()).length,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pages, images, marks]);
-
-  const metaRij = (pg: Pagina, veld: "title" | "desc") => {
-    const nieuw = veld === "title" ? pg.newTitle : pg.newDesc;
-    const huidig = veld === "title" ? pg.curTitle : pg.curDesc;
-    const stand: MetaStand = (veld === "title" ? pg.titleStand : pg.descStand) || (nieuw ? "voorstel" : "goed");
-    const naam = veld === "title" ? "meta-title" : "meta-description";
-    const id = mKey(pg.url, veld);
-
-    // Geen voorstel? Dan tóch een regel, met de reden erbij. Eerder stond hier
-    // niets, en dan lijkt het alsof de meta's ontbreken in de lijst.
-    if (!nieuw) {
-      const tekst = stand === "goed" ? `De ${naam} staat al goed; hier is niets te doen.`
-        : stand === "copydoc" ? `De nieuwe ${naam} staat kant-en-klaar in het copydocument.`
-        : `Voor de ${naam} staat nog geen goedgekeurde tekst klaar; die komt uit Meta & CTR.`;
-      return (
-        <div className="wl-meta">
-          <div className={`wl-rij wl-rij-stil wl-stand-${stand}`}>
-            <span className={`wl-stand wl-stand-${stand}`}>{STAND_LABEL[stand]}</span>
-            <div className="wl-rij-body"><div className="wl-rij-tekst">{tekst}</div></div>
-          </div>
-        </div>
-      );
-    }
-
-    const px = metaPixelInfo(veld === "title" ? "meta_title" : "meta_description", nieuw);
-    return (
-      <div className="wl-meta">
-        {/* Wat er nu staat, ook voor de bouwer: zo weet hij welk veld hij vervangt. */}
-        <div className="wl-huidig">
-          <span className="wl-huidig-label">Nu op de site</span>
-          <span className="wl-huidig-tekst">{huidig || "(staat er nog niet)"}</span>
-        </div>
-        <Rij
-          id={id}
-          label={<>Nieuwe {naam} <span className={`wl-px wl-px-${px.status}`}>{px.chars} tekens, {px.px} px</span></>}
-          tekst={nieuw}
-          mark={marks[id]}
-          kopie={kopie}
-          onKopieer={kopieer}
-          onVink={p.onVink}
-          knop={<Doorvoerknop opdracht={{ wat: "meta", url: pg.url, veld }} id={id} titel="Zet deze tekst direct op de live site" bezig={p.bezig} onDoorvoer={doorvoer} />}
-        />
-      </div>
-    );
-  };
+  }, [images, marks]);
 
   const altRij = (a: Alt) => {
     const id = aKey(a.file);
@@ -316,23 +254,24 @@ export default function WerklijstLijst(p: Props) {
   // over foto's. Daardoor kreeg hij zijn eigenlijke werk (de teksten die de site
   // in moeten) per mail, los van deze pagina, en raakte het zoek.
   //
-  // Nu is deze pagina het ene adres: elk blok is een soort werk. We beginnen met
-  // meta-teksten, alt-teksten en de beeldsuggesties; de blokken die later volgen
+  // Nu is deze pagina het ene adres: elk blok is een soort werk. Het paginawerk,
+  // de alt-teksten en de suggesties over beeld; de blokken die later volgen
   // (nieuwe paginateksten, structured data, interne links) passen er zonder
   // verbouwing bij. Het verschil tussen ons en de bouwer is alleen wat er aan
   // knoppen bij staat: doorvoeren en de indeling van een foto omzetten doen wij.
-  const totaal = telling.metaTotaal + telling.altTotaal;
-  const gedaanTotaal = telling.metaGedaan + telling.altGedaan;
+  const totaal = telling.altTotaal;
+  const gedaanTotaal = telling.altGedaan;
   const zichtbareImages = toonAf ? images : images.filter((a) => !af(aKey(a.file)));
-  const metaPaginas = pages.filter((pg) => pg.newTitle || pg.newDesc);
+  // Ruw signaal per pagina: passen de foto's bij het onderwerp. Stond in de kop
+  // van het meta-blok, en dat blok is weg; het gaat over beeld, dus het blijft.
+  const beeldPaginas = pages.filter((pg) => (pg.beeldTotaal || 0) > 0);
 
   return (
     <>
       <div className="wl-sam">
         <div className="wl-balk"><div className="wl-balk-vul" style={{ width: `${totaal ? Math.round((gedaanTotaal / totaal) * 100) : 0}%` }} /></div>
         <span>
-          <strong>{telling.metaTotaal} meta&rsquo;s</strong> over {metaPaginas.length} pagina&rsquo;s en <strong>{telling.altTotaal} alt-teksten</strong> over
-          evenzoveel afbeeldingen. {gedaanTotaal} van {totaal} gedaan.
+          <strong>{telling.altTotaal} alt-teksten</strong>, één per afbeelding. {gedaanTotaal} van {totaal} gedaan.
           {admin ? " Elk punt voer je zelf per stuk door, zodat je er eerst naar kijkt." : " Werk af wat je kunt en vink af; het hoeft niet in één keer."}
         </span>
       </div>
@@ -373,50 +312,27 @@ export default function WerklijstLijst(p: Props) {
         </Blok>
       )}
 
-      {telling.metaTotaal > 0 && (
+      {admin && beeldPaginas.length > 0 && (
         <Blok
-          titel="Meta-teksten, per pagina"
-          uitleg={admin
-            ? "Alleen wat in Meta & CTR is goedgekeurd en nog niet op de site staat. Daar ontstaat en beoordeel je de tekst; hier staat hij klaar om te plaatsen."
-            : "De tekst die in Google onder de link van deze pagina komt te staan. Zet hem in het SEO-veld van de pagina (Yoast, Rank Math of het veld van je thema). Boven elke nieuwe tekst zie je wat er nu staat."}
-          aantal={telling.metaTotaal}
-          gedaan={telling.metaGedaan}
-          open={openMeta}
-          onToggle={() => setOpenMeta((s) => !s)}
+          titel="Passen de foto&rsquo;s bij de pagina?"
+          uitleg="Ruw signaal: hoeveel foto&rsquo;s op een pagina laten het onderwerp van die pagina zien. Bedoeld om naar te kijken, geen oordeel. Een pagina zonder één rake foto staat bovenaan."
+          aantal={beeldPaginas.length}
+          gedaan={beeldPaginas.filter((pg) => (pg.beeldRaak || 0) > 0).length}
+          open={openBeeld}
+          onToggle={() => setOpenBeeld((z) => !z)}
         >
-          {metaPaginas.map((pg) => {
-            const items = (pg.newTitle ? 1 : 0) + (pg.newDesc ? 1 : 0);
-            const gedaan = [pg.newTitle && af(mKey(pg.url, "title")), pg.newDesc && af(mKey(pg.url, "desc"))].filter(Boolean).length;
-            const open = !!openPagina[pg.url];
-            return (
+          {[...beeldPaginas]
+            .sort((a, b) => (a.beeldRaak || 0) - (b.beeldRaak || 0) || (b.beeldTotaal || 0) - (a.beeldTotaal || 0))
+            .map((pg) => (
               <div key={pg.url} className="wl-pagina">
                 <div className="wl-pagina-kop">
-                  <button type="button" className="wl-blok-pijl wl-pagina-pijl" onClick={() => setOpenPagina((s) => ({ ...s, [pg.url]: !s[pg.url] }))} aria-expanded={open}>
-                    {open ? "▾" : "▸"}
-                  </button>
                   <a href={pg.url} target="_blank" rel="noreferrer">{pg.path}</a>
-                  <span className="wl-pagina-teller">{gedaan}/{items}</span>
-                  {admin && typeof pg.beeldTotaal === "number" && pg.beeldTotaal > 0 && (
-                    <span className={"wl-beeld" + (pg.beeldRaak === 0 ? " wl-beeld-nul" : "")} title="Ruw signaal: hoeveel foto's op deze pagina laten het onderwerp van de pagina zien. Bedoeld om naar te kijken, geen oordeel.">
-                      {pg.beeldTotaal} foto&rsquo;s, waarvan {pg.beeldRaak ?? 0} over {pg.beeldOnderwerp || "dit onderwerp"}
-                    </span>
-                  )}
-                  {doorvoer && items > 0 && (
-                    <button type="button" className="wl-doorvoer wl-doorvoer-pagina" disabled={!!p.bezig} title="Zet de meta's van deze pagina direct op de live site" onClick={() => doorvoer({ wat: "pagina", url: pg.url })}>
-                      {p.bezig === `pagina|${pg.url}` ? "Bezig…" : "Voer deze pagina door"}
-                    </button>
-                  )}
+                  <span className={"wl-beeld" + (pg.beeldRaak === 0 ? " wl-beeld-nul" : "")}>
+                    {pg.beeldTotaal} foto&rsquo;s, waarvan {pg.beeldRaak ?? 0} over {pg.beeldOnderwerp || "dit onderwerp"}
+                  </span>
                 </div>
-                {pg.copyDoc && <p className="wl-copydoc">Deze tekst hoort bij de nieuwe copy van deze pagina: <a href={pg.copyDoc} target="_blank" rel="noreferrer">open het document</a>.</p>}
-                {open && (
-                  <>
-                    {metaRij(pg, "title")}
-                    {metaRij(pg, "desc")}
-                  </>
-                )}
               </div>
-            );
-          })}
+            ))}
         </Blok>
       )}
 
