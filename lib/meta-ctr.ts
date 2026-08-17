@@ -229,9 +229,18 @@ export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
     gsc = await getGscPageOpportunities(domain, 90).catch(() => []);
     if (gsc.length) await cacheSet("gsc_opps", domain, "-", gsc).catch(() => {});
   }
-  const saved = await proposalsFor(slug);
-  const stand = await pageStateFor(slug);
-  const copydocs = await getCopydocMetas(slug).catch(() => new Map<string, CopydocMeta>());
+  // Deze vier weten niets van elkaar, dus ze gaan naast elkaar. Ze stonden
+  // achter elkaar, elk met een eigen await, waardoor de wachttijden optelden in
+  // plaats van samen te vallen. Samen met de sitescan hieronder was dat het
+  // grootste deel van de vier seconden die het Meta-tabblad na de eerste
+  // versnelling nog nodig had. Zet hier nooit weer een losse await tussen als de
+  // uitkomst niet van een van de andere afhangt.
+  const [saved, stand, copydocs, siteUrls] = await Promise.all([
+    proposalsFor(slug),
+    pageStateFor(slug),
+    getCopydocMetas(slug).catch(() => new Map<string, CopydocMeta>()),
+    getClientUrls(slug).catch(() => []),
+  ]);
   const copyByKey = new Map<string, CopydocMeta>();
   for (const [u, m] of copydocs) copyByKey.set(norm(u), m);
 
@@ -246,7 +255,7 @@ export async function getMetaKansen(slug: string): Promise<MetaKansRow[]> {
   for (const [u] of copydocs) if (!urlVan.has(norm(u))) urlVan.set(norm(u), u);
   // Pagina's uit de sitescan die geen van de bronnen kent, zodat de lijst echt
   // compleet is zodra er een keer gemeten is.
-  for (const u of await getClientUrls(slug).catch(() => [])) {
+  for (const u of siteUrls) {
     if (u.status !== 200) continue;
     const k = norm(u.url);
     if (!urlVan.has(k)) urlVan.set(k, u.url);
