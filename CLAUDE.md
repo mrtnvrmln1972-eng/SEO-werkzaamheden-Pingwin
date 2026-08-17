@@ -89,6 +89,36 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
   knopsystemen door elkaar, emoji ervoor) én door een nieuwe knop die bovenop een bestaande knop
   werd gezet. Een regel die alleen in dit document leeft, wordt gebroken zodra iemand haast
   heeft. Dat is inmiddels de derde keer dat die les hier opgeschreven staat; vandaar de poort.
+- **Wat Maarten zelf typt of plakt is nét zo mooi opgemaakt als wat het dashboard rendert
+  (vaste regel, 17-08-2026).** De opmaakregel hierboven gold in de praktijk alleen voor tekst
+  die het dashboard zélf maakt: de chat, een uitkomst, een rapport. Vrije tekstvelden waren de
+  uitzondering, en dat is precies waar Maarten de hele dag zit. Plakte hij een uitgewerkte
+  strategie uit de chat links naar "De koers" rechts, dan bleef er een muur tekst over: kopjes
+  werden gewone letters die aan de volgende zin vastplakten, bullets werden regelafbrekingen,
+  lijnen verdwenen, tabellen bleven staan maar zagen er anders uit. Dezelfde tekst, een kolom
+  verderop, prachtig. Dat verschil bestaat niet meer, en er is geen veld dat een uitzondering is.
+  - **Eén bron voor de opmaak.** `.focus-rich` (elk vrij tekstveld) hangt in `app/globals.css`
+    aan exact dezelfde regels als `.md` en `.chat-md`: dezelfde oranje kopjes, dezelfde
+    witruimte, dezelfde bullets, dezelfde lijnen, dezelfde tabel (`.paste-table` loopt mee in
+    het `.md-table`-blok). **Schrijf voor een tekstveld nooit een eigen setje opmaakregels;
+    zet het veld in dat gedeelde blok.** De vorige eigen set was kleiner én werd door een
+    `*`-vangnet met `!important` weer platgeslagen, dus een kop was even groot als gewone tekst.
+    Een vangnet tegen opmaak van buiten mag daarom nooit `font-size` of `color` platslaan.
+  - **Opmaak weggooien is goed, structuur weggooien is fout.** `lib/rich-paste.ts` haalt bij
+    plakken lettertypes, kleuren, classes en `<style>`-blokken van buiten weg, maar houdt de
+    structuur van de tekst: koppen, bullets, genummerde lijsten, lijnen, citaten, alinea's,
+    tabellen, links. Dat is de stand `rich: true`, en die is niet optioneel: **elke aanroep van
+    `cleanPastedHtml` gaat met `rich: true`.** Een geplakte h1/h2 wordt een h3, precies zoals
+    `mdToHtml` dat doet, zodat geplakte en gerenderde tekst niet uit elkaar lopen.
+  - **Platte tekst die markdown is, wordt gerenderd.** Plak je tekst waarin `##`, `- `, `1. `
+    of een tabel met pipes staat, dan gaat hij door `mdToHtml` in plaats van letterlijk in beeld
+    te komen. Kopiëren uit een AI-chat levert vaak alleen platte tekst op, ook al zag hij er
+    opgemaakt uit.
+  - **`proeven/geplakte-opmaak.proef.ts` bewaakt alle drie en draait vóór élke bouw.** Hij plakt
+    een echt stuk strategie door de opschoner heen (in een echte DOM) en wordt rood als een kop,
+    een bullet, een lijn, een link of een tabel sneuvelt, als er een `cleanPastedHtml` zonder
+    `rich: true` bijkomt, als een veld zijn eigen opmaakregels krijgt in plaats van het gedeelde
+    blok, of als een vangnet de koppen weer platslaat. Zet die proef nooit uit.
 - **Met terugwerkende kracht (vaste regel, 31-07-2026).** Elke opmaak- of dashboardaanpassing geldt automatisch óók voor bestaande kaarten, taken en chats, in alle werelden (Pingwin én NOC). Bouw zulke aanpassingen daarom in de weergave-laag (renderer/parser, zoals `lib/card-info.ts`), niet alleen in de prompt voor nieuwe data. Maarten hoeft dit niet meer per wijziging te vragen.
 
 ## 0b. DE UITLEGPAGINA BIJWERKEN (vaste stap, 06-08-2026)

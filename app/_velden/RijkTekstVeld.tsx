@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { cleanPastedHtml, linkifyPlainText } from "../../lib/rich-paste";
+import { cleanPastedHtml, lijktOpMarkdown, linkifyPlainText } from "../../lib/rich-paste";
+import { mdToHtml } from "../../lib/markdown";
 import {
   blokVoorSlepen,
   checklistItemHtml,
@@ -516,11 +517,25 @@ export default function RijkTekstVeld({
     const pasteHtml = e.clipboardData.getData("text/html");
     const pasteText = e.clipboardData.getData("text/plain");
 
-    // Opmaak uit Sheets, Docs of een webpagina: opschonen tot kale tekst plus
-    // klikbare links, zodat het dashboard-lettertype niet overruled wordt.
+    // Opmaak uit de chat ernaast, uit Sheets, Docs of een webpagina: lettertypes,
+    // kleuren en classes van buiten gaan eruit, de STRUCTUUR blijft staan (koppen,
+    // bullets, genummerde lijsten, lijnen, citaten, alinea's, tabel). Dat laatste
+    // is het verschil tussen een muur tekst en dezelfde opmaak als in de chat
+    // waar je hem vandaan kopieerde; zie de uitleg in lib/rich-paste.ts.
     if (pasteHtml && /<\w/.test(pasteHtml)) {
-      const cleaned = cleanPastedHtml(pasteHtml, { keepTables: true });
+      const cleaned = cleanPastedHtml(pasteHtml, { keepTables: true, rich: true });
       if (cleaned) { e.preventDefault(); document.execCommand("insertHTML", false, cleaned); herstelEnMeld(); return; }
+    }
+    // Platte tekst die markdown ís (`## kop`, `- punt`, `1. punt`, een tabel met
+    // pipes): meteen renderen. Zonder dit staan de hekjes en de sterretjes
+    // letterlijk in beeld, en dat is precies de regel "nooit ruwe markdown in
+    // beeld". Komt vaak voor: tekst uit een AI-chat kopiëren levert vaak alleen
+    // platte tekst op, ook al zag hij er opgemaakt uit.
+    if (pasteText && lijktOpMarkdown(pasteText)) {
+      e.preventDefault();
+      document.execCommand("insertHTML", false, mdToHtml(pasteText));
+      herstelEnMeld();
+      return;
     }
     // Platte tekst met URL's: regels behouden en de URL's meteen klikbaar maken.
     if (pasteText && /https?:\/\//i.test(pasteText)) {

@@ -159,6 +159,26 @@ export const HOOFDSTUK: Hoofdstuk = {
         "een regel in een document op geheugen leunt en een poort niet.",
     },
     {
+      titel: "Wat je zelf typt of plakt is net zo mooi als wat het dashboard zelf maakt",
+      kern: "Bij plakken gaat de opmaak van buiten eruit, maar de structuur blijft staan.",
+      tekst:
+        "Overal in het dashboard staan velden waar je vrij in schrijft: de koers van een klant, wat er nu " +
+        "opgepakt wordt, de bespreekpunten, de aantekeningen bij een taak. Die velden hingen aan hun eigen, " +
+        "kleinere setje opmaakregels. Werkte je links in de chat een strategie uit en plakte je die rechts in " +
+        "de koers, dan bleef er een muur tekst over: de kopjes waren gewone letters die aan de volgende zin " +
+        "vastplakten, de opsommingen waren regelafbrekingen, de lijnen waren weg. Dezelfde tekst, een kolom " +
+        "verderop, stond wél netjes.\n\n" +
+        "Nu hangen die velden aan **exact dezelfde opmaak** als de tekst die het dashboard zelf rendert: " +
+        "dezelfde oranje kopjes, dezelfde witruimte, dezelfde bullets, lijnen en tabellen. Bij plakken gaat " +
+        "alleen weg wat van buiten komt (lettertype, kleuren, achtergronden uit Sheets, Docs of een webpagina); " +
+        "de **structuur** van je tekst blijft staan: koppen, opsommingen, genummerde lijsten, lijnen, citaten, " +
+        "alinea's, tabellen en klikbare links. Plak je platte tekst waar nog opmaaktekens in staan, dan wordt " +
+        "die meteen gerenderd in plaats van letterlijk getoond.\n\n" +
+        "Ook dit leunt niet op geheugen: er draait vóór elke bouw een controle die een echt stuk strategie " +
+        "door de opschoner heen haalt en de bouw stopt zodra een kop, een bullet, een lijn, een link of een " +
+        "tabel sneuvelt, of zodra een veld weer zijn eigen opmaakregels krijgt.",
+    },
+    {
       titel: "Eén codebase, meerdere merken",
       kern: "Het project bepaalt het merk, niet de code.",
       tekst:
