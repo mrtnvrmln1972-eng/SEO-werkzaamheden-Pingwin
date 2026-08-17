@@ -813,7 +813,10 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
             <div className="dev-kaart-opm">
               <div className="dev-kaart-opm-kop">
                 <span>Uit de kaart in de weekplanning</span>
-                <button type="button" className="btn btn-quiet btn-klein" title="Zet deze tekst onder in je eigen opmerking, dan kun je hem aanpassen"
+                {/* Doet wél iets met de data (hij vult je eigen veld), dus .btn-ghost
+                    en niet .btn-quiet: quiet is voor informatief en verwijzend, en
+                    zo stil dat hij als kopje meelas in plaats van als knop. */}
+                <button type="button" className="btn btn-ghost btn-klein" title="Zet deze tekst onder in je eigen opmerking, dan kun je hem aanpassen"
                   onClick={() => setOpm((h) => (stripText(h) ? h + kaartHtml : kaartHtml))}>Overnemen</button>
               </div>
               <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(kaartOpm) }} />
