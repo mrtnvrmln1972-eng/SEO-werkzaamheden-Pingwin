@@ -39,7 +39,7 @@ import { eenmalig } from "./schema-stand";
 
 // Vingerafdruk van `doeBouw()` hieronder; `proeven/schema-versie.proef.ts`
 // rekent hem na en noemt zelf de waarde die hier hoort te staan.
-export const GROTE_PUNTEN_SCHEMA_VERSIE = "gp1-3d59dbce";
+export const GROTE_PUNTEN_SCHEMA_VERSIE = "grote-punten-01f702ce";
 
 async function doeBouw(): Promise<void> {
   await sql`

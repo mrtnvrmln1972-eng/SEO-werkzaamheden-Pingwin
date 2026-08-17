@@ -38,10 +38,12 @@ export type KiezerKlant = {
 
 type Groep = { sleutel: string; label: string; klanten: KiezerKlant[]; standaardOpen: boolean };
 
-export default function KlantKiezer({ klanten, huidig, onKies }: {
+export default function KlantKiezer({ klanten, huidig, onKies, onVooruit }: {
   klanten: KiezerKlant[];
   huidig: string;
   onKies: (slug: string, naam: string) => void;
+  /** Alvast klaarzetten zodra iemand een naam aanwijst, nog vóór de klik. */
+  onVooruit?: (slug: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [zoek, setZoek] = useState("");
@@ -157,6 +159,15 @@ export default function KlantKiezer({ klanten, huidig, onKies }: {
                       type="button"
                       key={c.slug}
                       className={"kk-item" + (c.slug === huidig ? " kk-item-actief" : "")}
+                      // Voorladen zodra je een naam aanwijst. De cockpit van een
+                      // klant moet server-zijdig zijn gegevens ophalen, en dat
+                      // begon pas op het moment dat je klikte; je keek dus altijd
+                      // een seconde of twee tegen "laden…" aan. Tussen aanwijzen
+                      // en klikken zit bijna altijd genoeg tijd om dat al te doen,
+                      // dus de pagina staat er meestal al als je loslaat.
+                      // onFocus zit erbij voor wie met het toetsenbord kiest.
+                      onMouseEnter={() => { if (c.slug !== huidig) onVooruit?.(c.slug); }}
+                      onFocus={() => { if (c.slug !== huidig) onVooruit?.(c.slug); }}
                       onClick={() => { setOpen(false); if (c.slug !== huidig) onKies(c.slug, c.name); }}
                     >
                       <span className="kk-item-naam">{c.name}</span>

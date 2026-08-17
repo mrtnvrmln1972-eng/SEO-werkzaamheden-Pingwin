@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 
 // ═══════════════════════════════════════════════════════════
 // BUDGET-OVERRIDE PER MAAND (maandbudget + linkbuilding)
@@ -14,10 +15,13 @@ import { sql, ensureSchema } from "./db";
 
 export type MonthOverride = { maandbudget: number | null; linkbuilding: number | null };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "month-linkbuilding-8d8b95ca";
+
 async function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("month-linkbuilding", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

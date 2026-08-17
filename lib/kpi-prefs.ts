@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 
 // ═══════════════════════════════════════════════════════════
 // KPI-VOORKEUREN: handmatige volgorde van Search Console-pagina's
@@ -9,7 +10,16 @@ import { sql, ensureSchema } from "./db";
 // er onderaan achter, in hun eigen (klikken-)volgorde.
 // ═══════════════════════════════════════════════════════════
 
-async function ensureTable(): Promise<void> {
+// De tabel wordt één keer gebouwd per database, niet bij elke aanroep
+// opnieuw. Zie lib/schema-stand.ts. Verander je iets aan bouwEnsureTable(), hoog
+// dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const KPI_PREFS_VERSIE = "kpi-prefs-3f362faf";
+
+function ensureTable(): Promise<void> {
+  return eenmalig("kpi-prefs", KPI_PREFS_VERSIE, bouwEnsureTable);
+}
+
+async function bouwEnsureTable(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS kpi_page_order (
       client_slug TEXT NOT NULL,

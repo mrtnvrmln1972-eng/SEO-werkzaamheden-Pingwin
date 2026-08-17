@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { meldingToevoegen, meldingIntrekken } from "./meldingen";
 
 // ═══════════════════════════════════════════════════════════
@@ -76,7 +77,24 @@ function makeKey(slug: string, taak: string): string {
   return slug + "::" + stripTags(taak).toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+// ── De tabel wordt één keer gebouwd, niet bij elke vraag ────────────
+// Hier stond een kale functie: dertien tabel-opdrachten die bij ELKE aanroep
+// opnieuw naar de database gingen. En hij wordt tien keer aangeroepen in dit
+// bestand, dus één keer het developer-scherm openen was in z'n eentje goed voor
+// ruim honderd overbodige opdrachten. Gemeten op 17-08-2026: 2,5 tot 2,9
+// seconden voor een scherm dat verder niets zwaars doet.
+//
+// De stempel uit lib/schema-stand.ts lost dat op: die onthoudt per onderdeel
+// welke versie er in de database staat en slaat het hele blok over als het al
+// goed is. Verander je iets aan het blok hieronder, hoog dan de versie op
+// (het cijfer achter "dev-"); anders komt je nieuwe kolom er nooit in.
+const DEV_SCHEMA_VERSIE = "developer-overview-a721ff70";
+
 async function ensureDevTable(): Promise<void> {
+  return eenmalig("developer-overview", DEV_SCHEMA_VERSIE, bouwDevTable);
+}
+
+async function bouwDevTable(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS developer_overview (
       client_slug TEXT NOT NULL,

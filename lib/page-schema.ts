@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getClientBySlug } from "./clients";
 import { urlKey } from "./url-key";
 import { getOrgData, type OrgData } from "./org-data";
@@ -34,10 +35,13 @@ export type PageSchemaState = {
   inventory?: { plugin?: string; pluginLabel?: string; types?: string[] };
 };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "page-schema-a505137e";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("page-schema", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

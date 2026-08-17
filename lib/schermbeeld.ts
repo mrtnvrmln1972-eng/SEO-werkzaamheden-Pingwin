@@ -1,5 +1,6 @@
 import { metBrowser } from "./browser";
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { ADMIN_COOKIE, makeAdminSession } from "./admin-auth";
 
 // ═══════════════════════════════════════════════════════════
@@ -41,7 +42,16 @@ export const SCHERMEN: SchermDef[] = [
 const BREEDTE = 1440;
 
 let tabelKlaar: Promise<void> | null = null;
-async function ensureTabel(): Promise<void> {
+// De tabel wordt één keer gebouwd per database, niet bij elke aanroep
+// opnieuw. Zie lib/schema-stand.ts. Verander je iets aan bouwEnsureTabel(), hoog
+// dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHERMBEELD_VERSIE = "schermbeeld-002e6919";
+
+function ensureTabel(): Promise<void> {
+  return eenmalig("schermbeeld", SCHERMBEELD_VERSIE, bouwEnsureTabel);
+}
+
+async function bouwEnsureTabel(): Promise<void> {
   await ensureSchema();
   if (!tabelKlaar) tabelKlaar = doEnsureTabel().catch((e) => { tabelKlaar = null; throw e; });
   return tabelKlaar;

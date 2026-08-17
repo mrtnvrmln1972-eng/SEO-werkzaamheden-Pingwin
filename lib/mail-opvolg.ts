@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { meldingToevoegen } from "./meldingen";
 
 // ═══════════════════════════════════════════════════════════
@@ -41,7 +42,16 @@ async function tabel(): Promise<void> {
   await sql`ALTER TABLE mail_opvolg ADD COLUMN IF NOT EXISTS soort TEXT NOT NULL DEFAULT 'mail'`;
   await sql`CREATE INDEX IF NOT EXISTS mail_opvolg_open_idx ON mail_opvolg (herinner_op) WHERE afgerond_op IS NULL`;
 }
-async function ensure(): Promise<void> {
+// De tabel wordt één keer gebouwd per database, niet bij elke aanroep
+// opnieuw. Zie lib/schema-stand.ts. Verander je iets aan bouwEnsure(), hoog
+// dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const MAIL_OPVOLG_VERSIE = "mail-opvolg-f028d6ab";
+
+function ensure(): Promise<void> {
+  return eenmalig("mail-opvolg", MAIL_OPVOLG_VERSIE, bouwEnsure);
+}
+
+async function bouwEnsure(): Promise<void> {
   await ensureSchema();
   if (!klaar) klaar = tabel();
   await klaar;

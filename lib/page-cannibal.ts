@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getClientBySlug } from "./clients";
 import { getClientUrls, getPagePlan, getPageDriveFolder } from "./site-urls";
 import { getGscForPage, getGscQueryPageMatrix } from "./google";
@@ -23,10 +24,13 @@ import { measurePage } from "./page-measure";
 
 export type PageCannibalState = { status: "idle" | "running" | "done" | "error"; result: string; error: string; updatedAt: string | null };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "page-cannibal-cf5772ac";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("page-cannibal", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

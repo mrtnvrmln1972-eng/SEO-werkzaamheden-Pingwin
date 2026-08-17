@@ -34,7 +34,7 @@ export type ClientUrl = {
 // Draait de tabel-voorbereiding hooguit één keer per database, niet meer bij
 // elke koude server. Zie lib/schema-stand.ts; het versienummer wordt bewaakt
 // door proeven/schema-versie.proef.ts.
-export const SITE_URLS_SCHEMA_VERSIE = "su1-0c70a85c";
+export const SITE_URLS_SCHEMA_VERSIE = "site-urls-36e440c9";
 async function ensureTables(): Promise<void> {
   return eenmalig("site-urls", SITE_URLS_SCHEMA_VERSIE, doEnsureTables);
 }

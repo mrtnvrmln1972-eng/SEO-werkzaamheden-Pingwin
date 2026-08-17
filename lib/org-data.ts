@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getClientBySlug } from "./clients";
 import { parseJsonSoepel } from "./json-herstel";
 import { callClaudeWebSearch } from "./anthropic";
@@ -61,10 +62,13 @@ export const EMPTY_ORG: OrgData = {
 
 export type OrgRecord = { data: OrgData; locked: boolean; shareToken: string; devShareToken: string; updatedAt: string | null; updatedBy: string };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "org-data-a29c4282";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("org-data", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

@@ -30,7 +30,7 @@ import { eenmalig } from "./schema-stand";
 
 // Vingerafdruk van `doeBouw()` hieronder; `proeven/schema-versie.proef.ts`
 // rekent hem na en noemt zelf de waarde die hier hoort te staan.
-export const TWEAKS_SCHEMA_VERSIE = "tw1-b449b689";
+export const TWEAKS_SCHEMA_VERSIE = "tweaks-d886ae56";
 
 async function doeBouw(): Promise<void> {
   await sql`

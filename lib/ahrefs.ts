@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { logUsage } from "./usage";
 import { logBronGebeurtenis } from "./bron-gezondheid";
 
@@ -197,7 +198,16 @@ export async function getAhrefsSubscriptionUsage(): Promise<AhrefsSubscriptionUs
   return data;
 }
 
-async function ensureCache(): Promise<void> {
+// De tabel wordt één keer gebouwd per database, niet bij elke aanroep
+// opnieuw. Zie lib/schema-stand.ts. Verander je iets aan bouwEnsureCache(), hoog
+// dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const AHREFS_CACHE_VERSIE = "ahrefs-cache-4d573a50";
+
+function ensureCache(): Promise<void> {
+  return eenmalig("ahrefs-cache", AHREFS_CACHE_VERSIE, bouwEnsureCache);
+}
+
+async function bouwEnsureCache(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS ahrefs_cache (
       kind    TEXT NOT NULL,

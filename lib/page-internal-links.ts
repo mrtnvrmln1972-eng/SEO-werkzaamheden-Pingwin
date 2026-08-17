@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getClientBySlug } from "./clients";
 import { getClientUrls, getPagePlan, getPageDriveFolder } from "./site-urls";
 import { getGscForPage } from "./google";
@@ -29,10 +30,13 @@ export type PageInternalLinksState = { status: "idle" | "running" | "done" | "er
 const CRAWL_LIMIT = 50; // hoeveel kandidaat-bronpagina's we crawlen (top op autoriteit + verkeer + thematische titel)
 const MAX_SUGGESTIONS = 20; // zoveel kansen tonen we maximaal (met bewerk-link)
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "page-internal-links-d9bdbca5";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("page-internal-links", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

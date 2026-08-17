@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 
 // ═══════════════════════════════════════════════════════════
 // FOCUS-ZOEKWOORDEN: per klant een zoekwoord markeren als prio/secundair
@@ -12,10 +13,13 @@ import { sql, ensureSchema } from "./db";
 export type FocusTier = "prio" | "secundair";
 export type KeywordFocus = Record<string, FocusTier>;
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "keyword-focus-59ad578b";
+
 async function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("keyword-focus", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

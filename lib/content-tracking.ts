@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { diffSnapshots, diffSummary, diffKlantTekst, isDiffEmpty, type SnapshotForDiff, type ContentDiff } from "./content-diff";
 import { logActiviteit } from "./activiteit";
 import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, fetchWordpressUsers, revisionDiffSummary, headingsFromHtml, type WpAuth, type WpRevision } from "./wordpress";
@@ -20,10 +21,13 @@ import { fetchWordpressModified, fetchWordpressPages, fetchWordpressRevisions, f
 // stortvloed aan valse "pagina gewijzigd"-meldingen.
 export type Snapshot = SnapshotForDiff & { url: string; contentHash: string; status: number | null; main_word_count: number; h1_count: number };
 
-let tablesReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "content-tracking-91b5ad98";
+
 async function ensureTables(): Promise<void> {
-  if (!tablesReady) tablesReady = doEnsure().catch((e) => { tablesReady = null; throw e; });
-  return tablesReady;
+  return eenmalig("content-tracking", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

@@ -413,9 +413,6 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   // Prioriteit-pagina's (ster): aangevinkt = bovenaan. Gedeelde opslag met de Wijzigingen-tab.
   const [pagePrio, setPagePrio] = useState<Set<string>>(new Set());
   const pagePrioKey = (u: string) => (u || "").replace(/\/+$/, "");
-  useEffect(() => {
-    fetch(`/api/admin/changes/priority?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setPagePrio(new Set(d.urls || [])); }).catch(() => {});
-  }, [slug]);
   function togglePagePrio(url: string) {
     const key = pagePrioKey(url);
     const on = !pagePrio.has(key);
@@ -427,12 +424,6 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   type AiPlat = { key: string; label: string; citations: number; pages: number; prevCitations: number | null; prevPages: number | null };
   const [aiPlat, setAiPlat] = useState<AiPlat[] | null>(null);
   const [aiPlatErr, setAiPlatErr] = useState("");
-  useEffect(() => {
-    fetch(`/api/admin/ahrefs-ai?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json())
-      .then((d) => { if (d.ok) setAiPlat(d.platforms || []); else setAiPlatErr(d.error || ""); })
-      .catch(() => setAiPlatErr("AI-vindbaarheid kon niet geladen worden."));
-  }, [slug]);
 
   // Ahrefs-zoekwoorden (domein-brede pool + laaghangend fruit).
   const [ahrefsKw, setAhrefsKw] = useState<AhrefsKeyword[]>([]);
@@ -445,10 +436,6 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   const [ahCompare, setAhCompare] = useState<"1m" | "3m" | "6m" | "12m" | "custom">("3m");
   const [ahCustomDate, setAhCustomDate] = useState("");
 
-  useEffect(() => {
-    fetch(`/api/admin/ahrefs-keywords?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setAhrefsKw(d.keywords || []); }).catch(() => {});
-  }, [slug]);
 
 
   async function syncAhrefs() {
@@ -474,10 +461,6 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   // Zoekwoord-kansen (relevant, waar de site nog niet op rankt).
   const [opps, setOpps] = useState<Opportunity[]>([]);
   const [oppMsg, setOppMsg] = useState("");
-  useEffect(() => {
-    fetch(`/api/admin/keyword-opportunities?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setOpps(d.opportunities || []); }).catch(() => {});
-  }, [slug]);
   // Kansen verzamelen duurt minuten (Ahrefs plus de relevantiefilter), dus het
   // draait op de server en dit scherm volgt alleen de stand.
   const kansenKlus = useKlus(slug, "zoekwoordkansen", () => {
@@ -499,9 +482,32 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
   // in de gedeelde component, die ook op het Klantgegevens-tabje staat.
   const [competitors, setCompetitors] = useState<string[]>([]);
   const [compOpen, setCompOpen] = useState(false);
+
+  // ── Alles wat dit tabblad bij het openen nodig heeft, in één verzoek ──
+  // Hierboven stonden vijf losse useEffects, elk met een eigen fetch naar een
+  // eigen route: de gemarkeerde pagina's, de AI-vindbaarheid, de
+  // Ahrefs-zoekwoorden, de kansen en de concurrenten. Vijf keer dezelfde
+  // inlogcontrole, toegangscheck, databaseverbinding en opstart, voor vijf
+  // kleine uitkomsten. Ze worden nu op de server naast elkaar opgehaald en in
+  // één antwoord teruggegeven; zie app/api/admin/kpi/start/route.ts.
+  //
+  // Komt er nog iets bij dat dit tabblad bij het openen nodig heeft en dat snel
+  // is? Zet het daar erbij, niet hier als zesde losse verzoek. Duurt het
+  // seconden (Google, Ahrefs live), dan hoort het juist wél apart.
   useEffect(() => {
-    fetch(`/api/admin/competitors?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setCompetitors(d.competitors || []); }).catch(() => {});
+    let weg = false;
+    fetch(`/api/admin/kpi/start?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (weg || !d.ok) return;
+        setPagePrio(new Set(d.prioriteit || []));
+        setAiPlat(d.platforms || []);
+        setAhrefsKw(d.ahrefsKeywords || []);
+        setOpps(d.kansen || []);
+        setCompetitors(d.concurrenten || []);
+      })
+      .catch(() => { if (!weg) setAiPlatErr("AI-vindbaarheid kon niet geladen worden."); });
+    return () => { weg = true; };
   }, [slug]);
 
   // Sla de gesleepte volgorde op (kort debounce).

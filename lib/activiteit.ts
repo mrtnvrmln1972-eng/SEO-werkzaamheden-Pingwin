@@ -15,6 +15,7 @@
 // ook het terugwerkend vullen veilig, want nog een keer klikken verandert niets.
 
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 
 export type ActiviteitSoort =
   | "analyse" | "blauwdruk" | "copy" | "copy-live" | "copy-concept"
@@ -86,10 +87,13 @@ const STANDAARD_ZICHTBAAR: Record<ActiviteitSoort, boolean> = {
   mail: false,
 };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "activiteit-dcf749c9";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("activiteit", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

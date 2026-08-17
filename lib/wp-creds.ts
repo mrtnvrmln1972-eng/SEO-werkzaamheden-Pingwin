@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import type { WpAuth } from "./wordpress";
 
 // ═══════════════════════════════════════════════════════════
@@ -10,10 +11,13 @@ import type { WpAuth } from "./wordpress";
 // sturen; de UI toont alleen of het is ingesteld.
 // ═══════════════════════════════════════════════════════════
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "wp-creds-e5010cbd";
+
 async function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("wp-creds", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

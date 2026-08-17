@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { logBronGebeurtenis } from "./bron-gezondheid";
 
 // ═══════════════════════════════════════════════════════════
@@ -90,7 +91,16 @@ async function mbFetchAll(path: string, params: Record<string, string> = {}): Pr
 
 // ─── Cache in Postgres (zelfde patroon als ahrefs_cache) ───
 
-async function ensureCache(): Promise<void> {
+// De tabel wordt één keer gebouwd per database, niet bij elke aanroep
+// opnieuw. Zie lib/schema-stand.ts. Verander je iets aan bouwEnsureCache(), hoog
+// dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const MONEYBIRD_CACHE_VERSIE = "moneybird-cache-00c9f16d";
+
+function ensureCache(): Promise<void> {
+  return eenmalig("moneybird-cache", MONEYBIRD_CACHE_VERSIE, bouwEnsureCache);
+}
+
+async function bouwEnsureCache(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS moneybird_cache (
       kind       TEXT NOT NULL,

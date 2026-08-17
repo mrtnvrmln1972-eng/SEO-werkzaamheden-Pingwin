@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getClientBySlug } from "./clients";
 import { getSiteOrganicKeywords, getKeywordsOverview, ahrefsConfigured, type SiteKeyword } from "./ahrefs";
 
@@ -18,10 +19,13 @@ export type AhrefsKeyword = {
   compareDate: string | null; // de datum waarmee de posities vergeleken zijn (voor de pijltjes)
 };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "ahrefs-keywords-7e881111";
+
 async function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("ahrefs-keywords", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

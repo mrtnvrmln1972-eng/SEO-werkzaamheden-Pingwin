@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 
 // ═══════════════════════════════════════════════════════════
 // ACHTERGRONDKLUSSEN: ÉÉN PLEK DIE WEET WAT ER DRAAIT
@@ -48,10 +49,13 @@ export type Klus = {
 // die de opruim- en prioriteitenmotor al hanteren voor hun cron-vangnet.
 const STIL_MS = 15 * 60 * 1000;
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "klussen-758c6752";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("klussen", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

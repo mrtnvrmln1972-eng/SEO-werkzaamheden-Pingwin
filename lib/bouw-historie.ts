@@ -35,7 +35,7 @@ import { eenmalig } from "./schema-stand";
 
 // Vingerafdruk van `doeBouw()` hieronder; `proeven/schema-versie.proef.ts`
 // rekent hem na en noemt zelf de waarde die hier hoort te staan.
-export const BOUW_HISTORIE_SCHEMA_VERSIE = "bh1-930d8520";
+export const BOUW_HISTORIE_SCHEMA_VERSIE = "bouw-historie-646e0386";
 
 async function doeBouw(): Promise<void> {
   await sql`

@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { urlKey } from "./url-key";
 
 // Bewaart chats per pagina (of ze nu wel of niet zijn overgenomen), zodat je ze
@@ -8,10 +9,13 @@ export type ChatMsg = { role: "user" | "assistant"; content: string };
 export type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
 
 // Eén keer per serverinstantie (gecachet), scheelt CREATE TABLE per verzoek.
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsureTable(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "page-chats-527d6618";
+
 async function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsureTable().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("page-chats", SCHEMA_VERSIE, doEnsureTable);
 }
 async function doEnsureTable(): Promise<void> {
   await sql`

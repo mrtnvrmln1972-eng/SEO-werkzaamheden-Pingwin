@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { urlKey } from "./url-key";
 import { ensureFolderFor } from "./drive-map";
 import { uploadBestand } from "./drive";
@@ -33,10 +34,13 @@ export type ClientFile = {
   toegevoegdOp: string;
 };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsureTable(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "client-files-9107639d";
+
 async function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsureTable().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("client-files", SCHEMA_VERSIE, doEnsureTable);
 }
 async function doEnsureTable(): Promise<void> {
   await sql`

@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { listClients } from "./clients";
 import { getAhrefsSubscriptionUsage, ahrefsConfigured } from "./ahrefs";
 import { getOnboardingStand, wisSignaalCache } from "./onboarding";
@@ -35,7 +36,16 @@ import { draaiOnboardingRun, startOnboardingRun, getOnboardingRun } from "./onbo
 export * from "./onboarding-golven";
 
 let tabelKlaar = false;
-async function ensureTable(): Promise<void> {
+// De tabel wordt één keer gebouwd per database, niet bij elke aanroep
+// opnieuw. Zie lib/schema-stand.ts. Verander je iets aan bouwEnsureTable(), hoog
+// dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const ONBOARDING_BULK_VERSIE = "onboarding-bulk-b6bbc218";
+
+function ensureTable(): Promise<void> {
+  return eenmalig("onboarding-bulk", ONBOARDING_BULK_VERSIE, bouwEnsureTable);
+}
+
+async function bouwEnsureTable(): Promise<void> {
   if (tabelKlaar) return;
   await ensureSchema();
   await sql`

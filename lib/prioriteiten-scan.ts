@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getClientBySlug } from "./clients";
 import { getGscQueryPagePairs, getGscQueryPagePairsCompare, getGscKeywordUrlFlips, getGa4ConversionsByPage } from "./google";
 import { getEuroInstelling } from "./opruim-euro";
@@ -105,10 +106,13 @@ function stapVan(fase: PrioFase): { stap: number; label: string } {
 }
 
 // ── Opslag ────────────────────────────────────────────────────────────────
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "prioriteiten-scan-a2dc56fd";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("prioriteiten-scan", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

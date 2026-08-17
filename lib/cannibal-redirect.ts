@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { createClient } from "@vercel/postgres";
 import { getClientBySlug } from "./clients";
 import { getClientUrls } from "./site-urls";
@@ -103,10 +104,13 @@ function stapVan(fase: CannibalFase, ronde: number): { stap: number; label: stri
   return { stap: 1, label: "De analyse wordt opgestart" };
 }
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "cannibal-redirect-9bf35075";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("cannibal-redirect", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getClientUrls, savePagePlan } from "./site-urls";
 import { appendTasks } from "./tasks";
 
@@ -146,7 +147,16 @@ export async function computeLiveFlags(slug: string, items: ImportItem[]): Promi
   });
 }
 
-async function ensureAnalysesTable(): Promise<void> {
+// De tabel wordt één keer gebouwd per database, niet bij elke aanroep
+// opnieuw. Zie lib/schema-stand.ts. Verander je iets aan bouwEnsureAnalysesTable(), hoog
+// dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const ANALYSES_VERSIE = "analyses-0942be50";
+
+function ensureAnalysesTable(): Promise<void> {
+  return eenmalig("analyses", ANALYSES_VERSIE, bouwEnsureAnalysesTable);
+}
+
+async function bouwEnsureAnalysesTable(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS analyses (
       id          SERIAL PRIMARY KEY,

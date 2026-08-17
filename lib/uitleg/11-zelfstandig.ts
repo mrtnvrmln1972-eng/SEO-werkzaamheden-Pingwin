@@ -41,5 +41,26 @@ export const HOOFDSTUK: Hoofdstuk = {
         "de site-brede overzichten ongeveer een halve dag. Elke bewaartermijn volgt uit hoe snel dat cijfer " +
         "echt verandert, niet uit een standaardinstelling.",
     },
+    {
+      titel: "Waarom het snel is (en waar het dat niet was)",
+      kern: "Niets twee keer doen, en nooit laten wachten op iets dat er niet toe doet.",
+      tekst:
+        "Een dashboard wordt niet langzaam door één zware berekening, maar door klein werk dat vaker gebeurt " +
+        "dan nodig. Vier voorbeelden die op 17 augustus 2026 gemeten en opgelost zijn.\n\n" +
+        "**Niet blijven zoeken naar iets dat er niet is.** Heeft een klant geen Google Analytics gekoppeld, dan " +
+        "ging het dashboard bij élke keer dat je Resultaten opende het hele Analytics-account aflopen om te " +
+        "kijken of er tóch een koppeling was. Het vond niets, onthield dat niet, en deed het de volgende keer " +
+        "weer. Dat kostte tien tot eenendertig seconden per keer. Nu wordt zo'n zoektocht hooguit één keer per " +
+        "week herhaald; koppel je Analytics alsnog, dan wordt het vanzelf gevonden.\n\n" +
+        "**Van tabblad wisselen vraagt niets aan de server.** Het scherm wisselde direct, maar daarna werd de " +
+        "hele pagina alsnog opnieuw bij de server opgevraagd om het adres in de adresbalk bij te werken. Dat " +
+        "kostte ruim een seconde per klik. Het adres wordt nu bijgewerkt zonder dat rondje.\n\n" +
+        "**Een tabblad dat je bezocht hebt blijft staan.** Wegklikken gooide alles weg, dus terugkomen betekende " +
+        "opnieuw wachten. Nu blijft het staan, inclusief je filters en uitgeklapte rijen, en loopt een scan die " +
+        "je gestart hebt gewoon door terwijl je ergens anders kijkt.\n\n" +
+        "**Controleren gebeurt ná het tonen.** Of een goedgekeurde meta al live staat wordt gecontroleerd door " +
+        "de pagina's van de klant op te halen. Dat zat vóór het eerste beeld, dus je keek acht tot achtentwintig " +
+        "seconden naar niets. De lijst komt nu meteen, en werkt zichzelf een paar tellen later bij.",
+    },
   ],
 };

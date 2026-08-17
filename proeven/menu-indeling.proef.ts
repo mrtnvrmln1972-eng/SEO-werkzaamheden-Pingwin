@@ -76,7 +76,27 @@ check("elk scherm heeft een regel uitleg", zonderHint.length === 0, zonderHint.j
 // eigen omschrijving beloofde dat het daar stond. Zonder deze controle sluipt het
 // er zo weer in, want in PagesPanel is die code nog steeds thuis.
 const cockpit = fs.readFileSync(path.join(WORTEL, "app/admin/client/[slug]/ClientCockpit.tsx"), "utf8");
-const klantTab = cockpit.slice(cockpit.indexOf('{tab === "klant" &&'), cockpit.indexOf('{paginasVisited &&'));
+
+// ── Het stuk scherm dat bij één tabblad hoort ───────────────────────
+// Dit werkte met twee letterlijke tekstjes ("begin bij regel X, stop bij regel
+// Y"), en op 17-08-2026 brak dat: een tabblad wordt niet meer weggegooid als je
+// wegklikt maar verborgen, dus `{tab === "klant" &&` werd `<Bezocht tab="klant"`
+// en de proef zocht in een leeg stuk. Een controle die stukgaat op een
+// verbouwing die niets met zijn onderwerp te maken heeft, bewaakt niets.
+//
+// Daarom nu op de tab-naam zelf, in beide vormen, en tot het begin van het
+// volgende tabblad in plaats van tot één bepaald ander tabblad.
+function blokVan(tab: string): string {
+  const start = cockpit.search(new RegExp(`\\{tab === "${tab}" &&|<Bezocht tab="${tab}"`));
+  if (start < 0) return "";
+  const rest = cockpit.slice(start + 1);
+  const eind = rest.search(/\{tab === "[a-z-]+" &&|<Bezocht tab="[a-z-]+"/);
+  return eind < 0 ? rest : rest.slice(0, eind);
+}
+
+const klantTab = blokVan("klant");
+check("het tabblad Klantgegevens is gevonden in de cockpit", klantTab.length > 0,
+  "Zoek in ClientCockpit.tsx naar het blok van tab \"klant\"; de vorm is kennelijk veranderd, pas blokVan() aan.");
 check("het klantprofiel staat op de tab Klantgegevens", /alleenProfiel/.test(klantTab),
   "PagesPanel hoort daar met alleenProfiel te staan; anders is het profiel terug bij de paginalijst.");
 // Het vrije tekstveld (heette "Zoekwoorden & links", heet nu "Overzicht") stond
@@ -85,7 +105,9 @@ check("het klantprofiel staat op de tab Klantgegevens", /alleenProfiel/.test(kla
 // meer in dan zoekwoorden, en je houdt het bij terwijl je werkt. Wat blijft
 // gelden is de reden dat deze proef bestaat, en dat is niet "waar staat het"
 // maar "staat het op precies één plek". Dus: op Taken, en nergens anders.
-const takenTab = cockpit.slice(cockpit.indexOf('{tab === "werkzaamheden" &&'), cockpit.indexOf('{tab === "resultaten" &&'));
+const takenTab = blokVan("werkzaamheden");
+check("het tabblad Taken is gevonden in de cockpit", takenTab.length > 0,
+  "Zoek in ClientCockpit.tsx naar het blok van tab \"werkzaamheden\"; de vorm is kennelijk veranderd, pas blokVan() aan.");
 check("het Overzicht-veld staat op de tab Taken", /<FocusBlock[^>]*titel="Overzicht"/.test(takenTab),
   "Het vrije tekstveld hoort in de rechterkolom van Taken te staan, onder de mails en boven \"Waar we naartoe werken\".");
 check("het Overzicht-veld staat niet óók op de tab Klantgegevens", !/FocusBlock/.test(klantTab),

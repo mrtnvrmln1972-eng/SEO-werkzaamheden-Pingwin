@@ -25,7 +25,7 @@ export type FaseSleutel = (typeof FASE_SLEUTELS)[number];
 
 // Hooguit één keer per database opbouwen, niet bij elke koude server. Zie
 // lib/schema-stand.ts; bewaakt door proeven/schema-versie.proef.ts.
-export const FASE_HISTORIE_SCHEMA_VERSIE = "fh1-e78e3ebd";
+export const FASE_HISTORIE_SCHEMA_VERSIE = "fase-historie-1bdff2e7";
 function ensureTabel(): Promise<void> {
   return eenmalig("fase-historie", FASE_HISTORIE_SCHEMA_VERSIE, doeHet);
 }

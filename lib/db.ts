@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "k1-f39bd19e";
+export const KERN_SCHEMA_VERSIE = "kern-39d2cd61";
 
 async function init(): Promise<void> {
   await sql`
@@ -57,6 +57,13 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS domain TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ahrefs_project_id TEXT`;
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ga4_property_id TEXT`;
+  // Wanneer we voor het laatst bij Google gezocht hebben naar de Analytics-property
+  // van deze klant. Alleen nodig als er niets gevonden is: zonder deze datum ging
+  // het dashboard bij ELKE keer dat je Resultaten opende het hele Analytics-account
+  // opnieuw aflopen (tot 40 properties, één voor één) om weer niets te vinden. Dat
+  // kostte 10 seconden bij One Day Clinic en 31 bij Kamsteeg, elke keer opnieuw.
+  // Zie ga4PropertyFor in lib/google.ts.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS ga4_gezocht_op TIMESTAMPTZ`;
   // Koppeling naar het Moneybird-contact van deze klant (voor het facturen-signaal).
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS moneybird_contact_id TEXT`;
   // Klant-login aan/uit: staat de klant-login voor deze klant open? Standaard aan,

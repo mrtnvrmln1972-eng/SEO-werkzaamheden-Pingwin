@@ -129,7 +129,7 @@ const BEELD_PER_CALL = 6;  // zoveel foto's tegelijk aan het model laten zien
 // Hooguit één keer per database opbouwen, niet bij elke koude server. Zie
 // lib/schema-stand.ts; het versienummer wordt bewaakt door
 // proeven/schema-versie.proef.ts.
-export const DEV_WORKLIST_SCHEMA_VERSIE = "dw1-98958699";
+export const DEV_WORKLIST_SCHEMA_VERSIE = "dev-worklist-0ee29e31";
 function ensureTable(): Promise<void> {
   return eenmalig("dev-worklist", DEV_WORKLIST_SCHEMA_VERSIE, doEnsure);
 }

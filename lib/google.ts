@@ -108,6 +108,9 @@ export async function googleExchangeCode(origin: string, code: string, purpose: 
     INSERT INTO oauth_tokens (provider, refresh_token, account, updated_at)
     VALUES (${providerFor(purpose)}, ${data.refresh_token}, ${account || null}, now())
     ON CONFLICT (provider) DO UPDATE SET refresh_token = EXCLUDED.refresh_token, account = EXCLUDED.account, updated_at = now()`;
+  // Net (opnieuw) gekoppeld: het oude bewijs weg, anders blijft deze server tot
+  // vijftig minuten met het bewijs van het vorige account werken.
+  vergeetGoogleToken(providerFor(purpose));
   return { ok: true };
 }
 
@@ -132,6 +135,9 @@ async function statusFor(provider: string): Promise<{ configured: boolean; conne
 export async function disconnectDrive(): Promise<void> {
   await ensureSchema();
   await sql`DELETE FROM oauth_tokens WHERE provider = 'google_drive'`;
+  // Ook het bewaarde toegangsbewijs weggooien, anders blijft deze server nog tot
+  // vijftig minuten doen alsof Drive gekoppeld is.
+  vergeetGoogleToken("google_drive");
 }
 
 // Data-koppeling (Search Console + Analytics): access-token uit de 'google'-rij.
@@ -159,8 +165,25 @@ function bronVoorProvider(provider: string): BronId {
   return "google_data";
 }
 
+// ── Het toegangsbewijs wordt hergebruikt zolang het geldig is ──────────
+// Elke aanroep hieronder haalde eerst het bewaarde token uit de database en
+// wisselde dat daarna bij Google in voor een vers toegangsbewijs. Dat gebeurde
+// bij ELKE vraag aan Google, en dit bestand stelt er tweeëntwintig soorten.
+// Eén schermlading van de KPI's deed dat drie keer (Search Console, Analytics,
+// Ads), goed voor drie databasevragen, drie rondjes naar Google en drie regels
+// in het bronnen-logboek, allemaal voor hetzelfde bewijs.
+//
+// Google geeft een bewijs dat een uur geldig is. We houden het vijftig minuten
+// vast in het geheugen van deze server, met tien minuten marge. Meer dan een uur
+// bewaren mag nooit; dan gebruik je een verlopen bewijs en lijkt de koppeling
+// stuk terwijl er niets aan de hand is.
+const tokenCache = new Map<string, { token: string; tot: number }>();
+const TOKEN_GELDIG_MS = 50 * 60 * 1000;
+
 async function accessTokenFor(provider: string): Promise<string | null> {
   if (!googleConfigured()) return null;
+  const bewaard = tokenCache.get(provider);
+  if (bewaard && Date.now() < bewaard.tot) return bewaard.token;
   await ensureSchema();
   const { rows } = await sql`SELECT refresh_token FROM oauth_tokens WHERE provider = ${provider} LIMIT 1`;
   const refresh = rows[0]?.refresh_token as string | undefined;
@@ -179,7 +202,13 @@ async function accessTokenFor(provider: string): Promise<string | null> {
     return null;
   }
   await logBronGebeurtenis(bron, true);
+  tokenCache.set(provider, { token: data.access_token, tot: Date.now() + TOKEN_GELDIG_MS });
   return data.access_token;
+}
+
+/** Het bewaarde toegangsbewijs weggooien, bijvoorbeeld na ontkoppelen. */
+export function vergeetGoogleToken(provider?: string): void {
+  if (provider) tokenCache.delete(provider); else tokenCache.clear();
 }
 
 // ── Search Console ──────────────────────────────────────────
@@ -572,13 +601,7 @@ export async function getGa4PageSignalsBeforeAfter(slug: string, pageUrl: string
   const token = await accessTokenFor("google");
   if (!token) return null;
   await ensureSchema();
-  const { rows } = await sql`SELECT ga4_property_id, domain FROM clients WHERE slug = ${slug} LIMIT 1`;
-  let propertyId = (rows[0]?.ga4_property_id as string) || "";
-  const domain = (rows[0]?.domain as string) || "";
-  if (!propertyId && domain) {
-    const found = await ga4DiscoverProperty(token, domain);
-    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
-  }
+  const propertyId = await ga4PropertyFor(token, slug);
   if (!propertyId) return null;
 
   let path = ""; try { path = new URL(pageUrl).pathname; } catch { path = pageUrl; }
@@ -754,12 +777,7 @@ export async function getGa4Comparison(slug: string, domain: string, days: numbe
   const token = await accessTokenFor("google");
   if (!token) return null;
   await ensureSchema();
-  const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
-  let propertyId = (rows[0]?.ga4_property_id as string) || "";
-  if (!propertyId && domain) {
-    const found = await ga4DiscoverProperty(token, domain);
-    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
-  }
+  const propertyId = await ga4PropertyFor(token, slug, domain);
   if (!propertyId) return { connected: true, propertyId: null, dates: [], totals: [], channels: [], aiSources: [] };
 
   const range = periodRanges(days, compare);
@@ -898,12 +916,7 @@ export async function getGa4ConversionsByPage(slug: string, domain: string, days
   const token = await accessTokenFor("google");
   if (!token) return null;
   await ensureSchema();
-  const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
-  let propertyId = (rows[0]?.ga4_property_id as string) || "";
-  if (!propertyId && domain) {
-    const found = await ga4DiscoverProperty(token, domain);
-    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
-  }
+  const propertyId = await ga4PropertyFor(token, slug, domain);
   if (!propertyId) return null;
 
   const end = new Date();
@@ -983,17 +996,89 @@ async function ga4DiscoverProperty(token: string, domain: string): Promise<strin
   const propertyNames: string[] = [];
   for (const acc of summaries) for (const p of acc.propertySummaries || []) if (p.property) propertyNames.push(p.property);
 
-  for (const prop of propertyNames.slice(0, 40)) {
-    const sres = await fetch(`https://analyticsadmin.googleapis.com/v1beta/${prop}/dataStreams`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!sres.ok) continue;
-    const sj = await sres.json();
-    const streams: { webStreamData?: { defaultUri?: string } }[] = sj.dataStreams || [];
-    for (const s of streams) {
-      const uri = (s.webStreamData?.defaultUri || "").toLowerCase();
-      if (uri && uri.includes(d)) return prop.replace("properties/", "");
-    }
+  // Acht tegelijk in plaats van één voor één. Dit liep als een gewone lus met een
+  // `await` erin, dus veertig properties werden veertig keer wachten achter
+  // elkaar. Bij een account met veel properties was dat in z'n eentje al goed
+  // voor tien tot dertig seconden.
+  const lijst = propertyNames.slice(0, 40);
+  for (let i = 0; i < lijst.length; i += 8) {
+    const groep = lijst.slice(i, i + 8);
+    const uitkomsten = await Promise.all(groep.map(async (prop) => {
+      const sres = await fetch(`https://analyticsadmin.googleapis.com/v1beta/${prop}/dataStreams`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!sres.ok) return null;
+      const sj = await sres.json().catch(() => null);
+      const streams: { webStreamData?: { defaultUri?: string } }[] = sj?.dataStreams || [];
+      for (const s of streams) {
+        const uri = (s.webStreamData?.defaultUri || "").toLowerCase();
+        if (uri && uri.includes(d)) return prop.replace("properties/", "");
+      }
+      return null;
+    }));
+    const gevonden = uitkomsten.find((x) => x);
+    if (gevonden) return gevonden;
   }
   return null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DE ENIGE PLEK DIE DE ANALYTICS-PROPERTY VAN EEN KLANT OPZOEKT
+// ═══════════════════════════════════════════════════════════
+// Dit blok stond vijf keer woordelijk uitgeschreven in dit bestand (bij de
+// KPI's, bij Ads, bij de conversies per pagina, bij de voor/na-signalen en bij
+// de losse klantcijfers). Dat is precies de vaste les uit het brein: dezelfde
+// regel op meerdere plekken loopt uit elkaar zonder dat iemand het merkt. Nu
+// één poort, de rest roept die aan.
+//
+// Wat er misging, en waarom het zo traag was: als een klant geen Analytics
+// heeft (of de koppeling ziet de property niet), dan vond het zoeken niets,
+// werd er niets opgeslagen, en gebeurde precies hetzelfde bij het volgende
+// verzoek. Elke keer dat je Resultaten opende zocht hij opnieuw het hele
+// account af. Twee keer zelfs, want de KPI's en Ads vroegen het los van elkaar.
+// Gemeten op 17-08-2026: 10 seconden bij One Day Clinic, 31 bij Kamsteeg.
+//
+// De oplossing is een datum. Vinden we niets, dan zetten we `ga4_gezocht_op`,
+// en de komende week zoeken we niet opnieuw. Koppelt Maarten daarna alsnog
+// Analytics, dan vindt de volgende wekelijkse poging het vanzelf; hij hoeft
+// niets te resetten. Vinden we wél iets, dan wordt het opgeslagen zoals altijd
+// en komt het zoeken nooit meer aan de beurt.
+// ═══════════════════════════════════════════════════════════
+
+const GA4_HERZOEK_DAGEN = 7;
+
+// Binnen één serverproces kortstondig onthouden, zodat de KPI's en Ads in
+// hetzelfde verzoek samen één keer zoeken in plaats van allebei apart.
+const ga4PropCache = new Map<string, { id: string | null; tijd: number }>();
+const GA4_PROP_TTL = 60 * 1000;
+
+async function ga4PropertyFor(token: string, slug: string, domainHint = ""): Promise<string | null> {
+  const cached = ga4PropCache.get(slug);
+  if (cached && Date.now() - cached.tijd < GA4_PROP_TTL) return cached.id;
+
+  const { rows } = await sql`SELECT ga4_property_id, domain, ga4_gezocht_op FROM clients WHERE slug = ${slug} LIMIT 1`;
+  const opgeslagen = (rows[0]?.ga4_property_id as string) || "";
+  if (opgeslagen) {
+    ga4PropCache.set(slug, { id: opgeslagen, tijd: Date.now() });
+    return opgeslagen;
+  }
+
+  const domain = domainHint || (rows[0]?.domain as string) || "";
+  if (!domain) return null;
+
+  // Recent al gezocht en niets gevonden: niet opnieuw het hele account aflopen.
+  const gezocht = rows[0]?.ga4_gezocht_op ? new Date(rows[0].ga4_gezocht_op as string).getTime() : 0;
+  if (gezocht && Date.now() - gezocht < GA4_HERZOEK_DAGEN * 24 * 3600 * 1000) {
+    ga4PropCache.set(slug, { id: null, tijd: Date.now() });
+    return null;
+  }
+
+  const found = await ga4DiscoverProperty(token, domain).catch(() => null);
+  if (found) {
+    await sql`UPDATE clients SET ga4_property_id = ${found}, ga4_gezocht_op = now() WHERE slug = ${slug}`;
+  } else {
+    await sql`UPDATE clients SET ga4_gezocht_op = now() WHERE slug = ${slug}`;
+  }
+  ga4PropCache.set(slug, { id: found, tijd: Date.now() });
+  return found;
 }
 
 async function ga4RunReport(token: string, propertyId: string): Promise<{ metric: string; value: number }[] | null> {
@@ -1020,13 +1105,7 @@ export async function getGa4ForClient(slug: string, domain: string): Promise<Ga4
   if (!token) return null;
   await ensureSchema();
 
-  // Property-id uit cache, anders opzoeken en bewaren.
-  const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
-  let propertyId = (rows[0]?.ga4_property_id as string) || "";
-  if (!propertyId && domain) {
-    const found = await ga4DiscoverProperty(token, domain);
-    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
-  }
+  const propertyId = await ga4PropertyFor(token, slug, domain);
   if (!propertyId) return { connected: true, propertyId: null, metrics: [] };
 
   const metrics = await ga4RunReport(token, propertyId);
@@ -1049,12 +1128,7 @@ export async function getAdsComparison(slug: string, domain: string, days: numbe
   const token = await accessTokenFor("google");
   if (!token) return null;
   await ensureSchema();
-  const { rows } = await sql`SELECT ga4_property_id FROM clients WHERE slug = ${slug} LIMIT 1`;
-  let propertyId = (rows[0]?.ga4_property_id as string) || "";
-  if (!propertyId && domain) {
-    const found = await ga4DiscoverProperty(token, domain);
-    if (found) { propertyId = found; await sql`UPDATE clients SET ga4_property_id = ${found} WHERE slug = ${slug}`; }
-  }
+  const propertyId = await ga4PropertyFor(token, slug, domain);
   if (!propertyId) return { linked: false, dates: [], totals: [], campaigns: [] };
 
   const range = periodRanges(days, compare);

@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getGscForPage } from "./google";
 
 // ═══════════════════════════════════════════════════════════
@@ -41,10 +42,13 @@ export type Nameting = {
 
 const padVan = (u: string) => { try { return new URL(u).pathname; } catch { return (u || "").trim(); } };
 
-let ready: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "opruim-nameten-c5e2d1bd";
+
 function ensureTable(): Promise<void> {
-  if (!ready) ready = doEnsure().catch((e) => { ready = null; throw e; });
-  return ready;
+  return eenmalig("opruim-nameten", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

@@ -16,7 +16,14 @@ export default async function AdminPage() {
   // De developer heeft hier niets te zoeken: zijn scherm is de takenlijst over
   // alle klanten. Heeft hij geen enkele klant toegewezen gekregen, dan zou hij
   // hier een leeg overzicht zien; dus sturen we hem meteen naar zijn eigen lijst.
-  if (!scope.isOwner && scope.canDev && (scope.allowedSlugs?.length ?? 0) === 0) {
+  // Let op het verschil tussen "geen enkele klant" en "geen beperking". Een lege
+  // lijst betekent dat deze gebruiker nul klanten mag zien; géén lijst (null)
+  // betekent juist dat hij overal bij mag. Hier stond `allowedSlugs?.length ?? 0`,
+  // en dat leest allebei als nul. Gevolg: de meekijk-sessie (die geen beperking
+  // heeft) werd hiervandaan weggestuurd naar het developer-scherm en kwam nooit
+  // op het klantenoverzicht of in een cockpit. Precies dezelfde vergissing als
+  // die in de opmerking hieronder beschreven staat, twee regels verderop.
+  if (!scope.isOwner && scope.canDev && scope.allowedSlugs !== null && scope.allowedSlugs.length === 0) {
     redirect("/admin/developer");
   }
 

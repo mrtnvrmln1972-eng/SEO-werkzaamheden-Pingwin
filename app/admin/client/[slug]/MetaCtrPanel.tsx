@@ -216,6 +216,23 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
 
   useEffect(() => { void load(); }, [load]);
 
+  // ── De controle komt ná de lijst ────────────────────────────────────
+  // Of een goedgekeurde meta al live staat, en wat hij aan CTR heeft opgeleverd,
+  // wordt gecontroleerd door de site en Search Console te bevragen. Dat duurde
+  // seconden en zat vóór het eerste beeld. Nu draait het hierna, en de lijst
+  // werkt zichzelf bij zodra het antwoord er is.
+  useEffect(() => {
+    if (!rows || rows.length === 0) return;
+    let weg = false;
+    fetch(`/api/admin/meta-ctr?slug=${encodeURIComponent(slug)}&controle=1`)
+      .then((r) => r.json())
+      .then((d) => { if (!weg && d?.ok && Array.isArray(d.rows)) setRows(d.rows as KansRow[]); })
+      .catch(() => { /* stil: de lijst die er staat blijft gewoon staan */ });
+    return () => { weg = true; };
+    // Eén keer per klant, niet bij elke wijziging aan de lijst zelf.
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [slug, rows === null]);
+
   // Onderbreken van een lopende schrijf-actie: het resultaat wordt genegeerd.
   const abortRef = useRef<AbortController | null>(null);
   function cancelBusy() { abortRef.current?.abort(); }

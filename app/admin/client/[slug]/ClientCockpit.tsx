@@ -59,6 +59,10 @@ import Tellers from "../../Tellers";
 import KlantKiezer from "./KlantKiezer";
 import KlussenChip from "./KlussenChip";
 import MeldingenMenu from "../../MeldingenMenu";
+import {
+  metricLabel, fmtMetric, periodLabel, sanitizeEmail, cleanReplyHtml,
+  daysSince, daysAgoLabel, contactColor, fmtDate, fmtDateTime, shortUrl,
+} from "./cockpit-tekst";
 
 
 // Jouw Superhuman-account (Microsoft 365 hangt hieronder).
@@ -87,6 +91,16 @@ type CockpitData = {
   chatConfigured: boolean;
   tasks: TaskRow[];
 };
+
+// ── Het omhulsel dat een bezocht tabblad laat staan ─────────────────
+// Vóór het eerste bezoek staat er niets (dus geen enkel verzoek en geen
+// JavaScript-download voor een tabblad waar je nooit komt). Ná het eerste
+// bezoek blijft het staan, alleen verborgen, zodat terugkomen niets kost en je
+// filters, uitgeklapte rijen en halve teksten bewaard blijven.
+function Bezocht({ tab, nu, bezocht, children }: { tab: Tab; nu: Tab; bezocht: Set<Tab>; children: React.ReactNode }) {
+  if (!bezocht.has(tab)) return null;
+  return <div style={{ display: nu === tab ? "block" : "none" }}>{children}</div>;
+}
 
 // Taaknaam kan opmaak/links bevatten; in compacte lijstjes tonen we platte tekst.
 function stripTags(html: string): string {
@@ -209,22 +223,58 @@ export default function ClientCockpit({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pagina's blijven na het eerste bezoek in het geheugen (verborgen i.p.v.
-  // uitgekleed), zodat je chat/plan-staat bewaard blijft als je van tab wisselt.
-  const [paginasVisited, setPaginasVisited] = useState(validTab(initialTab) === "paginas");
+  // ── Een tabblad dat je bezocht hebt blijft staan ────────────────────
+  // Dit gold alleen voor Pagina's; elk ander tabblad werd bij het wegklikken
+  // helemaal opgeruimd en haalde bij terugkomst álles opnieuw op. Heen en weer
+  // kijken tussen twee tabbladen was daardoor het duurste wat je kon doen: op
+  // 17-08-2026 kostte één keer terug naar Resultaten opnieuw tien seconden, en
+  // naar Meta & CTR tot achtentwintig.
+  //
+  // Nu blijft een bezocht tabblad in het geheugen staan (verborgen, niet
+  // weggegooid), dus terugkomen is gratis en je openstaande filters, uitgeklapte
+  // rijen en halve teksten staan er nog. Dat kan veilig omdat elk paneel dat
+  // periodiek bijwerkt dat alleen doet zolang er echt iets draait; een verborgen
+  // paneel dat stilstaat vraagt niets. Draait er wél iets (een scan, een
+  // meting), dan loopt dat nu netjes door terwijl je ergens anders kijkt.
+  //
+  // Nieuw paneel erbij? Zet het hieronder in een <Bezocht>-omhulsel, niet achter
+  // een `tab === "..." &&`. Uitzondering: schermen die zwaar blijven doorwerken
+  // als je ze niet ziet (zoals de klantweergave met zijn ingesloten dashboard).
+  const [bezocht, setBezocht] = useState<Set<Tab>>(() => new Set<Tab>([validTab(initialTab)]));
+  const paginasVisited = bezocht.has("paginas");
+
+  // ── De adresbalk bijwerken zonder de server erbij te halen ──────────
+  // Hier stond router.replace(). Dat lijkt gratis (het scherm is al gewisseld
+  // door setTab hierboven), maar het is het niet: Next haalt daarvoor de hele
+  // serverpagina opnieuw op. En deze pagina is force-dynamic, dus dat betekent
+  // elf databasevragen plus de Microsoft- en Google-status, bij ELKE tabklik.
+  // Gemeten op 17-08-2026: 1,0 tot 1,5 seconde en 70 KB per klik, voor niets
+  // anders dan `?tab=` in de adresbalk.
+  //
+  // window.history vervangt precies dat ene stukje. Next 14 kent dit en houdt
+  // zijn eigen boekhouding bij, dus een herlaadbeurt of de terugknop komt nog
+  // steeds op het juiste tabblad uit.
+  //
+  // Let op: gebruik dit ALLEEN als er niets van de server nodig is. Moet de
+  // pagina echt verse data hebben (zoals bij een nieuwe taak hieronder), dan
+  // hoort daar router.refresh() bij.
+  function zetAdres(zoek: string) {
+    try { window.history.replaceState(null, "", `${pathname}?${zoek}`); } catch { /* oude browser: adresbalk blijft staan, verder niets aan de hand */ }
+  }
 
   // Wissel van tab én update de URL zodat reload op dezelfde tab uitkomt.
   function changeTab(newTab: Tab) {
-    if (newTab === "paginas") setPaginasVisited(true);
+    setBezocht((b) => (b.has(newTab) ? b : new Set(b).add(newTab)));
     setTab(newTab);
-    router.replace(`${pathname}?tab=${newTab}`, { scroll: false });
+    zetAdres(`tab=${newTab}`);
   }
 
   // Vanuit de pagina-chat een werkzaamheid gemaakt: spring naar Werkzaamheden en
   // licht de nieuwe taak op. Verse laadbeurt zodat de taak er echt in staat.
   function goToNewTask(taskId: number) {
     setTab("werkzaamheden");
-    router.replace(`${pathname}?tab=werkzaamheden&highlight=${taskId}`, { scroll: false });
+    zetAdres(`tab=werkzaamheden&highlight=${taskId}`);
+    // Hier hoort de server er wél bij: de nieuwe taak moet uit de database komen.
     router.refresh();
   }
 
@@ -252,10 +302,10 @@ export default function ClientCockpit({
   // opnieuw opent en scrollt).
   const [pagesTarget, setPagesTarget] = useState<{ url: string; n: number } | null>(null);
   function goToPage(url: string) {
-    setPaginasVisited(true);
+    setBezocht((b) => (b.has("paginas") ? b : new Set(b).add("paginas")));
     setTab("paginas");
     setPagesTarget((t) => ({ url, n: (t?.n || 0) + 1 }));
-    router.replace(`${pathname}?tab=paginas&page=${encodeURIComponent(url)}`, { scroll: false });
+    zetAdres(`tab=paginas&page=${encodeURIComponent(url)}`);
   }
   const [shQuery, setShQuery] = useState("");
   const [openEmail, setOpenEmail] = useState<string | null>(null);
@@ -439,6 +489,7 @@ export default function ClientCockpit({
           <KlantKiezer
             klanten={allClients.map((c) => ({ slug: c.slug, name: c.name, grp: c.grp, fase: c.fase, goed: !!c.good28 }))}
             huidig={client.slug}
+            onVooruit={(slug) => router.prefetch(`/admin/client/${slug}`)}
             onKies={(slug, naam) => { setSwitchingTo(naam); router.push(`/admin/client/${slug}`); }}
           />
           {/* Zes knoppen in plaats van elf tabjes. Wat bij elkaar hoort zit onder een
@@ -783,14 +834,12 @@ export default function ClientCockpit({
           </>
         )}
 
-        {tab === "resultaten" && (
-          <>
-            <KpiPanel slug={client.slug} domain={client.domain || ""} onOpenPage={goToPage} />
-          </>
-        )}
+        <Bezocht tab="resultaten" nu={tab} bezocht={bezocht}>
+          <KpiPanel slug={client.slug} domain={client.domain || ""} onOpenPage={goToPage} />
+        </Bezocht>
 
 
-        {tab === "klant" && (<>
+        <Bezocht tab="klant" nu={tab} bezocht={bezocht}>
           {/* Hoe ver deze klant staat, met de knop die aanvult wat nog ontbreekt.
               Dit stond op een eigen tabblad Onboarding, met dezelfde cijfers uit
               dezelfde bron als het fundament eronder. Twee schermen voor dezelfde
@@ -819,7 +868,7 @@ export default function ClientCockpit({
           {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
               achter een knopje in een scan-blok. Zelfde component als daar. */}
           <Concurrenten slug={client.slug} />
-        </>)}
+        </Bezocht>
 
         {/* Wat de klant ziet is geen dossierkennis maar een oplevering: het is het
             scherm dat je deelt. Daarom een eigen tabblad onder "wat hebben we
@@ -835,31 +884,29 @@ export default function ClientCockpit({
           </div>
         )}
 
-        {paginasVisited && (
-          <div style={{ display: tab === "paginas" ? "block" : "none" }}>
-            <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} domain={client.domain || ""} onGoToTask={goToNewTask} openTarget={pagesTarget} />
-          </div>
-        )}
+        <Bezocht tab="paginas" nu={tab} bezocht={bezocht}>
+          <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} domain={client.domain || ""} onGoToTask={goToNewTask} openTarget={pagesTarget} />
+        </Bezocht>
 
-        {tab === "documenten" && <DocumentenPanel slug={client.slug} onGoToPage={goToPage} />}
-        {tab === "activiteit" && <ActiviteitPanel slug={client.slug} />}
-        {tab === "wijzigingen" && <WijzigingenPanel slug={client.slug} />}
+        <Bezocht tab="documenten" nu={tab} bezocht={bezocht}><DocumentenPanel slug={client.slug} onGoToPage={goToPage} /></Bezocht>
+        <Bezocht tab="activiteit" nu={tab} bezocht={bezocht}><ActiviteitPanel slug={client.slug} /></Bezocht>
+        <Bezocht tab="wijzigingen" nu={tab} bezocht={bezocht}><WijzigingenPanel slug={client.slug} /></Bezocht>
 
-        {tab === "meta" && <MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} openTarget={metaTarget} />}
+        <Bezocht tab="meta" nu={tab} bezocht={bezocht}><MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} openTarget={metaTarget} /></Bezocht>
 
         {/* Deze twee schermen bestonden al maar hingen nergens in de UI, dus niemand
             kon erbij. Hier hoort de volledige redirectlijst thuis, niet in de chat:
             een lijst is een scherm, een oordeel is een gesprek. */}
-        {tab === "prioriteiten" && <PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} clientName={client.name} clientEmail={client.email || ""} />}
-        {tab === "cannibalisatie" && <CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} clientName={client.name} clientEmail={client.email || ""} />}
-        {tab === "interne-links" && <InternalLinksPanel slug={client.slug} domein={client.domain || ""} openTarget={linkTarget} />}
-        {tab === "google-profiel" && <GmbPanel slug={client.slug} clientName={client.name} clientEmail={client.email || ""} pingwinEmail={myEmail || SUPERHUMAN_ACCOUNT} onGaNaar={(t) => changeTab(validTab(t))} />}
+        <Bezocht tab="prioriteiten" nu={tab} bezocht={bezocht}><PrioriteitenPanel slug={client.slug} domain={client.domain || ""} onGaNaar={gaNaar} clientName={client.name} clientEmail={client.email || ""} /></Bezocht>
+        <Bezocht tab="cannibalisatie" nu={tab} bezocht={bezocht}><CannibalPanel slug={client.slug} domain={client.domain || ""} openTarget={opruimTarget} clientName={client.name} clientEmail={client.email || ""} /></Bezocht>
+        <Bezocht tab="interne-links" nu={tab} bezocht={bezocht}><InternalLinksPanel slug={client.slug} domein={client.domain || ""} openTarget={linkTarget} /></Bezocht>
+        <Bezocht tab="google-profiel" nu={tab} bezocht={bezocht}><GmbPanel slug={client.slug} clientName={client.name} clientEmail={client.email || ""} pingwinEmail={myEmail || SUPERHUMAN_ACCOUNT} onGaNaar={(t) => changeTab(validTab(t))} /></Bezocht>
 
         {/* Hetzelfde overzicht als /admin/developer: ALLE klanten bij elkaar, want
             dit is de lijst die met de developer wordt gedeeld en die werkt over
             klanten heen. Deze klant staat wel bovenaan, en een nieuwe taak die je
             hier aanmaakt landt vanzelf bij hem. */}
-        {tab === "developer" && <DeveloperOverview embedded slug={client.slug} clientName={client.name} />}
+        <Bezocht tab="developer" nu={tab} bezocht={bezocht}><DeveloperOverview embedded slug={client.slug} clientName={client.name} /></Bezocht>
       </div>
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
@@ -875,119 +922,3 @@ const SOURCES = [
   { key: "ga4", label: "Google Analytics" },
   { key: "ahrefs", label: "Ahrefs" },
 ];
-
-const METRIC_LABELS: Record<string, string> = {
-  clicks: "Klikken",
-  impressions: "Vertoningen",
-  ctr: "CTR",
-  position: "Gem. positie",
-  users: "Bezoekers",
-  totalUsers: "Bezoekers",
-  sessions: "Sessies",
-  conversions: "Conversies",
-  org_traffic: "Organisch verkeer",
-  org_keywords: "Organische zoekwoorden",
-  domain_rating: "Domain Rating",
-};
-
-function metricLabel(metric: string): string {
-  return METRIC_LABELS[metric] || metric;
-}
-
-function fmtMetric(metric: string, value: number | null): string {
-  if (value == null) return "—";
-  if (metric === "ctr") return `${value.toFixed(1)}%`;
-  if (metric === "position") return value.toFixed(1);
-  if (metric === "domain_rating") return value.toFixed(0);
-  return value.toLocaleString("nl-NL");
-}
-
-function periodLabel(period: string): string {
-  if (period === "last28") return "laatste 28 dagen";
-  if (period === "last7") return "laatste 7 dagen";
-  if (period === "last90") return "laatste 90 dagen";
-  if (period === "now") return "nu";
-  return period;
-}
-
-// Lichte opschoning van mail-HTML voor weergave in het dashboard:
-// scripts/styles/event-handlers en javascript-links eruit.
-function sanitizeEmail(html: string): string {
-  return html
-    .replace(/<\s*script[\s\S]*?<\s*\/\s*script\s*>/gi, "")
-    .replace(/<\s*style[\s\S]*?<\s*\/\s*style\s*>/gi, "")
-    // Inline-bijlagen (cid:) kunnen in de browser niet laden en tonen als kapotte
-    // plaatjes; die halen we weg. Gewone (https-)afbeeldingen blijven staan.
-    .replace(/<img[^>]*src\s*=\s*["']cid:[^"']*["'][^>]*>/gi, "")
-    .replace(/\son\w+\s*=\s*"[^"]*"/gi, "")
-    .replace(/\son\w+\s*=\s*'[^']*'/gi, "")
-    .replace(/javascript:/gi, "")
-    .replace(/<a\s/gi, '<a target="_blank" rel="noreferrer" ');
-}
-
-// Schoont de HTML uit de editor op: paragrafen/divs naar gewone regels (zonder
-// de grote standaard-marges van <p>), hoogstens één witregel, en getypte
-// **vet** wordt echt vet. Lijsten (ul/li) blijven intact.
-function cleanReplyHtml(html: string): string {
-  return html
-    // lege blokken (alleen een regeleinde) volledig weg
-    .replace(/<(p|div)[^>]*>\s*(<br\s*\/?>)?\s*<\/(p|div)>/gi, "")
-    // grens tussen twee paragrafen → één witregel
-    .replace(/<\/(p|div)>\s*<(p|div)[^>]*>/gi, "<br><br>")
-    // overige blok-tags weghalen (marges veroorzaken de grote witgaten)
-    .replace(/<\/?(p|div)[^>]*>/gi, "")
-    // getypte markdown-vet omzetten
-    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    // nooit meer dan één witregel
-    .replace(/(<br\s*\/?>\s*){3,}/gi, "<br><br>")
-    .replace(/^(\s*<br\s*\/?>)+/i, "")
-    .replace(/(<br\s*\/?>\s*)+$/i, "")
-    .trim();
-}
-
-function daysSince(iso: string): number | null {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return null;
-  const ms = Date.now() - d.getTime();
-  return Math.floor(ms / (1000 * 60 * 60 * 24));
-}
-
-function daysAgoLabel(iso: string): string {
-  const n = daysSince(iso);
-  if (n == null) return "";
-  if (n <= 0) return "vandaag";
-  if (n === 1) return "1 dag";
-  return `${n} dagen`;
-}
-
-function contactColor(iso: string): string {
-  const n = daysSince(iso);
-  if (n == null) return "gray";
-  if (n < 7) return "green";
-  if (n < 14) return "orange";
-  return "red";
-}
-
-function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function fmtDateTime(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) +
-    ", " + d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
-}
-
-function shortUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    return (u.pathname === "/" ? u.hostname : u.pathname).replace(/\/$/, "") || url;
-  } catch {
-    return url;
-  }
-}
-
-

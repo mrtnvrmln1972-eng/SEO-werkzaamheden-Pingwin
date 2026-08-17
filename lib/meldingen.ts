@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 
 // ═══════════════════════════════════════════════════════════
 // MELDINGEN VOOR MAARTEN
@@ -33,7 +34,6 @@ export type Melding = {
 /** Vanaf wanneer Maarten alles gezien heeft. Losse sleutel, geen kolom per melding. */
 export const SETTING_MELDINGEN_GEZIEN = "meldingen_gezien_tot";
 
-let tableReady: Promise<void> | null = null;
 
 async function doEnsure(): Promise<void> {
   await sql`
@@ -55,9 +55,13 @@ async function doEnsure(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS admin_meldingen_tijd_idx ON admin_meldingen (gemaakt_op DESC)`;
 }
 
+// De tabellen worden één keer gebouwd per database, niet bij elke koude server
+// opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(), hoog dan het
+// cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "meldingen-9ed2eb54";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("meldingen", SCHEMA_VERSIE, doEnsure);
 }
 
 /**

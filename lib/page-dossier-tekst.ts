@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { urlKey } from "./url-key";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { controleerAntwoord, herstelOpdracht } from "./antwoord-controle";
@@ -40,10 +41,13 @@ export type DossierTekst = {
  */
 export type DossierFocus = { taak: string; tekst?: string };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "page-dossier-tekst-50daa0e0";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("page-dossier-tekst", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`

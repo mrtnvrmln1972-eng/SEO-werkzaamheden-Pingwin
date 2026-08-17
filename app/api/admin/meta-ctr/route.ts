@@ -12,17 +12,38 @@ function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
 }
 
-// GET ?slug= : de kansenlijst (GSC-CTR-gat) samengevoegd met de opgeslagen
-// voorstellen; controleert en passant of goedgekeurde meta's live staan en
-// vult de CTR-effecten voor doorgevoerde pagina's aan.
+// ═══════════════════════════════════════════════════════════
+// EERST DE LIJST, DAARNA PAS HET CONTROLEWERK
+// ═══════════════════════════════════════════════════════════
+// GET ?slug= gaf de kansenlijst, maar deed er twee dingen bij vóórdat er ook
+// maar iets op het scherm kwam: tot acht live pagina's van de site van de klant
+// ophalen om te kijken of goedgekeurde meta's al doorgevoerd waren, en tot
+// twaalf CTR-effecten uit Search Console berekenen. Allebei nuttig, geen van
+// beide iets waar je op hoort te wachten. Gemeten op 17-08-2026: het tabblad
+// Meta & CTR deed er 7,7 tot 28 seconden over, en dat is bijna helemaal dit.
+//
+// Nu twee beurten, precies zoals de mail in de cockpit al werkt: de lijst komt
+// meteen, en het paneel vraagt daarna zelf om de controle. Zie je dus even
+// "goedgekeurd, wacht op site" staan terwijl het al live is, dan klopt dat een
+// paar seconden lang en corrigeert het zichzelf.
+//
+// Zet die twee NOOIT terug in de eerste beurt. Groeit er iets bij dat de site
+// of Google aanspreekt, dan hoort dat in de tweede.
+// ═══════════════════════════════════════════════════════════
 export async function GET(req: NextRequest) {
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const rows = await getMetaKansen(slug);
-  await checkLiveProposals(slug, rows).catch(() => { /* live-check is aanvulling */ });
-  await addCtrEffects(slug, rows).catch(() => { /* effect is aanvulling */ });
+
+  // Tweede beurt: het paneel vraagt hier zelf om, ná het tonen van de lijst.
+  if (req.nextUrl.searchParams.get("controle") === "1") {
+    await checkLiveProposals(slug, rows).catch(() => { /* live-check is aanvulling */ });
+    await addCtrEffects(slug, rows).catch(() => { /* effect is aanvulling */ });
+    return NextResponse.json({ ok: true, rows });
+  }
+
   // Kunnen wij zelf op de site schrijven? Zonder koppeling kun je wel goedkeuren
   // maar niet doorvoeren; de tekst gaat dan via de deelpagina naar de bouwer.
   const wp = await getWpStatus(slug).catch(() => ({ connected: false, username: null }));

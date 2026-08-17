@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 
 // ═══════════════════════════════════════════════════════════
 // HET KOSTENMODEL: WELKE KOSTEN HOREN BIJ WELKE OMZET
@@ -66,10 +67,13 @@ type Row = {
   actief: boolean; bron: string | null;
 };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "kostenmodel-715f1e58";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("kostenmodel", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await ensureSchema();

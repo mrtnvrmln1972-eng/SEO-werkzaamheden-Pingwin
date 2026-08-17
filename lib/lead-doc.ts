@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getClientBySlug } from "./clients";
 import { callClaude } from "./anthropic";
 import { buildPingwinDoc, type DocSection, type DocSpec } from "./pingwin-docx";
@@ -69,10 +70,13 @@ export type LeadDoc = {
   createdAt: string;
 };
 
-let tableReady: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "lead-doc-7a859510";
+
 function ensureTable(): Promise<void> {
-  if (!tableReady) tableReady = doEnsure().catch((e) => { tableReady = null; throw e; });
-  return tableReady;
+  return eenmalig("lead-doc", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await ensureSchema();

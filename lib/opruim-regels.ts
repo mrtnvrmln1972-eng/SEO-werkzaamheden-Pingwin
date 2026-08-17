@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { eenmalig } from "./schema-stand";
 import { getSetting, setSetting } from "./settings";
 
 // ═══════════════════════════════════════════════════════════
@@ -30,10 +31,13 @@ export type OpruimRegel = {
   updatedAt: string | null;
 };
 
-let ready: Promise<void> | null = null;
+// De tabellen worden één keer gebouwd per database, niet bij elke koude
+// server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
+// hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
+const SCHEMA_VERSIE = "opruim-regels-f98aa51e";
+
 function ensureTable(): Promise<void> {
-  if (!ready) ready = doEnsure().catch((e) => { ready = null; throw e; });
-  return ready;
+  return eenmalig("opruim-regels", SCHEMA_VERSIE, doEnsure);
 }
 async function doEnsure(): Promise<void> {
   await sql`
