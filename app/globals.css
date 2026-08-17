@@ -5208,6 +5208,18 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    dan hoort het juist stil te blijven: dat is geen werkvoorraad. */
 .koers-bron-telling.vol { background: var(--orange); color: var(--white); }
 .koers-bronnen-laden { font-size: var(--fs-sm); line-height: var(--lh-sm); color: var(--gray); margin-top: var(--s-2); }
+/* Het voorstel om het oppak-lijstje bij te werken. Staat bewust bóven het veld
+   met de oude tekst en niet eroverheen: je vergelijkt oud met nieuw en beslist,
+   in plaats van te moeten onthouden wat er stond. */
+.koers-voorstel {
+  margin-top: var(--s-3); padding: var(--s-3);
+  border: 1px solid var(--orange); border-radius: var(--r-md); background: var(--white);
+}
+.koers-voorstel-kop {
+  font-size: var(--fs-xs); line-height: var(--lh-xs); font-weight: 700;
+  color: var(--orange); text-transform: uppercase; letter-spacing: .04em;
+  margin-bottom: var(--s-2);
+}
 
 /* Zonder eigen kaart en kop: die staan al op het blok eromheen. */
 .ovc-kaal, .wp-kaal { padding: 0; border: 0; background: transparent; box-shadow: none; }

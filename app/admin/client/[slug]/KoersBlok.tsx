@@ -26,10 +26,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import FocusBlock from "./FocusBlock";
-import { Signalen } from "../../../_ui/Uitkomst";
+import { Signalen, Tekst } from "../../../_ui/Uitkomst";
 import { htmlNaarTekst } from "../../../../lib/veilige-html";
+import { mdToHtml } from "../../../../lib/markdown";
 
 type WerkPost = { sleutel: string; label: string; aantal: number | null; tab: string; uitleg: string };
+type NieuwerePlek = { soort: "gesprek" | "strategie"; titel: string; datum: string; samenvatting: string; thread?: string };
+type OppakStand = { bijgewerkt: string | null; nieuwer: NieuwerePlek[] };
+
+/** "17 aug", zoals je het zelf zou opschrijven. */
+function korteDatum(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+}
 
 /** Splitst de opgemaakte tekst in losse regels, zodat je er taken van kunt maken. */
 function regelsUit(html: string): string[] {
@@ -76,6 +86,15 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
   const [toonRegels, setToonRegels] = useState(false);
   const [gezet, setGezet] = useState<Set<string>>(new Set());
   const [bezigRegel, setBezigRegel] = useState("");
+  // De achterstand van het oppak-lijstje, plus het voorstel om hem in te lopen.
+  const [stand, setStand] = useState<OppakStand | null>(null);
+  const [voorstel, setVoorstel] = useState<string | null>(null);
+  const [gebruikt, setGebruikt] = useState<string[]>([]);
+  const [voorstelBezig, setVoorstelBezig] = useState(false);
+  // Loopt op bij elk overnemen: dat zet de tekst in het veld én haalt de
+  // achterstand opnieuw op, zodat het seintje meteen weg is als het klopt.
+  const [overgenomen, setOvergenomen] = useState(0);
+  const [nieuweInhoud, setNieuweInhoud] = useState<{ html: string; stempel: number } | undefined>(undefined);
 
   useEffect(() => {
     let off = false;
@@ -87,8 +106,23 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
     return () => { off = true; };
   }, [slug]);
 
+  // Loopt het oppak-lijstje achter op wat er daarna nog besloten is? Dit leest
+  // alleen datums en gesprekstitels die er al liggen, dus het mag bij elk openen.
+  useEffect(() => {
+    let off = false;
+    setStand(null);
+    fetch(`/api/admin/oppak-stand?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (!off && d.ok) setStand({ bijgewerkt: d.bijgewerkt ?? null, nieuwer: (d.nieuwer || []) as NieuwerePlek[] }); })
+      .catch(() => { /* geen seintje is vervelend, geen reden om het blok te breken */ });
+    return () => { off = true; };
+  }, [slug, overgenomen]);
+
   // Wissel je van klant, dan hoort het commentaar van de vorige klant weg.
-  useEffect(() => { setCommentaar([]); setFout(""); setGezet(new Set()); setToonRegels(false); }, [slug]);
+  useEffect(() => {
+    setCommentaar([]); setFout(""); setGezet(new Set()); setToonRegels(false);
+    setVoorstel(null); setGebruikt([]);
+  }, [slug]);
 
   const pakKoers = useCallback((h: string) => setKoersHtml(h), []);
   const pakPrio = useCallback((h: string) => setPrioHtml(h), []);
@@ -112,6 +146,35 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
     }
   }
 
+  // Maakt het voorstel. Slaat niets op: je ziet oud naast nieuw en beslist zelf.
+  async function haalVoorstel() {
+    if (voorstelBezig) return;
+    setVoorstelBezig(true); setFout(""); setVoorstel(null); setGebruikt([]);
+    try {
+      const d = await fetch("/api/admin/oppak-voorstel", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      }).then((r) => r.json());
+      if (!d.ok) { setFout(d.error || "Het voorstel maken is niet gelukt."); return; }
+      setVoorstel(String(d.voorstel || ""));
+      setGebruikt((d.gebruikt || []) as string[]);
+    } catch {
+      setFout("Het voorstel maken is niet gelukt.");
+    } finally {
+      setVoorstelBezig(false);
+    }
+  }
+
+  // Pas hier verandert er iets aan jouw lijstje, en alleen op jouw klik. De
+  // oude tekst is niet weg: het veld schuift hem in de versiehistorie, dus
+  // terugzetten kan altijd via /admin/veld-herstel.
+  function neemOver() {
+    if (!voorstel) return;
+    setNieuweInhoud({ html: mdToHtml(voorstel), stempel: Date.now() });
+    setVoorstel(null); setGebruikt([]); setToonRegels(false); setGezet(new Set());
+    setOvergenomen((n) => n + 1);
+  }
+
   async function naarPlanning(regel: string) {
     if (bezigRegel) return;
     setBezigRegel(regel); setFout("");
@@ -132,6 +195,14 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
 
   const oppakRegels = regelsUit(prioHtml);
   const heeftKoers = htmlNaarTekst(koersHtml).trim().length > 0;
+  // Op de kop van de strook, zodat je zonder openklappen ziet of het nog klopt.
+  // De datum staat er altijd bij: een lijstje zonder datum is precies het
+  // lijstje waarvan je niet doorhebt dat het van maanden terug is.
+  const achterstand = stand?.nieuwer.length || 0;
+  const bijgewerktLabel = stand?.bijgewerkt ? `bijgewerkt ${korteDatum(stand.bijgewerkt)}` : "";
+  const oppakLabel = achterstand
+    ? `${bijgewerktLabel ? bijgewerktLabel + ", " : ""}${achterstand} nieuwer`
+    : bijgewerktLabel;
 
   const kop = (sleutel: keyof typeof open, titel: string, extra?: string) => (
     <button type="button" className="strategy-head" onClick={() => klap(sleutel)}>
@@ -180,7 +251,7 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
 
       {/* ── 2. Wat we nu oppakken ─────────────────────────────── */}
       <div className="ov-blok">
-        {kop("oppak", "Wat we nu oppakken")}
+        {kop("oppak", "Wat we nu oppakken", oppakLabel)}
         {open.oppak && (
           <div className="strategy-body">
             <div className="pnl-acties-groep">
@@ -192,8 +263,43 @@ export default function KoersBlok({ slug, onWeekplanChanged, onGaNaarTab }: {
                 onClick={() => setToonRegels((v) => !v)}>
                 {toonRegels ? "Lijstje verbergen" : "Op de planning zetten"}
               </button>
+              <button type="button" className={achterstand ? "btn btn-primary btn-klein" : "btn btn-ghost btn-klein"}
+                disabled={voorstelBezig}
+                title="Kijkt wat er sinds dit lijstje is besloten en stelt een nieuwe versie voor. Zet er niets in tot jij akkoord geeft."
+                onClick={() => void haalVoorstel()}>
+                {voorstelBezig ? "Bezig met bijwerken…" : "Bijwerken"}
+              </button>
             </div>
-            <FocusBlock kaal slug={slug} soort="prio" onInhoud={pakPrio} />
+
+            {/* Het seintje. Zonder dit is een verouderd lijstje niet van een vers
+                lijstje te onderscheiden, en dat is precies hoe hier maanden een
+                achterhaalde strategie op het scherm stond zonder dat iemand het
+                zag. Het overschrijft nooit iets uit zichzelf. */}
+            {!voorstel && !!stand?.nieuwer.length && (
+              <Signalen soort="let-op" regels={[
+                "Hierna is er nog iets bepaald. Klik op Bijwerken om het over te nemen.",
+                ...stand.nieuwer.map((p) => `${p.titel} (${korteDatum(p.datum)})${p.samenvatting ? `: ${p.samenvatting}` : ""}`),
+              ]} />
+            )}
+
+            {/* Oud blijft in beeld zolang het voorstel er ligt: je vergelijkt en
+                beslist, in plaats van te moeten onthouden wat er stond. */}
+            {voorstel && (
+              <div className="koers-voorstel">
+                <div className="koers-voorstel-kop">Voorstel op basis van {gebruikt.length ? gebruikt.join(", ") : "wat er nu bekend is"}</div>
+                <Tekst>{voorstel}</Tekst>
+                <div className="pnl-acties-groep">
+                  <button type="button" className="btn btn-primary btn-klein" onClick={neemOver}>
+                    Overnemen
+                  </button>
+                  <button type="button" className="btn btn-ghost btn-klein" onClick={() => { setVoorstel(null); setGebruikt([]); }}>
+                    Laten staan
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <FocusBlock kaal slug={slug} soort="prio" onInhoud={pakPrio} zetInhoud={nieuweInhoud} />
             {/* Bewust een apart lijstje en geen knopje in het veld zelf: in een
                 veld dat je zelf herschikt zijn zwevende knopjes precies het soort
                 constructie dat hier al twee keer inhoud heeft gekost. */}

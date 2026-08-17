@@ -12,7 +12,7 @@ import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
  * te staan met een eigen plakgedrag en een eigen opmaak. Ze delen één rij in de
  * database, elk met een eigen sleutel.
  */
-export default function FocusBlock({ slug, standalone, soort = "focus", titel, kaal, onInhoud }: {
+export default function FocusBlock({ slug, standalone, soort = "focus", titel, kaal, onInhoud, zetInhoud }: {
   slug: string;
   standalone?: boolean;
   soort?: "focus" | "prio" | "koers";
@@ -21,6 +21,14 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel, k
   kaal?: boolean;
   /** Geeft de laatste inhoud door, zodat een blok eromheen er regels uit kan halen. */
   onInhoud?: (html: string) => void;
+  /**
+   * Van buitenaf inhoud in het veld zetten (het overnemen van een voorstel).
+   * De stempel loopt op bij elke nieuwe zet, ook als de tekst toevallig gelijk
+   * is; zonder die teller zou tweemaal hetzelfde overnemen de tweede keer niets
+   * doen. Het opslaan loopt daarna gewoon door de weg hieronder, dus de
+   * versiehistorie vangt het net zo goed op als getypte tekst.
+   */
+  zetInhoud?: { html: string; stempel: number };
 }) {
   const veld = soort === "prio" ? "prioHtml" : soort === "koers" ? "koersHtml" : "html";
   const [initialHtml, setInitialHtml] = useState<string | null>(null);
@@ -96,6 +104,29 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel, k
     saveTimerRef.current = setTimeout(() => bewaarDirect(), 400);
   }
 
+  // Een overgenomen voorstel komt hier binnen. `stempel` gaat ook in de key van
+  // het tekstvak hieronder, want dat vult zichzelf maar één keer; zonder die
+  // key zou de nieuwe tekst wel opgeslagen worden maar niet in beeld komen, en
+  // dan overschrijft de eerstvolgende toetsaanslag hem weer met de oude inhoud.
+  //
+  // De tekst wordt hier meteen in de ref gezet, tijdens het opbouwen van het
+  // scherm, en niet pas in een effect. Anders bouwt het tekstvak zich met de
+  // nieuwe key één keer op met de óude tekst, en dat is precies de beurt waarin
+  // het zichzelf vult; daarna komt de nieuwe tekst nooit meer in beeld.
+  const stempel = zetInhoud?.stempel || 0;
+  const toegepastRef = useRef(0);
+  if (stempel && stempel !== toegepastRef.current && zetInhoud) {
+    toegepastRef.current = stempel;
+    laatsteHtmlRef.current = zetInhoud.html;
+  }
+  useEffect(() => {
+    if (!stempel) return;
+    // Bewaren doet de gewone weg, dus met versiehistorie en al.
+    bewaarDirect();
+    onInhoudRef.current?.(laatsteHtmlRef.current || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stempel]);
+
   useEffect(() => {
     const bijAchtergrond = () => { if (document.visibilityState === "hidden") bewaarDirect(true); };
     document.addEventListener("visibilitychange", bijAchtergrond);
@@ -131,7 +162,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel, k
   // laatste versie tonen, niet die van het moment dat het scherm openging.
   const veldBlok = initialHtml === null
     ? <div className="focus-rich focus-loading" />
-    : <RijkTekstVeld waarde={laatsteHtmlRef.current ?? initialHtml} onChange={triggerSave} />;
+    : <RijkTekstVeld key={stempel} waarde={laatsteHtmlRef.current ?? initialHtml} onChange={triggerSave} />;
 
   // Kaal: het veld zonder eigen kop, voor een blok dat zijn eigen kop al heeft
   // (het koersblok bovenaan Taken). Zonder deze stand zou daar een tweede titel

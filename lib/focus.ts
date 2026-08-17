@@ -14,7 +14,12 @@ import { sanitizeHtml as sanitize, escapeHtml as esc } from "./veilige-html";
 // wordt automatisch omgezet naar opgemaakte HTML, zodat niets verloren gaat.
 export type FocusKeyword = { kw: string; url: string };
 export type FocusLink = { label: string; url: string };
-export type ClientFocus = { html: string; prioHtml: string; koersHtml: string; links: FocusLink[] };
+export type FocusVeld = "html" | "prioHtml" | "koersHtml";
+export type ClientFocus = {
+  html: string; prioHtml: string; koersHtml: string; links: FocusLink[];
+  /** Per veld: wanneer de inhoud voor het laatst écht veranderde (ISO). */
+  gewijzigd: Partial<Record<FocusVeld, string>>;
+};
 
 function legacyToHtml(d: { keywords?: FocusKeyword[]; links?: FocusLink[] }): string {
   let h = "";
@@ -41,8 +46,8 @@ function schoneLinks(links: unknown): FocusLink[] {
 export async function getFocus(slug: string): Promise<ClientFocus> {
   await ensureSchema();
   const { rows } = await sql`SELECT data FROM client_focus WHERE client_slug = ${slug} LIMIT 1`;
-  const d = rows[0]?.data as { html?: string; prioHtml?: string; koersHtml?: string; keywords?: FocusKeyword[]; links?: FocusLink[] } | undefined;
-  if (!d) return { html: "", prioHtml: "", koersHtml: "", links: [] };
+  const d = rows[0]?.data as { html?: string; prioHtml?: string; koersHtml?: string; keywords?: FocusKeyword[]; links?: FocusLink[]; gewijzigd?: Record<string, string> } | undefined;
+  if (!d) return { html: "", prioHtml: "", koersHtml: "", links: [], gewijzigd: {} };
   const html = typeof d.html === "string" ? d.html : legacyToHtml(d);
   // De losse linkkolom is nieuw sinds deze wijziging. Een rij van vóór "html"
   // bestond (de oude, ongemigreerde vorm) had zijn links al in legacyToHtml
@@ -53,7 +58,41 @@ export async function getFocus(slug: string): Promise<ClientFocus> {
     prioHtml: sanitize(typeof d.prioHtml === "string" ? d.prioHtml : ""),
     koersHtml: sanitize(typeof d.koersHtml === "string" ? d.koersHtml : ""),
     links,
+    gewijzigd: schoneStempels(d.gewijzigd),
   };
+}
+
+const VELDEN: FocusVeld[] = ["html", "prioHtml", "koersHtml"];
+
+function schoneStempels(v: unknown): Partial<Record<FocusVeld, string>> {
+  const uit: Partial<Record<FocusVeld, string>> = {};
+  if (!v || typeof v !== "object") return uit;
+  for (const veld of VELDEN) {
+    const s = (v as Record<string, unknown>)[veld];
+    if (typeof s === "string" && !Number.isNaN(Date.parse(s))) uit[veld] = s;
+  }
+  return uit;
+}
+
+// ── Wanneer is dit veld voor het laatst veranderd? ──
+// Sinds 17 augustus 2026 legt saveFocus dat zelf vast. Voor alles wat er vóór
+// die datum al stond is er geen stempel, en dan is de bovenste regel van de
+// versiehistorie het antwoord: die wordt weggeschreven op het moment dat de
+// vorige inhoud werd vervangen, dus dát is de laatste wijziging. Zonder deze
+// terugval zou elk bestaand veld "datum onbekend" tonen, en een veld zonder
+// datum is precies het veld waarvan je niet doorhebt dat het verouderd is.
+export async function laatsteWijziging(slug: string, veld: FocusVeld): Promise<string | null> {
+  const focus = await getFocus(slug);
+  if (focus.gewijzigd[veld]) return focus.gewijzigd[veld] as string;
+  try {
+    const { rows } = await sql`
+      SELECT bewaard_op FROM client_focus_historie
+      WHERE client_slug = ${slug} AND veld = ${veld}
+      ORDER BY bewaard_op DESC LIMIT 1`;
+    return rows[0] ? new Date(rows[0].bewaard_op as string).toISOString() : null;
+  } catch {
+    return null;
+  }
 }
 
 // ── Vangnet: de vorige inhoud bewaren vóór elke overschrijving ──
@@ -108,14 +147,19 @@ export async function saveFocus(slug: string, focus: Partial<ClientFocus>): Prom
   const prioHtml = sanitize(typeof focus.prioHtml === "string" ? focus.prioHtml : huidig.prioHtml);
   const koersHtml = sanitize(typeof focus.koersHtml === "string" ? focus.koersHtml : huidig.koersHtml);
   const links = Array.isArray(focus.links) ? schoneLinks(focus.links) : huidig.links;
-  // Verandert een tekstveld écht, bewaar dan eerst wat er stond.
-  if (html !== huidig.html) await bewaarVorige(slug, "html", huidig.html);
-  if (prioHtml !== huidig.prioHtml) await bewaarVorige(slug, "prioHtml", huidig.prioHtml);
-  if (koersHtml !== huidig.koersHtml) await bewaarVorige(slug, "koersHtml", huidig.koersHtml);
-  const json = JSON.stringify({ html, prioHtml, koersHtml, links });
+  // Verandert een tekstveld écht, bewaar dan eerst wat er stond, en zet de
+  // datum. Die datum is waar het scherm op afgaat om te bepalen of er ná deze
+  // tekst nog iets besloten is; hij hoort dus bij de wijziging zelf en niet bij
+  // de rij (die schuift ook op als je alleen een link toevoegt).
+  const nu = new Date().toISOString();
+  const gewijzigd = { ...huidig.gewijzigd };
+  if (html !== huidig.html) { await bewaarVorige(slug, "html", huidig.html); gewijzigd.html = nu; }
+  if (prioHtml !== huidig.prioHtml) { await bewaarVorige(slug, "prioHtml", huidig.prioHtml); gewijzigd.prioHtml = nu; }
+  if (koersHtml !== huidig.koersHtml) { await bewaarVorige(slug, "koersHtml", huidig.koersHtml); gewijzigd.koersHtml = nu; }
+  const json = JSON.stringify({ html, prioHtml, koersHtml, links, gewijzigd });
   await sql`
     INSERT INTO client_focus (client_slug, data, updated_at)
     VALUES (${slug}, ${json}::jsonb, now())
     ON CONFLICT (client_slug) DO UPDATE SET data = ${json}::jsonb, updated_at = now()`;
-  return { html, prioHtml, koersHtml, links };
+  return { html, prioHtml, koersHtml, links, gewijzigd };
 }
