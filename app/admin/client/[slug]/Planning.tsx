@@ -31,7 +31,7 @@ import { useEffect, useMemo, useState, type DragEvent } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { volgendeFase, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import { weekVanIso } from "../../../../lib/week-datum";
-import { nieuweVolgorde, bewaarVolgorde } from "../../../../lib/weekplan-slepen";
+import { nieuweVolgorde, nieuweVolgordeInLijst, bewaarVolgorde, bewaarLosseVolgorde } from "../../../../lib/weekplan-slepen";
 import { isKorteTitel } from "../../../../lib/kaart-titel";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 import MailUitKaart from "./MailUitKaart";
@@ -247,6 +247,26 @@ export default function Planning({
     setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, status } : x)));
     await stuur(t, { status });
   }
+
+  /**
+   * Afvinken op de regel zelf. Dat kon alleen in de opengeklapte kaart, terwijl
+   * "dit is gebeurd" de meest gewone handeling op dit scherm is. De taak
+   * verdwijnt uit de lijst (die toont alleen wat openstaat) en komt terecht bij
+   * "Wat we doen", zodat je later kunt terugzien wannéér het gebeurde. Omdat een
+   * regel die zomaar verdwijnt schrikken is, blijft hij hierboven nog even staan
+   * met een knop om hem terug te zetten.
+   */
+  const [laatstAf, setLaatstAf] = useState<Taak | null>(null);
+  async function vinkAf(t: Taak) {
+    setLaatstAf(t);
+    setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, status: "klaar" } : x)));
+    await stuur(t, { status: "klaar" });
+  }
+  async function zetTerug(t: Taak) {
+    setLaatstAf(null);
+    setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, status: "gepland" } : x)));
+    await stuur(t, { status: "gepland" });
+  }
   async function verwijder(t: Taak) {
     setTaken((ts) => ts.filter((x) => !zelfde(x, t)));
     await stuur(t, { delete: true });
@@ -339,9 +359,21 @@ export default function Planning({
       ? { ...x, datum: iso || null, ...(week ? { weekYear: week.year, weekNo: week.week } : {}) }
       : x)));
     await stuur(t, { datum: iso, ...(week ? { weekYear: week.year, weekNo: week.week } : {}) });
-    // De volgorde loopt per klant én per week; over klanten heen herordenen kan
-    // dus niet, en dan is achteraan aankomen het eerlijke antwoord.
-    if (!week || doel.slug !== t.slug) return;
+    // De volgorde loopt per klant; over klanten heen herordenen kan dus niet, en
+    // dan is achteraan aankomen het eerlijke antwoord.
+    if (doel.slug !== t.slug) return;
+    // Loslaten bij "nog geen datum": daar is geen week om binnen te rekenen, dus
+    // telt alleen de onderlinge volgorde van die staart. Dit ontbrak, en dat is
+    // precies waarom een taak zonder datum na het loslaten terugsprong.
+    if (!week) {
+      const losse = zonderDatum.filter((x) => x.slug === t.slug);
+      const genummerd = nieuweVolgordeInLijst(losse, { ...t, datum: null }, doel.id);
+      if (genummerd.length === 0) return;
+      const perId = new Map(genummerd.map((x) => [x.id, x.sortOrder]));
+      setTaken((ts) => ts.map((x) => (x.slug === t.slug && perId.has(x.id) ? { ...x, sortOrder: perId.get(x.id)! } : x)));
+      await bewaarLosseVolgorde(t.slug, genummerd);
+      return;
+    }
     const vanKlant = taken.filter((x) => x.slug === t.slug);
     const genummerd = nieuweVolgorde(vanKlant, t.id, doel.id, week.year, week.week);
     if (genummerd.length === 0) return;
@@ -350,11 +382,23 @@ export default function Planning({
     await bewaarVolgorde(t.slug, week.year, week.week, genummerd);
   }
 
-  /** Loslaten onderaan, bij wat nog geen datum heeft: de dag gaat eraf. */
+  /**
+   * Loslaten onderaan, bij wat nog geen datum heeft: de dag gaat eraf. Had de
+   * taak al geen dag, dan is het geen fout maar een verplaatsing naar het eind
+   * van die staart; anders kon je een taak zonder datum alleen omhoog schuiven.
+   */
   async function haalDatumEraf(t: Taak) {
-    if (!t.datum) return;
-    setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, datum: null } : x)));
-    await stuur(t, { datum: "" });
+    if (t.datum) {
+      setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, datum: null } : x)));
+      await stuur(t, { datum: "" });
+      return;
+    }
+    const losse = zonderDatum.filter((x) => x.slug === t.slug);
+    const genummerd = nieuweVolgordeInLijst(losse, t, null);
+    if (genummerd.length === 0) return;
+    const perId = new Map(genummerd.map((x) => [x.id, x.sortOrder]));
+    setTaken((ts) => ts.map((x) => (x.slug === t.slug && perId.has(x.id) ? { ...x, sortOrder: perId.get(x.id)! } : x)));
+    await bewaarLosseVolgorde(t.slug, genummerd);
   }
 
   // ── Indelen ──
@@ -443,6 +487,11 @@ export default function Planning({
               setSleep(t);
             }}
             onDragEnd={sleepKlaar}>⋮⋮</span>
+          {/* Afvinken: één bedieningsteken, geen knop in de huisstijl (zoals het
+              kruisje rechts). Klik gaat niet door naar de regel eronder, want
+              dan klapt de kaart tegelijk open. */}
+          <button type="button" className="wb-vink" title="Afvinken: dit is gebeurd. Komt bij 'Wat we doen' te staan."
+            onClick={(e) => { e.stopPropagation(); void vinkAf(t); }}>✓</button>
           {/* Hier stond een badge SEO/DEV. Weg op 11 augustus 2026: al het werk
               komt langs Maarten, dus "voor wie" zei niets en kostte wel een
               kolom in elke regel. De kolommaat in .wb-rij is meeveranderd. */}
@@ -629,6 +678,14 @@ export default function Planning({
           </div>
           {nieuwVoor && nieuwFormulier()}
 
+          {laatstAf && (
+            <div className="pl-afgevinkt">
+              <span className="pl-afgevinkt-tekst">Afgevinkt: {zonderHtml(laatstAf.taak).slice(0, 80)}. Staat nu bij &ldquo;Wat we doen&rdquo;.</span>
+              <button type="button" className="btn btn-ghost btn-klein" onClick={() => void zetTerug(laatstAf)}>Terugzetten</button>
+              <button type="button" className="pl-afgevinkt-weg" title="Melding sluiten" onClick={() => setLaatstAf(null)}>×</button>
+            </div>
+          )}
+
           {totaal === 0 && <div className="muted pl-vakleeg">Niets openstaand.</div>}
 
           {rijen(metDatum)}
@@ -639,7 +696,7 @@ export default function Planning({
               plek om iets naartoe te schuiven. */}
           {(zonderDatum.length > 0 || (sleep && sleep.datum)) && (
             <div className={"pl-staart" + (bovenStaart ? " pl-drop" : "")}
-              onDragOver={(e) => { if (!sleep?.datum) return; e.preventDefault(); setBovenStaart(true); setBovenRij(null); }}
+              onDragOver={(e) => { if (!sleep) return; e.preventDefault(); setBovenStaart(true); setBovenRij(null); }}
               onDragLeave={() => setBovenStaart(false)}
               onDrop={(e) => {
                 if (!sleep) return;

@@ -1976,6 +1976,22 @@ button.ck-collapse-head {
 .email-head-main { min-width: 0; flex: 1 1 auto; }
 .email-head-actions { display: flex; align-items: center; gap: var(--ruimte-naast); flex: 0 0 auto; }
 .email-caret { font-size: var(--type-label); color: var(--kleur-tekst-stil); }
+/* Van deze mail een taak maken. Dezelfde knop als overal (.btn.btn-ghost.btn-klein),
+   alleen compacter, want hij staat in een rij naast het Superhuman-chipje en niet
+   in een knoppenbalk. Zelfde ingreep als bij de fase-knoppen op een kaart. */
+.email-head-actions .btn.btn-ghost.btn-klein.email-taak {
+  padding: var(--ruimte-krap) var(--ruimte-naast); font-size: var(--type-label); border-radius: var(--ronding-klein);
+}
+/* Wat er van het knopje "Taak" terugkwam: één regel onder de mail, niet in een
+   popup. Groen als het gelukt is, rood als het niet ging. */
+.email-taak-melding {
+  padding: var(--ruimte-krap) var(--ruimte-groep) var(--ruimte-naast);
+  font-size: var(--type-bijschrift); color: var(--kleur-goed);
+}
+.email-taak-melding.err { color: var(--kleur-fout); }
+/* Verder terug in de mailbox kijken. */
+.email-meer { display: flex; align-items: center; gap: var(--ruimte-regel); padding: var(--ruimte-regel) var(--ruimte-groep); }
+.email-meer .muted { font-size: var(--type-label); }
 /* Mail uit het overzicht halen: klein kruisje, bevestigen in de rij zelf. */
 .email-del { border: 0; background: none; cursor: pointer; color: #9A9086; font-size: var(--fs-md); line-height: 1; padding: var(--ruimte-krap) var(--ruimte-krap); border-radius: var(--ronding-klein); }
 .email-del:hover { color: var(--accent); background: var(--kleur-accent-vlak); }
@@ -5638,13 +5654,15 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    per regel uit de pas, want de ene taaknaam is nu eenmaal langer dan de andere. */
 .wb-rij {
   display: grid;
-  /* Zes kolommen voor zes dingen: handvat, taak, fase-letters, volgende stap,
-     datumknop, kruisje. Er stonden er zeven, een overblijfsel van de badge
-     SEO/DEV die er in augustus uitging. Daardoor schoof alles één kolom op:
-     de datumknop stond in een kolom van 22 pixels (en puilde eruit) en het
-     kruisje kreeg de kolom van 96 die voor de datum bedoeld was, waardoor het
-     als een brede knop in beeld kwam in plaats van als een klein kruisje. */
-  grid-template-columns: 20px minmax(0, 1fr) auto 116px 96px 22px;
+  /* Zeven kolommen voor zeven dingen: handvat, vinkje, taak, fase-letters,
+     volgende stap, datumknop, kruisje. Tel de kolommen na als je er een element
+     bij zet of weghaalt: staat het aantal niet gelijk, dan schuift alles één
+     kolom op (dat is eerder gebeurd toen de badge SEO/DEV wegging: de datumknop
+     puilde uit een kolom van 22 pixels en het kruisje kwam als brede knop in
+     beeld). Het vinkje is er in augustus 2026 bij gekomen: afvinken kon alleen
+     in de opengeklapte kaart, terwijl "dit is gebeurd" de gewoonste handeling
+     op dit scherm is. */
+  grid-template-columns: 20px 22px minmax(0, 1fr) auto 116px 96px 22px;
   align-items: center; gap: var(--ruimte-regel);
   padding: var(--ruimte-naast); border-bottom: 1px solid var(--kleur-rand-zacht); cursor: pointer;
 }
@@ -5657,6 +5675,14 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .wb-rij .wp-del:hover:not(:disabled) { background: transparent; border-color: transparent; color: var(--kleur-fout); }
 .wb-rij-open { background: var(--kleur-accent-vlak); }
 .wb-rij.wb-sleept { opacity: 0.45; }
+/* Afvinken op de regel: een bedieningsteken, net als het kruisje rechts. Rustig
+   grijs, groen zodra je erop staat, want dan gaat het ergens over. */
+.wb-vink {
+  border: 1px solid var(--kleur-rand-zacht); background: var(--kleur-kaart); cursor: pointer;
+  color: var(--kleur-tekst-stil); font-size: var(--type-label); line-height: 1;
+  padding: var(--ruimte-krap); border-radius: var(--ronding-klein); text-align: center;
+}
+.wb-vink:hover { color: var(--kleur-goed); border-color: var(--kleur-goed); background: var(--kleur-goed-vlak); }
 .wb-greep { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: var(--type-bijschrift); line-height: 1; padding: var(--ruimte-krap) var(--ruimte-krap); border-radius: var(--ronding-klein); text-align: center; }
 .wb-greep:hover { background: var(--kleur-rustig); color: var(--dark); }
 .wb-greep:active { cursor: grabbing; }
@@ -5850,6 +5876,18 @@ a.wb-pad:hover { text-decoration: underline; }
 .pl-groepnaam { font-size: var(--type-label); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--kleur-tekst-stil); text-decoration: none; }
 .pl-groepnaam:hover { color: var(--kleur-accent-diep); text-decoration: underline; }
 .pl-groepaantal { font-size: var(--type-label); font-weight: 700; color: var(--kleur-tekst-stil); }
+
+/* Net afgevinkt: één rustige regel bovenaan de lijst, met de weg terug. Een taak
+   die bij het aanvinken meteen van het scherm verdwijnt voelt als weggegooid, ook
+   al staat hij netjes in "Wat we doen". */
+.pl-afgevinkt {
+  display: flex; align-items: center; gap: var(--ruimte-regel);
+  padding: var(--ruimte-naast) var(--ruimte-groep);
+  background: var(--kleur-goed-vlak); border-bottom: 1px solid var(--kleur-rand-zacht);
+}
+.pl-afgevinkt-tekst { flex: 1; min-width: 0; font-size: var(--type-bijschrift); color: var(--kleur-tekst); }
+.pl-afgevinkt-weg { border: 0; background: none; cursor: pointer; color: var(--kleur-tekst-stil); font-size: var(--type-lopend); line-height: 1; padding: 0 var(--ruimte-krap); }
+.pl-afgevinkt-weg:hover { color: var(--dark); }
 
 /* Zelf een taak toevoegen, per week. */
 .pl-nieuw { display: flex; flex-direction: column; gap: var(--ruimte-naast); padding: var(--ruimte-regel) var(--ruimte-groep); background: var(--kleur-kaart); border-top: 1px solid var(--kleur-rand-zacht); }

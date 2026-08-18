@@ -262,6 +262,38 @@ export async function addWeekplanTasks(slug: string, thread: string, tasks: { ta
   return { added, merged, mergedIds: [...mergedIds], nieuweIds };
 }
 
+/**
+ * Een afgevinkte taak hoort in "Wat we doen" te staan.
+ *
+ * De oude maand-takenlijst (client_tasks) deed dat al, de planning niet: vink je
+ * hier een taak af, dan verdween hij van het scherm en stond er nergens meer dat
+ * hij gebeurd is, laat staan wannéér. Precies het antwoord dat je later nodig
+ * hebt, voor de verantwoording naar de klant en voor de eigen urenvraag.
+ *
+ * Stil bij een fout, en idempotent op het taak-id: nog een keer afvinken (of
+ * terugzetten en opnieuw afvinken) levert één regel op, geen tweede.
+ */
+async function logAfgevinkteTaak(slug: string, id: number): Promise<void> {
+  try {
+    const { logActiviteit } = await import("./activiteit");
+    const { rows } = await sql`
+      SELECT taak, url, updated_at FROM client_weekplan
+      WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
+    const r = rows[0];
+    if (!r) return;
+    const tekst = String(r.taak || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (!tekst) return;
+    await logActiviteit({
+      slug, soort: "taak", bron: "client_weekplan", bronId: id,
+      url: (r.url as string) || null,
+      intern: `Taak afgerond: ${tekst}`,
+      klant: tekst,
+    });
+  } catch {
+    /* stil: het logboek mag het afvinken zelf nooit laten mislukken */
+  }
+}
+
 export async function updateWeekplanTask(slug: string, id: number, patch: { weekYear?: number; weekNo?: number; status?: string; sortOrder?: number; datum?: string | null }): Promise<void> {
   await ensureSchema();
   const weekYear = patch.weekYear ?? null;
@@ -281,6 +313,7 @@ export async function updateWeekplanTask(slug: string, id: number, patch: { week
       datum      = CASE WHEN ${datumZetten} THEN ${datum}::date ELSE datum END,
       updated_at = now()
     WHERE client_slug = ${slug} AND id = ${id}`;
+  if (status === "klaar") await logAfgevinkteTaak(slug, id);
 }
 
 // Herschreven kaarttekst opslaan (de "Ruim op"-knop; altijd door Maarten getriggerd).

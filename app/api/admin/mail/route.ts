@@ -52,9 +52,20 @@ export async function GET(req: NextRequest) {
   const gevraagdeUrl = req.nextUrl.searchParams.get("url") || "";
 
   if (!gevraagdeUrl) {
-    const emails = await msSearchClientEmails(query, status.account || "", 15);
+    // Standaard de laatste vijftien. Klikt Maarten onderaan de lijst op "Meer",
+    // dan komt hier een hoger aantal binnen: dezelfde lijst, alleen dieper terug
+    // in de tijd. Begrensd, want Graph haalt per mail ook de inhoud op.
+    const gevraagd = Number(req.nextUrl.searchParams.get("aantal")) || 15;
+    const aantal = Math.min(100, Math.max(15, Math.round(gevraagd)));
+    const emails = await msSearchClientEmails(query, status.account || "", aantal);
     if (emails === null) return NextResponse.json({ ok: false, error: "Ophalen mislukt. Mogelijk opnieuw koppelen." }, { status: 502 });
-    return NextResponse.json({ ok: true, connected: true, emails: emails.filter((e) => !weg.has(e.id) && !isRuisMail(e)) });
+    // `meer` zegt of er nog dieper terug te kijken valt: kwam de mailbox met
+    // minder mails terug dan gevraagd, dan is dit alles wat er is en heeft een
+    // knop "Meer" geen zin meer.
+    return NextResponse.json({
+      ok: true, connected: true, aantal, meer: emails.length >= aantal && aantal < 100,
+      emails: emails.filter((e) => !weg.has(e.id) && !isRuisMail(e)),
+    });
   }
 
   // Is er een pagina meegegeven, dan is "de laatste vijftien mails van de klant"

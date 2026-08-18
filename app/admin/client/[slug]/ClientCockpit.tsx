@@ -117,6 +117,14 @@ export default function ClientCockpit({
   // met de opgeslagen mails, en zodra Microsoft antwoordt worden ze ververst.
   const [emails, setEmails] = useState(initialEmails);
   const [mailLive, setMailLive] = useState(false);
+  // Hoeveel mails er nu gevraagd worden, en of er nog dieper terug te kijken
+  // valt. De lijst begint op vijftien; de knop "Meer" onderaan haalt er twintig
+  // bij, net zolang tot de mailbox niets ouders meer teruggeeft.
+  const [mailAantal, setMailAantal] = useState(15);
+  const [meerMails, setMeerMails] = useState(false);
+  const [meerBezig, setMeerBezig] = useState(false);
+  const geenAhrefs = (lijst: { fromAddress?: string }[]) =>
+    lijst.filter((e) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim()));
   useEffect(() => {
     if (!msConnected || !showMailSections) return;
     let off = false;
@@ -124,13 +132,30 @@ export default function ClientCockpit({
       .then((r) => r.json())
       .then((d) => {
         if (off || !d.ok || !Array.isArray(d.emails) || d.emails.length === 0) return;
-        setEmails(d.emails.filter((e: { fromAddress?: string }) => !/@ahrefs\.com$/i.test((e.fromAddress || "").trim())));
+        setEmails(geenAhrefs(d.emails) as typeof initialEmails);
+        setMeerMails(d.meer === true);
         setMailLive(true);
       })
       .catch(() => { /* opgeslagen mails blijven staan */ });
     return () => { off = true; };
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [client.slug]);
+
+  async function haalMeerMails() {
+    if (meerBezig) return;
+    const volgende = mailAantal + 20;
+    setMeerBezig(true);
+    try {
+      const d = await fetch(`/api/admin/mail?slug=${encodeURIComponent(client.slug)}&aantal=${volgende}`).then((r) => r.json());
+      if (d?.ok && Array.isArray(d.emails)) {
+        setEmails(geenAhrefs(d.emails) as typeof initialEmails);
+        setMailAantal(d.aantal || volgende);
+        setMeerMails(d.meer === true);
+        setMailLive(true);
+      } else setMeerMails(false);
+    } catch { /* de lijst blijft staan zoals hij stond */ }
+    finally { setMeerBezig(false); }
+  }
 
   const router = useRouter();
   const pathname = usePathname();
@@ -461,6 +486,36 @@ export default function ClientCockpit({
     } catch { /* de rij is al weg; bij verversen komt hij hooguit terug */ }
   }
 
+  // ── Van mail naar taak ──
+  // Een mail met werk erin ("de web-foutmelding op de knippatronen-pagina") werd
+  // handwerk: taak typen, onderwerp samenvatten, link erbij zoeken. Dit knopje
+  // doet die drie dingen zelf en zet de korte beschrijving in het bestaande veld
+  // Aantekeningen van de kaart, met de link naar de mail eronder.
+  const [taakBezig, setTaakBezig] = useState<string | null>(null);
+  const [taakMelding, setTaakMelding] = useState<{ id: string; tekst: string; fout: boolean } | null>(null);
+  async function maakTaakVanMail(e: typeof emails[number]) {
+    if (taakBezig) return;
+    setTaakBezig(e.id); setTaakMelding(null);
+    try {
+      const d = await fetch("/api/admin/mail-taak", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: client.slug,
+          onderwerp: e.subject || "",
+          van: e.fromName || e.fromAddress || "",
+          datum: e.receivedAt || "",
+          link: e.superhumanLink || e.webLink || "",
+          tekst: e.bodyHtml || e.preview || "",
+        }),
+      }).then((r) => r.json());
+      if (d?.ok) {
+        setTaakMelding({ id: e.id, tekst: `Taak aangemaakt: ${d.titel}`, fout: false });
+        setWeekplanReload((n) => n + 1);
+      } else setTaakMelding({ id: e.id, tekst: d?.error || "Taak aanmaken mislukte.", fout: true });
+    } catch { setTaakMelding({ id: e.id, tekst: "Taak aanmaken mislukte.", fout: true }); }
+    finally { setTaakBezig(null); }
+  }
+
   const getoondeEmails = vraagIds.length
     ? [...emails].sort((a, b) => {
         const ra = vraagIds.indexOf(a.id), rb = vraagIds.indexOf(b.id);
@@ -670,6 +725,15 @@ export default function ClientCockpit({
                             {shLink && (
                               <a className="ql ql-mini" href={shLink} target="_blank" rel="noreferrer" onClick={(ev) => ev.stopPropagation()}>Superhuman</a>
                             )}
+                            {/* Naast Superhuman, want daar kijk je toch al: van deze
+                                mail een taak maken, met titel, korte beschrijving in
+                                de aantekeningen en de link naar de mail erbij. */}
+                            <button type="button" className="btn btn-ghost btn-klein email-taak"
+                              disabled={taakBezig === e.id}
+                              title="Maak van deze mail een taak, met een korte beschrijving en de link naar de mail"
+                              onClick={(ev) => { ev.stopPropagation(); void maakTaakVanMail(e); }}>
+                              {taakBezig === e.id ? "Bezig…" : "Taak"}
+                            </button>
                             {mailWeg === e.id ? (
                               <span className="email-weg-vraag" onClick={(ev) => ev.stopPropagation()}>
                                 Weghalen?
@@ -687,6 +751,9 @@ export default function ClientCockpit({
                             <span className="email-caret">{open ? "▲" : "▼"}</span>
                           </div>
                         </div>
+                        {taakMelding?.id === e.id && (
+                          <div className={"email-taak-melding" + (taakMelding.fout ? " err" : "")}>{taakMelding.tekst}</div>
+                        )}
                         {open && (
                           <div className="email-body">
                             {/* Eén klein Superhuman-knopje in de kop is genoeg; de drie
@@ -755,6 +822,17 @@ export default function ClientCockpit({
                       </div>
                     );
                   })}
+                  {/* Verder terug kijken. De lijst begint bij de laatste vijftien;
+                      dit haalt er telkens twintig bij, tot de mailbox niets ouders
+                      meer teruggeeft. */}
+                  {meerMails && (
+                    <div className="email-meer">
+                      <button type="button" className="btn btn-ghost btn-klein" disabled={meerBezig} onClick={() => void haalMeerMails()}>
+                        {meerBezig ? "Bezig…" : "Meer mails"}
+                      </button>
+                      <span className="muted">{emails.length} getoond</span>
+                    </div>
+                  )}
                 </div>
               )}
                 </>

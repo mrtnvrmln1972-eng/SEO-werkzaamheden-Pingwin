@@ -82,10 +82,13 @@ export type PageSnapshot = {
 // ── Lezen (voor het dashboard) ──────────────────────────────
 
 // Witte lijst: regels met een mailadres (jan@bogard.nl) of een heel domein (bogard.nl).
-function parseAllowlist(text: string): string[] {
+// Geëxporteerd omdat het logboek ("Wat we doen") dezelfde zeef gebruikt: een
+// nieuwsbrief die hier terecht weggefilterd wordt, hoort daar ook niet te staan.
+// Eén zeef, twee schermen; twee kopieën lopen uit elkaar.
+export function parseAllowlist(text: string): string[] {
   return (text || "").split(/[\s,;]+/).map((s) => s.trim().toLowerCase().replace(/^@/, "")).filter(Boolean);
 }
-function fromMatchesAllowlist(fromAddress: string | null, entries: string[]): boolean {
+export function fromMatchesAllowlist(fromAddress: string | null, entries: string[]): boolean {
   const from = (fromAddress || "").trim().toLowerCase();
   if (!from) return false;
   const at = from.indexOf("@");

@@ -174,9 +174,87 @@ export async function vulActiviteitUitBestaandeData(slug: string): Promise<VulRe
     });
   }
 
+  // 11. Afgevinkte taken uit de planning (client_weekplan). De maand-takenlijst
+  //     hierboven schreef al mee, de planning niet; taken die daar al op "klaar"
+  //     stonden ontbraken dus in het logboek. Vanaf nu schrijft het afvinken zelf
+  //     mee (lib/weekplan.ts), dit haalt het verleden erbij.
+  const planTaken = await stil(
+    sql`SELECT id, taak, url, updated_at FROM client_weekplan
+        WHERE client_slug = ${slug} AND status = 'klaar'`.then((r) => r.rows),
+    [] as Record<string, unknown>[],
+  );
+  for (const t of planTaken) {
+    const tekst = String(t.taak || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (!tekst) continue;
+    rijen.push({
+      slug, soort: "taak", bron: "client_weekplan", bronId: Number(t.id),
+      gebeurdeOp: (t.updated_at as string) || undefined, url: (t.url as string) || null,
+      intern: `Taak afgerond: ${tekst}`, klant: tekst,
+    });
+  }
+
+  // 12. De correspondentie zelf, live uit de mailbox.
+  rijen.push(...await stil(mailRegels(slug), [] as LogInput[]));
+
   await logActiviteiten(rijen);
 
   const perSoort: Record<string, number> = {};
   for (const r of rijen) perSoort[r.soort] = (perSoort[r.soort] || 0) + 1;
   return { gevonden: rijen.length, perSoort };
+}
+
+// ═══════════════════════════════════════════════════════════
+// DE MAILS IN HET LOGBOEK
+// ═══════════════════════════════════════════════════════════
+// "Wat we doen" las tot nu toe alleen de mails die ooit via de brug in de
+// database beland zijn (client_emails), en daarvan alleen de verzonden. Live
+// mail komt sinds de Microsoft-koppeling rechtstreeks uit de mailbox en wordt
+// niet opgeslagen, dus de recente correspondentie ontbrak precies daar waar je
+// hem het hardst nodig hebt: bij de vraag "wanneer hebben we wat gedaan".
+//
+// Een mailwisseling is werk. Niet alleen wat wij sturen (een analyse, een
+// contentplan, instructies voor de sitebouwer), ook wat er binnenkomt bepaalt
+// wat we die week doen. Allebei dus, met de richting in de tekst zodat je in
+// één oogopslag ziet wie er aan zet was.
+//
+// Twee zeven eroverheen, dezelfde als bij "Laatste mails", zodat er geen
+// nieuwsbrieven en Ahrefs-meldingen in het logboek van een klant lopen:
+//   1. de witte lijst met afzenders per klant (leeg = alles);
+//   2. de ruisfilter op automatische afzenders en onderwerpen.
+//
+// Standaard intern (STANDAARD_ZICHTBAAR.mail is false): pas met de knop "delen"
+// gaat een regel mee naar de klant.
+async function mailRegels(slug: string): Promise<LogInput[]> {
+  const { msStatus, msSearchClientEmails } = await import("./ms-graph");
+  const { isRuisMail } = await import("./mail-tekst");
+  const { parseAllowlist, fromMatchesAllowlist } = await import("./snapshots");
+
+  const { rows: cRows } = await sql`
+    SELECT email, domain, mail_allowlist FROM clients WHERE slug = ${slug} LIMIT 1`;
+  const klant = cRows[0];
+  if (!klant) return [];
+  const zoek = String(klant.email || klant.domain || "").trim();
+  if (!zoek) return [];
+
+  const status = await msStatus();
+  if (!status.connected) return [];
+  const mails = await msSearchClientEmails(zoek, status.account || "", 60);
+  if (!mails) return [];
+
+  const toegestaan = parseAllowlist(String(klant.mail_allowlist || ""));
+  const uit: LogInput[] = [];
+  for (const m of mails) {
+    if (isRuisMail(m)) continue;
+    if (toegestaan.length && m.direction !== "out" && !fromMatchesAllowlist(m.fromAddress || "", toegestaan)) continue;
+    const onderwerp = (m.subject || "").trim() || "(geen onderwerp)";
+    const wie = (m.fromName || m.fromAddress || "").trim();
+    uit.push({
+      slug, soort: "mail", bron: "client_emails", bronId: m.id,
+      gebeurdeOp: m.receivedAt || undefined,
+      bewijs: m.superhumanLink || m.webLink || null,
+      intern: m.direction === "out" ? `Mail verstuurd: ${onderwerp}` : `Mail ontvangen${wie ? ` van ${wie}` : ""}: ${onderwerp}`,
+      klant: m.direction === "out" ? `Mail: ${onderwerp}` : `Mail van u: ${onderwerp}`,
+    });
+  }
+  return uit;
 }

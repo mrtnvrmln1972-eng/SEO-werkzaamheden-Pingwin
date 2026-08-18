@@ -17,12 +17,25 @@ export const BLOKKEN: Uitklapper[] = [
       "hij diens datum over en gaat hij ernaast staan; twee taken op dezelfde dag houden hun eigen " +
       "volgorde. Laat je hem onderaan los, bij wat nog geen datum heeft, dan raakt hij zijn dag kwijt. De " +
       "dag kiezen kan ook rechtstreeks, met de datumknop op de regel.\n\n" +
+      "**Slepen werkt sinds 18 augustus 2026 ook bij \"Nog geen datum\".** Daar zag je wel de oranje streep " +
+      "waar de taak zou komen, maar bij loslaten sprong hij terug naar zijn oude plek. De reden: de volgorde " +
+      "werd berekend binnen een week, en een taak zonder datum heeft geen week die ergens op slaat, dus de " +
+      "som stopte er stilzwijgend mee. Voor die lijst telt nu alleen de onderlinge volgorde. De streep staat " +
+      "boven de regel waar je boven hangt, en daar landt hij ook; loslaten in de lege ruimte onder de lijst " +
+      "zet hem achteraan.\n\n" +
+      "**Afvinken kan op de regel zelf.** Links op elke regel staat een vinkje: dit is gebeurd. De taak gaat " +
+      "uit de lijst (die toont wat openstaat) en komt met datum terecht bij **Wat we doen**, zodat je later " +
+      "kunt terugzien wannéér het gebeurde, voor de verantwoording naar de klant en voor de eigen urenvraag. " +
+      "Omdat een regel die zomaar verdwijnt als weggegooid voelt, blijft hij bovenaan de lijst nog even staan " +
+      "met een knop **Terugzetten**. Daarvóór kon afvinken alleen in de opengeklapte kaart, terwijl \"dit is " +
+      "gebeurd\" de gewoonste handeling op dit scherm is.\n\n" +
       "Op het tabblad Taken zie je alleen deze klant; op de volle-breedte-versie zie je alle klanten, daar " +
       "gegroepeerd per klant zodat je ziet van wie iets is.\n\n" +
       "De planning is bewust een **signaalscherm** en geen bedieningspaneel: één regel per taak, met " +
       "welke pagina, de zeven fases als gekleurde letters, de volgende stap en de dag. Die letters zijn expres " +
-      "geen knoppen. Afvinken hoort in de kaart waar het werk gebeurt, en dan kleuren ze hier vanzelf mee. " +
-      "Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen.\n\n" +
+      "geen knoppen: een fase afvinken hoort in de kaart waar het werk gebeurt, en dan kleuren ze hier vanzelf " +
+      "mee. Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen. De hele taak afvinken is " +
+      "iets anders dan een fase, en dat kan wél op de regel (het vinkje links).\n\n" +
       "Klap je een regel open, dan verschijnt de échte projectkaart: de fases met hun knoppen, de chat over " +
       "deze pagina en de documenten. Niet een tweede, magere samenvatting die kan achterlopen, " +
       "maar dezelfde kaart. **De opengeklapte taak wordt daarbij uit de lijst gelicht**: een eigen blok met een " +

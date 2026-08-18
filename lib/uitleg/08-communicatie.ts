@@ -16,7 +16,17 @@ export const HOOFDSTUK: Hoofdstuk = {
         "mailverwijzing opent het gesprek rechtstreeks in de mailclient.\n\n" +
         "Uit die mails wordt ook een tijdlijn van de stand van zaken samengevat, die stil op de achtergrond " +
         "wordt bijgewerkt als hij meer dan twee dagen achterloopt. Je opent een klant dus nooit met verouderde " +
-        "context.",
+        "context.\n\n" +
+        "**Van een mail een taak maken doe je met één knopje (18 augustus 2026).** Naast \"Superhuman\" in de " +
+        "mailregel staat \"Taak\". Komt er een mail binnen met werk erin, bijvoorbeeld een foutmelding op een " +
+        "pagina, dan maakt die knop er meteen een kaart van in de planning: een korte taaktitel die zegt wat " +
+        "er moet gebeuren (niet de onderwerpregel overgetypt), een beschrijving van twee of drie zinnen in het " +
+        "veld **Aantekeningen** dat op elke kaart al bestaat, en de link naar de mail eraan vast. Bewust geen " +
+        "nieuw veld erbij: dezelfde soort tekst op twee plekken loopt gegarandeerd uit elkaar. Werkt de " +
+        "AI-koppeling even niet, dan komt de kaart er gewoon, alleen met de onderwerpregel als titel.\n\n" +
+        "**Onderaan de lijst staat \"Meer mails\".** De lijst begint bij de laatste vijftien; elke klik haalt " +
+        "er twintig bij, tot de mailbox niets ouders meer teruggeeft. Dan verdwijnt de knop. Voor het volledige " +
+        "archief blijft de Superhuman-zoekknop bovenaan de snelste weg.",
     },
     {
       titel: "Mailcontroles",
