@@ -38,16 +38,52 @@ import {
 export default function Speelruimte() {
   const [thema, setThema] = useState<Thema>(BASIS);
   const [open, setOpen] = useState(false);
+  const [vast, setVast] = useState<Thema | null>(null);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState("");
 
   // De opgeslagen stand overnemen bij het openen, zodat dit paneel laat zien
-  // wat er werkelijk aanstaat in plaats van de uitgangsstand.
-  useEffect(() => { setThema(leesProefstijl() ?? BASIS); }, []);
+  // wat er werkelijk aanstaat in plaats van de uitgangsstand. En de vastgelegde
+  // stijl erbij, zodat de knop kan zeggen of er nog iets te leggen valt.
+  useEffect(() => {
+    setThema(leesProefstijl() ?? BASIS);
+    fetch("/api/admin/huisstijl")
+      .then((r) => r.json())
+      .then((d) => { if (d?.ok) setVast(d.thema ?? null); })
+      .catch(() => {});
+  }, []);
+
+  // Vastleggen betekent: dit is vanaf nu gewoon hoe het dashboard eruitziet, ook
+  // voor klanten. De proefstand gaat er daarna af (anders zou het balkje boven
+  // blijven zeggen dat je naar een proef kijkt terwijl het de echte stijl is) en
+  // de pagina wordt opnieuw geladen, want de stijl komt nu uit de server.
+  const legVast = async (nieuw: Thema | null) => {
+    setBezig(true);
+    try {
+      const r = await fetch("/api/admin/huisstijl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ thema: nieuw }),
+      });
+      const d = await r.json();
+      if (!d?.ok) { setFout(d?.error || "Vastleggen lukte niet."); setBezig(false); return; }
+      bewaarProefstijl(null);
+      window.location.reload();
+    } catch {
+      setFout("Vastleggen lukte niet, de verbinding gaf niets terug.");
+      setBezig(false);
+    }
+  };
 
   const kies = (t: Thema) => {
     setThema(t);
     bewaarProefstijl(zelfdeThema(t, BASIS) ? null : t);
   };
   const isBasis = zelfdeThema(thema, BASIS);
+  // Staat er al precies dit vast? Dan valt er niets te leggen. "Niets vastgelegd"
+  // en "de uitgangsstand" zijn hetzelfde, want een vastgelegde uitgangsstand
+  // wordt niet bewaard; dat zou een instelling zijn die niets doet.
+  const alVast = vast ? zelfdeThema(thema, vast) : isBasis;
 
   return (
     <div className="card section">
@@ -58,9 +94,9 @@ export default function Speelruimte() {
         daar echt. Dat is waar de eerste drie stappen voor waren.
       </p>
       <p className="stijl-p stijl-p-klein">
-        Het legt niets vast. De proef leeft in jouw browser, niemand anders ziet er iets van, en
-        met "zet alles terug" is hij weg. Bevalt een richting, zeg welke, dan zet ik hem echt door
-        voor het hele dashboard.
+        Draaien legt niets vast. De proef leeft in jouw browser, niemand anders ziet er iets van,
+        en met "zet alles terug" is hij weg. Bevalt een richting, dan leg je hem onderaan dit
+        paneel vast met één knop; vanaf dat moment is het gewoon hoe het dashboard eruitziet.
       </p>
 
       <h3 className="stijl-h3">Kies een richting</h3>
@@ -123,6 +159,28 @@ export default function Speelruimte() {
           {open ? "Verberg de waarden" : "Toon de waarden"}
         </button>
       </div>
+      <h3 className="stijl-h3">Deze stijl vastleggen</h3>
+      <p className="stijl-p stijl-p-klein">
+        {vast
+          ? `Nu vastgelegd: ${vast.naam}. Dat is wat iedereen ziet, ook je klanten in hun eigen dashboard.`
+          : "Er is nog niets vastgelegd; het dashboard staat op zijn eigen opmaak."}
+        {" "}Vastleggen geldt meteen voor elk scherm en is met één klik weer ongedaan te maken.
+      </p>
+      <div className="stijl-speel-voet">
+        <button
+          type="button" className="btn btn-primary" disabled={bezig || alVast}
+          onClick={() => legVast(isBasis ? null : thema)}
+        >
+          {bezig ? "Bezig…" : alVast ? "Dit staat al vast" : "Leg deze stijl vast voor iedereen"}
+        </button>
+        {vast && (
+          <button type="button" className="btn btn-ghost btn-klein" disabled={bezig} onClick={() => legVast(null)}>
+            Terug naar de standaard
+          </button>
+        )}
+      </div>
+      {fout && <p className="beheer-fout stijl-fout">{fout}</p>}
+
       {open && (
         <pre className="stijl-waardenblok">{
 `accentkleur   ${thema.accent}

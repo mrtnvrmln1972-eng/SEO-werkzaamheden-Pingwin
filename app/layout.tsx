@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import HoverHint from "./_ui/HoverHint";
+import { huisstijlCssGecached } from "../lib/huisstijl";
 
 // Zelfde code, drie werelden: het Vercel-project bepaalt het merk. De NOC-cockpit
 // (project noc-seo-cockpit) krijgt het oog van het Nationaal Oogcentrum als favicon,
@@ -18,7 +19,12 @@ export const metadata: Metadata = {
   icons: { icon: favicon, apple: favicon },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// De vastgelegde huisstijl staat hier en niet in een los stukje op elke pagina:
+// hij moet in de kop staan vóór het eerste beeld, anders zie je een tel lang de
+// oude stijl. Leeg als er niets is vastgelegd, en ook leeg als de database niet
+// bereikbaar is; een stijl mag nooit een scherm tegenhouden.
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const stijl = await huisstijlCssGecached();
   return (
     <html lang="nl">
       <head>
@@ -26,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        {stijl && <style id="huisstijl" dangerouslySetInnerHTML={{ __html: stijl }} />}
       </head>
       <body>
         {children}

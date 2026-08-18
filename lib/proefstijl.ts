@@ -19,14 +19,16 @@
 // twee plekken uitschrijven is precies de fout die in dit project al zeven keer
 // is opgeschreven. Eén bestand, allebei lezen eruit.
 //
-// WAT DIT BEWUST NIET IS
-// ──────────────────────
-// Geen instelling die je aanzet en vergeet. Hij leeft in jouw browser, niet in
-// de database, en een klant of een collega ziet er niets van. Bevalt een
-// richting, dan gaat hij via de code echt live, voor iedereen. Anders zou het
-// dashboard er voor jou anders uitzien dan voor de volgende die inlogt, en dat
-// is precies het probleem dat we net hebben opgelost.
+// EEN PROEF IS NOG GEEN KEUZE
+// ───────────────────────────
+// De proefstand leeft in jouw browser, niet in de database, en een klant of een
+// collega ziet er niets van. Bevalt een richting, dan leg je hem vast met de
+// knop in de speelruimte; dán geldt hij voor iedereen (lib/huisstijl.ts). Dat
+// onderscheid is met opzet: anders zou het dashboard er voor jou anders uitzien
+// dan voor de volgende die inlogt, zonder dat iemand dat besloten heeft.
 // ═══════════════════════════════════════════════════════════
+
+import BASISMATEN from "./stijl-basis.json";
 
 export type Thema = {
   accent: string;
@@ -119,50 +121,86 @@ export function wisProefstijl() {
 }
 
 /**
+ * De som, één keer, zonder scherm eromheen: welke tokens krijgen welke waarde?
+ *
+ * Twee plekken hebben dezelfde uitkomst nodig en ze kunnen niet allebei dezelfde
+ * weg lopen. In de browser worden de uitgangsmaten uit het scherm zélf gelezen
+ * (getComputedStyle), zodat je nooit met andere waarden speelt dan er in de
+ * opmaak staan. Op de server, voor een vastgelegde stijl, bestaat er nog geen
+ * scherm; die geeft de maten uit lib/stijl-basis.json mee. Alleen de herkomst
+ * van die getallen verschilt dus, de som staat hier en nergens anders.
+ */
+export function themaTokens(thema: Thema, basis: (naam: string) => number): Record<string, string> {
+  const uit: Record<string, string> = {
+    "--letter": thema.letter,
+    "--orange": thema.accent,
+    "--accent": thema.accent,
+    "--orange-dark": donkerder(thema.accent, 0.18),
+    "--orange-light": lichter(thema.accent, 0.9),
+    "--brand-orange-faint": lichter(thema.accent, 0.96),
+  };
+
+  for (const naam of GESTUURD.filter((n) => n.startsWith("--s-"))) {
+    const p = basis(naam);
+    if (p > 0) uit[naam] = `${Math.round(p * thema.ruimte)}px`;
+  }
+  for (const naam of GESTUURD.filter((n) => n.startsWith("--fs-"))) {
+    uit[naam] = `${Math.round(basis(naam) * thema.tekst * 2) / 2}px`;
+  }
+  for (const naam of GESTUURD.filter((n) => n.startsWith("--lh-"))) {
+    uit[naam] = `${Math.round(basis(naam) * thema.tekst)}px`;
+  }
+
+  const [klein, knop, kaart] = thema.ronding;
+  uit["--r-sm"] = `${klein}px`;
+  uit["--r-md"] = `${knop}px`;
+  uit["--r-lg"] = `${kaart}px`;
+
+  const d = thema.diepte;
+  uit["--shadow-sm"] = d === 0 ? "none" : `0 1px ${3 * d}px rgba(51, 48, 46, ${0.06 * d})`;
+  uit["--shadow-md"] = d === 0 ? "none"
+    : `0 ${4 * d}px ${16 * d}px rgba(51, 48, 46, ${0.07 * d}), 0 1px 3px rgba(51, 48, 46, ${0.05 * d})`;
+  uit["--shadow-lg"] = d === 0 ? "none"
+    : `0 ${8 * d}px ${24 * d}px rgba(51, 48, 46, ${0.1 * d}), 0 2px 6px rgba(51, 48, 46, ${0.06 * d})`;
+
+  return uit;
+}
+
+/**
  * Pas een stand toe op het hele document.
  *
- * De uitgangsmaten worden uit het scherm zélf gelezen (getComputedStyle), niet
- * uit een kopie in dit bestand. Anders speel je met andere waarden dan er in de
- * opmaak staan zodra iemand een token wijzigt. Daarom wordt eerst alles wat
- * deze functie stuurt weggehaald: anders lees je de vorige proefstand terug en
- * stapelt hij op zichzelf.
+ * Eerst wordt alles wat deze functie stuurt weggehaald: anders lees je de vorige
+ * proefstand terug als uitgangsmaat en stapelt hij op zichzelf. Een inline waarde
+ * op het document wint het van de opmaak, dus een proefstijl gaat ook over een
+ * vastgelegde stijl heen; dat is de bedoeling, je wilt kunnen proberen zonder
+ * eerst iets te moeten losmaken.
  */
 export function pasProefstijlToe(thema: Thema) {
   if (typeof document === "undefined") return;
   const r = document.documentElement;
   wisProefstijl();
 
-  const basis = getComputedStyle(r);
-  const px = (naam: string) => parseFloat(basis.getPropertyValue(naam)) || 0;
+  const gemeten = getComputedStyle(r);
+  const tokens = themaTokens(thema, (naam) => parseFloat(gemeten.getPropertyValue(naam)) || 0);
+  for (const [naam, waarde] of Object.entries(tokens)) r.style.setProperty(naam, waarde);
+}
 
-  r.style.setProperty("--letter", thema.letter);
-  for (const naam of ["--orange", "--accent"]) r.style.setProperty(naam, thema.accent);
-  r.style.setProperty("--orange-dark", donkerder(thema.accent, 0.18));
-  r.style.setProperty("--orange-light", lichter(thema.accent, 0.9));
-  r.style.setProperty("--brand-orange-faint", lichter(thema.accent, 0.96));
-
-  for (const naam of GESTUURD.filter((n) => n.startsWith("--s-"))) {
-    const p = px(naam);
-    if (p > 0) r.style.setProperty(naam, `${Math.round(p * thema.ruimte)}px`);
-  }
-  for (const naam of GESTUURD.filter((n) => n.startsWith("--fs-"))) {
-    r.style.setProperty(naam, `${Math.round(px(naam) * thema.tekst * 2) / 2}px`);
-  }
-  for (const naam of GESTUURD.filter((n) => n.startsWith("--lh-"))) {
-    r.style.setProperty(naam, `${Math.round(px(naam) * thema.tekst)}px`);
-  }
-
-  const [klein, knop, kaart] = thema.ronding;
-  r.style.setProperty("--r-sm", `${klein}px`);
-  r.style.setProperty("--r-md", `${knop}px`);
-  r.style.setProperty("--r-lg", `${kaart}px`);
-
-  const d = thema.diepte;
-  r.style.setProperty("--shadow-sm", d === 0 ? "none" : `0 1px ${3 * d}px rgba(51, 48, 46, ${0.06 * d})`);
-  r.style.setProperty("--shadow-md", d === 0 ? "none"
-    : `0 ${4 * d}px ${16 * d}px rgba(51, 48, 46, ${0.07 * d}), 0 1px 3px rgba(51, 48, 46, ${0.05 * d})`);
-  r.style.setProperty("--shadow-lg", d === 0 ? "none"
-    : `0 ${8 * d}px ${24 * d}px rgba(51, 48, 46, ${0.1 * d}), 0 2px 6px rgba(51, 48, 46, ${0.06 * d})`);
+/**
+ * Dezelfde stand als een blok opmaak, voor in de kop van de pagina.
+ *
+ * Gebruikt door de vastgelegde huisstijl: die moet er staan vóór het eerste
+ * beeld, anders zie je een tel lang de oude stijl en daarna de nieuwe.
+ */
+export function themaNaarCss(thema: Thema): string {
+  const maten = BASISMATEN as Record<string, number>;
+  const tokens = themaTokens(thema, (naam) => maten[naam] ?? 0);
+  const regels = Object.entries(tokens).map(([naam, waarde]) => `${naam}:${waarde}`).join(";");
+  // Twee keer :root, met opzet. De opmaak zet dezelfde tokens ook op :root, en
+  // welke van de twee wint hangt anders af van de volgorde waarin het framework
+  // de opmaak in de kop zet. Dat is niets om op te gokken. Een handmatige stand
+  // in de browser (de proefstijl) wint hier nog steeds van, want die staat op het
+  // element zelf.
+  return `:root:root{${regels}}`;
 }
 
 /** De opgeslagen stand, of null als er geen proef loopt. */

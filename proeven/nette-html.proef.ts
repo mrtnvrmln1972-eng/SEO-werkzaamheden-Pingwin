@@ -109,7 +109,12 @@ const schoonGeworden: string[] = [];
 for (const pad of alleTsx(join(WORTEL, "app"))) {
   const relatief = pad.slice(WORTEL.length + 1);
   const inhoud = readFileSync(pad, "utf8");
-  const aanroepen = inhoud.match(/dangerouslySetInnerHTML=\{\{\s*__html:\s*([A-Za-z_$][\w$]*)/g) || [];
+  // Een <style> of <script> zet geen tekst op het scherm; die gaan over opmaak
+  // en gedrag. De poort gaat over lopende tekst, dus daar hoort dit niet doorheen
+  // (de vastgelegde huisstijl in app/layout.tsx is zo'n <style>). Elke andere
+  // dangerouslySetInnerHTML is nog steeds tekst in beeld en moet door de poort.
+  const zonderOpmaakTags = inhoud.replace(/<(style|script)\b[^>]*>/g, "");
+  const aanroepen = zonderOpmaakTags.match(/dangerouslySetInnerHTML=\{\{\s*__html:\s*([A-Za-z_$][\w$]*)/g) || [];
   if (!aanroepen.length) continue;
   // Een kort hulpje in het bestand zelf mag, zolang het niets anders doet dan de
   // poort aanroepen (bijvoorbeeld `const puntHtml = (t) => netteHtml(t, ...)`).
