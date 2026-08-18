@@ -13,7 +13,7 @@ import Meters from "./Meters";
 import { claudeStand, budgetUitEnv } from "../../../lib/claude-teller";
 // Leesbare namen voor de acties: één lijst, gedeeld met de Claude-teller in de kopbalk.
 import { ACTION_LABEL, actieLabelMetDienst } from "../../../lib/usage-labels";
-import { PijlLinks } from "../../_ui/Pijl";
+import { PijlLinks, Uitklap } from "../../_ui/Pijl";
 
 
 export const dynamic = "force-dynamic";
@@ -382,7 +382,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                         <details key={i}>
                           <summary style={rowGrid}>
                             <div style={{ ...td, display: "flex", alignItems: "center", gap: "var(--s-2)" }}>
-                              <span className="usage-car" style={{ display: "inline-block", transition: "transform 0.15s", color: "var(--accent-warm)", fontSize: "var(--fs-xs)", flex: "0 0 auto" }}>&#9654;</span>
+                              <span className="usage-car" style={{ display: "inline-block", transition: "transform 0.15s", color: "var(--accent-warm)", fontSize: "var(--fs-xs)", flex: "0 0 auto" }}><Uitklap /></span>
                               {nameCell}
                             </div>
                             {cells}

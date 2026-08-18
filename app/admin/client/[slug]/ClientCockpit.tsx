@@ -59,7 +59,7 @@ import Tellers from "../../Tellers";
 import KlantKiezer from "./KlantKiezer";
 import KlussenChip from "./KlussenChip";
 import MeldingenMenu from "../../MeldingenMenu";
-import { PijlRechts } from "../../../_ui/Pijl";
+import { LosVenster, PijlRechts } from "../../../_ui/Pijl";
 import {
   metricLabel, fmtMetric, periodLabel, sanitizeEmail, cleanReplyHtml,
   daysSince, daysAgoLabel, contactColor, fmtDate, fmtDateTime, shortUrl,
@@ -847,7 +847,7 @@ export default function ClientCockpit({
                         <span className="strategy-title">Laatste mails <HelpHint xl title="Laatste mails" text={"De recentste e-mails met deze klant, **live uit de gekoppelde mailbox** (Microsoft 365); je hoeft dus niet te wisselen tussen dashboard en mailprogramma om de context te zien.\n## Wat je ermee kunt\n- **Lezen:** klik een mail aan om hem volledig in het dashboard te lezen.\n- **Zoeken:** doorzoek de correspondentie via het zoekveld, of open dezelfde zoekopdracht direct in Superhuman voor het volledige archief.\n- **Filteren:** via de filterlijst bepaal je welke afzenders hier meetellen, zodat nieuwsbrieven en automatische mails de tijdlijn niet vervuilen.\n- **Los zetten:** met het knopje 'los' zwaait dit venster groot en centraal open, los van de smalle kolom."} /></span>
                         <span className="mails-kop-mini">
                           <span className="afz-link" role="button" title="Los en groot in beeld zetten"
-                            onClick={(e) => { e.stopPropagation(); setShowMailsBox(true); setMailsFloating(true); }}>&#10696; los</span>
+                            onClick={(e) => { e.stopPropagation(); setShowMailsBox(true); setMailsFloating(true); }}><LosVenster /> los</span>
                           <span className="afz-link" role="button" title="Welke afzenders horen bij deze klant? Klik om ze te bekijken of aan te passen."
                             onClick={(e) => { e.stopPropagation(); setShowAfzenders((v) => !v); }}>afzenders ?</span>
                           {mailLive
@@ -870,7 +870,7 @@ export default function ClientCockpit({
                   ) : (
                     <div className="cockpit-card strategy-card">
                       <button type="button" className="strategy-head" onClick={() => setMailsFloating(false)}>
-                        <span className="strategy-caret">&#10696;</span>
+                        <span className="strategy-caret"><LosVenster /></span>
                         <span className="strategy-title">Laatste mails</span>
                         <span className="strategy-meta-right">losgemaakt &middot; klik om terug te zetten</span>
                       </button>

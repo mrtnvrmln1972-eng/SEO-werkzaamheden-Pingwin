@@ -21,6 +21,7 @@
 // zet hem precies terug.
 
 import { useEffect, useRef, useState } from "react";
+import { LosVenster, PijlRechts } from "../../../_ui/Pijl";
 
 type Stand = { los: boolean; breedte: number; hoogte: number; x: number; y: number; vol?: boolean };
 
@@ -148,8 +149,8 @@ export default function ZijPaneel({ label, top = 140, children }: { label: strin
               {stand.vol ? "\u21F2 kleiner" : "\u21F1 groter"}
             </button>
             {stand.los
-              ? <button type="button" className="btn btn-klein" title="Zet het paneel terug tegen de rechterrand" onClick={() => bewaar({ ...stand, los: false })}>&#8677; zijkant</button>
-              : <button type="button" className="btn btn-klein" title="Losmaken: als venster midden op je scherm, te verslepen en te vergroten" onClick={losMaken}>&#10696; losmaken</button>}
+              ? <button type="button" className="btn btn-klein" title="Zet het paneel terug tegen de rechterrand" onClick={() => bewaar({ ...stand, los: false })}><PijlRechts /> zijkant</button>
+              : <button type="button" className="btn btn-klein" title="Losmaken: als venster midden op je scherm, te verslepen en te vergroten" onClick={losMaken}><LosVenster /> losmaken</button>}
             <button type="button" className="wp-icon wp-del" title="Sluiten" onClick={() => setOpen(false)}>×</button>
           </span>
         </div>

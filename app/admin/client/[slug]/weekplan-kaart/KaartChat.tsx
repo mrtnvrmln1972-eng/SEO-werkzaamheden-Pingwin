@@ -12,6 +12,7 @@ import { Icoon, ICOON } from "./fase-iconen";
 import type { KaartChatState } from "./useKaartChat";
 import type { WpTask, WpPageInfo } from "./types";
 import MeegegevenAdvies from "../pagina-chat/MeegegevenAdvies";
+import { PijlSchuin } from "../../../../_ui/Pijl";
 
 export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, ensureDriveMap, refreshBoard, onPaginas }: {
   slug: string; t: WpTask; page?: WpPageInfo; chat: KaartChatState;
@@ -39,7 +40,7 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
         {/* Zelfde pilvorm, direct ernaast: naar deze pagina in Pagina's. */}
         {onPaginas && (
           <button type="button" className="wp-chat-toggle wp-chat-toggle-groot" title="Open de pagina in Pagina's (nieuw tabblad)" onClick={onPaginas}>
-            Pagina&rsquo;s &#8599;
+            Pagina&rsquo;s <PijlSchuin />
           </button>
         )}
         {chatOpen && msgs.length > 0 && (wegVraag === "chat" ? (

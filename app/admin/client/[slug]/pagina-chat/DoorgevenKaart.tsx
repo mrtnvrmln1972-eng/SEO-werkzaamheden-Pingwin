@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../../lib/markdown";
 import HelpHint from "../HelpHint";
+import { Vink } from "../../../../_ui/Pijl";
 
 export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, taskDone, setChatOpen, setErr, onClusterApplied, clusterDone, setClusterDone, clusterItems, setClusterItems, clusterMsg, setClusterMsg, gelieerdeUrls }: {
   slug: string; url: string; siteBase: string; lastAssistant: string;
@@ -108,7 +109,7 @@ export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, tas
             <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef hun advies alvast door.</div>
             {clusterDone > 0 ? (
               <>
-                <button type="button" className="btn btn-klein pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
+                <button type="button" className="btn btn-klein pcd-btn pcd-btn-done" disabled><Vink /> Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
                 {outgoing === null ? (
                   <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-2)" }}>Overzicht laden…</div>
                 ) : outgoing.length === 0 ? null : (
@@ -116,7 +117,7 @@ export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, tas
                     {outgoing.map((it) => (
                       <li key={it.url} className="pch-cluster-item">
                         <div className="pch-cluster-head">
-                          <span style={{ color: "var(--good)", fontWeight: 700 }}>&#10003;</span>
+                          <span style={{ color: "var(--good)", fontWeight: 700 }}><Vink /></span>
                           <span className="pch-cluster-url">{it.url}</span>
                         </div>
                         <div className="pch-cluster-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice, siteBase) }} />

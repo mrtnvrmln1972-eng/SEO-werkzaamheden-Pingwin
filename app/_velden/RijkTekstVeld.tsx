@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { cleanPastedHtml, lijktOpMarkdown, linkifyPlainText } from "../../lib/rich-paste";
 import { mdToHtml } from "../../lib/markdown";
+import { Omlaag, Vink } from "../_ui/Pijl";
 import {
   blokVoorSlepen,
   blokOpHoogte,
@@ -570,8 +571,8 @@ export default function RijkTekstVeld({
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("italic")} title="Cursief (Cmd+I)"><em>I</em></button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegChecklistToe} title="Afvinklijstje: staat er tekst geselecteerd, dan wordt elke regel een eigen vinkpunt">&#9745; vinklijst</button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegUitklapperToe} title="Uitklapper: een onderwerp met een driehoekje, en daaronder alles wat erbij hoort">&#9662; uitklapper</button>
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegChecklistToe} title="Afvinklijstje: staat er tekst geselecteerd, dan wordt elke regel een eigen vinkpunt"><Vink /> vinklijst</button>
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegUitklapperToe} title="Uitklapper: een onderwerp met een driehoekje, en daaronder alles wat erbij hoort"><Omlaag /> uitklapper</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={addLink} title="Link toevoegen (Cmd+K)">&#128279; link</button>
         <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
         {toolbarExtra}

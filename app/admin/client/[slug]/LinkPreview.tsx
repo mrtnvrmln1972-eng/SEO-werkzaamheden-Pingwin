@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { leesHintVertraging } from "../../../_ui/hint-vertraging";
+import { PijlSchuin } from "../../../_ui/Pijl";
 
 // Bouwt een insluitbare preview-URL voor Google-documenten; anders null.
 function googlePreview(url: string): string | null {
@@ -88,7 +89,7 @@ export default function LinkPreview() {
         <div className="link-preview-card">
           <div className="lp-host">{hostOf(state.url)}</div>
           <div className="lp-url">{state.url}</div>
-          <a href={state.url} target="_blank" rel="noreferrer">Openen &#8599;</a>
+          <a href={state.url} target="_blank" rel="noreferrer">Openen <PijlSchuin /></a>
         </div>
       )}
     </div>

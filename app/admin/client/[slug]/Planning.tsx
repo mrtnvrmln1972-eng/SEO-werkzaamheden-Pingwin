@@ -39,6 +39,7 @@ import { useMailDatumLinks } from "./useMailDatumLinks";
 import DatumKiezer, { vandaagIso, langDatum } from "./DatumKiezer";
 import { haalVooraf } from "../../../../lib/vooraf";
 import { STANDEN, standVan, naarOpslag, type Stand } from "../../../../lib/taak-stand";
+import { PijlSchuin } from "../../../_ui/Pijl";
 
 type Taak = {
   notitie?: string;
@@ -540,7 +541,7 @@ export default function Planning({
                 : <span className="wb-taak-vol">{zonderHtml(t.taak)}</span>}
               {t.url && !isKorteTitel(t.taak) && (
                 <a className="wb-pad-mini" href={t.url} target="_blank" rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()} title="Open de pagina">&#8599;</a>
+                  onClick={(e) => e.stopPropagation()} title="Open de pagina"><PijlSchuin /></a>
               )}
               <button type="button" className="wp-titel-pen wb-titel-pen" title="Titel aanpassen"
                 onClick={(e) => {
