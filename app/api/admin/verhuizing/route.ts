@@ -39,11 +39,27 @@ export async function GET(req: NextRequest) {
   // een code, is eigenaar-werk; dat zit in POST hieronder.
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
+  const lijst = await telling(slug);
+
+  // Zelfcontrole: één rij proberen op te halen uit het eerste gevulde soort.
+  // Zonder inhoud, alleen om te weten of het ophalen hier werkt. Anders merk je
+  // een probleem pas halverwege een verhuizing, en dat is het slechtste moment.
+  let leesbaar: { tabel: string; kolommen: number; gelukt: boolean } | null = null;
+  if (lijst.length > 0) {
+    try {
+      const p = await pakket(slug, lijst[0].tabel, 0, 1);
+      leesbaar = { tabel: lijst[0].tabel, kolommen: p.kolommen.length, gelukt: p.rijen.length > 0 };
+    } catch {
+      leesbaar = { tabel: lijst[0].tabel, kolommen: 0, gelukt: false };
+    }
+  }
+
   return NextResponse.json({
     ok: true,
-    telling: await telling(slug),
+    telling: lijst,
     kaart: await klantKaart(slug),
     code: await stand(slug),
+    leesbaar,
   });
 }
 

@@ -6,6 +6,7 @@ import AdminKop from "../AdminKop";
 type Telling = { tabel: string; rijen: number };
 type Kaart = { slug: string; naam: string; domein: string; ahrefsProjectId: string; fase: string; seoProfiel: string };
 type CodeStand = { actief: boolean; slug: string; vervalt: string | null };
+type Leescontrole = { tabel: string; kolommen: number; gelukt: boolean } | null;
 type Regel = { tabel: string; van: number; naar: number; klaar: boolean; fout?: string };
 
 // De tabelnamen uit de database zijn geen taal voor op een scherm. Wat er niet
@@ -53,6 +54,7 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
   const [telling, setTelling] = useState<Telling[] | null>(null);
   const [kaart, setKaart] = useState<Kaart | null>(null);
   const [codeStand, setCodeStand] = useState<CodeStand | null>(null);
+  const [leescontrole, setLeescontrole] = useState<Leescontrole>(null);
   const [nieuweCode, setNieuweCode] = useState("");
   const [doel, setDoel] = useState("https://pingwin-seo-dashboard.vercel.app");
   const [code, setCode] = useState("");
@@ -66,7 +68,7 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
     setLaden(true); setFout(""); setMelding("");
     try {
       const d = await fetch(`/api/admin/verhuizing?slug=${encodeURIComponent(s)}`).then((r) => r.json());
-      if (d?.ok) { setTelling(d.telling as Telling[]); setKaart(d.kaart as Kaart); setCodeStand(d.code as CodeStand); }
+      if (d?.ok) { setTelling(d.telling as Telling[]); setKaart(d.kaart as Kaart); setCodeStand(d.code as CodeStand); setLeescontrole(d.leesbaar as Leescontrole); }
       else setFout(d?.error || "Ophalen mislukte.");
     } catch { setFout("Ophalen mislukte."); }
     finally { setLaden(false); }
@@ -194,6 +196,12 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
                   {totaal} onderdelen, verdeeld over {telling.length} soorten. De klantkaart zelf gaat mee
                   {kaart?.domein ? ` (${kaart.naam}, ${kaart.domein})` : ""}, zonder inlog en zonder bedragen.
                 </p>
+                {leescontrole && !leescontrole.gelukt && (
+                  <p className="beheer-uitleg">
+                    Let op: het uitlezen lukte hier niet in de proefhap. Verhuizen kan dan misgaan; meld dit
+                    voordat je begint.
+                  </p>
+                )}
                 <ul className="beheer-lijst">
                   {telling.map((t) => (
                     <li key={t.tabel}>
