@@ -97,6 +97,12 @@
   --hint-vertraging: 700ms;
 
   /* Shadow-schaal */
+  /* --shadow-xs zit tussen "ligt plat" en "is een kaart" in: een zachte waas
+     zonder dat het ding echt opstaat. Die vorm stond acht keer los in het
+     bestand, telkens net anders opgeschreven (2px/8px, 2px/10px, 1px/4px), en
+     paste op geen van de drie bestaande stappen. Een stap erbij is dan eerlijker
+     dan acht plekken naar de dichtstbijzijnde duwen die het niet is. */
+  --shadow-xs: 0 2px 10px rgba(51, 48, 46, 0.06);
   --shadow-sm: 0 1px 3px rgba(51, 48, 46, 0.06);
   --shadow-md: 0 4px 16px rgba(51, 48, 46, 0.07), 0 1px 3px rgba(51, 48, 46, 0.05);
   --shadow-lg: 0 8px 24px rgba(51, 48, 46, 0.10), 0 2px 6px rgba(51, 48, 46, 0.06);
@@ -204,6 +210,7 @@
 
   /* ── Diepte: hoe ver iets van de pagina af ligt ── */
   --diepte-rust: var(--shadow-sm);     /* ligt bijna plat */
+  --diepte-tussen: var(--shadow-xs);   /* een zachte waas, staat nog niet op */
   --diepte-kaart: var(--shadow-md);    /* een kaart */
   --diepte-zwevend: var(--shadow-lg);  /* een venster of menu erboven */
 
@@ -303,7 +310,7 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: var(--diepte-tussen);
 }
 .header-left { display: flex; align-items: center; gap: var(--ruimte-groep); flex-wrap: wrap; }
 .client-switch {
@@ -423,7 +430,7 @@ body {
 .stat-card {
   background: var(--kleur-kaart); border-radius: var(--ronding-kaart); padding: var(--ruimte-groep) var(--ruimte-groep);
   border: 1px solid var(--kleur-rand-zacht); border-top: 2px solid var(--brand-orange-soft);
-  box-shadow: 0 2px 10px rgba(51,48,46,0.06);
+  box-shadow: var(--diepte-tussen);
 }
 .stat-card.over-budget { border-top-color: var(--kleur-fout); background: var(--kleur-fout-vlak); }
 .stat-card.over-budget .stat-value { color: var(--kleur-fout); }
@@ -437,7 +444,7 @@ body {
 /* Progress bar */
 .progress-wrap {
   background: var(--kleur-kaart); border-radius: var(--ronding-kaart); padding: var(--ruimte-groep) var(--ruimte-groep);
-  margin-bottom: var(--s-6); border: 1px solid var(--kleur-rand-zacht); box-shadow: 0 2px 10px rgba(51,48,46,0.06);
+  margin-bottom: var(--s-6); border: 1px solid var(--kleur-rand-zacht); box-shadow: var(--diepte-tussen);
 }
 .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--ruimte-regel); }
 .progress-title { font-size: var(--type-bijschrift); font-weight: 700; color: var(--dark); }
@@ -448,7 +455,7 @@ body {
   border-radius: var(--ronding-klein); transition: width 0.6s ease;
 }
 /* Werkzaamheden-tabel in het klantdashboard in een nette box. */
-.dashboard-tasks { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-kaart); box-shadow: 0 2px 10px rgba(51,48,46,0.06); padding: var(--ruimte-naast) var(--ruimte-naast) var(--ruimte-krap); }
+.dashboard-tasks { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-kaart); box-shadow: var(--diepte-tussen); padding: var(--ruimte-naast) var(--ruimte-naast) var(--ruimte-krap); }
 
 /* Task table */
 .section-title {
@@ -461,7 +468,7 @@ body {
 }
 .task-table-wrap {
   background: var(--kleur-kaart); border-radius: var(--ronding-knop); overflow: visible;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: var(--s-8);
+  box-shadow: var(--diepte-rust); margin-bottom: var(--s-8);
 }
 /* In het klantdashboard zit de tabel al in de .dashboard-tasks box: geen dubbele rand/schaduw. */
 .dashboard-tasks .task-table-wrap { box-shadow: none; margin-bottom: 0; border-radius: var(--ronding-knop); }
@@ -1093,7 +1100,7 @@ tbody td:last-child { text-align: center; }
 .dev-day-head { font-size: var(--type-bijschrift); font-weight: 700; color: var(--dark); padding: var(--ruimte-naast) var(--ruimte-naast); border-bottom: 1px solid var(--kleur-rand); display: flex; flex-direction: column; line-height: 1.2; }
 .dev-day-head span { font-weight: 500; color: var(--kleur-tekst-stil); font-size: var(--type-label); }
 .dev-day-body { flex: 1 1 auto; padding: var(--ruimte-naast); display: flex; flex-direction: column; gap: var(--ruimte-naast); }
-.dev-task-card { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-left: 3px solid var(--kleur-accent); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.dev-task-card { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-left: 3px solid var(--kleur-accent); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); box-shadow: var(--diepte-rust); }
 .dev-task-card:active { cursor: grabbing; }
 .dev-task-top { display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-krap); margin-bottom: var(--ruimte-krap); }
 .dev-task-client { font-size: var(--type-label); font-weight: 700; color: var(--kleur-accent-diep); text-transform: uppercase; letter-spacing: 0.3px; }
@@ -1233,7 +1240,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .pages-detail-label { font-size: var(--type-bijschrift); font-weight: 700; color: var(--dark); display: block; margin-bottom: var(--ruimte-krap); }
 /* Plan-kaart: zelfde ontwerp als de chat- en vervolgstappen-kaart (rand + gekleurde
    linkerrand + oranje titelkop met toggle), zodat alle stappen voor de pagina eenduidig zijn. */
-.pages-plan-card { border: 1px solid var(--kleur-rand); border-left: 3px solid var(--kleur-accent); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); background: var(--kleur-accent-waas); box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 1040px; }
+.pages-plan-card { border: 1px solid var(--kleur-rand); border-left: 3px solid var(--kleur-accent); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); background: var(--kleur-accent-waas); box-shadow: var(--diepte-rust); max-width: 1040px; }
 .pages-plan-card-head { display: flex; align-items: center; gap: var(--ruimte-naast); cursor: pointer; }
 .pages-plan-card-title { font-size: var(--type-bijschrift); font-weight: 700; color: var(--kleur-accent-diep); }
 .pages-plan-card-body { margin-top: var(--ruimte-regel); }
@@ -1284,7 +1291,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .profile-note { margin-top: var(--ruimte-naast); padding: var(--ruimte-naast) var(--ruimte-regel); border-radius: var(--ronding-klein); background: var(--kleur-fout-vlak); border: 1px solid var(--kleur-fout); color: var(--kleur-fout); font-weight: 700; font-size: var(--type-bijschrift); }
 .profile-gen-buttons { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-naast); margin: var(--ruimte-naast) 0; }
 /* De drie delen van het klantprofiel: netjes gerenderde kaarten met titel + accent. */
-.profile-part { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); padding: var(--ruimte-regel) var(--ruimte-groep); margin-top: var(--ruimte-regel); box-shadow: 0 2px 10px rgba(51,48,46,0.05); }
+.profile-part { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); padding: var(--ruimte-regel) var(--ruimte-groep); margin-top: var(--ruimte-regel); box-shadow: var(--diepte-tussen); }
 .profile-part.acc-teal { border-left: 4px solid var(--brand-teal); }
 .profile-part.acc-blue { border-left: 4px solid var(--brand-blue); }
 .profile-part.acc-taupe { border-left: 4px solid var(--brand-taupe); }
@@ -1318,7 +1325,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
    blauwe kaart; de vervolgstappen en het vraagveld staan eronder, in de oranje
    paginakaart. */
 .page-chat-wrap { margin-top: var(--s-6); }
-.page-chat { border: 1px solid var(--kleur-rand); border-left: 3px solid var(--brand-blue); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); background: var(--brand-blue-light); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.page-chat { border: 1px solid var(--kleur-rand); border-left: 3px solid var(--brand-blue); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); background: var(--brand-blue-light); box-shadow: var(--diepte-rust); }
 .page-chat-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-naast); font-size: var(--type-bijschrift); font-weight: 700; color: var(--dark); margin-bottom: var(--ruimte-naast); }
 .page-chat-history { margin-bottom: 0; }
 .page-chat-history-head { font-size: var(--type-bijschrift); font-weight: 600; color: var(--kleur-tekst-stil); margin-bottom: var(--ruimte-krap); }
@@ -1344,7 +1351,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .page-chat-msg { font-size: var(--type-bijschrift); line-height: 1.5; }
 .page-chat-msg.user { align-self: flex-end; background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); padding: var(--ruimte-naast) var(--ruimte-regel); border-radius: var(--ronding-knop); white-space: pre-wrap; max-width: 80%; }
 /* Assistent-antwoord als net opgemaakt rapport, links uitgelijnd */
-.page-chat-msg.assistant { align-self: stretch; width: 100%; background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); color: var(--dark); box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: left; }
+.page-chat-msg.assistant { align-self: stretch; width: 100%; background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); color: var(--dark); box-shadow: var(--diepte-rust); text-align: left; }
 .page-chat-msg.assistant.muted { background: none; border: none; box-shadow: none; padding: var(--ruimte-krap) var(--ruimte-krap); }
 /* Bericht-regel met bewerk/verwijder-knoppen (verschijnen bij hover) */
 .pch-msg-wrap { position: relative; }
@@ -1482,7 +1489,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .page-chat-tools { margin: var(--ruimte-groep) 0 var(--ruimte-regel); display: flex; gap: var(--ruimte-regel); flex-wrap: wrap; }
 /* Documenten-blok: één sturingsveld + de drie geketende stappen */
 /* De chat-output + vastleggen/mail als één kaart, zodat duidelijk is wat bij elkaar hoort. */
-.pch-card { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--ruimte-groep); margin: 0 0 var(--ruimte-groep); background: var(--kleur-kaart); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.pch-card { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--ruimte-groep); margin: 0 0 var(--ruimte-groep); background: var(--kleur-kaart); box-shadow: var(--diepte-rust); }
 .pch-card-chat { border-left: 3px solid var(--brand-blue); }
 .page-chat-docs { margin: var(--ruimte-groep) 0; border: 1px solid var(--kleur-rand); border-left: 3px solid var(--brand-taupe); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); background: var(--brand-taupe-light); }
 /* Cannibalisatie: zin links, knop rechts, in een eigen kaart. */
@@ -1600,7 +1607,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .pchf-input:focus { border-color: var(--kleur-rand-accent); }
 /* Cluster-advies doorgeven aan betrokken pagina's: eigen kaart, blauw accent. */
 /* Eigen kaart voor "doorgeven aan gelieerde pagina's" (stap tussen chat en vervolgstappen). */
-.page-chat-cluster-card { margin: var(--ruimte-groep) 0; border: 1px solid var(--kleur-rand); border-left: 3px solid var(--brand-salmon); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); background: var(--kleur-fout-vlak); box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 1040px; }
+.page-chat-cluster-card { margin: var(--ruimte-groep) 0; border: 1px solid var(--kleur-rand); border-left: 3px solid var(--brand-salmon); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); background: var(--kleur-fout-vlak); box-shadow: var(--diepte-rust); max-width: 1040px; }
 .page-chat-cluster { margin: 0; }
 /* Nog uit te werken stappen: neutraal grijs (signaleert 'komt nog'). */
 .page-chat-links-card, .page-chat-schema-card { margin: var(--ruimte-groep) 0; border: 1px solid var(--kleur-rand); border-left: 3px solid #b8b2ab; border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); background: var(--kleur-rustig); max-width: 1040px; }
@@ -1642,7 +1649,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .pcd-docs-head { font-size: var(--type-bijschrift); font-weight: 700; color: var(--kleur-tekst-stil); margin-bottom: var(--ruimte-naast); }
 /* ═══ Pijplijn-stapkaarten: witte kaart, gekleurde nummer-badge (Pingwin-palet),
    drop shadow, hover-lift, gelijke hoogte. Elke stap een eigen accentkleur. ═══ */
-.step-card { position: relative; background: var(--kleur-kaart) !important; border: 1px solid var(--kleur-rand-zacht) !important; border-left: 5px solid var(--sc, var(--kleur-accent)) !important; border-radius: var(--ronding-kaart) !important; padding: 0 !important; box-shadow: 0 2px 7px rgba(51,48,46,0.06); transition: box-shadow .2s ease, transform .2s ease; margin: var(--ruimte-regel) 0; max-width: none !important; width: 100%; }
+.step-card { position: relative; background: var(--kleur-kaart) !important; border: 1px solid var(--kleur-rand-zacht) !important; border-left: 5px solid var(--sc, var(--kleur-accent)) !important; border-radius: var(--ronding-kaart) !important; padding: 0 !important; box-shadow: var(--diepte-tussen); transition: box-shadow .2s ease, transform .2s ease; margin: var(--ruimte-regel) 0; max-width: none !important; width: 100%; }
 .step-card:hover { box-shadow: 0 12px 28px rgba(51,48,46,0.15); transform: translateY(-3px); }
 .step-card.done { border-left-color: #2E9E5B; }
 .step-head { display: flex; align-items: center; gap: var(--ruimte-regel); padding: var(--ruimte-groep) var(--s-5); cursor: pointer; }
@@ -1765,7 +1772,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
   border: 1px solid var(--kleur-rand-zacht); box-shadow: var(--diepte-kaart);
   transition: box-shadow .18s ease, transform .18s ease;
 }
-.cockpit-card:hover { box-shadow: 0 8px 24px rgba(51,48,46,0.10), 0 2px 6px rgba(51,48,46,0.06); }
+.cockpit-card:hover { box-shadow: var(--diepte-zwevend); }
 /* Kleuraccenten per soort card: een gekleurde linkerrand + subtiele bovenlijn. */
 .cockpit-card.acc-orange { border-left: 4px solid var(--kleur-accent); }
 .cockpit-card.acc-teal { border-left: 4px solid var(--brand-teal); }
@@ -1970,7 +1977,7 @@ button.ck-collapse-head {
   border: 1px solid var(--kleur-rand-zacht); border-left: 3px solid var(--kleur-accent);
   border-radius: var(--ronding-knop); background: var(--kleur-kaart); overflow: hidden;
 }
-.email-row.open { border-left-color: var(--kleur-accent-diep); box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+.email-row.open { border-left-color: var(--kleur-accent-diep); box-shadow: var(--diepte-tussen); }
 .email-head { display: flex; align-items: flex-start; gap: var(--ruimte-regel); padding: var(--ruimte-regel) var(--ruimte-groep); cursor: pointer; transition: background 0.12s; }
 .email-head:hover { background: var(--kleur-accent-vlak); }
 .email-head-main { min-width: 0; flex: 1 1 auto; }
@@ -2595,7 +2602,7 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .focus-save-status { font-size: var(--type-label); color: var(--kleur-tekst-stil); align-self: center; margin-left: auto; }
 .focus-loading { background: var(--light) !important; border-color: var(--kleur-rand) !important; animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%,100% { opacity:0.5 } 50% { opacity:1 } }
-.sov-tasks { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-regel) var(--ruimte-groep); background: var(--kleur-kaart); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.sov-tasks { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-regel) var(--ruimte-groep); background: var(--kleur-kaart); box-shadow: var(--diepte-rust); }
 .sov-tasks-head { font-weight: 700; font-size: var(--type-bijschrift); text-transform: uppercase; letter-spacing: 0.3px; color: var(--dark); margin-bottom: var(--ruimte-naast); }
 .sov-sub { font-weight: 500; font-size: var(--type-label); text-transform: none; letter-spacing: 0; color: var(--kleur-tekst-stil); }
 .sov-tasks-list { margin: 0; padding-left: var(--ruimte-groep); }
@@ -2644,7 +2651,7 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .wz-detail-grid { display: grid; grid-template-columns: 1fr 2fr; gap: var(--s-5); align-items: start; margin-top: var(--ruimte-naast); }
 @media (max-width: 900px) { .wz-detail-grid { grid-template-columns: 1fr; } }
 /* De twee helften als nette sub-kaarten met accent + titel. */
-.wz-detail-card { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--ruimte-groep); box-shadow: 0 2px 10px rgba(51,48,46,0.06); }
+.wz-detail-card { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--ruimte-groep); box-shadow: var(--diepte-tussen); }
 .wz-detail-card.acc-taupe { border-left: 4px solid var(--brand-taupe); }
 .wz-detail-card.acc-teal { border-left: 4px solid var(--brand-teal); }
 .wz-detail-card-title { font-size: var(--type-bijschrift); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--kleur-accent-diep); margin-bottom: var(--ruimte-regel); padding-bottom: var(--ruimte-naast); border-bottom: 2px solid var(--brand-teal-light); }
@@ -3228,7 +3235,7 @@ button.org-sec-kop:hover { color: var(--kleur-accent-diep); }
 
 /* Mooie, rustige opmaak van de bird's eye-antwoorden: als card, met gekleurde
    koppen, nette bullets en gekleurde links (Pingwin-stijl). */
-.ovc-msg.assistant .ovc-bubble.chat-md { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); max-width: 100%; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03); }
+.ovc-msg.assistant .ovc-bubble.chat-md { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); max-width: 100%; box-shadow: var(--diepte-rust); }
 .ovc-bubble.chat-md { font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--dark); }
 /* Begrensde leesbreedte: lange lopende tekst leest niet prettig over de volle
    breedte. Tabellen mogen wél de volle breedte pakken (die hebben kolommen). */

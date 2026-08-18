@@ -71,7 +71,28 @@ const tokens = [...root.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g)]
   .map((m) => ({ naam: m[1], rgb: rgb(m[2])! }))
   .filter((t) => t.rgb !== null);
 
-const rest = css.slice(0, rootStart) + css.slice(rootEind);
+// ── Waar er gezocht wordt ──
+// Standaard alleen de opmaak. Met --schermen worden de losse kleuren in de
+// schermen zelf gedaan (een inline `style={{ borderColor: "#f1e9db" }}`), want
+// die staan buiten de opmaak en bewegen dus nergens in mee. Bewust dezelfde
+// weegschaal en dezelfde drempel: het is dezelfde ingreep, alleen in een ander
+// soort bestand.
+const inSchermen = process.argv.includes("--schermen");
+
+function alleTsx(map: string): string[] {
+  const uit: string[] = [];
+  for (const naam of fs.readdirSync(map, { withFileTypes: true })) {
+    const pad = path.join(map, naam.name);
+    if (naam.isDirectory()) uit.push(...alleTsx(pad));
+    else if (naam.name.endsWith(".tsx")) uit.push(pad);
+  }
+  return uit;
+}
+
+const bestanden = inSchermen ? alleTsx(path.join(WORTEL, "app")) : [];
+const rest = inSchermen
+  ? bestanden.map((p) => fs.readFileSync(p, "utf8")).join("\n")
+  : css.slice(0, rootStart) + css.slice(rootEind);
 const losseKleuren = [...new Set([...rest.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0]))];
 
 type Samen = { van: string; naar: string; afstand: number; aantal: number };
@@ -116,13 +137,21 @@ if (!doen) {
 
 // Alleen buiten :root vervangen; de tokens zelf houden hun eigen waarde.
 const vervangen = new Map(samen.map((s) => [s.van.toLowerCase(), s.naar]));
-const voor = css.slice(0, rootStart);
-const na = css.slice(rootEind);
 const doeHet = (stuk: string) =>
   stuk.replace(/#[0-9a-fA-F]{3,8}\b/g, (h) => {
     const naar = vervangen.get(h.toLowerCase());
     return naar ? `var(${naar})` : h;
   });
 
-fs.writeFileSync(BESTAND, doeHet(voor) + css.slice(rootStart, rootEind) + doeHet(na));
-console.log(`\napp/globals.css bijgewerkt: ${plekken} plekken.\n`);
+if (inSchermen) {
+  let geraakt = 0;
+  for (const pad of bestanden) {
+    const oud = fs.readFileSync(pad, "utf8");
+    const nieuw = doeHet(oud);
+    if (nieuw !== oud) { fs.writeFileSync(pad, nieuw); geraakt++; }
+  }
+  console.log(`\n${geraakt} scherm(en) bijgewerkt: ${plekken} plekken.\n`);
+} else {
+  fs.writeFileSync(BESTAND, doeHet(css.slice(0, rootStart)) + css.slice(rootStart, rootEind) + doeHet(css.slice(rootEind)));
+  console.log(`\napp/globals.css bijgewerkt: ${plekken} plekken.\n`);
+}

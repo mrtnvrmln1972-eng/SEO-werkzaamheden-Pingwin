@@ -527,7 +527,7 @@ export default function ClientCockpit({
   return (
     <>
       {switchingTo && (
-        <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 10001, background: "var(--dark, #33302e)", color: "var(--white)", borderRadius: "var(--r-full)", padding: "var(--s-2) var(--s-5)", fontSize: "var(--fs-sm)", fontWeight: 600, boxShadow: "var(--shadow-lg)", display: "flex", alignItems: "center", gap: "var(--s-2)" }}>
+        <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 10001, background: "var(--dark, var(--kleur-kop))", color: "var(--white)", borderRadius: "var(--r-full)", padding: "var(--s-2) var(--s-5)", fontSize: "var(--fs-sm)", fontWeight: 600, boxShadow: "var(--shadow-lg)", display: "flex", alignItems: "center", gap: "var(--s-2)" }}>
           <span style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
           {switchingTo} laden…
         </div>

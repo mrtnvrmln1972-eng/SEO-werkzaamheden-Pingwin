@@ -92,6 +92,12 @@ export const BLOKKEN: Uitklapper[] = [
         "\"terug naar de standaard\" staat alles weer zoals het was. Dat is met opzet zo: een keuze die " +
         "een bouw nodig heeft, wordt niet gemaakt op het moment dat je hem maakt, en een ander bureau dat " +
         "dit dashboard straks gebruikt kan niet bij de code.\n\n" +
+        "De eerste keuze is inmiddels gemaakt, en die was: het blijft eruitzien zoals het nu is. Dat " +
+        "klinkt als niets doen, maar het verzet het werk van \"hoe wordt het\" naar \"geldt het overal\". " +
+        "Want een stijl die maar op driekwart van de plekken aankomt, is geen stijl. Elke ronde daarna " +
+        "gaat over dat laatste kwart: schaduwen die net anders waren opgeschreven, kleurcodes die " +
+        "rechtstreeks in een scherm stonden in plaats van via een naam. Die bewegen nergens in mee, dus " +
+        "die blijven staan waar ze staan zodra er ooit wél iets verandert.\n\n" +
         "Waarom dat scherm er nu al is en niet pas als alles klopt: zodra alles uit de schalen leest, is een " +
         "ander ontwerp kiezen niets meer dan die schalen veranderen, en zie je op dezelfde plek in één blik " +
         "wat dat met alle bouwstenen tegelijk doet. Het strak trekken en de speelruimte bouwen zijn niet " +

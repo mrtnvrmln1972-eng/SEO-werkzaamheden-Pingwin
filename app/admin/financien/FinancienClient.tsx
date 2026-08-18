@@ -24,8 +24,8 @@ const STATE_LABEL: Record<string, string> = {
 };
 
 const card: React.CSSProperties = { border: "1px solid #eadfce", borderRadius: 12, background: "#fff", padding: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.04)", marginBottom: 18 };
-const rowBtn: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", padding: "9px 4px", cursor: "pointer", fontSize: 14, color: "#1f2937", textAlign: "left", borderBottom: "1px solid #f1e9db" };
-const caret: React.CSSProperties = { width: 14, color: "#d97316", flex: "0 0 auto", fontSize: 12 };
+const rowBtn: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", padding: "9px 4px", cursor: "pointer", fontSize: 14, color: "#1f2937", textAlign: "left", borderBottom: "1px solid var(--kleur-rand-zacht)" };
+const caret: React.CSSProperties = { width: 14, color: "var(--accent-warm)", flex: "0 0 auto", fontSize: 12 };
 const amountRight: React.CSSProperties = { marginLeft: "auto", fontVariantNumeric: "tabular-nums", fontWeight: 600 };
 
 type Props = {
@@ -140,7 +140,7 @@ function PostDetail({ type, ledgerId, period }: { type: "revenue" | "cost"; ledg
             {open[key] && (
               <div style={{ padding: "var(--s-1) 0 var(--s-2) var(--s-6)" }}>
                 {c.invoices.map((inv) => (
-                  <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: "var(--s-3)", padding: "var(--s-2) var(--s-1)", fontSize: "var(--fs-sm)", borderBottom: "1px dashed #f1e9db" }}>
+                  <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: "var(--s-3)", padding: "var(--s-2) var(--s-1)", fontSize: "var(--fs-sm)", borderBottom: "1px dashed var(--kleur-rand-zacht)" }}>
                     <a href={inv.url} target="_blank" rel="noreferrer" style={{ color: "var(--link)", textDecoration: "underline", textUnderlineOffset: 2 }}>
                       {inv.label}
                     </a>
@@ -208,7 +208,7 @@ function FinanceChat() {
           {messages.map((m, i) => (
             m.role === "user"
               ? <div key={i} style={{ background: "var(--orange-light)", border: "1px solid #f0d9c8", borderRadius: "var(--r-md)", padding: "var(--s-2) var(--s-3)", margin: "var(--s-2) 0 var(--s-2) 15%", fontSize: "var(--fs-base)" }}>{m.content}</div>
-              : <div key={i} className="md" style={{ border: "1px solid #f1e9db", borderRadius: "var(--r-md)", padding: "var(--s-3) var(--s-4)", margin: "var(--s-2) 15% var(--s-2) 0", fontSize: "var(--fs-base)" }} dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
+              : <div key={i} className="md" style={{ border: "1px solid var(--kleur-rand-zacht)", borderRadius: "var(--r-md)", padding: "var(--s-3) var(--s-4)", margin: "var(--s-2) 15% var(--s-2) 0", fontSize: "var(--fs-base)" }} dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
           ))}
           {busy && <div style={{ color: "var(--label-muted)", fontSize: "var(--fs-sm)", padding: "var(--s-2) var(--s-1)" }}>Aan het rekenen…</div>}
           <div ref={endRef} />
@@ -318,7 +318,7 @@ function Abonnementen() {
               {openRow[r.contactName] && (
                 <div style={{ padding: "var(--s-1) 0 var(--s-2) var(--s-6)", fontSize: "var(--fs-sm)" }}>
                   {r.history.map((h) => (
-                    <div key={h.month} style={{ display: "flex", gap: "var(--s-3)", padding: "var(--s-1) var(--s-1)", borderBottom: "1px dashed #f1e9db" }}>
+                    <div key={h.month} style={{ display: "flex", gap: "var(--s-3)", padding: "var(--s-1) var(--s-1)", borderBottom: "1px dashed var(--kleur-rand-zacht)" }}>
                       <span style={{ color: "var(--label-muted)" }}>{MONTH_NAMES[Number(h.month.slice(4, 6)) - 1]} {h.month.slice(0, 4)}</span>
                       <span style={{ ...amountRight, fontWeight: 500 }}>{euro(h.value)}</span>
                     </div>

@@ -1,12 +1,12 @@
 {
   "css": {
-    "regels": 8646,
+    "regels": 8653,
     "stijlregels": 4425,
     "classnamen": 2937
   },
   "kleuren": {
-    "verschillend": 168,
-    "benoemd": 42,
+    "verschillend": 158,
+    "benoemd": 43,
     "los": [
       {
         "waarde": "#1c7a3f",
@@ -26,10 +26,6 @@
       },
       {
         "waarde": "#8a5a00",
-        "aantal": 7
-      },
-      {
-        "waarde": "rgba(0,0,0,0.06)",
         "aantal": 7
       },
       {
@@ -53,10 +49,6 @@
         "aantal": 6
       },
       {
-        "waarde": "rgba(51,48,46,0.06)",
-        "aantal": 6
-      },
-      {
         "waarde": "#1b7f3b",
         "aantal": 5
       },
@@ -70,14 +62,6 @@
       },
       {
         "waarde": "#c93f16",
-        "aantal": 5
-      },
-      {
-        "waarde": "#f1e9db",
-        "aantal": 5
-      },
-      {
-        "waarde": "rgba(0,0,0,0.05)",
         "aantal": 5
       },
       {
@@ -121,10 +105,6 @@
         "aantal": 3
       },
       {
-        "waarde": "#33302e",
-        "aantal": 3
-      },
-      {
         "waarde": "#3b4a9e",
         "aantal": 3
       },
@@ -142,6 +122,10 @@
       },
       {
         "waarde": "#c3b9ae",
+        "aantal": 3
+      },
+      {
+        "waarde": "rgba(0,0,0,0.06)",
         "aantal": 3
       },
       {
@@ -353,10 +337,6 @@
         "aantal": 1
       },
       {
-        "waarde": "#8a6a3e",
-        "aantal": 1
-      },
-      {
         "waarde": "#8a8a8a",
         "aantal": 1
       },
@@ -449,10 +429,6 @@
         "aantal": 1
       },
       {
-        "waarde": "#d97316",
-        "aantal": 1
-      },
-      {
         "waarde": "#d9930d",
         "aantal": 1
       },
@@ -514,14 +490,6 @@
       },
       {
         "waarde": "#fff3c4",
-        "aantal": 1
-      },
-      {
-        "waarde": "rgba(0, 0, 0, 0.03)",
-        "aantal": 1
-      },
-      {
-        "waarde": "rgba(0,0,0,0.04)",
         "aantal": 1
       },
       {
@@ -665,14 +633,6 @@
         "aantal": 1
       },
       {
-        "waarde": "rgba(51,48,46,0.05)",
-        "aantal": 1
-      },
-      {
-        "waarde": "rgba(51,48,46,0.10)",
-        "aantal": 1
-      },
-      {
         "waarde": "rgba(51,48,46,0.15)",
         "aantal": 1
       },
@@ -715,20 +675,12 @@
     ]
   },
   "schaduwen": {
-    "verschillend": 45,
-    "benoemd": 3,
+    "verschillend": 34,
+    "benoemd": 4,
     "los": [
       {
         "waarde": "0 0 0 3px rgba(231, 119, 63, 0.15)",
         "aantal": 6
-      },
-      {
-        "waarde": "0 1px 3px rgba(0,0,0,0.05)",
-        "aantal": 5
-      },
-      {
-        "waarde": "0 2px 10px rgba(51,48,46,0.06)",
-        "aantal": 4
       },
       {
         "waarde": "0 0 0 3px rgba(231, 119, 63, 0.12)",
@@ -807,30 +759,6 @@
         "aantal": 1
       },
       {
-        "waarde": "0 1px 3px rgba(0,0,0,0.04)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 1px 3px rgba(0,0,0,0.06)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 1px 4px rgba(0, 0, 0, 0.03)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 1px 4px rgba(0,0,0,0.06)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 2px 10px rgba(0,0,0,0.06)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 2px 10px rgba(51,48,46,0.05)",
-        "aantal": 1
-      },
-      {
         "waarde": "0 2px 4px rgba(51, 48, 46, 0.05), 0 20px 40px -10px rgba(231, 119, 63, 0.22)",
         "aantal": 1
       },
@@ -840,14 +768,6 @@
       },
       {
         "waarde": "0 2px 6px rgba(51,48,46,0.25)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 2px 7px rgba(51,48,46,0.06)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 2px 8px rgba(0,0,0,0.06)",
         "aantal": 1
       },
       {
@@ -884,10 +804,6 @@
       },
       {
         "waarde": "0 8px 24px rgba(0,0,0,0.16)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 8px 24px rgba(51,48,46,0.10), 0 2px 6px rgba(51,48,46,0.06)",
         "aantal": 1
       },
       {
@@ -1272,18 +1188,18 @@
   ],
   "inline": {
     "totaal": 621,
-    "metVasteWaarde": 50,
+    "metVasteWaarde": 47,
     "perBestand": [
       {
         "bestand": "app/admin/financien/page.tsx",
         "aantal": 10
       },
       {
-        "bestand": "app/admin/usage/page.tsx",
-        "aantal": 8
+        "bestand": "app/admin/developer/DeveloperOverview.tsx",
+        "aantal": 6
       },
       {
-        "bestand": "app/admin/developer/DeveloperOverview.tsx",
+        "bestand": "app/admin/usage/page.tsx",
         "aantal": 6
       },
       {
@@ -1303,10 +1219,6 @@
         "aantal": 2
       },
       {
-        "bestand": "app/admin/client/[slug]/ClientCockpit.tsx",
-        "aantal": 2
-      },
-      {
         "bestand": "app/admin/client/[slug]/pagina-chat/AfwijsVenster.tsx",
         "aantal": 2
       },
@@ -1320,6 +1232,10 @@
       },
       {
         "bestand": "app/admin/beheer/BeheerClient.tsx",
+        "aantal": 1
+      },
+      {
+        "bestand": "app/admin/client/[slug]/ClientCockpit.tsx",
         "aantal": 1
       },
       {
@@ -1606,6 +1522,10 @@
       "waarde": "700ms"
     },
     {
+      "naam": "--shadow-xs",
+      "waarde": "0 2px 10px rgba(51, 48, 46, 0.06)"
+    },
+    {
       "naam": "--shadow-sm",
       "waarde": "0 1px 3px rgba(51, 48, 46, 0.06)"
     },
@@ -1814,6 +1734,10 @@
       "waarde": "var(--shadow-sm)"
     },
     {
+      "naam": "--diepte-tussen",
+      "waarde": "var(--shadow-xs)"
+    },
+    {
       "naam": "--diepte-kaart",
       "waarde": "var(--shadow-md)"
     },
@@ -1863,13 +1787,6 @@
       "stapel": "anders"
     },
     {
-      "waarde": "rgba(0,0,0,0.06)",
-      "aantal": 7,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
       "waarde": "#2e9e5b",
       "aantal": 6,
       "dichtst": "--good",
@@ -1905,13 +1822,6 @@
       "stapel": "doorzichtig"
     },
     {
-      "waarde": "rgba(51,48,46,0.06)",
-      "aantal": 6,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
       "waarde": "#1b7f3b",
       "aantal": 5,
       "dichtst": "--good",
@@ -1938,20 +1848,6 @@
       "dichtst": "--danger",
       "afstand": 37,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#f1e9db",
-      "aantal": 5,
-      "dichtst": "--card-border",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "rgba(0,0,0,0.05)",
-      "aantal": 5,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
     },
     {
       "waarde": "rgba(231, 119, 63, 0.10)",
@@ -2024,13 +1920,6 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#33302e",
-      "aantal": 3,
-      "dichtst": "--brand-charcoal",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#3b4a9e",
       "aantal": 3,
       "dichtst": "--text-secondary",
@@ -2064,6 +1953,13 @@
       "dichtst": "--grad-perzik",
       "afstand": 113,
       "stapel": "anders"
+    },
+    {
+      "waarde": "rgba(0,0,0,0.06)",
+      "aantal": 3,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
     },
     {
       "waarde": "rgba(0,0,0,0.16)",
@@ -2430,13 +2326,6 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#8a6a3e",
-      "aantal": 1,
-      "dichtst": "--label-muted",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#8a8a8a",
       "aantal": 1,
       "dichtst": "--brand-taupe",
@@ -2598,13 +2487,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#d97316",
-      "aantal": 1,
-      "dichtst": "--accent-warm",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#d9930d",
       "aantal": 1,
       "dichtst": "--accent-warm",
@@ -2715,20 +2597,6 @@
       "dichtst": "--brand-orange-soft",
       "afstand": 40,
       "stapel": "familie"
-    },
-    {
-      "waarde": "rgba(0, 0, 0, 0.03)",
-      "aantal": 1,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(0,0,0,0.04)",
-      "aantal": 1,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
     },
     {
       "waarde": "rgba(0,0,0,0.08)",
@@ -2970,20 +2838,6 @@
     },
     {
       "waarde": "rgba(51, 48, 46, 0.45)",
-      "aantal": 1,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(51,48,46,0.05)",
-      "aantal": 1,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(51,48,46,0.10)",
       "aantal": 1,
       "dichtst": null,
       "afstand": 0,
@@ -3306,6 +3160,11 @@
         "groep": "Diepte"
       },
       {
+        "naam": "--diepte-tussen",
+        "wijstNaar": "var(--shadow-xs)",
+        "groep": "Diepte"
+      },
+      {
         "naam": "--diepte-kaart",
         "wijstNaar": "var(--shadow-md)",
         "groep": "Diepte"
@@ -3317,7 +3176,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8275,
+    "gebruik": 8293,
     "schaalGebruik": 1421
   }
 }

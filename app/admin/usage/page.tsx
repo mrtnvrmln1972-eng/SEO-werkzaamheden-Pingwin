@@ -62,7 +62,7 @@ function Hint({ text }: { text: string }) {
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: 16, height: 16, borderRadius: "50%", background: "#eadfce",
-        color: "#8a6a3e", fontSize: 11, fontWeight: 700, cursor: "help",
+        color: "var(--label-muted)", fontSize: 11, fontWeight: 700, cursor: "help",
         marginLeft: 6, verticalAlign: "text-bottom", flex: "0 0 auto",
       }}
     >
@@ -161,12 +161,12 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   // koptekst moet dus wit zijn. Nooit laten omvallen: nowrap op koppen en cijfers.
   const th: React.CSSProperties = { textAlign: "left", padding: "8px 12px", fontSize: 12, color: "#fff", fontWeight: 700, whiteSpace: "nowrap" };
   const thNum: React.CSSProperties = { ...th, textAlign: "right" };
-  const td: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid #f1e9db", fontSize: 13.5 };
+  const td: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid var(--kleur-rand-zacht)", fontSize: 13.5 };
   const tdNowrap: React.CSSProperties = { ...td, whiteSpace: "nowrap" };
   const numTd: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
-  const tileLabel: React.CSSProperties = { fontSize: 11.5, color: "#8a6a3e", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, display: "flex", alignItems: "center" };
-  const blockTitle: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: "#33302e", margin: 0, display: "flex", alignItems: "center" };
-  const blockSub: React.CSSProperties = { fontSize: 13, color: "#5b6472", margin: "4px 0 14px", lineHeight: 1.5 };
+  const tileLabel: React.CSSProperties = { fontSize: 11.5, color: "var(--label-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, display: "flex", alignItems: "center" };
+  const blockTitle: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: "var(--kleur-kop)", margin: 0, display: "flex", alignItems: "center" };
+  const blockSub: React.CSSProperties = { fontSize: 13, color: "var(--text-secondary)", margin: "4px 0 14px", lineHeight: 1.5 };
 
   return (
     <>
@@ -185,7 +185,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 href={`/admin/usage?period=${p.key}`}
                 style={{
                   padding: "var(--s-1) var(--s-3)", borderRadius: "var(--r-full)", fontSize: "var(--fs-sm)", textDecoration: "none",
-                  border: "1px solid " + (p.key === period ? "#d97316" : "#eadfce"),
+                  border: "1px solid " + (p.key === period ? "var(--accent-warm)" : "#eadfce"),
                   background: p.key === period ? "var(--accent-warm)" : "var(--white)",
                   color: p.key === period ? "var(--white)" : "var(--text-secondary)",
                 }}
@@ -249,7 +249,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 {ahrefsTotals ? `${num(ahrefsTotals.calls)} aanroepen in deze periode` : "in deze periode"}
               </div>
               {ahrefsSub && ahrefsSub.used !== null && (
-                <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)", marginTop: "var(--s-2)", borderTop: "1px solid #f1e9db", paddingTop: "var(--s-2)", display: "flex", alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontSize: "var(--fs-sm)", color: "var(--text-secondary)", marginTop: "var(--s-2)", borderTop: "1px solid var(--kleur-rand-zacht)", paddingTop: "var(--s-2)", display: "flex", alignItems: "center", flexWrap: "wrap" }}>
                   Abonnement: {num(ahrefsSub.used)}{ahrefsSub.limit !== null ? ` van ${num(ahrefsSub.limit)}` : ""} units gebruikt
                   {ahrefsTeller.dagenTotReset !== null && (
                     <>&nbsp;&middot;&nbsp;{ahrefsTeller.dagenTotReset === 0 ? "gaat vandaag op nul" : `nog ${ahrefsTeller.dagenTotReset} dagen`}</>
@@ -278,7 +278,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
                   <thead>
-                    <tr style={{ background: "var(--dark, #33302e)" }}>
+                    <tr style={{ background: "var(--dark, var(--kleur-kop))" }}>
                       <th style={th}>Klant</th>
                       <th style={thNum}>AI</th>
                       <th style={thNum}>Ahrefs</th>
@@ -325,7 +325,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 .usage-cl summary { list-style: none; cursor: pointer; }
                 .usage-cl summary::-webkit-details-marker { display: none; }
                 .usage-cl details[open] .usage-car { transform: rotate(90deg); }
-                .usage-cl summary:hover { background: #fdf6ec; }
+                .usage-cl summary:hover { background: var(--kleur-accent-vlak); }
               `}</style>
               <h2 style={blockTitle}>
                 1. Per klant
@@ -344,7 +344,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 return (
                   <div>
                     {/* Kopregel in dezelfde stijl als de tabelkoppen elders. */}
-                    <div style={{ ...rowGrid, background: "var(--dark, #33302e)", borderRadius: "var(--r-md) var(--r-md) 0 0" }}>
+                    <div style={{ ...rowGrid, background: "var(--dark, var(--kleur-kop))", borderRadius: "var(--r-md) var(--r-md) 0 0" }}>
                       <div style={th}>Klant</div>
                       <div style={th}>Dienst</div>
                       <div style={thNum}>Aanroepen</div>
@@ -387,7 +387,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                             {cells}
                           </summary>
                           {/* Uitsplitsing: welke functies veroorzaken dit bedrag. */}
-                          <div style={{ background: "var(--orange-light)", borderBottom: "1px solid #f1e9db", padding: "var(--s-1) 0 var(--s-2)" }}>
+                          <div style={{ background: "var(--orange-light)", borderBottom: "1px solid var(--kleur-rand-zacht)", padding: "var(--s-1) 0 var(--s-2)" }}>
                             {breakdown.map((b, j) => (
                               <div key={j} style={rowGrid}>
                                 <div style={{ ...td, borderBottom: "none", paddingLeft: "var(--s-8)", color: "var(--text-secondary)" }}>{b.action ? (ACTION_LABEL[b.action] || b.action) : "onbekend"}</div>

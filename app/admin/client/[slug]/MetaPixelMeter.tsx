@@ -5,10 +5,10 @@ import { metaPixelInfo, type MetaKind } from "@/lib/meta-rules";
 // Live pixel-meter voor een meta-title of meta-description: balk + oordeel,
 // exact dezelfde meting als de server (lib/meta-rules.ts is de enige bron).
 const STATUS_STYLE: Record<string, { bar: string; text: string; woord: string }> = {
-  ok: { bar: "#2e9e5b", text: "#2e7d32", woord: "past" },
+  ok: { bar: "#2e9e5b", text: "var(--kleur-goed)", woord: "past" },
   bijna: { bar: "#f0a020", text: "#b26a00", woord: "past, bijna vol" },
   kort: { bar: "#f0a020", text: "#b26a00", woord: "te kort, ruimte over" },
-  over: { bar: "#d64545", text: "#c62828", woord: "te lang, wordt afgekapt" },
+  over: { bar: "#d64545", text: "var(--bad)", woord: "te lang, wordt afgekapt" },
 };
 
 export default function MetaPixelMeter({ kind, text }: { kind: MetaKind; text: string }) {

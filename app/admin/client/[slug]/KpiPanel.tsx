@@ -74,7 +74,7 @@ function trendOf(cur: number, prev: number, invert?: boolean): "good" | "bad" | 
 // zodat de lijn daalt als het slechter wordt. Zo sluit de grafiek aan op het %-getal.
 function PeriodCompare({ prev, cur, fmt, invert }: { prev: number; cur: number; fmt: (v: number) => string; invert?: boolean }) {
   const t = trendOf(cur, prev, invert);
-  const color = t === "flat" ? "#9e9e9e" : t === "good" ? "#2E7D32" : "#C62828";
+  const color = t === "flat" ? "#9e9e9e" : t === "good" ? "var(--kleur-goed)" : "var(--bad)";
   const w = 96, h = 30, pad = 6;
   const min = Math.min(prev, cur), max = Math.max(prev, cur), range = max - min || 1;
   const y = (v: number) => { const norm = (v - min) / range; return pad + (invert ? norm : 1 - norm) * (h - 2 * pad); };
@@ -129,7 +129,7 @@ function CardTrend({ label, values, dates, prev, cur, fmt, invert, isPos, period
   // Kleur volgt de periodevergelijking (deze periode vs. vorige), zodat de kleur klopt
   // met het %-getal: klikken 100 → 106 is groen, ook al eindigt de dagreeks lager.
   const pt = trendOf(cur, prev, invert);
-  const color = pt === "flat" ? "#9e9e9e" : pt === "good" ? "#2E7D32" : "#C62828";
+  const color = pt === "flat" ? "#9e9e9e" : pt === "good" ? "var(--kleur-goed)" : "var(--bad)";
   const dShort = (d: string) => { try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return d; } };
   const hv = hover != null ? pts[hover] : null;
   const mid = Math.floor((pts.length - 1) / 2);

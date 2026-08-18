@@ -57,10 +57,10 @@ type KansRow = {
 // Waarom staat deze pagina in de lijst? Het verschil telt: "laat klikken liggen"
 // is een kans, "is stuk" is een gebrek, en dat vraagt een ander gesprek.
 const REDEN_LABEL: Record<Reden, { txt: string; bg: string; fg: string; uitleg: string }> = {
-  klikwinst: { txt: "klikwinst", bg: "#fff3e6", fg: "#b25a00", uitleg: "Wordt goed gevonden, maar krijgt te weinig klikken voor zijn positie." },
-  kapot: { txt: "meta niet in orde", bg: "#fdeaea", fg: "#c62828", uitleg: "De meta ontbreekt of valt buiten de regels (lengte, pijp, vierkante haken)." },
-  goed: { txt: "staat al goed", bg: "#eef6ef", fg: "#2e7d32", uitleg: "Niets aan de hand; staat hier zodat je ziet dat de pagina bekeken is." },
-  onbekend: { txt: "nog niet gemeten", bg: "#f2f2f2", fg: "#777", uitleg: "Deze pagina is nog niet gelezen, dus we weten niet of zijn meta deugt. Druk op \u201cMeet de pagina\u2019s\u201d." },
+  klikwinst: { txt: "klikwinst", bg: "var(--kleur-let-op-vlak)", fg: "var(--kleur-let-op)", uitleg: "Wordt goed gevonden, maar krijgt te weinig klikken voor zijn positie." },
+  kapot: { txt: "meta niet in orde", bg: "var(--kleur-fout-vlak)", fg: "var(--bad)", uitleg: "De meta ontbreekt of valt buiten de regels (lengte, pijp, vierkante haken)." },
+  goed: { txt: "staat al goed", bg: "var(--kleur-goed-vlak)", fg: "var(--kleur-goed)", uitleg: "Niets aan de hand; staat hier zodat je ziet dat de pagina bekeken is." },
+  onbekend: { txt: "nog niet gemeten", bg: "var(--kleur-rustig)", fg: "#777", uitleg: "Deze pagina is nog niet gelezen, dus we weten niet of zijn meta deugt. Druk op \u201cMeet de pagina\u2019s\u201d." },
 };
 
 function pad(url: string): string {
@@ -74,10 +74,10 @@ function adminUrl(url: string): string {
 }
 
 const STATUS_LABEL: Record<string, { txt: string; bg: string; fg: string }> = {
-  open: { txt: "voorstel klaar", bg: "#fff3e6", fg: "#b25a00" },
-  goedgekeurd: { txt: "goedgekeurd, wacht op site", bg: "#e8f1fb", fg: "#1a5da6" },
-  doorgevoerd: { txt: "live", bg: "#ecf7ee", fg: "#2e7d32" },
-  afgewezen: { txt: "afgewezen", bg: "#f2f2f2", fg: "#777" },
+  open: { txt: "voorstel klaar", bg: "var(--kleur-let-op-vlak)", fg: "var(--kleur-let-op)" },
+  goedgekeurd: { txt: "goedgekeurd, wacht op site", bg: "var(--brand-blue-light)", fg: "#1a5da6" },
+  doorgevoerd: { txt: "live", bg: "var(--kleur-goed-vlak)", fg: "var(--kleur-goed)" },
+  afgewezen: { txt: "afgewezen", bg: "var(--kleur-rustig)", fg: "#777" },
 };
 
 // Vast herkenningspunt per rij, zodat een ander scherm hierheen kan scrollen.
