@@ -8435,7 +8435,7 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
    hij eruitziet, want "13px wordt 12,5px" is een getal waar je niets aan hebt. */
 .stijl-afrond { display: flex; flex-direction: column; gap: var(--ruimte-krap); }
 .stijl-afrondregel {
-  display: grid; grid-template-columns: 88px 150px 130px 44px 1fr;
+  display: grid; grid-template-columns: 88px minmax(0, 1fr) 128px 44px minmax(0, 1.3fr);
   align-items: center; gap: var(--ruimte-regel);
   padding: var(--ruimte-krap) var(--s-0); border-bottom: 1px solid var(--kleur-rand-zacht);
 }
@@ -8444,7 +8444,11 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700;
   color: var(--kleur-accent-diep);
 }
-.stijl-afrond-proef { display: flex; align-items: center; gap: var(--ruimte-naast); }
+.stijl-afrond-proef {
+  display: flex; align-items: center; gap: var(--ruimte-naast);
+  min-width: 0; overflow: hidden;
+}
+.stijl-afrond-tekst { white-space: nowrap; }
 .stijl-afrond-pijl {
   font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
 }
