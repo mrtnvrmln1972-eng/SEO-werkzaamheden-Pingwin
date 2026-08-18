@@ -77,6 +77,15 @@ export const BLOKKEN: Uitklapper[] = [
       "**Op het scherm.** Bij elk gegeven in de kennisbank staat van wanneer het is en waar het vandaan " +
       "komt. Op een taakkaart is de keuze bij structured-data-documenten verdwenen: die bestanden zijn " +
       "het archief, de kennisbank is wat geldt, en de regel linkt daarheen.\n\n" +
+      "**Ook het formulier Bedrijfsgegevens beweegt mee.** De regel hierboven gold eerst alleen in de " +
+      "kennisbank; het formulier ernaast werd alleen aangevuld waar het leeg was. Dan klopt het maar half: " +
+      "stuurt de klant nieuwe openingstijden, dan neemt de kennisbank die over en blijft in het formulier " +
+      "de oude tijd staan. Nu vervangt een gegeven uit de kennisbank ook een ingevulde waarde, mits het " +
+      "aantoonbaar nieuwer is dan de laatste keer dat het formulier is opgeslagen. Met andere woorden: wat " +
+      "jij zelf invult wint, tot er materiaal komt van ná jouw wijziging. Wat er vervangen is, staat na " +
+      "afloop op het scherm, met de datum erbij, want dit gebeurt zonder dat je erom vraagt. Eén " +
+      "beperking, eerlijk gezegd: het formulier houdt één datum bij voor het geheel, niet per veld, dus " +
+      "een keer opslaan zet die grens voor alle velden opnieuw.\n\n" +
       "**Een aanlevering landt op de bestaande regel, niet ernaast.** Een schermafdruk met de " +
       "openingstijden van tien vestigingen noemt per vestiging alleen de naam en de tijden, verder " +
       "niets. Een vestiging wordt normaal herkend aan postcode plus huisnummer, dus zo'n aanlevering " +

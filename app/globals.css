@@ -3643,6 +3643,13 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .kb-botsingen { border-left: 3px solid var(--kleur-accent); border-radius: var(--ronding-klein); background: var(--kleur-let-op-vlak);
   padding: var(--ruimte-naast) var(--ruimte-regel); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
   color: var(--kleur-tekst); display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+/* En het omgekeerde: wat het dashboard zelf heeft vervangen omdat het nieuwer
+   was. Groen, want hier is iets bijgewerkt; oranje hierboven is "hier is iets
+   níet overgenomen". Twee verschillende boodschappen, dus twee vormen. */
+.kb-vervangen { border-left: 3px solid var(--kleur-goed); border-radius: var(--ronding-klein); background: var(--kleur-goed-vlak);
+  padding: var(--ruimte-naast) var(--ruimte-regel); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
+  color: var(--kleur-tekst); display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+.kb-vervangen ul { margin: 0; padding-left: var(--ruimte-groep); display: flex; flex-direction: column; gap: var(--ruimte-krap); }
 .kb-botsingen ul { margin: 0; padding-left: var(--ruimte-groep); display: flex; flex-direction: column; gap: var(--ruimte-krap); }
 @media (max-width: 620px) { .kb-veld { grid-template-columns: 1fr; gap: 0; } }
 

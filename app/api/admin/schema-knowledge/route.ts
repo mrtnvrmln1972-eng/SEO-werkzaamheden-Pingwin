@@ -139,12 +139,12 @@ export async function POST(req: NextRequest) {
       if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: 500 });
       // Meteen doorzetten naar de bedrijfsgegevens: de kennisbank is geen
       // eindstation, de velden in het formulier moeten gevuld raken.
-      const toegepast = await applyKnowledgeToOrg(slug).catch(() => ({ gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 }));
+      const toegepast = await applyKnowledgeToOrg(slug).catch(() => ({ gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0, vervangen: [] as string[] }));
       return NextResponse.json({ ok: true, verwerkt: r.verwerkt, botsingen: r.botsingen || [], ...toegepast });
     }
     if (action === "verwerkAlles") {
       const r = await confirmAllKnowledge(slug);
-      const toegepast = await applyKnowledgeToOrg(slug).catch(() => ({ gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 }));
+      const toegepast = await applyKnowledgeToOrg(slug).catch(() => ({ gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0, vervangen: [] as string[] }));
       return NextResponse.json({ ok: true, ...r, ...toegepast });
     }
     if (action === "toepassen") {

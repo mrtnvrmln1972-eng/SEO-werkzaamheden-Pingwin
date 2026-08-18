@@ -44,6 +44,10 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
   // omdat de datum ontbrak. Dit hoort in beeld: het dashboard beslist zelf, en
   // dan moet zichtbaar zijn waar het niet zeker van was.
   const [botsingen, setBotsingen] = useState<string[]>([]);
+  // En het omgekeerde: wat het dashboard wél zelf heeft vervangen omdat het
+  // materiaal nieuwer was dan het formulier. Dat gebeurt zonder dat je erom
+  // vraagt, dus je hoort te zien wát er veranderd is en waarom.
+  const [vervangen, setVervangen] = useState<string[]>([]);
   const [plakVeld, setPlakVeld] = useState("");
   const [bezigMet, setBezigMet] = useState("");
   const [dropOpen, setDropOpen] = useState(false);
@@ -114,7 +118,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: actie, slug, id }) }).then((r) => r.json());
       if (d?.ok) {
-        if (actie === "verwerk") { setOkMsg(melding(d)); setBotsingen(d.botsingen || []); onVerwerkt?.(); }
+        if (actie === "verwerk") { setOkMsg(melding(d)); setBotsingen(d.botsingen || []); setVervangen(d.vervangen || []); onVerwerkt?.(); }
         void laad();
       }
       else setFout(d?.error || "Dat lukte niet.");
@@ -127,7 +131,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
     setBusy("alles"); setFout(""); setOkMsg("");
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verwerkAlles", slug }) }).then((r) => r.json());
-      if (d?.ok) { setOkMsg(`${d.voorstellen || 0} aanleveringen verwerkt. ${melding(d)}`); setBotsingen(d.botsingen || []); onVerwerkt?.(); void laad(); }
+      if (d?.ok) { setOkMsg(`${d.voorstellen || 0} aanleveringen verwerkt. ${melding(d)}`); setBotsingen(d.botsingen || []); setVervangen(d.vervangen || []); onVerwerkt?.(); void laad(); }
       else setFout(d?.error || "Dat lukte niet.");
     } catch { setFout("Dat lukte niet; probeer het nog een keer."); }
     finally { setBusy(""); }
@@ -144,6 +148,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
           d.nieuweArtsen ? `${d.nieuweArtsen} arts${d.nieuweArtsen === 1 ? "" : "en"}` : "",
         ].filter(Boolean).join(" en ");
         const schoon = d.opgeruimd ? ` ${d.opgeruimd} dubbele regel${d.opgeruimd === 1 ? "" : "s"} samengevoegd.` : "";
+        setVervangen(d.vervangen || []);
         setOkMsg((d.gevuld
           ? `De bedrijfsgegevens hierboven zijn bijgewerkt${extra ? ` met ${extra}` : ""}. Wat nog ontbreekt staat daar in het rood.`
           : entiteiten.length === 0
@@ -363,6 +368,13 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
         </div>
       ))}
       {okMsg && <div className="wp-doc-ok">{okMsg}</div>}
+      {vervangen.length > 0 && (
+        <div className="kb-vervangen">
+          <strong>Bijgewerkt met nieuwer materiaal ({vervangen.length}):</strong>
+          <ul>{vervangen.map((r, i) => <li key={i}>{r}</li>)}</ul>
+          <span className="muted">Deze velden stonden al ingevuld en zijn vervangen omdat het aangeleverde materiaal van ná je laatste wijziging is. Klopt er iets niet, pas het dan hierboven aan; wat jij zelf invult wint weer.</span>
+        </div>
+      )}
       {botsingen.length > 0 && (
         <div className="kb-botsingen">
           <strong>Niet overgenomen, want ouder of zonder datum ({botsingen.length}):</strong>

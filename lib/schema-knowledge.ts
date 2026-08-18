@@ -5,6 +5,12 @@ import { getClientBySlug } from "./clients";
 import { ontbrekendeVelden, identiteit, magOpNaamKoppelen, naamKaal, isEchteVestiging, LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
 export { identiteit, isEchteVestiging } from "./org-vereist";
 import { callClaude } from "./anthropic";
+import { normaliseerVelden, sleutel } from "./veld-namen";
+import { entiteitenUitJsonLd, type AangeleverdeEntiteit } from "./json-ld-kennis";
+// Deze twee stonden hier eerder zelf; ze zijn verhuisd omdat de JSON-LD-lezer ze
+// ook nodig heeft. Doorgeven zodat alles wat hierop importeerde blijft werken.
+export { normaliseerVelden } from "./veld-namen";
+export { entiteitenUitJsonLd } from "./json-ld-kennis";
 import { GEEN_DATUM, isNieuwerDan, leesbaar, type BronDatum, type DatumBron } from "./bron-datum";
 
 // ═══════════════════════════════════════════════════════════
@@ -36,70 +42,12 @@ export type KennisEntiteit = {
 };
 export type KennisVoorstel = {
   id: number; bron: string; samenvatting: string;
-  entiteiten: { categorie: string; naam: string; velden: Record<string, string>; oordeel: "nieuw" | "aanvulling" | "ouder" }[];
+  entiteiten: AangeleverdeEntiteit[];
   /** Van wanneer dit aangeleverde materiaal zelf is, en hoe we dat weten. */
   inhoudDatum: string;
   datumBron: DatumBron;
   datumUitleg: string;
 };
-
-// ─── Veldnamen gelijktrekken (weergave-laag, dus ook voor bestaande gegevens) ───
-// Aangeleverd materiaal noemt hetzelfde ding elke keer anders: "adres", "straat",
-// "bezoekadres", "vestigingsadres", of "openingstijden", "openingsuren", "tijden".
-// Zonder gelijktrekken staat een locatie mét adres tóch als "adres ontbreekt" in
-// het rode lijstje. Daarom vertalen we elke veldnaam naar één vaste naam, en doen
-// we dat bij het uitlezen: bestaande entiteiten profiteren er direct van.
-const VELD_ALIASSEN: Record<string, string> = {
-  adres: "adres", straat: "adres", straatnaam: "adres", straatenhuisnummer: "adres", bezoekadres: "adres",
-  vestigingsadres: "adres", locatieadres: "adres", praktijkadres: "adres", address: "adres", streetaddress: "adres", street: "adres",
-  postcode: "postcode", postalcode: "postcode", zipcode: "postcode", zip: "postcode",
-  plaats: "plaats", stad: "plaats", woonplaats: "plaats", vestigingsplaats: "plaats", city: "plaats", locality: "plaats",
-  telefoon: "telefoon", telefoonnummer: "telefoon", tel: "telefoon", telnr: "telefoon", phone: "telefoon", telephone: "telefoon",
-  email: "email", emailadres: "email", mail: "email", mailadres: "email",
-  openingstijden: "openingstijden", openingstijd: "openingstijden", openingsuren: "openingstijden", openingsdagen: "openingstijden",
-  tijden: "openingstijden", bereikbaarheid: "openingstijden", spreekuur: "openingstijden", spreekuren: "openingstijden",
-  openinghours: "openingstijden", openinghoursspecification: "openingstijden",
-  big: "big", bignummer: "big", bignr: "big", bigregistratie: "big", bigregistratienummer: "big",
-  linkedin: "linkedin", linkedinurl: "linkedin", linkedinprofiel: "linkedin",
-  profielurl: "profielUrl", profiel: "profielUrl", profielpagina: "profielUrl", website: "profielUrl",
-  webpagina: "profielUrl", url: "profielUrl", link: "profielUrl", pagina: "profielUrl",
-  functie: "functie", rol: "functie", titel: "functie", beroep: "functie",
-  specialisatie: "specialisatie", specialisme: "specialisatie", specialisaties: "specialisatie",
-  specialismen: "specialisatie", aandachtsgebied: "specialisatie", expertise: "specialisatie",
-  omschrijving: "omschrijving", beschrijving: "omschrijving", description: "omschrijving", toelichting: "omschrijving",
-  howperformed: "omschrijving", uitvoering: "omschrijving", werkwijze: "omschrijving",
-  foto: "foto", fotourl: "foto", afbeelding: "foto", image: "foto", photo: "foto",
-  kvk: "kvk", kvknummer: "kvk", btw: "btw", btwnummer: "btw", btwid: "btw",
-  logo: "logo", logourl: "logo", oprichtingsjaar: "oprichtingsjaar", opgericht: "oprichtingsjaar",
-  maps: "mapsUrl", mapsurl: "mapsUrl", googlemaps: "mapsUrl", googlebusiness: "mapsUrl", googlemapslink: "mapsUrl",
-};
-
-function canoniek(naam: string): string {
-  const kaal = String(naam || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-  return VELD_ALIASSEN[kaal] || String(naam || "").trim();
-}
-
-// Velden gelijktrekken en losse adresdelen samenvoegen tot één "adres".
-export function normaliseerVelden(velden: Record<string, string>): Record<string, string> {
-  const uit: Record<string, string> = {};
-  const los: Record<string, string> = {};
-  for (const [k, v] of Object.entries(velden || {})) {
-    const waarde = String(v ?? "").trim();
-    if (!waarde) continue;
-    const c = canoniek(k);
-    // Een los "straat"-veld is een adresdeel; samen met postcode en plaats vormt
-    // dat het volledige adres, maar het blijft ook als eigen veld bewaard.
-    if (/^(straat|straatnaam|street|streetaddress)$/i.test(k.replace(/[^a-z]/gi, ""))) los.straat = waarde;
-    if (c === "postcode") los.postcode = waarde;
-    if (c === "plaats") los.plaats = waarde;
-    if (uit[c] && uit[c] !== waarde) { if (!uit[c].includes(waarde)) uit[c] = `${uit[c]}, ${waarde}`; }
-    else uit[c] = waarde;
-  }
-  if (!uit.adres && (los.straat || los.plaats)) {
-    uit.adres = [los.straat, [los.postcode, los.plaats].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-  }
-  return uit;
-}
 
 // De identiteits-helpers (wanneer is iets hetzelfde gegeven) staan in
 // lib/org-vereist.ts, zodat zowel de kennisbank als het automatisch ophalen
@@ -296,194 +244,6 @@ export async function getOpenProposals(slug: string): Promise<KennisVoorstel[]> 
     datumBron: ((r.datum_bron as string) || "onbekend") as DatumBron,
     datumUitleg: (r.datum_uitleg as string) || GEEN_DATUM.uitleg,
   }));
-}
-
-// ─── Een JSON-LD-bestand exact inlezen (geen AI) ───
-// Een aangeleverd schema-bestand ÍS al gestructureerde data. Dat door een model
-// laten samenvatten is niet alleen verspilling, het verliest ook gegevens: juist
-// de geneste stukken (sameAs-lijst, BIG-nummer in identifier, adres, tijden per
-// dag) sneuvelden. Daarom lezen we zo'n bestand regel voor regel uit; wat erin
-// staat komt erin, niets meer en niets minder.
-
-type LdNode = Record<string, unknown>;
-const DAG_KORT: Record<string, string> = {
-  monday: "ma", tuesday: "di", wednesday: "wo", thursday: "do", friday: "vr", saturday: "za", sunday: "zo",
-};
-const DAG_VOLGORDE = ["ma", "di", "wo", "do", "vr", "za", "zo"];
-
-function ldTypes(n: LdNode): string[] {
-  const t = n["@type"];
-  return (Array.isArray(t) ? t : [t]).map((x) => String(x || "")).filter(Boolean);
-}
-function ldTekst(v: unknown): string {
-  if (v == null) return "";
-  if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v).trim();
-  if (Array.isArray(v)) return v.map(ldTekst).filter(Boolean).join(", ");
-  const o = v as LdNode;
-  return String(o.name || o.url || o.value || o.telephone || o.email || "").trim();
-}
-function ldUrls(v: unknown): string[] {
-  return ldTekst(v).split(/[\s,;]+/).filter((s) => /^https?:\/\//i.test(s));
-}
-// identifier: {propertyID: "BIG-register", value: "…"} → de waarde bij een label.
-function ldIdentifier(n: LdNode, zoek: RegExp): string {
-  const lijst = Array.isArray(n.identifier) ? n.identifier : n.identifier ? [n.identifier] : [];
-  for (const i of lijst as LdNode[]) {
-    if (i && typeof i === "object" && zoek.test(String(i.propertyID || i.name || ""))) return ldTekst(i.value);
-  }
-  return "";
-}
-function ldAdres(n: LdNode): { adres: string; postcode: string; plaats: string } {
-  const a = (n.address && typeof n.address === "object" ? n.address : {}) as LdNode;
-  return { adres: ldTekst(a.streetAddress), postcode: ldTekst(a.postalCode), plaats: ldTekst(a.addressLocality) };
-}
-// openingHoursSpecification → leesbare regel, opeenvolgende gelijke dagen samen:
-// "ma 12:00-20:00, di t/m vr 09:00-17:00, za 09:00-12:00".
-function ldOpeningstijden(n: LdNode): string {
-  const spec = Array.isArray(n.openingHoursSpecification) ? n.openingHoursSpecification : n.openingHoursSpecification ? [n.openingHoursSpecification] : [];
-  const perDag = new Map<string, string>();
-  for (const s of spec as LdNode[]) {
-    const dagen = Array.isArray(s.dayOfWeek) ? s.dayOfWeek : [s.dayOfWeek];
-    const tijd = `${ldTekst(s.opens)}-${ldTekst(s.closes)}`;
-    if (tijd === "-") continue;
-    for (const d of dagen) {
-      const kort = DAG_KORT[String(d || "").toLowerCase().replace(/^https?:\/\/schema\.org\//, "").toLowerCase()];
-      if (kort) perDag.set(kort, tijd);
-    }
-  }
-  if (!perDag.size) return ldTekst(n.openingHours);
-  const stukken: string[] = [];
-  let start = "", vorige = "", tijd = "";
-  for (const dag of DAG_VOLGORDE) {
-    const t = perDag.get(dag);
-    if (t && t === tijd) { vorige = dag; continue; }
-    if (start) stukken.push(vorige && vorige !== start ? `${start} t/m ${vorige} ${tijd}` : `${start} ${tijd}`);
-    start = t ? dag : ""; vorige = t ? dag : ""; tijd = t || "";
-  }
-  if (start) stukken.push(vorige && vorige !== start ? `${start} t/m ${vorige} ${tijd}` : `${start} ${tijd}`);
-  return stukken.join(", ");
-}
-
-function schoon(velden: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(velden).filter(([, v]) => String(v || "").trim()));
-}
-
-export function entiteitenUitJsonLd(tekst: string): { samenvatting: string; entiteiten: KennisVoorstel["entiteiten"] } | null {
-  let data: unknown;
-  try { data = JSON.parse(tekst); } catch { return null; }
-  const wortel = (Array.isArray(data) ? data : [data]) as LdNode[];
-  const nodes: LdNode[] = [];
-  for (const w of wortel) {
-    if (!w || typeof w !== "object") continue;
-    const graph = w["@graph"];
-    if (Array.isArray(graph)) nodes.push(...(graph as LdNode[]));
-    else nodes.push(w);
-  }
-  if (!nodes.length || !nodes.some((n) => ldTypes(n).length)) return null;
-
-  const entiteiten: KennisVoorstel["entiteiten"] = [];
-  const tel = { organisatie: 0, persoon: 0, locatie: 0, dienst: 0 };
-  for (const n of nodes) {
-    const types = ldTypes(n);
-    const naam = ldTekst(n.name);
-    if (!naam || types.includes("WebSite")) continue;
-    const isPersoon = types.some((t) => /^(Person|Physician|MedicalDoctor|Nurse)$/i.test(t));
-    const isBedrijf = types.some((t) => /(Organization|Clinic|LocalBusiness|Hospital|Store|Dentist|Pharmacy)/i.test(t));
-    const isDienst = types.some((t) => /(Procedure|Service|Product|Offer|MedicalTest|MedicalTherapy)/i.test(t));
-    const adres = ldAdres(n);
-    const contact = (n.contactPoint && typeof n.contactPoint === "object" ? n.contactPoint : {}) as LdNode;
-
-    if (isPersoon) {
-      const links = ldUrls(n.sameAs);
-      const werkt = (Array.isArray(n.affiliation) ? n.affiliation : n.affiliation ? [n.affiliation] : []) as LdNode[];
-      entiteiten.push({
-        categorie: "persoon", naam, oordeel: "nieuw",
-        velden: schoon({
-          functie: ldTekst(n.jobTitle),
-          specialisatie: ldTekst(n.medicalSpecialty),
-          big: ldIdentifier(n, /BIG/i),
-          linkedin: links.find((u) => /linkedin/i.test(u)) || "",
-          profielUrl: links.find((u) => !/linkedin/i.test(u)) || links[0] || "",
-          foto: ldTekst(n.image),
-          vestigingen: werkt.map((a) => ldTekst(a.name)).filter(Boolean).join(", "),
-        }),
-      });
-      tel.persoon++;
-    } else if (isBedrijf && adres.adres) {
-      // Een bedrijfsnode MÉT adres is een vestiging.
-      entiteiten.push({
-        categorie: "locatie", naam, oordeel: "nieuw",
-        velden: schoon({
-          adres: adres.adres, postcode: adres.postcode, plaats: adres.plaats,
-          telefoon: ldTekst(n.telephone) || ldTekst(contact.telephone),
-          email: ldTekst(n.email) || ldTekst(contact.email),
-          openingstijden: ldOpeningstijden(n),
-          profielUrl: ldTekst(n.url), omschrijving: ldTekst(n.description),
-        }),
-      });
-      tel.locatie++;
-    } else if (isBedrijf) {
-      // Zonder adres: de overkoepelende organisatie (of een verzamelnode).
-      const socials = [...ldUrls(n.sameAs)];
-      entiteiten.push({
-        categorie: "organisatie", naam, oordeel: "nieuw",
-        velden: schoon({
-          bedrijfstype: types.some((t) => /Medical|Clinic|Hospital|Dentist|Pharmacy/i.test(t)) ? "kliniek" : "",
-          telefoon: ldTekst(n.telephone) || ldTekst(contact.telephone),
-          email: ldTekst(n.email) || ldTekst(contact.email),
-          kvk: ldIdentifier(n, /KVK|KvK/i), btw: ldIdentifier(n, /BTW|VAT/i),
-          logo: ldTekst(n.logo) || ldTekst(n.image),
-          oprichtingsjaar: ldTekst(n.foundingDate),
-          priceRange: ldTekst(n.priceRange),
-          areaServed: ldTekst(n.areaServed),
-          openingstijden: ldOpeningstijden(n),
-          sameAs: socials.join(", "),
-          omschrijving: ldTekst(n.description),
-        }),
-      });
-      tel.organisatie++;
-    } else if (isDienst) {
-      entiteiten.push({
-        categorie: "dienst", naam, oordeel: "nieuw",
-        velden: schoon({
-          omschrijving: ldTekst(n.description) || ldTekst(n.howPerformed),
-          profielUrl: ldTekst(n.url),
-        }),
-      });
-      tel.dienst++;
-    }
-  }
-  if (!entiteiten.length) return null;
-  // Eén bestand beschrijft hetzelfde bedrijf soms in meerdere nodes (organisatie,
-  // kliniek, koepel). Die horen één regel te worden, anders staat dezelfde naam
-  // straks dubbel in de kennisbank.
-  const samengevoegd: KennisVoorstel["entiteiten"] = [];
-  const index = new Map<string, number>();
-  for (const e of entiteiten) {
-    const k = identiteit(e.categorie, e.naam, e.velden);
-    const bestaat = index.get(k);
-    if (bestaat === undefined) { index.set(k, samengevoegd.length); samengevoegd.push(e); continue; }
-    const doel = samengevoegd[bestaat];
-    // Twee nodes uit hetzelfde bestand: er is geen ouder of nieuwer, dus alleen
-    // aanvullen wat nog leeg is. De eerste vermelding blijft leidend.
-    for (const [veld, ruw] of Object.entries(e.velden || {})) {
-      const waarde = String(ruw || "").trim();
-      if (waarde && !String(doel.velden[veld] || "").trim()) doel.velden[veld] = waarde;
-    }
-    if (e.naam.length > doel.naam.length) doel.naam = e.naam;
-  }
-  entiteiten.length = 0; entiteiten.push(...samengevoegd);
-  for (const k of Object.keys(tel) as (keyof typeof tel)[]) tel[k] = entiteiten.filter((e) => e.categorie === k).length;
-  const delen = [
-    tel.organisatie ? `${tel.organisatie} organisatie${tel.organisatie === 1 ? "" : "s"}` : "",
-    tel.locatie ? `${tel.locatie} vestiging${tel.locatie === 1 ? "" : "en"}` : "",
-    tel.persoon ? `${tel.persoon} perso${tel.persoon === 1 ? "on" : "nen"}` : "",
-    tel.dienst ? `${tel.dienst} dienst${tel.dienst === 1 ? "" : "en"}` : "",
-  ].filter(Boolean);
-  return {
-    samenvatting: `Een schema-bestand (JSON-LD), letterlijk ingelezen: ${delen.join(", ")}. Er is niets geïnterpreteerd of aangevuld; alleen wat er in het bestand staat.`,
-    entiteiten,
-  };
 }
 
 // Drop → AI structureert naar entiteiten en vergelijkt met wat er al staat.
@@ -727,22 +487,58 @@ export function splitsAdres(adres: string): { straat: string; postcode: string; 
 // Veldnamen waarin een sociale of externe profiel-link kan zitten.
 const SOCIAL_VELDEN = /^(sameas|socials?|sociale?profielen|facebook|instagram|linkedin|twitter|x|youtube|tiktok|pinterest|whatsapp|mapsurl|googlebusiness|googlemaps|vermeldingen)$/i;
 
-const sleutel = (s: string) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
 const vul = (huidig: string, nieuw: string) => (String(huidig || "").trim() ? huidig : String(nieuw || "").trim());
 
-export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: number; nieuweVestigingen: number; nieuweArtsen: number }> {
+/**
+ * Hetzelfde als vul(), maar een ingevulde waarde mag wél wijken voor iets dat
+ * aantoonbaar nieuwer is.
+ *
+ * Waarom dit erbij hoort (18-08-2026): de datumregel gold tot nu toe alleen in de
+ * kennisbank. Het formulier ernaast werd alleen aangevuld waar het leeg was, dus
+ * stuurde een klant nieuwe openingstijden, dan nam de kennisbank die netjes over
+ * en bleef in het formulier de oude tijd staan. Dan klopt de regel tot halverwege.
+ *
+ * Waartegen wordt gemeten: de laatste keer dat het formulier is opgeslagen. Per
+ * veld weten we dat niet, per formulier wel, en dat is precies genoeg voor de
+ * afspraak die telt: **wat jij zelf hebt ingevuld wint, tot er materiaal komt van
+ * ná jouw wijziging.** Zonder datum op het materiaal gebeurt er niets, net als
+ * overal elders: onbekend overschrijft nooit.
+ */
+type Vervanging = { wat: string; oud: string; nieuw: string; datum: string };
+function vulOfVervang(
+  huidig: string, nieuw: string, stempel: VeldStempel | undefined, formulierDatum: string,
+  wat: string, log: Vervanging[],
+): string {
+  const oud = String(huidig || "").trim();
+  const waarde = String(nieuw || "").trim();
+  if (!waarde) return huidig;
+  if (!oud) return waarde;
+  if (oud === waarde) return huidig;
+  if (!isNieuwerDan(stempel?.datum || "", formulierDatum)) return huidig;
+  log.push({ wat, oud, nieuw: waarde, datum: stempel?.datum || "" });
+  return waarde;
+}
+
+export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: number; nieuweVestigingen: number; nieuweArtsen: number; vervangen: string[] }> {
   const [rec, entiteiten] = await Promise.all([getOrgData(slug), listKnowledge(slug)]);
-  if (rec.locked) return { gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 };
+  if (rec.locked) return { gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0, vervangen: [] };
   const voor = JSON.stringify(rec.data);
   const client = await getClientBySlug(slug).catch(() => null);
-  const { data, nieuweVestigingen, nieuweArtsen } = kennisNaarOrg(rec.data, entiteiten, client?.domain || "");
+  // De laatste keer dat dit formulier is opgeslagen. Alleen materiaal van ná dat
+  // moment mag een ingevulde waarde vervangen.
+  const { data, nieuweVestigingen, nieuweArtsen, vervangen } =
+    kennisNaarOrg(rec.data, entiteiten, client?.domain || "", rec.updatedAt || "");
   const gevuld = JSON.stringify(data) === voor ? 0 : 1;
   if (gevuld) await saveOrgData(slug, data, "admin");
-  return { gevuld, nieuweVestigingen, nieuweArtsen };
+  return {
+    gevuld, nieuweVestigingen, nieuweArtsen,
+    vervangen: vervangen.map((v) => `${v.wat}: "${kort(v.nieuw)}" vervangt "${kort(v.oud)}" (materiaal van ${leesbaar(v.datum)}).`),
+  };
 }
 
 // De omzetting zelf: los van de database, zodat hij te controleren is.
-export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigenDomein = ""): { data: OrgData; nieuweVestigingen: number; nieuweArtsen: number } {
+export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigenDomein = "", formulierDatum = ""): { data: OrgData; nieuweVestigingen: number; nieuweArtsen: number; vervangen: Vervanging[] } {
+  const vervangen: Vervanging[] = [];
   const d: OrgData = JSON.parse(JSON.stringify(bron));
   // De eigen website hoort niet tussen de sociale profielen: "sameAs" gaat over
   // vermeldingen elders (Facebook, LinkedIn, Google Business), niet over jezelf.
@@ -787,16 +583,25 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigen
   // Organisatie-entiteiten: de algemene bedrijfsvelden.
   for (const o of entiteiten.filter((e) => e.categorie === "organisatie")) {
     const v = o.velden;
+    // Aanvullen waar het leeg is, en vervangen waar het materiaal aantoonbaar
+    // nieuwer is dan de laatste keer dat dit formulier is opgeslagen.
+    const neem = (huidig: string, veld: string, waarde: string, wat: string) =>
+      vulOfVervang(huidig, waarde, o.stempels?.[veld], formulierDatum, wat, vervangen);
     d.bedrijfsnaam = vul(d.bedrijfsnaam, o.naam);
-    d.telefoon = vul(d.telefoon, v.telefoon); d.email = vul(d.email, v.email);
-    d.kvk = vul(d.kvk, v.kvk); d.btw = vul(d.btw, v.btw);
-    d.logoUrl = vul(d.logoUrl, v.logo); d.oprichtingsjaar = vul(d.oprichtingsjaar, v.oprichtingsjaar);
-    d.openingstijden = vul(d.openingstijden, v.openingstijden);
+    d.telefoon = neem(d.telefoon, "telefoon", v.telefoon, "Telefoon");
+    d.email = neem(d.email, "email", v.email, "E-mailadres");
+    d.kvk = neem(d.kvk, "kvk", v.kvk, "KVK-nummer");
+    d.btw = neem(d.btw, "btw", v.btw, "Btw-id");
+    d.logoUrl = neem(d.logoUrl, "logo", v.logo, "Logo");
+    d.oprichtingsjaar = neem(d.oprichtingsjaar, "oprichtingsjaar", v.oprichtingsjaar, "Oprichtingsjaar");
+    d.openingstijden = neem(d.openingstijden, "openingstijden", v.openingstijden, "Openingstijden");
     if (v.adres) {
       const a = splitsAdres(v.adres);
-      d.straat = vul(d.straat, a.straat); d.postcode = vul(d.postcode, a.postcode); d.plaats = vul(d.plaats, a.plaats);
+      d.straat = neem(d.straat, "adres", a.straat, "Straat");
+      d.postcode = neem(d.postcode, "adres", a.postcode, "Postcode");
+      d.plaats = neem(d.plaats, "adres", a.plaats, "Plaats");
     }
-    d.priceRange = vul(d.priceRange, v.priceRange);
+    d.priceRange = neem(d.priceRange, "priceRange", v.priceRange, "Prijsindicatie");
     if (!d.bedrijfstype && ["kliniek", "webshop", "dienstverlener", "lokaal", "informatief"].includes(v.bedrijfstype || "")) {
       d.bedrijfstype = v.bedrijfstype as OrgData["bedrijfstype"];
     }
@@ -822,14 +627,16 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigen
     const kern = identiteit("locatie", l.naam, l.velden);
     const bestaand = d.vestigingen.find((x) => identiteit("locatie", x.naam, { adres: x.straat, postcode: x.postcode, plaats: x.plaats }) === kern);
     const rij: OrgVestiging = bestaand || { ...LEGE_VESTIGING, naam: l.naam };
+    const neem = (huidig: string, veld: string, waarde: string, wat: string) =>
+      vulOfVervang(huidig, waarde, l.stempels?.[veld], formulierDatum, `${l.naam}, ${wat}`, vervangen);
     rij.naam = vul(rij.naam, l.naam);
-    rij.straat = vul(rij.straat, a.straat);
-    rij.postcode = vul(rij.postcode, l.velden.postcode || a.postcode);
-    rij.plaats = vul(rij.plaats, l.velden.plaats || a.plaats);
-    rij.telefoon = vul(rij.telefoon, l.velden.telefoon);
-    rij.email = vul(rij.email, l.velden.email);
-    rij.openingstijden = vul(rij.openingstijden, l.velden.openingstijden);
-    rij.mapsUrl = vul(rij.mapsUrl, l.velden.mapsUrl);
+    rij.straat = neem(rij.straat, "adres", a.straat, "straat");
+    rij.postcode = neem(rij.postcode, "postcode", l.velden.postcode || a.postcode, "postcode");
+    rij.plaats = neem(rij.plaats, "plaats", l.velden.plaats || a.plaats, "plaats");
+    rij.telefoon = neem(rij.telefoon, "telefoon", l.velden.telefoon, "telefoon");
+    rij.email = neem(rij.email, "email", l.velden.email, "e-mailadres");
+    rij.openingstijden = neem(rij.openingstijden, "openingstijden", l.velden.openingstijden, "openingstijden");
+    rij.mapsUrl = neem(rij.mapsUrl, "mapsUrl", l.velden.mapsUrl, "Google Maps");
     if (!bestaand) { d.vestigingen.push(rij); nieuweVestigingen++; }
   }
 
@@ -839,11 +646,13 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigen
     const bestaand = d.artsen.find((a) => identiteit("persoon", a.naam, { big: a.big }) === kern);
     const rij = bestaand || { naam: p.naam, functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" };
     if (p.naam.length > rij.naam.length) rij.naam = p.naam;
-    rij.functie = vul(rij.functie, p.velden.functie);
-    rij.specialisatie = vul(rij.specialisatie, p.velden.specialisatie);
-    rij.big = vul(rij.big, p.velden.big);
-    rij.fotoUrl = vul(rij.fotoUrl, p.velden.foto);
-    rij.profielUrl = vul(rij.profielUrl, p.velden.profielUrl || p.velden.linkedin);
+    const neem = (huidig: string, veld: string, waarde: string, wat: string) =>
+      vulOfVervang(huidig, waarde, p.stempels?.[veld], formulierDatum, `${p.naam}, ${wat}`, vervangen);
+    rij.functie = neem(rij.functie, "functie", p.velden.functie, "functie");
+    rij.specialisatie = neem(rij.specialisatie, "specialisatie", p.velden.specialisatie, "specialisatie");
+    rij.big = neem(rij.big, "big", p.velden.big, "BIG-nummer");
+    rij.fotoUrl = neem(rij.fotoUrl, "foto", p.velden.foto, "foto");
+    rij.profielUrl = neem(rij.profielUrl, "profielUrl", p.velden.profielUrl || p.velden.linkedin, "pagina");
     if (!bestaand) { d.artsen.push(rij); nieuweArtsen++; }
   }
 
@@ -862,7 +671,7 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigen
     d.openingstijden = vul(d.openingstijden, v.openingstijden);
   }
 
-  return { data: d, nieuweVestigingen, nieuweArtsen };
+  return { data: d, nieuweVestigingen, nieuweArtsen, vervangen };
 }
 
 // ─── Rood lijstje "Nog aan te leveren": wat mist er voor dit soort bedrijf ───

@@ -17,7 +17,8 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { voegVeldenSamen, type VeldStempels } from "../lib/schema-knowledge";
+import { voegVeldenSamen, kennisNaarOrg, type KennisEntiteit, type VeldStempels } from "../lib/schema-knowledge";
+import { EMPTY_ORG } from "../lib/org-data";
 import { bruikbareDatum, datumUitBestand, isNieuwerDan, maakBronDatum, GEEN_DATUM } from "../lib/bron-datum";
 
 let fouten = 0;
@@ -95,7 +96,37 @@ for (const [naam, pad] of [
     "De browser kent die datum, maar hij gaat niet vanzelf mee bij een upload. Zonder deze regel is elk bestand \"vandaag\".");
 }
 
-// ── 6. De datum echt uit een bestand halen ──
+// ── 6. Doorgetrokken naar het formulier Bedrijfsgegevens ──
+// De datumregel gold eerst alleen in de kennisbank. Het formulier ernaast werd
+// alleen aangevuld waar het leeg was, dus nieuwe openingstijden landden wel in de
+// kennisbank en niet in de velden. Nu geldt overal dezelfde regel, gemeten tegen
+// de laatste keer dat het formulier is opgeslagen.
+const JUNI = "2026-06-01T10:00:00.000Z";
+const orgMet = (velden: Record<string, string>, stempelDatum: string): KennisEntiteit[] => [{
+  id: 1, categorie: "organisatie", naam: "Testklant", velden, bron: "", updatedAt: "",
+  stempels: Object.fromEntries(Object.keys(velden).map((k) => [k, { datum: stempelDatum, bron: "document" as const, waar: "proef" }])),
+}];
+const formulier = { ...EMPTY_ORG, telefoon: "010-1111111", openingstijden: "ma-vr 9-17" };
+
+const nieuwerDanFormulier = kennisNaarOrg(formulier, orgMet({ openingstijden: "ma-vr 8-18" }, AUG), "", JUNI);
+proef("materiaal van ná je laatste wijziging vervangt een ingevuld veld",
+  nieuwerDanFormulier.data.openingstijden === "ma-vr 8-18" && nieuwerDanFormulier.vervangen.length === 1,
+  "Dit was de laatste schakel: zonder dit landt een nieuwe openingstijd wel in de kennisbank en niet in het formulier.");
+
+const ouderDanFormulier = kennisNaarOrg(formulier, orgMet({ openingstijden: "ma-vr 8-18" }, MEI), "", JUNI);
+proef("materiaal van vóór je laatste wijziging laat het veld met rust",
+  ouderDanFormulier.data.openingstijden === "ma-vr 9-17" && ouderDanFormulier.vervangen.length === 0,
+  "Wat jij zelf invult wint, tot er materiaal komt van ná jouw wijziging.");
+
+const zonderStempel = kennisNaarOrg(formulier, [{ ...orgMet({ openingstijden: "ma-vr 8-18" }, AUG)[0], stempels: {} }], "", JUNI);
+proef("zonder datum verandert er niets aan een ingevuld veld", zonderStempel.data.openingstijden === "ma-vr 9-17");
+
+const legeVulling = kennisNaarOrg(formulier, orgMet({ kvk: "12345678" }, MEI), "", JUNI);
+proef("een leeg veld wordt nog steeds gewoon gevuld, ook met ouder materiaal",
+  legeVulling.data.kvk === "12345678" && legeVulling.vervangen.length === 0,
+  "Aanvullen kan geen kwaad; er gaat niets verloren.");
+
+// ── 7. De datum echt uit een bestand halen ──
 // Niet nagespeeld maar echt gedaan: hieronder staan een Word-bestand, een pdf,
 // een schermafdruk en een foto zoals ze binnenkomen, en de vraag is of de datum
 // die erin zit er ook uit komt. Zonder deze stap is de hele afspraak theorie.
