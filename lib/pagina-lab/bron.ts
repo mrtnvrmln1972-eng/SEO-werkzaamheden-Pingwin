@@ -33,11 +33,20 @@ import { BEZOEKER_UA } from "../render-page";
 
 export type Apparaat = "mobiel" | "desktop";
 
-const APPARATEN: Record<Apparaat, { breedte: number; hoogte: number; mobiel: boolean }> = {
-  // Een gangbaar laptopscherm en een gangbare telefoon. Niet de uitersten: het
-  // gaat erom wat de meeste bezoekers zien.
-  desktop: { breedte: 1440, hoogte: 900, mobiel: false },
-  mobiel: { breedte: 390, hoogte: 844, mobiel: true },
+const MOBIELE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
+
+// Een gangbaar laptopscherm en een gangbare telefoon. Niet de uitersten: het
+// gaat erom wat de meeste bezoekers zien.
+//
+// Let op wat er NIET staat: `isMobile` en `hasTouch`. Die zetten de volledige
+// apparaat-nabootsing van Chromium aan, en daarmee liep elke mobiele foto vast
+// tot de server er de stekker uit trok (op deze site vier en een halve minuut,
+// zonder foto). Een smalle breedte plus een mobiele user-agent levert hetzelfde
+// beeld op, want daar reageert een responsive site op, en het werkt wél.
+const APPARATEN: Record<Apparaat, { breedte: number; hoogte: number; ua?: string }> = {
+  desktop: { breedte: 1440, hoogte: 900 },
+  mobiel: { breedte: 390, hoogte: 844, ua: MOBIELE_UA },
 };
 
 /**
@@ -195,8 +204,8 @@ export async function waaromNiet(ruw: string): Promise<string | null> {
 export async function leesPagina(url: string, apparaat: Apparaat = "desktop"): Promise<PaginaBron | null> {
   const scherm = APPARATEN[apparaat];
   return await metBrowser(async (page) => {
-    await page.setViewport({ width: scherm.breedte, height: scherm.hoogte, isMobile: scherm.mobiel, hasTouch: scherm.mobiel });
-    await page.setUserAgent(BEZOEKER_UA);
+    await page.setViewport({ width: scherm.breedte, height: scherm.hoogte });
+    await page.setUserAgent(scherm.ua || BEZOEKER_UA);
     const resp = await gaNaar(page, url);
     await new Promise((r) => setTimeout(r, 900));
     const eindUrl: string = page.url();
@@ -276,8 +285,8 @@ export async function fotografeerPagina(url: string, opties: FotoOpties = {}): P
   const scherm = APPARATEN[opties.apparaat || "desktop"];
   const wacht = Math.max(0, Math.min(20000, opties.wachtMs ?? 1200));
   return await metBrowser(async (page) => {
-    await page.setViewport({ width: scherm.breedte, height: scherm.hoogte, isMobile: scherm.mobiel, hasTouch: scherm.mobiel });
-    await page.setUserAgent(BEZOEKER_UA);
+    await page.setViewport({ width: scherm.breedte, height: scherm.hoogte });
+    await page.setUserAgent(scherm.ua || BEZOEKER_UA);
     await gaNaar(page, url);
     const fout = await waaromNiet(page.url());
     if (fout) throw new Error("De pagina stuurde door naar een adres dat niet opgehaald mag worden.");
