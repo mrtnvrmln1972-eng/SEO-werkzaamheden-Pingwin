@@ -44,16 +44,16 @@ const METERS: { sleutel: string; naam: string; uitleg: string; losseWerklijst?: 
 // de stand van vóór de verbouwing. Bewust met de hand, want die stand bestaat
 // alleen nog in de git-geschiedenis; hij verandert ook nooit meer.
 const VERANDERD: { wat: string; was: string; is: string }[] = [
-  { wat: "Kleuren in de opmaak", was: "325 verschillende", is: "129" },
+  { wat: "Kleuren in de opmaak", was: "325 verschillende", is: "96" },
   { wat: "Lettergroottes buiten de schaal", was: "21", is: "0" },
   { wat: "Afstanden buiten de schaal", was: "21", is: "2" },
   { wat: "Hoekrondingen", was: "19", is: "4" },
-  { wat: "Schaduwen", was: "45", is: "26" },
+  { wat: "Schaduwen", was: "45", is: "7" },
   { wat: "Namen voor dezelfde soort knop", was: "5", is: "1" },
   { wat: "Lettertypes voor code", was: "6 varianten", is: "1" },
+  { wat: "Losse opmaak in de schermen zelf", was: "50 plekken", is: "34" },
   { wat: "Plekken die uit de betekenislaag lezen", was: "geen", is: "ruim 8.300" },
 ];
-
 const STAPPEN: { nr: number; titel: string; wat: string; stand: "af" | "bezig" | "open" }[] = [
   {
     nr: 1, stand: "af", titel: "Tellen wat er is",
