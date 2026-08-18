@@ -140,7 +140,7 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
               <div className="lead-blok-titel">Dossier</div>
               <div className="lead-blok-sub">Alles wat we van dit bedrijf weten</div>
             </div>
-            <button className="mini-btn" onClick={() => setToonToevoegen((v) => !v)}>
+            <button className="btn btn-klein" onClick={() => setToonToevoegen((v) => !v)}>
               {toonToevoegen ? "Sluiten" : "+ Toevoegen"}
             </button>
           </div>
@@ -175,7 +175,7 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
                 placeholder="Plak hier een tekst, een Google Drive-link, of typ gewoon wat je weet (bijvoorbeeld: budget mag rond de 1500 liggen, ze hechten sterk aan duurzaamheid)."
                 rows={5}
               />
-              <button className="primary-btn small" onClick={bewaarTekst} disabled={bezig === "dossier" || !tekst.trim()}>
+              <button className="btn btn-primary btn-klein" onClick={bewaarTekst} disabled={bezig === "dossier" || !tekst.trim()}>
                 {bezig === "dossier" ? "Bezig…" : "Bewaar in dossier"}
               </button>
             </div>
@@ -197,9 +197,9 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
                   </div>
                 )}
                 <div className="lead-item-acties">
-                  {i.driveLink && <a href={i.driveLink} target="_blank" rel="noreferrer" className="mini-btn">Openen</a>}{" "}
-                  <button className="mini-btn" onClick={() => toonVolledig(i.id)}>{open === i.id ? "Inklappen" : "Volledig"}</button>{" "}
-                  <button className="mini-btn" onClick={() => verwijderItem(i.id)}>Verwijder</button>
+                  {i.driveLink && <a href={i.driveLink} target="_blank" rel="noreferrer" className="btn btn-klein">Openen</a>}{" "}
+                  <button className="btn btn-klein" onClick={() => toonVolledig(i.id)}>{open === i.id ? "Inklappen" : "Volledig"}</button>{" "}
+                  <button className="btn btn-klein" onClick={() => verwijderItem(i.id)}>Verwijder</button>
                 </div>
               </div>
             ))}
@@ -224,7 +224,7 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
             />
             <div className="lead-maak-knoppen">
               {sjablonen.map((s) => (
-                <button key={s.key} className="primary-btn small" title={s.omschrijving}
+                <button key={s.key} className="btn btn-primary btn-klein" title={s.omschrijving}
                   onClick={() => maakDocument(s.key)} disabled={bezig === "doc"}>
                   {bezig === "doc" ? "Bezig…" : `Maak ${s.naam.toLowerCase()}`}
                 </button>
@@ -244,9 +244,9 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
                 {d.opdracht && <div className="lead-item-sam">Opdracht: {d.opdracht}</div>}
                 <div className="lead-item-acties">
                   {d.driveLink
-                    ? <a href={d.driveLink} target="_blank" rel="noreferrer" className="mini-btn">Openen en bewerken</a>
+                    ? <a href={d.driveLink} target="_blank" rel="noreferrer" className="btn btn-klein">Openen en bewerken</a>
                     : <span className="muted">niet in Drive gezet</span>}{" "}
-                  <button className="mini-btn" onClick={() => verwijderDoc(d.id)}>Verwijder</button>
+                  <button className="btn btn-klein" onClick={() => verwijderDoc(d.id)}>Verwijder</button>
                 </div>
               </div>
             ))}

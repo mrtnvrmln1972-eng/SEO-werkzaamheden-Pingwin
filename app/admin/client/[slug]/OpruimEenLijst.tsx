@@ -585,21 +585,21 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
 
       <div className="opr-vorm-rij">
         {(["alles", "uitbouwen", "samenvoegen", "nieuw", "opruimen", "blijft"] as const).map((k) => (
-          <button key={k} type="button" className={"ghost-btn small" + (filter === k ? " actief" : "")} onClick={() => setFilter(k)}>
+          <button key={k} type="button" className={"btn btn-klein" + (filter === k ? " actief" : "")} onClick={() => setFilter(k)}>
             {k === "alles" ? `alles (${d.tellingen.totaal})` : `${LABEL[k]} (${d.tellingen[k]})`}
           </button>
         ))}
         {chatTeller > 0 && (
-          <button type="button" className={"ghost-btn small" + (filter === "chat" ? " actief" : "")} onClick={() => setFilter("chat")}
+          <button type="button" className={"btn btn-klein" + (filter === "chat" ? " actief" : "")} onClick={() => setFilter("chat")}
             title="Alleen de besluiten die vanuit een chat-analyse op deze lijst zijn gezet.">
             besluit uit chat ({chatTeller})
           </button>
         )}
         <span style={{ marginLeft: "var(--s-4)" }}>
-          <button type="button" className={"ghost-btn small" + (groep === "uitkomst" ? " actief" : "")} onClick={() => setGroep("uitkomst")}>
+          <button type="button" className={"btn btn-klein" + (groep === "uitkomst" ? " actief" : "")} onClick={() => setGroep("uitkomst")}>
             per besluit
           </button>
-          <button type="button" className={"ghost-btn small" + (groep === "groep" ? " actief" : "")} onClick={() => setGroep("groep")}>
+          <button type="button" className={"btn btn-klein" + (groep === "groep" ? " actief" : "")} onClick={() => setGroep("groep")}>
             per plaats of onderwerp
           </button>
         </span>

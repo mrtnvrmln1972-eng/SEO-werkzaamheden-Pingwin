@@ -315,9 +315,9 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                       <option key={t.thread} value={t.thread}>{t.thread === "algemeen" ? "Algemeen" : t.thread === "ads" ? "Google Ads" : t.thread}{t.count ? ` (${t.count})` : ""}</option>
                     ))}
                   </select>
-                  <button type="button" className="ghost-btn small" onClick={newThread}>+ Nieuw</button>
+                  <button type="button" className="btn btn-klein" onClick={newThread}>+ Nieuw</button>
                   {messages.length >= 2 && (
-                    <button type="button" className="ghost-btn small" onClick={saveStrategy} disabled={strategyBusy} title="Legt dit hele gesprek (met conclusie en actiepunten) vast als sessie onder Site-wide strategie, bovenaan het Taken-tabblad.">
+                    <button type="button" className="btn btn-klein" onClick={saveStrategy} disabled={strategyBusy} title="Legt dit hele gesprek (met conclusie en actiepunten) vast als sessie onder Site-wide strategie, bovenaan het Taken-tabblad.">
                       {strategyBusy ? "Vastleggen…" : "→ Site-wide strategie"}
                     </button>
                   )}
@@ -366,7 +366,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                     placeholder={pendingImages.length ? "Wat wil je over deze afbeelding(en) weten?" : "Stel een vraag over dit project… (afbeeldingen erin slepen of plakken mag)"}
                     disabled={busy}
                   />
-                  <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || (!input.trim() && pendingImages.length === 0)}>
+                  <button type="button" className="btn btn-primary btn-klein" onClick={() => send(input)} disabled={busy || (!input.trim() && pendingImages.length === 0)}>
                     Vraag
                   </button>
                 </div>

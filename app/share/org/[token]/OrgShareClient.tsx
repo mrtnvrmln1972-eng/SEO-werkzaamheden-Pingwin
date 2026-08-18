@@ -82,7 +82,7 @@ export default function OrgShareClient({ token }: { token: string }) {
             <OrgDataForm data={data} onChange={setData} disabled={locked || busy} />
             {!locked && (
               <div className="org-share-save">
-                <button type="button" className="primary-btn" onClick={save} disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
+                <button type="button" className="btn btn-primary" onClick={save} disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
                 {msg && <span className="saved-msg">{msg}</span>}
               </div>
             )}

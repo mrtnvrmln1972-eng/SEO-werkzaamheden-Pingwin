@@ -127,7 +127,7 @@ export default function OpruimEindstructuur({ slug, domain, data }: {
       </div>
 
       {d.takken.length > 12 && (
-        <button type="button" className="ghost-btn small" onClick={() => setAlles((v) => !v)}>
+        <button type="button" className="btn btn-klein" onClick={() => setAlles((v) => !v)}>
           {alles ? "Toon alleen de twaalf grootste takken" : `Toon alle ${d.takken.length} takken`}
         </button>
       )}

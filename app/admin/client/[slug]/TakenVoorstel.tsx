@@ -173,7 +173,7 @@ export default function TakenVoorstel({ slug, thread, index, oogst, domain = "",
 
       {!klaar && oogst.taken.length > 0 && (
         <div className="tv-voet">
-          <button type="button" className="primary-btn small" disabled={busy || !aantalAan} onClick={() => void wegzetten()}>
+          <button type="button" className="btn btn-primary btn-klein" disabled={busy || !aantalAan} onClick={() => void wegzetten()}>
             {busy ? "Bezig…" : `Zet ${aantalAan} ${aantalAan === 1 ? "taak" : "taken"} in de weekplanning`}
           </button>
         </div>

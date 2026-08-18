@@ -42,7 +42,7 @@ export default function MailAllowlist({ slug }: { slug: string }) {
           </div>
           <textarea className="mail-allow-area" value={text} onChange={(e) => setText(e.target.value)} placeholder={"voorbeeld.nl\npingwin.nl\njan@voorbeeld.nl"} disabled={!loaded} />
           <div style={{ display: "flex", alignItems: "center", gap: "var(--s-3)", marginTop: "var(--s-2)" }}>
-            <button type="button" className="primary-btn small" onClick={save} disabled={saving || !loaded}>{saving ? "Opslaan…" : "Opslaan"}</button>
+            <button type="button" className="btn btn-primary btn-klein" onClick={save} disabled={saving || !loaded}>{saving ? "Opslaan…" : "Opslaan"}</button>
             {saved && <span className="focus-save-status">✓ opgeslagen</span>}
           </div>
         </div>

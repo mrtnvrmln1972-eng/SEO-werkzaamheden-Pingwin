@@ -81,7 +81,7 @@ export default function KlussenChip({ slug, onGaNaar }: { slug: string; onGaNaar
                 stil={k.status === "vastgelopen"}
               />
               {k.tab && onGaNaar && (
-                <button type="button" className="ghost-btn small" onClick={() => { setOpen(false); onGaNaar(k.tab!); }}>
+                <button type="button" className="btn btn-klein" onClick={() => { setOpen(false); onGaNaar(k.tab!); }}>
                   Ga erheen →
                 </button>
               )}

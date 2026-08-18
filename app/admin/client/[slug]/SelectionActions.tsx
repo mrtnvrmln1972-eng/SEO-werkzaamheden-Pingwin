@@ -131,8 +131,8 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
               {msg && <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{msg}</div>}
             </div>
             <div className="compose-foot" style={{ display: "flex", justifyContent: "flex-end", gap: "var(--s-2)", padding: "var(--s-3) var(--s-4)", borderTop: "1px solid var(--border)" }}>
-              <button type="button" className="ghost-btn" onClick={() => setComposeOpen(false)}>Annuleren</button>
-              <button type="button" className="primary-btn" onClick={send} disabled={busy}>{busy ? "Versturen…" : "Verstuur per mail"}</button>
+              <button type="button" className="btn btn-ghost" onClick={() => setComposeOpen(false)}>Annuleren</button>
+              <button type="button" className="btn btn-primary" onClick={send} disabled={busy}>{busy ? "Versturen…" : "Verstuur per mail"}</button>
             </div>
           </div>
         </div>

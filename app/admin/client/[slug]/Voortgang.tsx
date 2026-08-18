@@ -94,7 +94,7 @@ export default function Voortgang({ titel, label, stap = 0, stappen = 0, sinds, 
       </div>
 
       {actie && (
-        <button type="button" className="ghost-btn small vg-knop" onClick={actie.onClick} disabled={actie.bezig}>
+        <button type="button" className="btn btn-klein vg-knop" onClick={actie.onClick} disabled={actie.bezig}>
           {actie.bezig ? "Bezig…" : actie.label}
         </button>
       )}

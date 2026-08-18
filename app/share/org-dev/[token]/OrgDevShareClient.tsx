@@ -71,7 +71,7 @@ export default function OrgDevShareClient({ token }: { token: string }) {
               <div className="org-sitewide-head"><strong>Site-brede structured data (JSON-LD)</strong></div>
               {sitewideJsonld ? (
                 <>
-                  <button type="button" className="ghost-btn small" onClick={copyJsonld}>{copied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
+                  <button type="button" className="btn btn-klein" onClick={copyJsonld}>{copied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
                   <pre className="sch-json-pre org-devshare-json">{sitewideJsonld}</pre>
                   <p className="org-share-note org-devshare-note">
                     {gekoppeld

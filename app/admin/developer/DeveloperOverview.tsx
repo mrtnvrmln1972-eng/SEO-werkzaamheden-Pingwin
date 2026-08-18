@@ -622,7 +622,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
                 )}
               </div>
               <div className="compose-foot">
-                <button type="button" className="logout-btn" onClick={() => setControleVoor(null)}>Sluiten</button>
+                <button type="button" className="btn btn-klein" onClick={() => setControleVoor(null)}>Sluiten</button>
               </div>
             </div>
           </div>
@@ -645,9 +645,9 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
                 </p>
               </div>
               <div className="compose-foot">
-                <button type="button" className="logout-btn" onClick={() => setFeedbackFor(null)}>Annuleren</button>
+                <button type="button" className="btn btn-klein" onClick={() => setFeedbackFor(null)}>Annuleren</button>
                 <button type="button" className="btn btn-ghost btn-klein" onClick={() => confirmDone(true)}>Opslaan + ook mailen</button>
-                <button type="button" className="primary-btn small" onClick={() => confirmDone(false)}>Opslaan als klaar</button>
+                <button type="button" className="btn btn-primary btn-klein" onClick={() => confirmDone(false)}>Opslaan als klaar</button>
               </div>
             </div>
           </div>
@@ -677,8 +677,8 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
           <MeldingenMenu />
           <Tellers />
         <OntwikkelMenu />
-          <a className="logout-btn" href="/admin"><PijlLinks /> Alle klanten</a>
-          <button className="logout-btn" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
+          <a className="btn btn-klein" href="/admin"><PijlLinks /> Alle klanten</a>
+          <button className="btn btn-klein" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
         </div>
       </div>
 
@@ -915,14 +915,14 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
               kaart gaat alleen van de developerlijst af en blijft gewoon in de
               weekplanning staan; daarom staat dat ook op de knop. */}
           {taskKey && (
-            <button type="button" className="logout-btn dev-weg-btn" onClick={() => void taakWeg()} disabled={!!busy}
+            <button type="button" className="btn btn-klein dev-weg-btn" onClick={() => void taakWeg()} disabled={!!busy}
               title={eigen ? "Deze taak bestaat alleen hier en wordt echt weggegooid." : "Haalt de taak van de developerlijst af. De kaart zelf blijft in de weekplanning staan."}>
               {eigen ? "Taak weggooien" : "Van de lijst halen"}
             </button>
           )}
-          <button type="button" className="logout-btn" onClick={onSluiten}>Sluiten</button>
+          <button type="button" className="btn btn-klein" onClick={onSluiten}>Sluiten</button>
           <button type="button" className="btn btn-ghost btn-klein" onClick={() => void bewaar(false)} disabled={!!busy}>Bewaren</button>
-          <button type="button" className="primary-btn small" onClick={() => void bewaar(true)} disabled={!!busy}>
+          <button type="button" className="btn btn-primary btn-klein" onClick={() => void bewaar(true)} disabled={!!busy}>
             {busy === "bewaren" ? "Bezig…" : "Bewaren en sluiten"}
           </button>
         </div>

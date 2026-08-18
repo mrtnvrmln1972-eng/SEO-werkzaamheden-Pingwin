@@ -679,7 +679,7 @@ export default function Planning({
               <button type="button" className={"pl-schakelknop" + (alleen ? " pl-schakel-aan" : "")} onClick={() => setAlleen(true)}>Alleen {clientName}</button>
             </div>
           )}
-          <button type="button" className="ghost-btn small" disabled={wlBusy}
+          <button type="button" className="btn btn-klein" disabled={wlBusy}
             title="Crawlt de live pagina's, kijkt naar elke afbeelding zonder alt-tekst en schrijft er één plakbare regel bij. Het resultaat is een afvinklijst die je met de sitebouwer kunt delen, plus één Dev-kaart in de planning. Meta's zitten er niet in; die staan bij Meta & CTR."
             onClick={startWerklijst}>{wlBusy ? "Werklijst maken…" : "Werklijst sitebouwer"}</button>
           {wlMsg && (wlLink

@@ -174,7 +174,7 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
                     )}
                   </div>
                   {s.tab && s.staat !== "af" && (
-                    <button type="button" className="ghost-btn small" onClick={() => onGaNaar(s.tab!)}>Ga erheen →</button>
+                    <button type="button" className="btn btn-klein" onClick={() => onGaNaar(s.tab!)}>Ga erheen →</button>
                   )}
                 </li>
               ))}

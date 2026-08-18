@@ -43,8 +43,8 @@ export default function ShareLinkBar({ slug }: { slug: string }) {
     <div className="share-link-bar">
       <span className="share-link-label">Loginvrije link voor de klant: <HelpHint wide title="De deelbare klant-link" text={"Deze link opent het klantdashboard van deze klant **zonder inloggen**: de klant ziet de maandtaken, uren en resultaten, maar kan nergens bij het beheer.\n## Hoe het veilig blijft\nDe link bevat een lange, onraadbare code die alleen voor deze klant geldt. Vernieuwen maakt een nieuwe code; de oude link stopt dan **per direct** met werken (handig als hij bij de verkeerde persoon terechtkwam).\n## Wanneer je hem gebruikt\nStuur hem mee in de werkzaamheden-mail of zet hem in je e-mailhandtekening richting deze klant; zo kijkt de klant altijd naar de actuele stand zonder wachtwoord-gedoe."} /></span>
       <input className="share-link-input" value={url || "Laden..."} readOnly onFocus={(e) => e.target.select()} />
-      <button type="button" className="primary-btn small" onClick={copy} disabled={!url}>Kopieer</button>
-      <button type="button" className="ghost-btn small" onClick={renew} disabled={busy || !url}>{busy ? "Bezig..." : "Nieuwe link"}</button>
+      <button type="button" className="btn btn-primary btn-klein" onClick={copy} disabled={!url}>Kopieer</button>
+      <button type="button" className="btn btn-klein" onClick={renew} disabled={busy || !url}>{busy ? "Bezig..." : "Nieuwe link"}</button>
       {msg && <span className="focus-save-status">{msg}</span>}
     </div>
   );

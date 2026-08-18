@@ -69,8 +69,8 @@ export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string
             <input className="compose-input" value={cluster} onChange={(e) => setCluster(e.target.value)} placeholder="Bv. SOA-test cluster" />
             {msg && <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{msg}</div>}
             <div className="compose-foot" style={{ marginTop: "var(--s-4)" }}>
-              <button type="button" className="logout-btn" onClick={onClose}>Annuleren</button>
-              <button type="button" className="primary-btn small" onClick={() => parse()} disabled={busy || !file}>{busy ? "Inlezen..." : "Inlezen"}</button>
+              <button type="button" className="btn btn-klein" onClick={onClose}>Annuleren</button>
+              <button type="button" className="btn btn-primary btn-klein" onClick={() => parse()} disabled={busy || !file}>{busy ? "Inlezen..." : "Inlezen"}</button>
             </div>
           </div>
         )}
@@ -89,8 +89,8 @@ export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string
                 <span className="muted" style={{ marginLeft: "var(--s-3)" }}>{items.length} rijen, {chosen} aangevinkt</span>
               </div>
               <div className="import-bulk">
-                <button type="button" className="ghost-btn small" onClick={() => setAll(true)}>Alles aan</button>
-                <button type="button" className="ghost-btn small" onClick={() => setAll(false)}>Alles uit</button>
+                <button type="button" className="btn btn-klein" onClick={() => setAll(true)}>Alles aan</button>
+                <button type="button" className="btn btn-klein" onClick={() => setAll(false)}>Alles uit</button>
               </div>
             </div>
 
@@ -114,8 +114,8 @@ export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string
 
             {msg && <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{msg}</div>}
             <div className="compose-foot" style={{ marginTop: "var(--s-3)" }}>
-              <button type="button" className="logout-btn" onClick={() => setStep("upload")}><PijlLinks /> Terug</button>
-              <button type="button" className="primary-btn small" onClick={accept} disabled={busy || chosen === 0}>{busy ? "Overnemen..." : `Neem ${chosen} over`}</button>
+              <button type="button" className="btn btn-klein" onClick={() => setStep("upload")}><PijlLinks /> Terug</button>
+              <button type="button" className="btn btn-primary btn-klein" onClick={accept} disabled={busy || chosen === 0}>{busy ? "Overnemen..." : `Neem ${chosen} over`}</button>
             </div>
           </div>
         )}

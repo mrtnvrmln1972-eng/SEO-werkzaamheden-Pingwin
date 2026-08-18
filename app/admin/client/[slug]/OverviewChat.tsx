@@ -55,7 +55,7 @@ function DiepDenken() {
   return (
     <button
       type="button"
-      className={"ghost-btn small" + (aan ? " actief" : "")}
+      className={"btn btn-klein" + (aan ? " actief" : "")}
       disabled={bezig}
       title={aan
         ? "Overview denkt diep: het zware model, voor strategie en tegenspraak. Kost meer per antwoord. Klik om uit te zetten."
@@ -393,7 +393,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
       {kaal ? (
         <div className="ovc-kaal-acties">
           <DiepDenken />
-          <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
+          <button type="button" className="btn btn-klein" onClick={newTopic}>+ Nieuw onderwerp</button>
         </div>
       ) : (
       <div className="ovc-head">
@@ -402,7 +402,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
         </span>
         <span className="ovc-title">Overview</span>
         <DiepDenken />
-        <button type="button" className="ghost-btn small" onClick={newTopic}>+ Nieuw onderwerp</button>
+        <button type="button" className="btn btn-klein" onClick={newTopic}>+ Nieuw onderwerp</button>
       </div>
       )}
 
@@ -588,12 +588,12 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                       conclusie is precies het raden dat we eruit wilden hebben. */}
                   {messages.some((m) => m.role === "assistant") && (
                     <div className="ovc-oogst">
-                      <button type="button" className="ghost-btn small" disabled={!!oogstBusy || busy} onClick={() => void oogst("conclusie")}
+                      <button type="button" className="btn btn-klein" disabled={!!oogstBusy || busy} onClick={() => void oogst("conclusie")}
                         title="Lees het hele gesprek terug en vat samen waar we op uitkomen, wat we weten en wat nog open staat.">
                         {oogstBusy === "conclusie" ? "Bezig…" : "Trek de conclusie"}
                       </button>
                       {messages.some((m) => m.soort === "conclusie") && (
-                        <button type="button" className="primary-btn small" disabled={!!oogstBusy || busy} onClick={() => void oogst("taken")}
+                        <button type="button" className="btn btn-primary btn-klein" disabled={!!oogstBusy || busy} onClick={() => void oogst("taken")}
                           title="Bepaal op basis van het hele gesprek welk werk hieruit volgt. Je krijgt een voorstel dat je zelf aanvinkt.">
                           {oogstBusy === "taken" ? "Bezig…" : "Welke taken volgen hieruit?"}
                         </button>
@@ -638,8 +638,8 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                       placeholder="Stel een vraag of geef een instructie… (Shift+Enter voor een nieuwe regel)"
                       disabled={busy}
                     />
-                    <button type="button" className="primary-btn small" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
-                    {messages.length > 0 && <button type="button" className="ghost-btn small" onClick={() => clearChat(t.thread)}>Wissen</button>}
+                    <button type="button" className="btn btn-primary btn-klein" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
+                    {messages.length > 0 && <button type="button" className="btn btn-klein" onClick={() => clearChat(t.thread)}>Wissen</button>}
                   </div>
                 </div>
               )}

@@ -410,7 +410,7 @@ export default function MailUitKaart({
           <input className="wp-mail-instr" value={instr} onChange={(e) => setInstr(e.target.value)}
             placeholder="Wat moet er in de mail? (optioneel, bijv. 'leg kort uit waar dit vandaan komt')"
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void schrijf(links, to); } }} />
-          <button type="button" className="ghost-btn small" disabled={busy}
+          <button type="button" className="btn btn-klein" disabled={busy}
             title="Laat de assistent de mail opnieuw schrijven (je huidige tekst gaat verloren)"
             onClick={() => { wisConcept(); void schrijf(links, to); }}>Laat Claude schrijven</button>
         </div>
@@ -458,8 +458,8 @@ export default function MailUitKaart({
               onChange={(e) => setHerinnerDagen(Math.min(90, Math.max(1, Number(e.target.value) || 1)))} />
             <span>dagen om te checken</span>
           </label>
-          <button type="button" className="ghost-btn small" onClick={kopieer} disabled={busy}>Kopieer</button>
-          <button type="button" className="primary-btn small" onClick={() => void verstuur()} disabled={busy || verzendt}
+          <button type="button" className="btn btn-klein" onClick={kopieer} disabled={busy}>Kopieer</button>
+          <button type="button" className="btn btn-primary btn-klein" onClick={() => void verstuur()} disabled={busy || verzendt}
             title={to ? `Verstuurt de mail nu naar ${to}` : "Vul eerst het e-mailadres van de ontvanger in"}>
             {verzendt ? "Versturen…" : "Versturen"}
           </button>

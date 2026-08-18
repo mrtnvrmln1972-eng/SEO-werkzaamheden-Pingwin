@@ -129,7 +129,7 @@ export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, tas
               <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
                 <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
                 {clusterBusy && (
-                  <button type="button" className="ghost-btn small" onClick={() => clusterAbortRef.current?.abort()}
+                  <button type="button" className="btn btn-klein" onClick={() => clusterAbortRef.current?.abort()}
                     title="Onderbreek het zoeken; er wordt niets opgeslagen.">&times; Onderbreken</button>
                 )}
               </span>

@@ -41,7 +41,7 @@ export default function MeegegevenAdvies({ slug, url, siteBase }: { slug: string
               <div className="pchi-advice md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.advice, siteBase) }} />
               <div style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", marginTop: "var(--s-1)" }}>
                 {it.sourceUrl && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Uit de analyse van <a href={it.sourceUrl} target="_blank" rel="noreferrer">{it.sourceUrl}</a></div>}
-                <button type="button" className="ghost-btn small" disabled={negeerBusy === it.sourceUrl} onClick={() => negeer(it.sourceUrl)} title="Dit advies telt niet meer mee in de chat of de samenvatting van deze pagina.">
+                <button type="button" className="btn btn-klein" disabled={negeerBusy === it.sourceUrl} onClick={() => negeer(it.sourceUrl)} title="Dit advies telt niet meer mee in de chat of de samenvatting van deze pagina.">
                   {negeerBusy === it.sourceUrl ? "Bezig…" : "Negeer dit advies"}
                 </button>
               </div>
@@ -49,7 +49,7 @@ export default function MeegegevenAdvies({ slug, url, siteBase }: { slug: string
           ))}
           {incoming.some((it) => it.sourceAnalysis) && (
             <div style={{ marginTop: "var(--s-2)" }}>
-              <button type="button" className="ghost-btn small" onClick={() => setIncomingOpen((o) => !o)}>{incomingOpen ? "Verberg de volledige clusteranalyse" : "Toon de volledige clusteranalyse"}</button>
+              <button type="button" className="btn btn-klein" onClick={() => setIncomingOpen((o) => !o)}>{incomingOpen ? "Verberg de volledige clusteranalyse" : "Toon de volledige clusteranalyse"}</button>
               {incomingOpen && incoming.filter((it) => it.sourceAnalysis).map((it, i) => (
                 <div key={i} className="pchi-full md" dangerouslySetInnerHTML={{ __html: mdToHtml(it.sourceAnalysis, siteBase) }} />
               ))}

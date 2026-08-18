@@ -98,7 +98,7 @@ export default function MeldingenMenu() {
     <div className="hm-wrap md-wrap" ref={wrapRef}>
       <button
         type="button"
-        className={"logout-btn md-knop" + (open ? " hm-open" : "")}
+        className={"btn btn-klein md-knop" + (open ? " hm-open" : "")}
         aria-haspopup="true"
         aria-expanded={open}
         title={nieuw > 0 ? `${nieuw} nieuwe melding${nieuw === 1 ? "" : "en"}` : "Meldingen"}

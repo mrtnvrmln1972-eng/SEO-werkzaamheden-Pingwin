@@ -335,8 +335,8 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           <MeldingenMenu />
           <Tellers />
         <OntwikkelMenu />
-          <a className="logout-btn" href="/admin" title="Terug naar het klantenoverzicht">Klanten</a>
-          <button className="logout-btn" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
+          <a className="btn btn-klein" href="/admin" title="Terug naar het klantenoverzicht">Klanten</a>
+          <button className="btn btn-klein" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
         </div>
       </div>
 
@@ -372,7 +372,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   <td>{c.email || <span className="muted">&mdash;</span>}</td>
                   <td>{c.loginEnabled ? "Aan" : <span style={{ color: "var(--danger)" }}>Uit</span>}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="mini-btn" onClick={() => openClient(c)}>Bewerken</button>
+                    <button className="btn btn-klein" onClick={() => openClient(c)}>Bewerken</button>
                   </td>
                 </tr>
               ))}
@@ -425,16 +425,16 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 </div>
               </div>
               <div style={{ display: "flex", gap: "var(--s-2)", alignItems: "center", flexWrap: "wrap" }}>
-                <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
-                <button type="button" className="logout-btn" onClick={() => setEditSlug(null)}>Sluiten</button>
-                <button type="button" className="mini-btn" onClick={() => resetClientPw(c.slug)} disabled={busy}>Nieuw klant-wachtwoord</button>
+                <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
+                <button type="button" className="btn btn-klein" onClick={() => setEditSlug(null)}>Sluiten</button>
+                <button type="button" className="btn btn-klein" onClick={() => resetClientPw(c.slug)} disabled={busy}>Nieuw klant-wachtwoord</button>
               </div>
               {newPassword && newPassword.slug === c.slug && (
                 <div className="created-box" style={{ marginTop: "var(--s-4)" }}>
                   <div className="created-title">Nieuw wachtwoord voor {c.name}</div>
                   <p>Geef dit aan de klant. Je ziet het maar één keer.</p>
                   <div className="cred-row"><span>Wachtwoord</span><code>{newPassword.password}</code>
-                    <button className="mini-btn" type="button" onClick={() => copy(newPassword.password)}>Kopieer</button></div>
+                    <button className="btn btn-klein" type="button" onClick={() => copy(newPassword.password)}>Kopieer</button></div>
                 </div>
               )}
             </form>
@@ -452,9 +452,9 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
             <div className="created-title">Inloggegevens voor {created.name}</div>
             <p>Geef deze gegevens aan de gast. Het wachtwoord zie je maar één keer. Inloggen via het adminscherm met deze inlognaam.</p>
             <div className="cred-row"><span>Inlognaam</span><code>{created.loginId}</code>
-              <button className="mini-btn" type="button" onClick={() => copy(created.loginId)}>Kopieer</button></div>
+              <button className="btn btn-klein" type="button" onClick={() => copy(created.loginId)}>Kopieer</button></div>
             <div className="cred-row"><span>Wachtwoord</span><code>{created.password}</code>
-              <button className="mini-btn" type="button" onClick={() => copy(created.password)}>Kopieer</button></div>
+              <button className="btn btn-klein" type="button" onClick={() => copy(created.password)}>Kopieer</button></div>
           </div>
         )}
 
@@ -483,11 +483,11 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                     {u.canDev && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>+ developer-taken</div>}
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
-                    <button className="mini-btn" onClick={() => openUser(u)}>Bewerken</button>{" "}
-                    <button className="mini-btn" onClick={() => viewAs(u.id)} disabled={busy} title="Open in een nieuw tabblad precies wat deze gast ziet">Bekijk als</button>{" "}
-                    <button className="mini-btn" onClick={() => mailLogin(u)} disabled={busy || mailBusyId !== null} title={u.email ? `Mailt een nieuw wachtwoord + de login-URL naar ${u.email}` : "Vul eerst een e-mailadres in (Bewerken)"}>{mailBusyId === u.id ? "Mailen…" : "Mail inloggegevens"}</button>{" "}
-                    <button className="mini-btn" onClick={() => resetUserPw(u.id)} disabled={busy}>Nieuw wachtwoord</button>{" "}
-                    <button className="mini-btn" onClick={() => removeUser(u.id, u.name || u.loginId)} disabled={busy}>Verwijder</button>
+                    <button className="btn btn-klein" onClick={() => openUser(u)}>Bewerken</button>{" "}
+                    <button className="btn btn-klein" onClick={() => viewAs(u.id)} disabled={busy} title="Open in een nieuw tabblad precies wat deze gast ziet">Bekijk als</button>{" "}
+                    <button className="btn btn-klein" onClick={() => mailLogin(u)} disabled={busy || mailBusyId !== null} title={u.email ? `Mailt een nieuw wachtwoord + de login-URL naar ${u.email}` : "Vul eerst een e-mailadres in (Bewerken)"}>{mailBusyId === u.id ? "Mailen…" : "Mail inloggegevens"}</button>{" "}
+                    <button className="btn btn-klein" onClick={() => resetUserPw(u.id)} disabled={busy}>Nieuw wachtwoord</button>{" "}
+                    <button className="btn btn-klein" onClick={() => removeUser(u.id, u.name || u.loginId)} disabled={busy}>Verwijder</button>
                   </td>
                 </tr>
               ))}
@@ -502,7 +502,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
               <div className="created-title">Nieuw wachtwoord voor {u?.name || u?.loginId || "gast"}</div>
               <p>Geef dit aan de gast. Je ziet het maar één keer.</p>
               <div className="cred-row"><span>Wachtwoord</span><code>{userPassword.password}</code>
-                <button className="mini-btn" type="button" onClick={() => copy(userPassword.password)}>Kopieer</button></div>
+                <button className="btn btn-klein" type="button" onClick={() => copy(userPassword.password)}>Kopieer</button></div>
             </div>
           );
         })()}
@@ -559,15 +559,15 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 </label>
               </div>
               <div style={{ display: "flex", gap: "var(--s-2)", marginTop: "var(--s-4)" }}>
-                <button type="submit" className="primary-btn" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
-                <button type="button" className="logout-btn" onClick={() => setEditUserId(null)}>Sluiten</button>
+                <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
+                <button type="button" className="btn btn-klein" onClick={() => setEditUserId(null)}>Sluiten</button>
               </div>
             </form>
           );
         })()}
 
         <div style={{ marginTop: "var(--s-6)" }}>
-          <button type="button" className="logout-btn" onClick={() => { setShowTeamForm((v) => !v); setCreated(null); }}>
+          <button type="button" className="btn btn-klein" onClick={() => { setShowTeamForm((v) => !v); setCreated(null); }}>
             {showTeamForm ? "− Formulier sluiten" : "+ Gast toevoegen"}
           </button>
         </div>
@@ -629,7 +629,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 Developer-taken (alle klanten): eigen scherm met de taken die naar Dev staan, afvinken en terugkoppelen
               </label>
             </div>
-            <button type="submit" className="primary-btn" style={{ marginTop: "var(--s-4)" }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
+            <button type="submit" className="btn btn-primary" style={{ marginTop: "var(--s-4)" }} disabled={busy}>{busy ? "Bezig…" : "Gast aanmaken"}</button>
             {notice && !notice.ok && (
               <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{notice.text}</div>
             )}
@@ -650,7 +650,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                   <input type="email" value={invoiceMail} onChange={(e) => setInvoiceMail(e.target.value)} placeholder="administratie@bedrijf.nl" />
                 </div>
                 <div className="field" style={{ justifyContent: "flex-end" }}>
-                  <button type="submit" className="primary-btn" disabled={settingsBusy} style={{ alignSelf: "flex-start" }}>{settingsBusy ? "Opslaan…" : "Opslaan"}</button>
+                  <button type="submit" className="btn btn-primary" disabled={settingsBusy} style={{ alignSelf: "flex-start" }}>{settingsBusy ? "Opslaan…" : "Opslaan"}</button>
                 </div>
               </div>
             </form>
@@ -678,15 +678,15 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 <td style={{ fontWeight: 600 }}>Search Console + Analytics (data)</td>
                 <td>{!gLinks ? "…" : gLinks.data.connected ? `Gekoppeld${gLinks.data.account ? ` als ${gLinks.data.account}` : ""}` : <span style={{ color: "var(--danger)" }}>Niet gekoppeld</span>}</td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  <a className="mini-btn" href="/api/google/auth/start">{gLinks?.data.connected ? "Opnieuw koppelen" : "Koppelen"}</a>
+                  <a className="btn btn-klein" href="/api/google/auth/start">{gLinks?.data.connected ? "Opnieuw koppelen" : "Koppelen"}</a>
                 </td>
               </tr>
               <tr>
                 <td style={{ fontWeight: 600 }}>Google Drive (documenten-opslag)</td>
                 <td>{!gLinks ? "…" : gLinks.drive.connected ? `Gekoppeld${gLinks.drive.account ? ` als ${gLinks.drive.account}` : ""}` : <span style={{ color: "var(--danger)" }}>Niet gekoppeld (documenten komen als download)</span>}</td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  <a className="mini-btn" href="/api/google/auth/start?purpose=drive">{gLinks?.drive.connected ? "Opnieuw koppelen" : "Drive koppelen"}</a>{" "}
-                  {gLinks?.drive.connected && <button className="mini-btn" onClick={disconnectDrive}>Ontkoppelen</button>}
+                  <a className="btn btn-klein" href="/api/google/auth/start?purpose=drive">{gLinks?.drive.connected ? "Opnieuw koppelen" : "Drive koppelen"}</a>{" "}
+                  {gLinks?.drive.connected && <button className="btn btn-klein" onClick={disconnectDrive}>Ontkoppelen</button>}
                 </td>
               </tr>
             </tbody>
@@ -732,7 +732,7 @@ function ClientPicker({
               <button
                 type="button"
                 onClick={() => onToggle(c.slug)}
-                className={on ? "primary-btn small" : "mini-btn"}
+                className={on ? "btn btn-primary btn-klein" : "btn btn-klein"}
                 style={{ padding: "var(--s-2) var(--s-3)" }}
               >
                 {on ? "✓ " : ""}{c.name}
@@ -742,7 +742,7 @@ function ClientPicker({
                   type="button"
                   onClick={() => onToggleEdit(c.slug)}
                   disabled={editAll}
-                  className={editOn ? "primary-btn small" : "mini-btn"}
+                  className={editOn ? "btn btn-primary btn-klein" : "btn btn-klein"}
                   style={{ padding: "var(--s-2) var(--s-3)", opacity: editAll ? 0.6 : 1 }}
                   title={editAll ? "Mag al overal bewerken (globaal vinkje staat aan)" : editOn ? "Mag deze klant bewerken; klik om alleen-lezen te maken" : "Alleen lezen; klik om bewerken toe te staan"}
                 >

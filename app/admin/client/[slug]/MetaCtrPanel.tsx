@@ -367,11 +367,11 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         meta ontstaat en beoordeeld wordt; wat je goedkeurt gaat vanzelf naar de site of naar de werklijst van de bouwer.
       </p>
       <div className="org-actions" style={{ margin: "var(--s-3) 0" }}>
-        <button type="button" className="primary-btn small" onClick={copyApproved} disabled={!approvedCount}>
+        <button type="button" className="btn btn-primary btn-klein" onClick={copyApproved} disabled={!approvedCount}>
           {copied ? "Gekopieerd!" : `Kopieer goedgekeurde meta's (${approvedCount})`}
         </button>
-        <button type="button" className="ghost-btn small" onClick={() => { setRows(null); void load(); }}>Vernieuwen</button>
-        <button type="button" className="ghost-btn small" onClick={() => void meetPaginas()} disabled={meetBusy}
+        <button type="button" className="btn btn-klein" onClick={() => { setRows(null); void load(); }}>Vernieuwen</button>
+        <button type="button" className="btn btn-klein" onClick={() => void meetPaginas()} disabled={meetBusy}
           title="Leest alle live pagina's opnieuw en kijkt wat er nu op staat en of dat aan de regels voldoet. Hierdoor komen ook pagina's zonder Search Console-cijfers in de lijst. Duurt een paar minuten.">
           {meetBusy ? "Pagina's meten… (paar minuten)" : "Meet de pagina's"}
         </button>
@@ -386,12 +386,12 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
             aria-label="Inlogpagina van de website-beheeromgeving"
           />
         ) : (
-          <button type="button" className="ghost-btn small" onClick={() => setBeheerEdit(true)}
+          <button type="button" className="btn btn-klein" onClick={() => setBeheerEdit(true)}
             title={beheerUrl ? `Inlogpagina: ${beheerUrl} (klik om te wijzigen)` : "Stel de inlogpagina van de website-beheeromgeving in (voor de 'Open in site'-knop). Leeg = /wp-admin/ achter het domein."}>
             {beheerUrl ? "Inlogpagina ingesteld ✓" : "Inlogpagina instellen"}
           </button>
         )}
-        <button type="button" className="ghost-btn small" onClick={() => { setWpUser(wp?.username || ""); setWpEdit((v) => !v); }}
+        <button type="button" className="btn btn-klein" onClick={() => { setWpUser(wp?.username || ""); setWpEdit((v) => !v); }}
           title="Koppel de WordPress-site met een applicatie-wachtwoord, zodat goedgekeurde meta's met één knop op de site gezet worden. Aanmaken: op de site inloggen → Gebruikers → Profiel → Applicatiewachtwoorden.">
           {wp?.connected ? `Site gekoppeld (${wp.username})` : "Site koppelen"}
         </button>
@@ -404,7 +404,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
           <input value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="Applicatie-wachtwoord (xxxx xxxx xxxx ...)" type="password"
             style={{ minWidth: 260, padding: "var(--s-1) var(--s-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", font: "inherit", fontSize: "var(--fs-sm)" }}
             aria-label="WordPress applicatie-wachtwoord" />
-          <button type="button" className="primary-btn small" onClick={() => void saveWp()} disabled={!wpUser.trim() || !wpPass.trim()}>Koppeling opslaan</button>
+          <button type="button" className="btn btn-primary btn-klein" onClick={() => void saveWp()} disabled={!wpUser.trim() || !wpPass.trim()}>Koppeling opslaan</button>
           {wpMsg && <span className="wz-item-sub" style={{ color: "var(--bad)" }}>{wpMsg}</span>}
         </div>
       )}
@@ -425,7 +425,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         return (
           <div className="org-actions" style={{ margin: "0 0 var(--s-3)" }}>
             {knoppen.map((k) => (
-              <button key={k.id} type="button" className={filter === k.id ? "primary-btn small" : "ghost-btn small"} onClick={() => setFilter(k.id)}>{k.label}</button>
+              <button key={k.id} type="button" className={filter === k.id ? "btn btn-primary btn-klein" : "btn btn-klein"} onClick={() => setFilter(k.id)}>{k.label}</button>
             ))}
           </div>
         );
@@ -462,12 +462,12 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                   {st && <span style={{ background: st.bg, color: st.fg, borderRadius: "var(--r-full)", padding: "var(--s-0) var(--s-3)", fontSize: "var(--fs-xs)", fontWeight: 600 }}>{st.txt}</span>}
                   {r.extraClicks > 0 && <span title="Geschatte extra klikken per 90 dagen bij een normale klikkans">+{r.extraClicks} klikken mogelijk</span>}
                   {onOpenPage && (
-                    <button type="button" className="ghost-btn small"
+                    <button type="button" className="btn btn-klein"
                       title="Open deze pagina in het Pagina's-tabblad (strategie, copy, verbeterstappen)"
                       onClick={(e) => { e.stopPropagation(); onOpenPage(r.url); }}>Open in Pagina&rsquo;s</button>
                   )}
                   {(beheerUrl || adminUrl(r.url)) && (
-                    <a className="ghost-btn small" href={beheerUrl || adminUrl(r.url)} target="_blank" rel="noreferrer"
+                    <a className="btn btn-klein" href={beheerUrl || adminUrl(r.url)} target="_blank" rel="noreferrer"
                       title="Open de beheeromgeving van de website (inloggen gaat via je eigen browser)"
                       onClick={(e) => e.stopPropagation()}>Open in site</a>
                   )}
@@ -501,16 +501,16 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                       )}
                       <span style={{ display: "inline-flex", gap: "var(--s-2)", alignItems: "center", flexWrap: "wrap" }}>
                         {r.copydoc && !r.copydoc.live && (
-                          <button type="button" className="primary-btn small" onClick={() => void neemCopydoc(r)} disabled={busy === `${r.url}|copydoc`}
+                          <button type="button" className="btn btn-primary btn-klein" onClick={() => void neemCopydoc(r)} disabled={busy === `${r.url}|copydoc`}
                             title="Er staat al een meta in het copydocument van deze pagina, geschreven met dezelfde regels. Neem die over in plaats van een nieuwe te schrijven.">
                             {busy === `${r.url}|copydoc` ? "Overnemen…" : "Neem de meta uit het copydocument over"}
                           </button>
                         )}
-                        <button type="button" className={r.copydoc && !r.copydoc.live ? "ghost-btn small" : "primary-btn small"} onClick={() => void generate(r)} disabled={busy === r.url}>
+                        <button type="button" className={r.copydoc && !r.copydoc.live ? "btn btn-klein" : "btn btn-primary btn-klein"} onClick={() => void generate(r)} disabled={busy === r.url}>
                           {busy === r.url ? "Voorstel schrijven…" : "Genereer voorstel (AI)"}
                         </button>
                         {busy === r.url && (
-                          <button type="button" className="ghost-btn small" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times; Onderbreken</button>
+                          <button type="button" className="btn btn-klein" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times; Onderbreken</button>
                         )}
                       </span>
                     </div>
@@ -538,7 +538,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                           <span className="wz-item-sub" style={{ color: "var(--dark)" }}>
                             Er staat ook een meta in het copydocument van deze pagina, met dezelfde regels geschreven.
                           </span>
-                          <button type="button" className="ghost-btn small" onClick={() => void neemCopydoc(r)} disabled={busy === `${r.url}|copydoc`}
+                          <button type="button" className="btn btn-klein" onClick={() => void neemCopydoc(r)} disabled={busy === `${r.url}|copydoc`}
                             title="Vervang dit voorstel door de tekst uit het copydocument en keur hem meteen goed.">
                             {busy === `${r.url}|copydoc` ? "Overnemen…" : "Neem die over"}
                           </button>
@@ -568,16 +568,16 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                         {r.proposal.status !== "doorgevoerd" && (
                           <div className="org-actions" style={{ margin: "var(--s-2) 0 var(--s-3)" }}>
                             {r.proposal.titleStatus !== "goedgekeurd" ? (
-                              <button type="button" className="primary-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "goedgekeurd" })); void patch(r.url, { titleStatus: "goedgekeurd" }); }}>Goedkeuren</button>
+                              <button type="button" className="btn btn-primary btn-klein" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "goedgekeurd" })); void patch(r.url, { titleStatus: "goedgekeurd" }); }}>Goedkeuren</button>
                             ) : (
-                              <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "open" })); void patch(r.url, { titleStatus: "open" }); }}>Goedkeuring intrekken</button>
+                              <button type="button" className="btn btn-klein" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "open" })); void patch(r.url, { titleStatus: "open" }); }}>Goedkeuring intrekken</button>
                             )}
-                            <button type="button" className="ghost-btn small" onClick={() => void regenField(r, "title")} disabled={busy === `${r.url}|title`}>{busy === `${r.url}|title` ? "Schrijven…" : "Opnieuw genereren"}</button>
+                            <button type="button" className="btn btn-klein" onClick={() => void regenField(r, "title")} disabled={busy === `${r.url}|title`}>{busy === `${r.url}|title` ? "Schrijven…" : "Opnieuw genereren"}</button>
                             {busy === `${r.url}|title` && (
-                              <button type="button" className="ghost-btn small" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times;</button>
+                              <button type="button" className="btn btn-klein" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times;</button>
                             )}
                             {r.proposal.titleStatus !== "afgewezen" && (
-                              <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "afgewezen" })); void patch(r.url, { titleStatus: "afgewezen" }); }}>Afwijzen</button>
+                              <button type="button" className="btn btn-klein" onClick={() => { setLocal(r.url, (p) => ({ ...p, titleStatus: "afgewezen" })); void patch(r.url, { titleStatus: "afgewezen" }); }}>Afwijzen</button>
                             )}
                           </div>
                         )}
@@ -604,16 +604,16 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                         {r.proposal.status !== "doorgevoerd" && (
                           <div className="org-actions" style={{ margin: "var(--s-2) 0 var(--s-0)" }}>
                             {r.proposal.descStatus !== "goedgekeurd" ? (
-                              <button type="button" className="primary-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "goedgekeurd" })); void patch(r.url, { descStatus: "goedgekeurd" }); }}>Goedkeuren</button>
+                              <button type="button" className="btn btn-primary btn-klein" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "goedgekeurd" })); void patch(r.url, { descStatus: "goedgekeurd" }); }}>Goedkeuren</button>
                             ) : (
-                              <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "open" })); void patch(r.url, { descStatus: "open" }); }}>Goedkeuring intrekken</button>
+                              <button type="button" className="btn btn-klein" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "open" })); void patch(r.url, { descStatus: "open" }); }}>Goedkeuring intrekken</button>
                             )}
-                            <button type="button" className="ghost-btn small" onClick={() => void regenField(r, "desc")} disabled={busy === `${r.url}|desc`}>{busy === `${r.url}|desc` ? "Schrijven…" : "Opnieuw genereren"}</button>
+                            <button type="button" className="btn btn-klein" onClick={() => void regenField(r, "desc")} disabled={busy === `${r.url}|desc`}>{busy === `${r.url}|desc` ? "Schrijven…" : "Opnieuw genereren"}</button>
                             {busy === `${r.url}|desc` && (
-                              <button type="button" className="ghost-btn small" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times;</button>
+                              <button type="button" className="btn btn-klein" onClick={cancelBusy} title="Onderbreek het schrijven; het resultaat wordt genegeerd.">&times;</button>
                             )}
                             {r.proposal.descStatus !== "afgewezen" && (
-                              <button type="button" className="ghost-btn small" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "afgewezen" })); void patch(r.url, { descStatus: "afgewezen" }); }}>Afwijzen</button>
+                              <button type="button" className="btn btn-klein" onClick={() => { setLocal(r.url, (p) => ({ ...p, descStatus: "afgewezen" })); void patch(r.url, { descStatus: "afgewezen" }); }}>Afwijzen</button>
                             )}
                           </div>
                         )}
@@ -625,7 +625,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                         <div className="org-actions" style={{ alignItems: "center" }}>
                           {wp?.connected ? (
                             <>
-                              <button type="button" className="primary-btn small" onClick={() => void pushToSite(r)} disabled={busy === `${r.url}|push`}
+                              <button type="button" className="btn btn-primary btn-klein" onClick={() => void pushToSite(r)} disabled={busy === `${r.url}|push`}
                                 title="Zet de goedgekeurde meta-titel en/of -beschrijving in één keer op de site (via de WordPress-koppeling). De effectmeting start daarna vanzelf.">
                                 {busy === `${r.url}|push` ? "Doorvoeren…" : "Doorvoeren op de site"}
                               </button>
@@ -646,8 +646,8 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                         <div>
                           <div className="org-actions meta-done-row" style={{ alignItems: "center", margin: "var(--s-1) 0 var(--s-3)" }}>
                             <span className="meta-live-badge">✓ Is doorgevoerd op de site</span>
-                            <button type="button" className="ghost-btn small" onClick={() => void verifyLive(r)} disabled={busy === `${r.url}|verify`}>{busy === `${r.url}|verify` ? "Controleren…" : "Controleer live"}</button>
-                            <a className="ghost-btn small" href={fullUrl(r.url)} target="_blank" rel="noreferrer">Open pagina</a>
+                            <button type="button" className="btn btn-klein" onClick={() => void verifyLive(r)} disabled={busy === `${r.url}|verify`}>{busy === `${r.url}|verify` ? "Controleren…" : "Controleer live"}</button>
+                            <a className="btn btn-klein" href={fullUrl(r.url)} target="_blank" rel="noreferrer">Open pagina</a>
                           </div>
                           {verify[r.url] && (() => {
                             const norm = (s: string) => (s || "").replace(/\s+/g, " ").trim().toLowerCase();

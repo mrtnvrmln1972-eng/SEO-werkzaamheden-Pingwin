@@ -637,7 +637,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
     intent: (k) => <td key="intent" className="kpi-metric-sep">{k.intent ? <span className={"kw-intent " + k.intent}>{k.intent}</span> : <span className="muted">&mdash;</span>}</td>,
     kans: (k) => <td key="kans" className="kpi-metric-sep">{isFruit(k) ? <span className="pg-kans quickwin">Quick win</span> : <span className="muted">&mdash;</span>}</td>,
     page: (k) => <td key="page" className="kpi-metric-sep kpi-ah-page">{k.url ? <a href={k.url} target="_blank" rel="noreferrer">{shortUrl(k.url)}</a> : <span className="muted" title="Nog geen pagina bekend; klik op Verversen om de pagina's erbij op te halen (kost credits).">&mdash;</span>}</td>,
-    open: (k) => <td key="open" className="kpi-openpage-cell">{k.url ? <button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(k.url!); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button> : <span className="muted">&mdash;</span>}</td>,
+    open: (k) => <td key="open" className="kpi-openpage-cell">{k.url ? <button type="button" className="btn btn-klein" onClick={(e) => { e.stopPropagation(); onOpenPage?.(k.url!); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button> : <span className="muted">&mdash;</span>}</td>,
   };
   type Ga4Ch = NonNullable<typeof ga4>["channels"][number];
   const chGetters: Record<ChKey, (c: Ga4Ch) => number | string> = {
@@ -685,7 +685,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
         <div className="cockpit-card">
           <div className="mail-connect">
             Koppel Google om Search Console en Analytics te tonen (alleen data; Google Drive koppel je apart in Beheer).{" "}
-            <a className="primary-btn small" href="/api/google/auth/start">Koppel Google (Search Console + Analytics)</a>
+            <a className="btn btn-primary btn-klein" href="/api/google/auth/start">Koppel Google (Search Console + Analytics)</a>
           </div>
         </div>
       )}
@@ -752,7 +752,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                           </td>
                           <td><span className="kpi-page-caret">{kwOpen ? "▾" : "▸"}</span> <a href={p.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(p.url)}</a></td>
                           {pageCols.map((gk) => pageCell[gk](p))}
-                          <td className="kpi-openpage-cell"><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
+                          <td className="kpi-openpage-cell"><button type="button" className="btn btn-klein" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
                         </tr>
                         {kwOpen && (
                           <tr className="kpi-page-kw-row">
@@ -830,8 +830,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                   <option value="custom">vs eigen datum…</option>
                 </select>
                 {ahCompare === "custom" && <input type="date" className="kpi-period-select" value={ahCustomDate} max={monthsAgoISO(0)} onChange={(e) => setAhCustomDate(e.target.value)} title="Vergelijk met deze datum" />}
-                {fruitCount > 0 && <button type="button" className={"ghost-btn small" + (onlyFruit ? " active" : "")} onClick={() => setOnlyFruit((v) => !v)}>{onlyFruit ? "Toon alles" : `Laaghangend fruit (${fruitCount})`}</button>}
-                <button type="button" className="primary-btn small" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
+                {fruitCount > 0 && <button type="button" className={"btn btn-klein" + (onlyFruit ? " active" : "")} onClick={() => setOnlyFruit((v) => !v)}>{onlyFruit ? "Toon alles" : `Laaghangend fruit (${fruitCount})`}</button>}
+                <button type="button" className="btn btn-primary btn-klein" onClick={syncAhrefs} disabled={ahrefsBusy}>{ahrefsBusy ? "Ophalen…" : (ahrefsKw.length ? "Verversen" : "Ahrefs-zoekwoorden ophalen")}</button>
               </span>
             </div>
             {ahrefsMsg && <div className="saved-msg" style={{ marginBottom: "var(--s-2)" }}>{ahrefsMsg}</div>}
@@ -893,8 +893,8 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
             <div className="kpi-block-head">
               <span className="kpi-block-title">Kansen{opps.length ? ` (${opps.length})` : ""} {siteBadge} <HelpHint xl title="Kansen: waar je nog niet rankt maar wel zou moeten" text={"Relevante zoekwoorden met echt volume waar deze site **nog helemaal niet op rankt**; de witte vlekken op de kaart.\n## Hoe de kansen gevonden worden\n- **Keyword-ideeën rond je kernthema's:** Ahrefs genereert termen rond de onderwerpen waar de site al op scoort.\n- **Concurrent-gaten:** termen waar concurrenten wél op ranken en jij niet; dat bewijst dat er in deze markt op gescoord kán worden.\n- **AI-relevantiefilter:** de kandidaten worden daarna door de AI gefilterd op echte relevantie voor dít bedrijf (met het klantprofiel als maatstaf), zodat er geen termen tussen staan die niet bij het aanbod of werkgebied passen.\n## Wat je ermee doet\nElke kans is een potentiële nieuwe pagina of een uitbreiding van een bestaande. Neem hem mee naar de strategie-stap van de best passende pagina, of maak een nieuwe pagina aan op de Pagina's-tab; de drempelregels daar (eigen pagina vanaf zo'n 100 zoekvolume) bewaken dat je geen pagina's bouwt voor lucht."} /></span>
               <span className="kpi-head-actions">
-                <button type="button" className={"ghost-btn small" + (compOpen ? " active" : "")} onClick={() => setCompOpen((v) => !v)}>Concurrenten{competitors.length ? ` (${competitors.length})` : ""}</button>
-                <button type="button" className="primary-btn small" onClick={collectOpps} disabled={kansenKlus.bezig}>{kansenKlus.bezig ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
+                <button type="button" className={"btn btn-klein" + (compOpen ? " active" : "")} onClick={() => setCompOpen((v) => !v)}>Concurrenten{competitors.length ? ` (${competitors.length})` : ""}</button>
+                <button type="button" className="btn btn-primary btn-klein" onClick={collectOpps} disabled={kansenKlus.bezig}>{kansenKlus.bezig ? "Zoeken…" : (opps.length ? "Opnieuw zoeken" : "Kansen zoeken")}</button>
               </span>
             </div>
             {(kansenKlus.bezig || kansenKlus.klus?.status === "vastgelopen") && (
@@ -1035,7 +1035,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
       )}
 
       {!loading && ads && (
-        <Collapse title={<>Google Ads {siteBadge}</>} meta={ads.linked ? `laatste ${secPeriodLabel("ads")} \u00b7 ${effCompare("ads") === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"} \u00b7 via de GA4-koppeling` : ""} open={isOpen("ads", true)} onToggle={() => toggle("ads", true)} actions={<><button type="button" className="ghost-btn small" onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("pw-open-chat", { detail: { thread: "ads" } })); }} title="Opent de Ads-assistent: vraag wat er wordt geoptimaliseerd, wat beter kan en welke vragen je het Ads-bureau moet stellen">Vraag de Ads-assistent</button>{periodPicker("ads")}</>}>
+        <Collapse title={<>Google Ads {siteBadge}</>} meta={ads.linked ? `laatste ${secPeriodLabel("ads")} \u00b7 ${effCompare("ads") === "yoy" ? "vs. vorig jaar" : "vs. vorige periode"} \u00b7 via de GA4-koppeling` : ""} open={isOpen("ads", true)} onToggle={() => toggle("ads", true)} actions={<><button type="button" className="btn btn-klein" onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("pw-open-chat", { detail: { thread: "ads" } })); }} title="Opent de Ads-assistent: vraag wat er wordt geoptimaliseerd, wat beter kan en welke vragen je het Ads-bureau moet stellen">Vraag de Ads-assistent</button>{periodPicker("ads")}</>}>
           {!ads.linked ? (
             <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Geen Google Ads-data gevonden in deze periode (geen actieve campagnes, of Google Ads is niet aan GA4 gekoppeld).</div>
           ) : (

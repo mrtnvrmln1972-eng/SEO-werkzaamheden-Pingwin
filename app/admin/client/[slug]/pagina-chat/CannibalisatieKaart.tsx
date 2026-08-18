@@ -47,7 +47,7 @@ export default function CannibalisatieKaart({ canni, driveFolder, openPicker, en
               <div className="md pch-canni-md" onClick={onCanniClick} dangerouslySetInnerHTML={{ __html: canniHtml }} />
               {wpRedirects.length > 0 && (!wpConf?.configured || wpFormOpen || wpMsg) && (
                 <div className="pch-wp-foot">
-                  {!wpConf?.configured && !wpFormOpen && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>Redirects uitvoeren vereist de WordPress-koppeling. <button type="button" className="ghost-btn small" onClick={() => setWpFormOpen(true)}>WordPress koppelen</button></span>}
+                  {!wpConf?.configured && !wpFormOpen && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>Redirects uitvoeren vereist de WordPress-koppeling. <button type="button" className="btn btn-klein" onClick={() => setWpFormOpen(true)}>WordPress koppelen</button></span>}
                   {wpFormOpen && (
                     <div className="pch-wp-form">
                       <input type="text" placeholder="WordPress-gebruikersnaam" value={wpForm.user} onChange={(e) => setWpForm((f) => ({ ...f, user: e.target.value }))} autoComplete="off" />

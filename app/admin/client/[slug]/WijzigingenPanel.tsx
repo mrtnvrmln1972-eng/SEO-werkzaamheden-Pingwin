@@ -478,7 +478,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     const markers = momentsAsc.map((m) => ({ key: String(m.id), date: m.date }));
     return (
       <div className="cockpit-card">
-        <button type="button" className="ghost-btn small" onClick={() => setOpen(null)}>← Alle wijzigingen</button>
+        <button type="button" className="btn btn-klein" onClick={() => setOpen(null)}>← Alle wijzigingen</button>
         <h2 className="wz-title">{open.diff.meta_title?.after || open.diff.h1?.after || shortUrl(open.url)}</h2>
         <div className="muted" style={{ marginBottom: "var(--s-4)" }}>{shortUrl(open.url)} · {momentsAsc.length} verandermoment{momentsAsc.length === 1 ? "" : "en"}</div>
         <div className="wz-detail-grid">
@@ -620,10 +620,10 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
       <div className="ck-section-head">
         <span>Wijzigingen ({clusters.length}) <HelpHint xl title="Wijzigingen: wat is er veranderd, en werkte het?" text={"SEO-werk bewijst zich pas als je de aanpassing én het effect naast elkaar ziet. Dit tabblad legt beide vast: **wat er op elke pagina veranderd is, wanneer, door wie; en wat de rankings daarna deden.**\n## Waar de wijzigingen vandaan komen\n- **Uit WordPress** (met de koppeling): de complete bewerkingshistorie per pagina, tot zo'n 8 maanden terug, inclusief aanpassingen door de klant of hun eigen developer; wie het deed staat erbij. Zonder koppeling wordt per pagina de laatste wijzigingsdatum opgehaald.\n- **Uit de scan:** 'Scan op wijzigingen' legt een basislijn vast van elke pagina (titel, koppen, alt-teksten, interne links, woordenaantal, schema) en detecteert daarna elk verschil; ook op sites zonder WordPress.\n- **Handmatig:** een bekende aanpassing uit het verleden kun je zelf toevoegen om het effect alsnog te volgen.\n## Hoe je het effect leest\nAanpassingen aan dezelfde pagina binnen 2 dagen worden gebundeld tot één moment (Google indexeert de pagina dan toch opnieuw als één geheel). Klik het moment open en je ziet de KPI-ontwikkeling eromheen: posities, klikken en vertoningen vóór en ná de wijziging. Dat is het eerlijkste antwoord op de vraag 'heeft die aanpassing gewerkt?'.\n## Handig\nDe ster zet een pagina op prioriteit (gedeeld met de andere tabs); geprioriteerde pagina's staan hier altijd bovenaan."} /></span>
         <span style={{ display: "inline-flex", gap: "var(--s-2)" }}>
-          <button type="button" className="ghost-btn small" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
-          {!wpSet && <button type="button" className="ghost-btn small" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling</button>}
-          <button type="button" className="ghost-btn small" onClick={syncWordpress} disabled={wpBusy} title={wpSet ? "Haalt de volledige bewerkingshistorie (revisies) uit WordPress" : "Haalt per pagina de laatste wijzigingsdatum op (stel een koppeling in voor de volledige historie)"}>{wpBusy ? "Uit WordPress…" : (wpSet ? "Uit WordPress ophalen (historie)" : "Uit WordPress ophalen")}</button>
-          <button type="button" className="ghost-btn small" onClick={scan} disabled={klus.bezig}>{klus.bezig ? "Scannen…" : "Scan op wijzigingen"}</button>
+          <button type="button" className="btn btn-klein" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
+          {!wpSet && <button type="button" className="btn btn-klein" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling</button>}
+          <button type="button" className="btn btn-klein" onClick={syncWordpress} disabled={wpBusy} title={wpSet ? "Haalt de volledige bewerkingshistorie (revisies) uit WordPress" : "Haalt per pagina de laatste wijzigingsdatum op (stel een koppeling in voor de volledige historie)"}>{wpBusy ? "Uit WordPress…" : (wpSet ? "Uit WordPress ophalen (historie)" : "Uit WordPress ophalen")}</button>
+          <button type="button" className="btn btn-klein" onClick={scan} disabled={klus.bezig}>{klus.bezig ? "Scannen…" : "Scan op wijzigingen"}</button>
         </span>
       </div>
       {(klus.bezig || klus.klus?.status === "vastgelopen") && (
@@ -659,8 +659,8 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
             </div>
           </div>
           <div style={{ marginTop: "var(--s-2)", display: "inline-flex", gap: "var(--s-2)", alignItems: "center" }}>
-            <button type="button" className="primary-btn small" onClick={saveWpCreds} disabled={wpSaveBusy || !wpUser.trim() || !wpPass.trim()}>{wpSaveBusy ? "Testen…" : "Opslaan en testen"}</button>
-            {wpSet && <button type="button" className="ghost-btn small" onClick={removeWpCreds} disabled={wpSaveBusy}>Koppeling verwijderen</button>}
+            <button type="button" className="btn btn-primary btn-klein" onClick={saveWpCreds} disabled={wpSaveBusy || !wpUser.trim() || !wpPass.trim()}>{wpSaveBusy ? "Testen…" : "Opslaan en testen"}</button>
+            {wpSet && <button type="button" className="btn btn-klein" onClick={removeWpCreds} disabled={wpSaveBusy}>Koppeling verwijderen</button>}
             {wpSet && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>Ingesteld{wpUser ? ` (${wpUser})` : ""}.</span>}
           </div>
           {wpSaveMsg && <div className={wpSaveOk ? "saved-msg" : "login-error"} style={{ marginTop: "var(--s-2)" }}>{wpSaveMsg}</div>}
@@ -678,7 +678,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
           </div>
           <input className="compose-input" style={{ marginTop: "var(--s-2)" }} value={addNote} onChange={(e) => setAddNote(e.target.value)} placeholder="Wat is er aangepast? (bijv. nieuwe H1 + intro herschreven)" />
           <div style={{ marginTop: "var(--s-2)" }}>
-            <button type="button" className="primary-btn small" onClick={addManual} disabled={!addUrl || !addDate || addBusy}>{addBusy ? "Toevoegen…" : "Toevoegen"}</button>
+            <button type="button" className="btn btn-primary btn-klein" onClick={addManual} disabled={!addUrl || !addDate || addBusy}>{addBusy ? "Toevoegen…" : "Toevoegen"}</button>
           </div>
         </div>
       )}
@@ -738,7 +738,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
                           <span key={t.soort} className={"act-soort act-soort-" + t.soort}>{t.n}× {OPT_LABEL[t.soort] || t.soort}</span>
                         ))}
                       </span>
-                      <button type="button" className="ghost-btn small" disabled={optBusy === o.url} onClick={() => void volgEffect(o)}
+                      <button type="button" className="btn btn-klein" disabled={optBusy === o.url} onClick={() => void volgEffect(o)}
                         title={gevolgd ? "Open het meetmoment van deze pagina" : "Leg een meetmoment vast en volg het effect op kliks, positie en CTR"}>
                         {optBusy === o.url ? "Bezig…" : gevolgd ? "effect bekijken" : "effect volgen"}
                       </button>

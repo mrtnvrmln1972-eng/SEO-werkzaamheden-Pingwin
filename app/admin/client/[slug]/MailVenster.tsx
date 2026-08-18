@@ -279,7 +279,7 @@ export default function MailVenster({
           <input className="wp-mail-instr" value={instr} onChange={(e) => setInstr(e.target.value)}
             placeholder="Wat moet er in de mail? (optioneel, bijv. 'leg kort uit waarom dit nu belangrijk is')"
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void schrijf(aud, instr, gekozen); } }} />
-          <button type="button" className="ghost-btn small" disabled={busy} onClick={() => void schrijf(aud, instr, gekozen)}>Laat Claude schrijven</button>
+          <button type="button" className="btn btn-klein" disabled={busy} onClick={() => void schrijf(aud, instr, gekozen)}>Laat Claude schrijven</button>
         </div>
         {fout && <div className="login-error wp-mail-fout">{fout}</div>}
         {klaar && <div className="wp-mail-klaar">{klaar}</div>}
@@ -326,8 +326,8 @@ export default function MailVenster({
         )}
         {busy && <div className="muted" style={{ marginTop: "var(--s-2)" }}>Mail aan het schrijven…</div>}
         <div className="wp-mail-foot">
-          <button type="button" className="ghost-btn small" onClick={kopieer} disabled={busy}>Kopieer</button>
-          <button type="button" className="primary-btn small" onClick={() => void verstuur()} disabled={busy || verzendt}
+          <button type="button" className="btn btn-klein" onClick={kopieer} disabled={busy}>Kopieer</button>
+          <button type="button" className="btn btn-primary btn-klein" onClick={() => void verstuur()} disabled={busy || verzendt}
             title={to ? `Verstuurt de mail nu naar ${to}` : "Vul eerst het e-mailadres van de ontvanger in"}>
             {verzendt ? "Versturen…" : "Versturen"}
           </button>

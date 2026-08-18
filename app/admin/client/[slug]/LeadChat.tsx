@@ -95,7 +95,7 @@ export default function LeadChat({
           <div className="lead-chat-sub">Vertel gewoon wat je wilt. De chat kent het dossier en kan zelf meten.</div>
         </div>
         {messages.length > 0 && (
-          <button className="mini-btn" onClick={wis} title="Begin een nieuw gesprek">Wis gesprek</button>
+          <button className="btn btn-klein" onClick={wis} title="Begin een nieuw gesprek">Wis gesprek</button>
         )}
       </div>
 
@@ -135,7 +135,7 @@ export default function LeadChat({
           placeholder="Typ of plak wat je kwijt wilt. Cmd/Ctrl + Enter verstuurt."
           rows={3}
         />
-        <button className="primary-btn" onClick={verstuur} disabled={busy || !vraag.trim()}>
+        <button className="btn btn-primary" onClick={verstuur} disabled={busy || !vraag.trim()}>
           {busy ? "Bezig…" : "Versturen"}
         </button>
       </div>

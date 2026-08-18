@@ -13,7 +13,7 @@ export default function AfwijsVenster({ canni }: { canni: ReturnType<typeof useC
             <div className="ccp-head">
               <strong>Voorstel afwijzen</strong>
               <code className="ccp-path">{rejectPath}</code>
-              <button type="button" className="ghost-btn small ccp-close" onClick={() => { setRejectPath(""); setRejectReason(""); }} title="Annuleren">✕</button>
+              <button type="button" className="btn btn-klein ccp-close" onClick={() => { setRejectPath(""); setRejectReason(""); }} title="Annuleren">✕</button>
             </div>
             <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-1) 0 var(--s-3)" }}>Leg kort vast waarom dit voorstel niet wordt doorgevoerd. Deze reden komt als onderbouwing in het klantdocument.</p>
             <input

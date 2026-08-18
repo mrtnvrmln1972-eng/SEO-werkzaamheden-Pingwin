@@ -418,14 +418,6 @@ body {
 .header-contact-label { font-weight: 700; font-size: var(--type-label); text-transform: uppercase; letter-spacing: 0.5px; }
 .header-contact-date { font-weight: 500; }
 .header-updated { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); font-weight: 400; }
-.logout-btn {
-  font-family: var(--letter);
-  font-size: var(--type-label); font-weight: 600; color: var(--kleur-tekst-stil);
-  background: none; border: 1px solid var(--kleur-rand);
-  padding: var(--ruimte-krap); border-radius: var(--ronding-klein); cursor: pointer;
-  transition: all 0.2s;
-}
-.logout-btn:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); }
 
 /* Layout */
 .container { max-width: 1700px; margin: 0 auto; padding: 28px var(--s-10) 60px; }
@@ -662,13 +654,6 @@ tbody td:last-child { text-align: center; }
   font-family: var(--letter); font-size: var(--fs-base); color: var(--body-text);
 }
 .field input:focus { outline: none; border-color: var(--orange); }
-.primary-btn {
-  padding: var(--ruimte-regel) var(--s-5); border: none; border-radius: var(--ronding-klein); background: var(--kleur-accent);
-  color: var(--kleur-tekst-op-vlak); font-family: var(--letter); font-size: var(--type-lopend);
-  font-weight: 700; cursor: pointer; transition: background 0.2s;
-}
-.primary-btn:hover { background: var(--kleur-accent-diep); }
-.primary-btn:disabled { opacity: 0.6; cursor: default; }
 .created-box {
   background: var(--kleur-goed-vlak); border: 1px solid #A5D6A7; border-radius: var(--ronding-knop);
   padding: var(--s-5) var(--s-6); margin-bottom: 28px;
@@ -685,12 +670,6 @@ tbody td:last-child { text-align: center; }
   padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-lopend); font-family: var(--letter-code); color: var(--dark);
   flex: 1; word-break: break-all;
 }
-.mini-btn {
-  border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); border-radius: var(--ronding-klein);
-  padding: var(--ruimte-krap) var(--ruimte-regel); font-family: var(--letter); font-size: var(--type-bijschrift);
-  font-weight: 600; color: var(--kleur-tekst-stil); cursor: pointer; white-space: nowrap;
-}
-.mini-btn:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); }
 .created-hint { font-size: var(--type-bijschrift) !important; color: var(--kleur-tekst-stil) !important; margin-top: var(--ruimte-naast) !important; margin-bottom: 0 !important; }
 .clickable-row { cursor: pointer; }
 .row-arrow { color: var(--kleur-accent); font-weight: 700; opacity: 0; transition: opacity 0.15s; }
@@ -1341,7 +1320,6 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .import-sheet { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); }
 .import-sheet select { font-size: var(--type-bijschrift); padding: var(--ruimte-krap) var(--ruimte-krap); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); }
 .import-bulk { display: inline-flex; gap: var(--ruimte-krap); }
-.import-bulk .ghost-btn.small { padding: var(--ruimte-krap) var(--ruimte-naast); }
 .import-table-wrap { max-height: 52vh; overflow: auto; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); }
 .import-table th { position: sticky; top: 0; z-index: 1; }
 .import-table td { font-size: var(--type-bijschrift); vertical-align: middle; }
@@ -1834,7 +1812,6 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
   border: 1px solid var(--grad-perzik);
 }
 .ql:hover { background: var(--orange); color: var(--white); }
-.primary-btn.small { padding: var(--ruimte-naast) var(--ruimte-groep); font-size: var(--type-bijschrift); }
 .saved-msg {
   background: var(--kleur-goed-vlak); color: var(--kleur-goed); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-groep);
   font-size: var(--type-bijschrift); font-weight: 600; margin-bottom: var(--ruimte-groep);
@@ -2306,7 +2283,6 @@ button.ck-collapse-head {
 .kw-intent.informatief { background: var(--brand-blue-light); color: #2c5b8f; }
 .kw-intent.navigatie { background: var(--kleur-rustig); color: var(--kleur-tekst-stil); }
 .pg-kans.quickwin { display: inline-block; font-size: var(--type-label); font-weight: 700; padding: 1px var(--ruimte-naast); border-radius: var(--ronding-knop); background: var(--kleur-goed-vlak); color: var(--kleur-goed); }
-.ghost-btn.active { background: var(--kleur-accent-vlak); border-color: var(--kleur-rand-accent); color: var(--kleur-accent-diep); }
 .comp-edit { margin: var(--ruimte-krap) 0 var(--ruimte-naast); padding: var(--ruimte-naast) var(--ruimte-regel); background: var(--kleur-rustig); border-radius: var(--ronding-knop); }
 .comp-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ruimte-naast); }
 .comp-uitleg { font-size: var(--type-label); line-height: var(--regel-label); margin-bottom: var(--ruimte-naast); }
@@ -2412,17 +2388,12 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .werk-title { font-size: var(--type-kaartkop); font-weight: 600; color: var(--dark); }
 .add-month-select { font-size: var(--type-bijschrift); padding: var(--ruimte-krap) var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart); color: var(--kleur-tekst-stil); cursor: pointer; }
 .werk-head-actions { display: flex; gap: var(--ruimte-naast); align-items: center; }
-.werk-head-actions .ghost-btn { background: none; border: 1px solid var(--kleur-rand); color: var(--kleur-tekst-stil); padding: var(--ruimte-krap) var(--ruimte-naast); font-size: var(--type-bijschrift); border-radius: var(--ronding-klein); cursor: pointer; }
-.werk-head-actions .ghost-btn:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); }
-.werk-head-actions .primary-btn.small { padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-bijschrift); }
 /* Nieuwe-maand-keuze in de topbar (links van Laatste contact) */
 .header-month-slot { display: inline-flex; align-items: center; }
 .header-month-select { font-size: var(--type-bijschrift); padding: var(--ruimte-krap) var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart); color: var(--kleur-tekst-stil); cursor: pointer; }
 .header-month-select:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); }
 /* Mailknoppen in elke maandkop */
 .month-head-actions { display: inline-flex; gap: var(--ruimte-krap); margin-left: var(--ruimte-regel); margin-right: auto; }
-.ghost-btn.small { background: none; border: 1px solid var(--kleur-rand); color: var(--kleur-tekst-stil); padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-label); line-height: var(--regel-label); border-radius: var(--ronding-klein); cursor: pointer; }
-.ghost-btn.small:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); }
 .task-card .task-section { margin-bottom: 0; }
 .budget-inline { display: flex; flex-wrap: wrap; gap: var(--ruimte-krap) var(--ruimte-groep); align-items: baseline; justify-content: flex-end; }
 .budget-inline > div { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.25; }
@@ -2433,7 +2404,6 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 /* "Mail"-knop in de kolomheader: vink taken aan en klik hier om ze te mailen. */
 /* Klant/developer-schakelaar bovenin het mailvenster. */
 .compose-modeswitch { display: flex; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-regel); }
-.mini-btn.active { background: var(--kleur-accent); border-color: var(--kleur-rand-accent); color: var(--kleur-tekst-op-vlak); }
 .row-actions { white-space: nowrap; }
 .row-actions { display: flex; align-items: center; justify-content: center; gap: var(--ruimte-naast); }
 .row-send { background: none; border: none; cursor: pointer; font-size: var(--type-kaartkop); line-height: 1; opacity: 0.65; padding: var(--ruimte-krap) var(--ruimte-krap); }
@@ -3784,7 +3754,6 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 
 /* Slim vraagveld bij Laatste mails: antwoordkaart + gemarkeerde mails. */
 .mail-vraag-antwoord { border: 1px solid var(--kleur-rand-zacht); border-left: 3px solid var(--kleur-accent); border-radius: var(--ronding-knop); padding: var(--ruimte-naast) var(--ruimte-regel); margin-bottom: var(--ruimte-regel); background: var(--kleur-kaart); font-size: var(--type-bijschrift); max-width: 760px; }
-.mail-vraag-antwoord .ghost-btn { margin-top: var(--ruimte-krap); }
 .email-row.email-hit { border-color: var(--kleur-rand-accent); box-shadow: 0 0 0 1px var(--kleur-accent) inset; }
 
 /* Werklijst sitebouwer: knop + status rechts in de weekplanning-kop. */
@@ -5166,7 +5135,6 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .opr-sectie-klein > .opr-sectie-body { padding: 0 0 var(--ruimte-groep); }
 /* De filterknoppen boven het plaatsen-advies: de gekozen knop moet te zien zijn,
    anders klik je en verandert er zichtbaar niets. */
-.ghost-btn.small.actief { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); border-color: var(--kleur-rand-accent); }
 /* Fijndruk onder een blok: de herkomst van de cijfers, geen hoofdzaak. */
 .opr-fijn { font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
 /* De tabellen stonden op de kleinste maat, met krappe regels. Op een scherm vol
@@ -6258,7 +6226,6 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .ob-detail { margin: 0; font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht); max-width: 72ch; }
 .ob-waarom { margin: var(--ruimte-krap) 0 0; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); max-width: 72ch; }
 .ob-wacht { margin: var(--ruimte-naast) 0 0; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-fout); }
-.ob-stap > .ghost-btn { flex: 0 0 auto; margin-top: var(--ruimte-krap); }
 
 /* Het bolletje links: de staat in één oogopslag */
 .ob-bol {
@@ -6298,7 +6265,6 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 
 @media (max-width: 640px) {
   .ob-stap { flex-wrap: wrap; }
-  .ob-stap > .ghost-btn { margin-left: calc(var(--s-5) + var(--ruimte-regel)); }
 }
 /* ── Bronnenstrip: wat de chat heeft opgezocht ─────────────────────────────
    Ingeklapt onder een chatantwoord. Rustig en klein: het is bewijsmateriaal
@@ -6835,7 +6801,6 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 }
 .klus-doos-kop { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 800; color: var(--dark); margin-bottom: var(--ruimte-regel); }
 .klus-doos-rij { display: flex; flex-direction: column; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-regel); }
-.klus-doos-rij .ghost-btn { align-self: flex-start; }
 .klus-doos-voet { margin: 0; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
 /* ── Het belletje in de kopbalk ───────────────────────────────────
    Meldingen van dingen die iemand anders deed (de sitebouwer vinkt af).
@@ -6863,15 +6828,18 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
    apart geregeld, in vijf varianten, met randen die pas bij hover oranje werden
    en soms rood of blauw. Eén gegroepeerde regel is de afdwinging: een nieuwe
    doorzichtige knop krijgt `.btn-ghost` en is klaar. Staat bewust onderaan het
-   bestand, zodat hij van de oudere losse definities wint. */
+   bestand, zodat hij van de oudere losse definities wint.
+   Op 18-08-2026 zijn .ghost-btn, .primary-btn, .mini-btn en .logout-btn hier
+   uit verdwenen: die 349 knoppen staan nu op .btn met een variant, dus er is
+   geen tweede naam meer voor dezelfde knop. De wp-namen hieronder zijn de
+   volgende die aan de beurt zijn. */
 .btn-ghost,
 .wp-fase-btn,
 .wp-act,
 .wp-link-btn,
 .wp-icon,
 .wp-titel-pen,
-.pd-ververs,
-.ghost-btn {
+.pd-ververs {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--ruimte-krap);
   font-family: inherit; font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700;
   padding: var(--ruimte-krap) var(--ruimte-regel); border-radius: var(--ronding-pil);
@@ -6886,21 +6854,18 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .wp-icon:hover:not(:disabled),
 .wp-titel-pen:hover:not(:disabled),
 .pd-ververs:hover:not(:disabled),
-.ghost-btn:hover:not(:disabled) { background: var(--kleur-accent-vlak); border-color: var(--kleur-accent-diep); color: var(--kleur-accent-diep); }
 .btn-ghost:disabled,
 .wp-fase-btn:disabled,
 .wp-act:disabled,
 .wp-link-btn:disabled,
 .wp-icon:disabled,
 .pd-ververs:disabled,
-.ghost-btn:disabled { opacity: 0.5; cursor: default; }
 .btn-ghost:focus-visible,
 .wp-fase-btn:focus-visible,
 .wp-act:focus-visible,
 .wp-link-btn:focus-visible,
 .wp-icon:focus-visible,
 .pd-ververs:focus-visible,
-.ghost-btn:focus-visible { outline: 2px solid var(--kleur-accent-diep); outline-offset: 2px; }
 
 /* .btn-ghost is dubbelop gebruikt: als volledig zelfstandige knopstijl voor de
    oudere klassen hierboven (wp-fase-btn, wp-act, …), én als kleurmodifier bovenop

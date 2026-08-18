@@ -467,7 +467,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       {driveFolder
       ? <span className="pcd-folder">{driveFolder.path || driveFolder.name}</span>
       : <span className="pcd-folder muted">nog geen Drive-map (zonder map worden ze in je hoofdmap gezet)</span>}
-      <button type="button" className="ghost-btn small" onClick={openPicker}>{driveFolder ? "Klantmap wijzigen" : "Kies klantmap"}</button>
+      <button type="button" className="btn btn-klein" onClick={openPicker}>{driveFolder ? "Klantmap wijzigen" : "Kies klantmap"}</button>
       </div>
       {genErr && <div className="login-error" style={{ marginBottom: "var(--s-2)" }}>{genErr}</div>}
       {genMsg && <div className="saved-msg" style={{ marginBottom: "var(--s-2)" }}>{genMsg}</div>}
@@ -565,7 +565,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               <input className="pages-search" style={{ flex: "1 1 280px", minWidth: 220 }} placeholder="Pad of volledige URL, bijv. /nieuwe-dienst/" value={newPath} onChange={(e) => setNewPath(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPage(); }} />
               <input className="pages-search" style={{ flex: "1 1 220px", minWidth: 180 }} placeholder="Titel (optioneel)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPage(); }} />
               <button type="button" className={"pcd-btn" + (addingPage ? " busy" : "")} onClick={addPage} disabled={addingPage}>{addingPage ? "Toevoegen…" : "Toevoegen"}</button>
-              <button type="button" className="ghost-btn small" onClick={() => { setNewPageOpen(false); setNewPath(""); setNewTitle(""); }}>Annuleren</button>
+              <button type="button" className="btn btn-klein" onClick={() => { setNewPageOpen(false); setNewPath(""); setNewTitle(""); }}>Annuleren</button>
             </div>
           </div>
         )}
@@ -655,12 +655,12 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               </div>
               <div className="drive-newfolder">
                 <input className="compose-input" value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="Nieuwe submap maken (naam)…" />
-                <button type="button" className="ghost-btn small" onClick={makeSubfolder} disabled={pickBusy || !newFolder.trim()}>Map maken</button>
+                <button type="button" className="btn btn-klein" onClick={makeSubfolder} disabled={pickBusy || !newFolder.trim()}>Map maken</button>
               </div>
             </div>
             <div className="compose-foot">
-              <button type="button" className="logout-btn" onClick={() => setPickerOpen(false)}>Annuleren</button>
-              <button type="button" className="primary-btn small" onClick={chooseCurrent} disabled={pickBusy}>Kies &ldquo;{stack[stack.length - 1].name}&rdquo;</button>
+              <button type="button" className="btn btn-klein" onClick={() => setPickerOpen(false)}>Annuleren</button>
+              <button type="button" className="btn btn-primary btn-klein" onClick={chooseCurrent} disabled={pickBusy}>Kies &ldquo;{stack[stack.length - 1].name}&rdquo;</button>
             </div>
           </div>
         </div>
@@ -878,7 +878,7 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
                             </li>
                           ))}
                         </ul>
-                        <button type="button" className="ghost-btn small" style={{ marginTop: "var(--s-2)" }} onClick={cleanupLoose} disabled={cleaning}>{cleaning ? "Opruimen…" : `Opruimen (${loose.length})`}</button>
+                        <button type="button" className="btn btn-klein" style={{ marginTop: "var(--s-2)" }} onClick={cleanupLoose} disabled={cleaning}>{cleaning ? "Opruimen…" : `Opruimen (${loose.length})`}</button>
                       </div>
                     )}
                   </>
@@ -898,7 +898,7 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
                       <strong style={{ fontSize: "var(--fs-sm)" }}>Vastgelegde strategie (de conclusie van deze stap)</strong>
                       {!(plan || "").trim() && <span className="plan-chip">nog geen strategie</span>}
                       {saved && <span className="focus-save-status">opgeslagen</span>}
-                      <span style={{ marginLeft: "auto" }}><button type="button" className="ghost-btn small" onClick={() => { if (editing) savePlan(); else setEditing(true); }}>{editing ? "Klaar" : "Bewerken"}</button></span>
+                      <span style={{ marginLeft: "auto" }}><button type="button" className="btn btn-klein" onClick={() => { if (editing) savePlan(); else setEditing(true); }}>{editing ? "Klaar" : "Bewerken"}</button></span>
                     </div>
                     {editing ? (
                       <div ref={planRef} className="pages-plan-edit md" contentEditable suppressContentEditableWarning />

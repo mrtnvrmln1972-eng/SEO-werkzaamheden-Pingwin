@@ -43,7 +43,7 @@ export default function AdminKop({ titel, terug = "/admin", terugLabel = "Naar d
       <div className="header-right">
         <Tellers />
         <OntwikkelMenu />
-        <a className="logout-btn" href={terug}>{terugLabel}</a>
+        <a className="btn btn-klein" href={terug}>{terugLabel}</a>
       </div>
     </div>
   );

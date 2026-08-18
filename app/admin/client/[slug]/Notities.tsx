@@ -77,7 +77,7 @@ export default function Notities({ slug, domain }: { slug: string; domain?: stri
           <span className="bl-sub muted">Plak hier wat je wilt onthouden; de assistent neemt het mee als achtergrond over deze klant.</span>
         </div>
         <span className="wp-fase-spacer" />
-        <button type="button" className="ghost-btn small" disabled={busy} onClick={() => void nieuw()}>+ notitie</button>
+        <button type="button" className="btn btn-klein" disabled={busy} onClick={() => void nieuw()}>+ notitie</button>
       </div>
       {notities.length === 0 && <div className="muted nt-leeg">Nog geen notities. Klik op &ldquo;+ notitie&rdquo; en plak erin wat je wilt bewaren.</div>}
       {notities.map((n) => {

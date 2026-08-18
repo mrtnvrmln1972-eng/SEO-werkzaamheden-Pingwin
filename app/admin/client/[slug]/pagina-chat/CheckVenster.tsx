@@ -16,7 +16,7 @@ export default function CheckVenster({ canni, siteBase }: { canni: ReturnType<ty
               <strong>Pagina-check</strong>
               <code className="ccp-path">{checkPath}</code>
               {checkData && <a href={checkData.fullUrl} target="_blank" rel="noreferrer" className="ccp-live">bekijk live ↗</a>}
-              <button type="button" className="ghost-btn small ccp-close" onClick={() => setCheckPath("")} title="Sluiten">✕</button>
+              <button type="button" className="btn btn-klein ccp-close" onClick={() => setCheckPath("")} title="Sluiten">✕</button>
             </div>
             {checkBusy && <div className="muted" style={{ padding: "var(--s-4) 0" }}>Gegevens ophalen (GSC en Ahrefs)…</div>}
             {checkErr && <div className="login-error">{checkErr}</div>}
@@ -35,7 +35,7 @@ export default function CheckVenster({ canni, siteBase }: { canni: ReturnType<ty
                 ) : <p className="muted">Geen Ahrefs-rankings voor deze pagina.</p>}
                 {duidingMd
                   ? (<><p className="ccp-sub">Diepere duiding (op basis van de GSC-data van beide pagina&rsquo;s):</p><div className="md ccp-duiding" dangerouslySetInnerHTML={{ __html: mdToHtml(duidingMd, siteBase) }} /></>)
-                  : <button type="button" className="ghost-btn small" style={{ marginTop: "var(--s-3)" }} disabled={duidingBusy} onClick={loadDuiding} title="AI legt de zoektermen van deze pagina naast die van de winnaar: echte splitsing of niet, en klopt de voorgestelde actie. Duurt 15-30 seconden.">{duidingBusy ? "Duiding maken…" : "Diepere duiding"}</button>}
+                  : <button type="button" className="btn btn-klein" style={{ marginTop: "var(--s-3)" }} disabled={duidingBusy} onClick={loadDuiding} title="AI legt de zoektermen van deze pagina naast die van de winnaar: echte splitsing of niet, en klopt de voorgestelde actie. Duurt 15-30 seconden.">{duidingBusy ? "Duiding maken…" : "Diepere duiding"}</button>}
                 <div className="ccp-actions">
                   {(() => {
                     const to = rowRedirectRef.current[checkPath] || wpRedirects.find((x) => x.from === checkPath)?.to || "";

@@ -71,8 +71,8 @@ export default function PageSummaryCard({ slug, url, planDone, autoGenSignal }: 
     <div className="page-summary-card">
       <div className="psc-head">
         <span className="psc-title">In het kort</span>
-        {has && !editing && <button type="button" className="ghost-btn small" onClick={startEdit}>Bewerken</button>}
-        {has && !editing && <button type="button" className={"ghost-btn small" + (busy ? " busy" : "")} onClick={generate} disabled={busy} title="Maak de samenvatting opnieuw uit de vastgelegde strategie.">{busy ? "Vernieuwen…" : "Vernieuw uit strategie"}</button>}
+        {has && !editing && <button type="button" className="btn btn-klein" onClick={startEdit}>Bewerken</button>}
+        {has && !editing && <button type="button" className={"btn btn-klein" + (busy ? " busy" : "")} onClick={generate} disabled={busy} title="Maak de samenvatting opnieuw uit de vastgelegde strategie.">{busy ? "Vernieuwen…" : "Vernieuw uit strategie"}</button>}
       </div>
 
       {err && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{err}</div>}
@@ -84,8 +84,8 @@ export default function PageSummaryCard({ slug, url, planDone, autoGenSignal }: 
           <label className="psc-row"><span className="psc-label">Zet</span><input className="psc-input" value={draft.zet} placeholder="De één belangrijkste actie…" onChange={(e) => setDraft({ ...draft, zet: e.target.value })} /></label>
           <label className="psc-row"><span className="psc-label">Samenhang</span><input className="psc-input" value={draft.related} placeholder="Optioneel: hangt samen met /andere-pagina/…" onChange={(e) => setDraft({ ...draft, related: e.target.value })} /></label>
           <div className="psc-actions">
-            <button type="button" className="primary-btn small" onClick={save} disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
-            <button type="button" className="ghost-btn small" onClick={() => setEditing(false)} disabled={busy}>Annuleren</button>
+            <button type="button" className="btn btn-primary btn-klein" onClick={save} disabled={busy}>{busy ? "Opslaan…" : "Opslaan"}</button>
+            <button type="button" className="btn btn-klein" onClick={() => setEditing(false)} disabled={busy}>Annuleren</button>
           </div>
         </div>
       ) : has ? (

@@ -79,7 +79,7 @@ export default function AhrefsTeller() {
     <div className="hm-wrap at-wrap" ref={wrapRef}>
       <button
         type="button"
-        className={"logout-btn at-knop" + (open ? " hm-open" : "")}
+        className={"btn btn-klein at-knop" + (open ? " hm-open" : "")}
         aria-haspopup="true"
         aria-expanded={open}
         title={`Ahrefs-tegoed. ${stand.oordeel}`}

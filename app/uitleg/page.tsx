@@ -106,7 +106,7 @@ export default async function UitlegPage() {
         <div className="header-right">
           <span className="ut-datum">Bijgewerkt {LAATST_BIJGEWERKT}</span>
           {isBeheerder && (
-            <a className="logout-btn" href="/admin" style={{ marginLeft: "var(--s-3)" }} title="Terug naar het klantenoverzicht">Naar de cockpit</a>
+            <a className="btn btn-klein" href="/admin" style={{ marginLeft: "var(--s-3)" }} title="Terug naar het klantenoverzicht">Naar de cockpit</a>
           )}
         </div>
       </div>

@@ -74,7 +74,7 @@ export default function SchrijfstijlClient({ start }: { start: Schrijfstijl | nu
               {stijl?.aantalMails ? `, uit ${stijl.aantalMails} mails` : ""}
               {stijl?.handmatig ? " · door jou aangepast" : ""}
             </span>
-            <button type="button" className="ghost-btn small" disabled={bezig} onClick={opnieuw}>
+            <button type="button" className="btn btn-klein" disabled={bezig} onClick={opnieuw}>
               {bezig ? "Bezig…" : "Opnieuw afleiden uit mijn mails"}
             </button>
           </div>

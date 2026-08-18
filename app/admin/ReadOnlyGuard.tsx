@@ -138,7 +138,7 @@ export default function ReadOnlyGuard({ editSlugs = [], devOk = false }: { editS
           Je hebt nog geen rechten om deze actie uit te voeren. Je kunt wel overal
           rondkijken. Vraag de beheerder om wijzig-rechten als je dit nodig hebt.
         </p>
-        <button type="button" className="primary-btn" onClick={() => setShow(false)}>
+        <button type="button" className="btn btn-primary" onClick={() => setShow(false)}>
           Sluiten
         </button>
       </div>

@@ -102,7 +102,7 @@ export default function InvoiceAlert({ slug, clientName }: { slug: string; clien
         ))}
         <button
           type="button"
-          className="mini-btn"
+          className="btn btn-klein"
           onClick={openCompose}
           title="Opent een mailvenster met de factuurlinks, naar het administratie-adres (instelbaar bij Beheer)"
         >
@@ -130,8 +130,8 @@ export default function InvoiceAlert({ slug, clientName }: { slug: string; clien
               {msg && <div className={msg.startsWith("Verstuurd") ? "saved-msg" : "login-error"} style={{ marginTop: "var(--s-2)" }}>{msg}</div>}
             </div>
             <div className="compose-foot">
-              <button type="button" className="logout-btn" onClick={() => setShowCompose(false)}>Annuleren</button>
-              <button type="button" className="primary-btn small" onClick={send} disabled={busy}>{busy ? "Versturen..." : "Verstuur per mail"}</button>
+              <button type="button" className="btn btn-klein" onClick={() => setShowCompose(false)}>Annuleren</button>
+              <button type="button" className="btn btn-primary btn-klein" onClick={send} disabled={busy}>{busy ? "Versturen..." : "Verstuur per mail"}</button>
             </div>
           </div>
         </div>

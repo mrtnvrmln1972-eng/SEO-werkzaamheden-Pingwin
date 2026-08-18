@@ -228,7 +228,7 @@ export default function RoutekaartClient({
           <MeldingenMenu />
           <Tellers />
         <OntwikkelMenu />
-          <a className="logout-btn" href="/admin">Naar de klanten</a>
+          <a className="btn btn-klein" href="/admin">Naar de klanten</a>
         </div>
       </div>
 

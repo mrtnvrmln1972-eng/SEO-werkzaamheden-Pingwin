@@ -57,7 +57,7 @@ export default function Concurrenten({ slug, compact = false, onOpgeslagen }: { 
         ))}
       </div>
       <div className="comp-acties">
-        <button type="button" className="ghost-btn small" onClick={() => void bewaar()} disabled={bezig}>
+        <button type="button" className="btn btn-klein" onClick={() => void bewaar()} disabled={bezig}>
           {bezig ? "Opslaan…" : "Concurrenten opslaan"}
         </button>
         {gemeld && <span className="saved-msg">{gemeld}</span>}

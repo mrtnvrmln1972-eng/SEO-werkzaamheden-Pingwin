@@ -34,7 +34,7 @@ export default function BronnenGezondheidClient({ bronnen, wordpress }: { bronne
         <Paneel
           titel="Bronnen-gezondheid"
           uitleg="Elke koppeling die dit dashboard gebruikt (Ahrefs, Google, Microsoft, Moneybird, WordPress) kan een dag stil zijn: een verlopen toegang, een limiet, een storing. Deze controle is zojuist opnieuw uitgevoerd, dus wat hieronder staat is de actuele stand, niet een oud cijfer."
-          knoppen={<a href="/admin/bronnen-gezondheid" className="mini-btn">Opnieuw controleren</a>}
+          knoppen={<a href="/admin/bronnen-gezondheid" className="btn btn-klein">Opnieuw controleren</a>}
         >
           {storingen === 0 ? (
             <Tekst>Alle koppelingen werken. Geen enkele bron staat op storing.</Tekst>
@@ -51,7 +51,7 @@ export default function BronnenGezondheidClient({ bronnen, wordpress }: { bronne
                 <td>{b.stand === "werkt" ? "—" : b.melding}</td>
                 <td>
                   {b.stand !== "werkt" && b.herstelPad ? (
-                    <a className="mini-btn" href={b.herstelPad}>Opnieuw koppelen</a>
+                    <a className="btn btn-klein" href={b.herstelPad}>Opnieuw koppelen</a>
                   ) : "—"}
                 </td>
               </tr>
@@ -75,7 +75,7 @@ export default function BronnenGezondheidClient({ bronnen, wordpress }: { bronne
                   <td>{w.stand === "werkt" ? "—" : w.melding}</td>
                   <td>
                     {w.stand !== "werkt" ? (
-                      <a className="mini-btn" href={`/admin/client/${w.slug}`}>Naar de klant</a>
+                      <a className="btn btn-klein" href={`/admin/client/${w.slug}`}>Naar de klant</a>
                     ) : "—"}
                   </td>
                 </tr>

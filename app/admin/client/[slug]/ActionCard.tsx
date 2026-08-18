@@ -280,7 +280,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
 
       {!done && !isWeekplan && (
         <div className="act-actions">
-          <button type="button" className={"primary-btn small" + (busy ? " busy" : "")} onClick={approve} disabled={busy}>{busy ? "Bezig…" : "Goedkeuren"}</button>
+          <button type="button" className={"btn btn-primary btn-klein" + (busy ? " busy" : "")} onClick={approve} disabled={busy}>{busy ? "Bezig…" : "Goedkeuren"}</button>
           {result && !result.ok && <span className="act-err">{result.message}</span>}
         </div>
       )}
@@ -293,8 +293,8 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
               <div className="act-copybox-head">
                 <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>Voor de sitebouwer</span>
                 <span style={{ display: "inline-flex", gap: "var(--s-2)" }}>
-                  <button type="button" className="ghost-btn small" onClick={copyText}>{copied ? "Gekopieerd ✓" : "Kopieer"}</button>
-                  <button type="button" className="ghost-btn small" onClick={mailToDev} title="Open je mail met deze uitwerking voorgevuld, gericht aan je sitebouwer/developer.">Mail naar sitebouwer</button>
+                  <button type="button" className="btn btn-klein" onClick={copyText}>{copied ? "Gekopieerd ✓" : "Kopieer"}</button>
+                  <button type="button" className="btn btn-klein" onClick={mailToDev} title="Open je mail met deze uitwerking voorgevuld, gericht aan je sitebouwer/developer.">Mail naar sitebouwer</button>
                 </span>
               </div>
               {/* Gerenderd tonen, niet ruw. Dit is de plek waar de uitwerking naar de
@@ -305,8 +305,8 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
             </div>
           )}
           <div className="act-jump">
-            {result.taskIds && result.taskIds.length > 0 && onGoToTask && <button type="button" className="ghost-btn small" onClick={() => onGoToTask(result.taskIds![0])}>Bekijk in Taken →</button>}
-            {action.url && onGoToPage && <button type="button" className="ghost-btn small" onClick={() => onGoToPage(action.url!)}>Open pagina →</button>}
+            {result.taskIds && result.taskIds.length > 0 && onGoToTask && <button type="button" className="btn btn-klein" onClick={() => onGoToTask(result.taskIds![0])}>Bekijk in Taken →</button>}
+            {action.url && onGoToPage && <button type="button" className="btn btn-klein" onClick={() => onGoToPage(action.url!)}>Open pagina →</button>}
           </div>
         </div>
       )}

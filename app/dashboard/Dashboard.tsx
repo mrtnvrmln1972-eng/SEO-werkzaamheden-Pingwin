@@ -321,9 +321,9 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
             {updatedAt ? `Laatste update: ${updatedAt}` : "Laden..."}
           </span>
           {adminPreview ? (
-            <a className="logout-btn" href="/admin"><PijlLinks /> Terug naar beheer</a>
+            <a className="btn btn-klein" href="/admin"><PijlLinks /> Terug naar beheer</a>
           ) : (
-            <button className="logout-btn" onClick={logout}>Uitloggen</button>
+            <button className="btn btn-klein" onClick={logout}>Uitloggen</button>
           )}
         </div>
       </div>

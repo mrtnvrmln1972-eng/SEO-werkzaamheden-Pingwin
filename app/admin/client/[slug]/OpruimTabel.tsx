@@ -330,7 +330,7 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
         </table>
       </div>
       {!alleenLezen && <div className="opr-voet-balk">
-        <button type="button" className="primary-btn small" disabled={push || !gekozen.length} onClick={() => void doorvoeren()}>
+        <button type="button" className="btn btn-primary btn-klein" disabled={push || !gekozen.length} onClick={() => void doorvoeren()}>
           {push ? "Bezig met doorvoeren…" : `Voer ${gekozen.length} ${gekozen.length === 1 ? "redirect" : "redirects"} door op de site`}
         </button>
         <span className="opr-telling">Zet 301-omleidingen klaar via de Redirection-plugin en meet daarna live na of ze echt werken.</span>

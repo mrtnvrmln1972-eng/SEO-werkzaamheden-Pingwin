@@ -115,8 +115,8 @@ export default function BulkOnboarding() {
         </div>
         <div className="bulk-knoppen">
           {stand?.actief
-            ? <button type="button" className="logout-btn" onClick={stop} disabled={bezig}>Rij stoppen</button>
-            : <button type="button" className="logout-btn" onClick={() => setOpen((v) => !v)}>{open ? "− Sluiten" : "+ Rij samenstellen"}</button>}
+            ? <button type="button" className="btn btn-klein" onClick={stop} disabled={bezig}>Rij stoppen</button>
+            : <button type="button" className="btn btn-klein" onClick={() => setOpen((v) => !v)}>{open ? "− Sluiten" : "+ Rij samenstellen"}</button>}
         </div>
       </div>
 
@@ -210,7 +210,7 @@ export default function BulkOnboarding() {
               </ul>
 
               <div className="bulk-acties">
-                <button type="button" className="primary-btn" onClick={start} disabled={bezig || !gekozen.size || !past}>
+                <button type="button" className="btn btn-primary" onClick={start} disabled={bezig || !gekozen.size || !past}>
                   {bezig ? "Bezig…" : `Start voor ${gekozen.size} ${gekozen.size === 1 ? "klant" : "klanten"}`}
                 </button>
                 <span className="muted">

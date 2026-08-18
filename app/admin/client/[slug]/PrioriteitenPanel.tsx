@@ -450,7 +450,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
             {st?.status === "running" ? "Bezig…" : res ? "Opnieuw scannen" : "Scan draaien"}
           </button>
           {st?.status === "running" && st.cronStil && (
-            <button type="button" className="ghost-btn small" disabled={busy} onClick={() => start(true)}>Nu hervatten</button>
+            <button type="button" className="btn btn-klein" disabled={busy} onClick={() => start(true)}>Nu hervatten</button>
           )}
         </div>
       </div>
@@ -475,10 +475,10 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
             placeholder={st?.propositie?.voorstel || "Bijvoorbeeld: specialistische kliniek voor sporters, geen algemene fysio"}
             onChange={(e) => setProp(e.target.value)}
           />
-          <button type="button" className="ghost-btn small" disabled={voorstelBezig} onClick={stelPropositieVoor} title="Vult het veld met een voorstel op basis van het klantprofiel en de bedrijfsgegevens die al bekend zijn.">
+          <button type="button" className="btn btn-klein" disabled={voorstelBezig} onClick={stelPropositieVoor} title="Vult het veld met een voorstel op basis van het klantprofiel en de bedrijfsgegevens die al bekend zijn.">
             {voorstelBezig ? "Bezig…" : "Stel een zin voor"}
           </button>
-          <button type="button" className="ghost-btn small" onClick={bewaarPropositie}>Bewaren</button>
+          <button type="button" className="btn btn-klein" onClick={bewaarPropositie}>Bewaren</button>
         </div>
         {propMsg && <div className="prio-prop-msg">{propMsg}</div>}
         {propositieLeeg && !propMsg && (
@@ -532,7 +532,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
               {ontbrekend.map((l) => (
                 <div key={l.sleutel} className="prio-ontbreekt-rij">
                   <span className="prio-ontbreekt-naam">{l.naam}</span>
-                  <button type="button" className="ghost-btn small"
+                  <button type="button" className="btn btn-klein"
                     disabled={bronBezig === l.sleutel}
                     onClick={() => draaiBron(l.sleutel)}>
                     {bronBezig === l.sleutel ? "Starten…" : ONTBREKENDE_BRON[l.sleutel].knop}
@@ -550,11 +550,11 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                         placeholder={"/landing-page/\n/ads/\n/actie-voorjaar/"} aria-label="Advertentiepagina's"
                         onChange={(e) => setAdsTekst(e.target.value)} />
                       <div className="prio-ads-rij">
-                        <button type="button" className="ghost-btn small" disabled={adsBezig}
+                        <button type="button" className="btn btn-klein" disabled={adsBezig}
                           onClick={() => void bewaarAds(false)}>
                           {adsBezig ? "Bezig…" : "Opslaan en analyse starten"}
                         </button>
-                        <button type="button" className="ghost-btn small" disabled={adsBezig || !!adsTekst.trim()}
+                        <button type="button" className="btn btn-klein" disabled={adsBezig || !!adsTekst.trim()}
                           onClick={() => void bewaarAds(true)}>
                           Deze klant heeft er geen
                         </button>

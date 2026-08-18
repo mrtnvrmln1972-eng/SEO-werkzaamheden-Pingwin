@@ -141,7 +141,7 @@ function KijkSleutel() {
               <code className="kijk-waarde">PINGWIN_KIJK_SLEUTEL={sleutel}</code>
               <button
                 type="button"
-                className="logout-btn"
+                className="btn btn-klein"
                 onClick={() => { void navigator.clipboard.writeText(`PINGWIN_KIJK_SLEUTEL=${sleutel}`).then(() => { setKopie(true); setTimeout(() => setKopie(false), 2000); }); }}
               >
                 {kopie ? "Gekopieerd ✓" : "Kopieer die hele regel"}
@@ -158,11 +158,11 @@ function KijkSleutel() {
           )}
 
           <div className="kijk-knoppen">
-            <button type="button" className="logout-btn" disabled={bezig} onClick={() => void maak()}>
+            <button type="button" className="btn btn-klein" disabled={bezig} onClick={() => void maak()}>
               {bezig ? "Bezig…" : status?.actief ? "Nieuwe sleutel maken" : "Zet meekijken aan"}
             </button>
             {status?.actief && (
-              <button type="button" className="logout-btn" disabled={bezig} onClick={() => void trekIn()}>Intrekken</button>
+              <button type="button" className="btn btn-klein" disabled={bezig} onClick={() => void trekIn()}>Intrekken</button>
             )}
           </div>
         </div>
@@ -490,9 +490,9 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               <td style={{ whiteSpace: "nowrap" }}>
                 {isOwner ? (
                   <>
-                    <button className="mini-btn" onClick={(e) => setFase(e, c, "klant", `${c.name} omzetten naar klant? Alles blijft staan; alleen het label verandert.`)}>Maak klant</button>{" "}
-                    <button className="mini-btn" onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}>Niet doorgegaan</button>{" "}
-                    <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
+                    <button className="btn btn-klein" onClick={(e) => setFase(e, c, "klant", `${c.name} omzetten naar klant? Alles blijft staan; alleen het label verandert.`)}>Maak klant</button>{" "}
+                    <button className="btn btn-klein" onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}>Niet doorgegaan</button>{" "}
+                    <button className="btn btn-klein" onClick={(e) => remove(e, c)}>Verwijder</button>
                   </>
                 ) : <span className="muted">&mdash;</span>}
               </td>
@@ -571,9 +571,9 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 <td style={{ whiteSpace: "nowrap" }}>
                   {isOwner ? (
                     <>
-                      <button className="mini-btn" onClick={(e) => openEdit(e, c)}>Budget</button>{" "}
-                      <button className="mini-btn" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
-                      <button className="mini-btn" onClick={(e) => remove(e, c)}>Verwijder</button>
+                      <button className="btn btn-klein" onClick={(e) => openEdit(e, c)}>Budget</button>{" "}
+                      <button className="btn btn-klein" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
+                      <button className="btn btn-klein" onClick={(e) => remove(e, c)}>Verwijder</button>
                     </>
                   ) : (
                     <span className="muted">&mdash;</span>
@@ -598,8 +598,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                       </div>
                       <div className="hint" style={{ marginTop: "var(--s-2)" }}>De beschikbare uren worden per maand berekend uit (maandfee &minus; linkbuilding) / uurtarief. Wil je de linkbuilding voor één specifieke maand afwijkend zetten, doe dat in de Werkzaamheden-tab bij die maand; dan passen alleen de uren van die maand zich aan.</div>
                       <div className="budget-edit-actions">
-                        <button className="primary-btn small" onClick={(e) => saveBudget(e, c)} disabled={editBusy}>{editBusy ? "Opslaan…" : "Opslaan"}</button>
-                        <button className="ghost-btn small" onClick={(e) => { e.stopPropagation(); setEditSlug(null); }}>Annuleren</button>
+                        <button className="btn btn-primary btn-klein" onClick={(e) => saveBudget(e, c)} disabled={editBusy}>{editBusy ? "Opslaan…" : "Opslaan"}</button>
+                        <button className="btn btn-klein" onClick={(e) => { e.stopPropagation(); setEditSlug(null); }}>Annuleren</button>
                       </div>
                     </div>
                   </td>
@@ -635,23 +635,23 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           <Tellers />
         <OntwikkelMenu />
           {isOwner && (
-            <a className="logout-btn" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: "var(--s-2)" }}>Beheer</a>
+            <a className="btn btn-klein" href="/admin/beheer" title="Klanten en teamgebruikers beheren" style={{ marginLeft: "var(--s-2)" }}>Beheer</a>
           )}
           {(isOwner || canDev) && (
-            <a className="logout-btn" href="/admin/developer" title="Alle developer-taken over alle klanten" style={{ marginLeft: "var(--s-2)" }}>Developer</a>
+            <a className="btn btn-klein" href="/admin/developer" title="Alle developer-taken over alle klanten" style={{ marginLeft: "var(--s-2)" }}>Developer</a>
           )}
           {isOwner && (
-            <a className="logout-btn" href="/admin/usage" title="AI-verbruik en kosten per actie en per klant" style={{ marginLeft: "var(--s-2)" }}>Verbruik</a>
+            <a className="btn btn-klein" href="/admin/usage" title="AI-verbruik en kosten per actie en per klant" style={{ marginLeft: "var(--s-2)" }}>Verbruik</a>
           )}
           {isOwner && (
-            <a className="logout-btn" href="/admin/claude-werkwijze" title="Geheugensteun voor het werken met Claude zelf" style={{ marginLeft: "var(--s-2)" }}>Claude-werkwijze</a>
+            <a className="btn btn-klein" href="/admin/claude-werkwijze" title="Geheugensteun voor het werken met Claude zelf" style={{ marginLeft: "var(--s-2)" }}>Claude-werkwijze</a>
           )}
           {/* Financiën is Maartens privé-administratie: alleen tonen in de wereld
               waar Moneybird gekoppeld is (Pingwin), nooit in MMC/NOC. */}
           {isOwner && showFinance && (
-            <a className="logout-btn" href="/admin/financien" title="Opbrengsten en kosten uit Moneybird, met openstaande facturen" style={{ marginLeft: "var(--s-2)" }}>Financi&euml;n</a>
+            <a className="btn btn-klein" href="/admin/financien" title="Opbrengsten en kosten uit Moneybird, met openstaande facturen" style={{ marginLeft: "var(--s-2)" }}>Financi&euml;n</a>
           )}
-          <button className="logout-btn" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
+          <button className="btn btn-klein" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
         </div>
       </div>
 
@@ -669,7 +669,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               <>
                 <p>Stuur de klant deze deelbare link: die opent het dashboard direct, zonder inloggen. Dit is de standaard werkwijze.</p>
                 <div className="cred-row"><span>Deelbare link</span><code>{created.shareUrl}</code>
-                  <button className="mini-btn" onClick={() => copy(created.shareUrl!)}>Kopieer</button></div>
+                  <button className="btn btn-klein" onClick={() => copy(created.shareUrl!)}>Kopieer</button></div>
                 <p className="created-hint" style={{ marginTop: "var(--s-4)" }}>
                   Wil de klant tóch met een eigen login werken? Deze gegevens zie je maar één keer:
                 </p>
@@ -678,11 +678,11 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               <p>Geef deze gegevens aan de klant (het wachtwoord zie je maar één keer). Deze login is alleen voor het klantdashboard.</p>
             )}
             <div className="cred-row"><span>Link</span><code>{created.loginUrl}</code>
-              <button className="mini-btn" onClick={() => copy(created.loginUrl)}>Kopieer</button></div>
+              <button className="btn btn-klein" onClick={() => copy(created.loginUrl)}>Kopieer</button></div>
             <div className="cred-row"><span>Inlognaam</span><code>{created.loginId}</code>
-              <button className="mini-btn" onClick={() => copy(created.loginId)}>Kopieer</button></div>
+              <button className="btn btn-klein" onClick={() => copy(created.loginId)}>Kopieer</button></div>
             <div className="cred-row"><span>Wachtwoord</span><code>{created.password}</code>
-              <button className="mini-btn" onClick={() => copy(created.password)}>Kopieer</button></div>
+              <button className="btn btn-klein" onClick={() => copy(created.password)}>Kopieer</button></div>
             <p className="created-hint">
               Automatisch mailen naar de klant volgt in de volgende stap (Resend + DNS).
             </p>
@@ -695,7 +695,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         {leadTable}
         {isOwner && (
           <div style={{ marginTop: "var(--s-3)" }}>
-            <button type="button" className="logout-btn" onClick={() => setShowLeadForm((v) => !v)}>
+            <button type="button" className="btn btn-klein" onClick={() => setShowLeadForm((v) => !v)}>
               {showLeadForm ? "− Formulier sluiten" : "+ Nieuwe lead"}
             </button>
           </div>
@@ -720,7 +720,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               Meer is niet nodig. Een lead krijgt geen inlog, geen Google Sheet en geen budget; dat komt pas als hij klant wordt.
             </div>
             {error && <div className="login-error">{error}</div>}
-            <button type="submit" className="primary-btn" disabled={leadBusy}>
+            <button type="submit" className="btn btn-primary" disabled={leadBusy}>
               {leadBusy ? "Bezig…" : "Lead aanmaken"}
             </button>
           </form>
@@ -750,7 +750,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
 
         {isOwner && (
         <div style={{ marginTop: "var(--s-10)" }}>
-          <button type="button" className="logout-btn" onClick={() => setShowForm((v) => !v)}>
+          <button type="button" className="btn btn-klein" onClick={() => setShowForm((v) => !v)}>
             {showForm ? "− Formulier sluiten" : "+ Nieuwe klant aanmaken"}
           </button>
         </div>
@@ -804,7 +804,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
 
           {error && <div className="login-error">{error}</div>}
 
-          <button type="submit" className="primary-btn" disabled={busy}>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy ? "Bezig..." : "Klant aanmaken + wachtwoord genereren"}
           </button>
         </form>

@@ -20,7 +20,7 @@ import MailVenster, { type MailBijlage } from "./MailVenster";
 // ═══════════════════════════════════════════════════════════
 
 export default function DeelKnoppen({
-  slug, titel, tekst, mailBron, blokMd, siteUrl, url, clientName, clientEmail, compact, toon = "beide", knopClass = "ghost-btn small",
+  slug, titel, tekst, mailBron, blokMd, siteUrl, url, clientName, clientEmail, compact, toon = "beide", knopClass = "btn btn-klein",
 }: {
   slug: string;
   /** Waar het over gaat: de titel van het onderwerp of van de kaart. */

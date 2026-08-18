@@ -178,8 +178,8 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
                   onChange={(e) => setHerinnerDagen(Math.min(90, Math.max(1, Number(e.target.value) || 1)))} />
                 <span>dagen om te checken</span>
               </label>
-              <button type="button" className="ghost-btn small" onClick={onSluit}>Annuleren</button>
-              <button type="button" className="primary-btn small" disabled={bezig} onClick={() => void doorzetten()}>
+              <button type="button" className="btn btn-klein" onClick={onSluit}>Annuleren</button>
+              <button type="button" className="btn btn-primary btn-klein" disabled={bezig} onClick={() => void doorzetten()}>
                 {bezig ? "Bezig…" : "Zet op de developerlijst"}
               </button>
             </div>

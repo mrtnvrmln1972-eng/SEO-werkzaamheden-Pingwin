@@ -177,7 +177,7 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
               onKeyDown={(e) => { if (e.key === "Enter" && nieuwNaam.trim()) { setOpenLijst(nieuwNaam.trim()); setToonNieuw(false); void post({ action: "add", persoon: nieuwNaam.trim(), tekst: "Eerste punt (pas aan of verwijder)" }); setNieuwNaam(""); } }} />
           </span>
         ) : (
-          <button type="button" className="ghost-btn small" onClick={() => setToonNieuw(true)}>+ lijstje</button>
+          <button type="button" className="btn btn-klein" onClick={() => setToonNieuw(true)}>+ lijstje</button>
         )}
       </div>
       {personen.map((p) => {

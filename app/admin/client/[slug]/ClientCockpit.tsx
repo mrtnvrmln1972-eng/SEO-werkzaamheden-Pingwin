@@ -676,7 +676,7 @@ export default function ClientCockpit({
                   onKeyDown={(e) => { if (e.key === "Enter") void vraagMails(); }}
                   placeholder='Stel een vraag, bijv. "staat er iets in de mail over het document klantenservice Bogart?"'
                 />
-                <button type="button" className="primary-btn small" onClick={() => void vraagMails()} disabled={vraagBusy || !shQuery.trim()}>
+                <button type="button" className="btn btn-primary btn-klein" onClick={() => void vraagMails()} disabled={vraagBusy || !shQuery.trim()}>
                   {vraagBusy ? "Zoeken…" : "Vraag"}
                 </button>
                 <button type="button" className="btn-omrand" onClick={openSuperhuman} disabled={!clientMailQuery} title="Doorzoek het volledige archief in Superhuman">
@@ -687,14 +687,14 @@ export default function ClientCockpit({
               {vraagAntwoord && (
                 <div className="mail-vraag-antwoord">
                   <div className="md" dangerouslySetInnerHTML={{ __html: mdToHtml(vraagAntwoord) }} />
-                  <button type="button" className="ghost-btn small" onClick={() => { setVraagAntwoord(""); setVraagIds([]); }}>Wis</button>
+                  <button type="button" className="btn btn-klein" onClick={() => { setVraagAntwoord(""); setVraagIds([]); }}>Wis</button>
                 </div>
               )}
               {lastIngest && <div className="ck-updated" style={{ marginBottom: "var(--s-3)" }}>bijgewerkt {fmtDate(lastIngest)}</div>}
               {msConfigured && !msConnected && (
                 <div className="mail-connect">
                   Koppel Microsoft 365 om de volledige mails te zien en vanuit het dashboard te beantwoorden.{" "}
-                  <a className="primary-btn small" href="/api/ms/auth/start">Koppel Microsoft</a>
+                  <a className="btn btn-primary btn-klein" href="/api/ms/auth/start">Koppel Microsoft</a>
                 </div>
               )}
               {emails.length === 0 ? (
@@ -795,7 +795,7 @@ export default function ClientCockpit({
                                   data-placeholder="Typ je antwoord, met opmaak..."
                                 />
                                 <div className="email-reply-bar">
-                                  <button type="button" className="primary-btn small" onClick={() => sendReply(e.id)} disabled={replyBusy || !replyToAddr.trim()}>
+                                  <button type="button" className="btn btn-primary btn-klein" onClick={() => sendReply(e.id)} disabled={replyBusy || !replyToAddr.trim()}>
                                     {replyBusy ? "Versturen..." : "Verstuur antwoord"}
                                   </button>
                                   {replyMsg && <span className={"reply-msg" + (replyMsg.startsWith("Verstuurd") ? " ok" : " err")}>{replyMsg}</span>}
@@ -948,7 +948,7 @@ export default function ClientCockpit({
         {tab === "klantweergave" && (
           <div className="cockpit-card client-frame-card">
             <div className="ck-section-head"><span>Zo ziet de klant het</span>
-              <a className="logout-btn" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>
+              <a className="btn btn-klein" href={`/admin/preview/${client.slug}`} target="_blank" rel="noreferrer">Openen in nieuw tabblad ↗</a>
             </div>
             <ShareLinkBar slug={client.slug} />
             <iframe src={`/admin/preview/${client.slug}`} className="client-frame" title="Klant-dashboard" />

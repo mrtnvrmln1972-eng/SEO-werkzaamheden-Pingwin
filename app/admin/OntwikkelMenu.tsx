@@ -107,7 +107,7 @@ export default function OntwikkelMenu() {
     <div className="hm-wrap om-wrap" ref={wrapRef}>
       <button
         type="button"
-        className={"logout-btn om-knop" + (open ? " hm-open" : "")}
+        className={"btn btn-klein om-knop" + (open ? " hm-open" : "")}
         aria-haspopup="true"
         aria-expanded={open}
         title="Over het dashboard zelf: de ontwikkeling en de uitleg"

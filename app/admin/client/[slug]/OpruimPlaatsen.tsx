@@ -142,7 +142,7 @@ export default function OpruimPlaatsen({ slug, domain, data, clientName, clientE
 
       <div className="opr-vorm-rij" style={{ marginBottom: "var(--s-3)" }}>
         {(["alles", "uitbouwen", "samenvoegen", "blijft", "weg"] as const).map((k) => (
-          <button key={k} type="button" className={"ghost-btn small" + (filter === k ? " actief" : "")}
+          <button key={k} type="button" className={"btn btn-klein" + (filter === k ? " actief" : "")}
             onClick={() => setFilter(k)}>
             {k === "alles" ? `alles (${d.adviezen.length})` : `${LABEL[k]} (${tel(k)})`}
           </button>

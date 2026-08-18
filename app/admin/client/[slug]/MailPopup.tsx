@@ -170,14 +170,14 @@ export default function MailPopup({
           {msg && <div className={msg.startsWith("Verstuurd") || msg.startsWith("Geopend") || msg.startsWith("Mailtekst") ? "saved-msg" : "login-error"} style={{ marginTop: "var(--s-2)" }}>{msg}</div>}
         </div>
         <div className="compose-foot">
-          <button type="button" className="logout-btn" onClick={onClose}>Annuleren</button>
+          <button type="button" className="btn btn-klein" onClick={onClose}>Annuleren</button>
           {connected === false ? (
             <>
-              <button type="button" className="ghost-btn small" onClick={() => void copyTekst()}>Kopieer mailtekst</button>
-              <button type="button" className="primary-btn small" onClick={openMailto}>Open in mailprogramma</button>
+              <button type="button" className="btn btn-klein" onClick={() => void copyTekst()}>Kopieer mailtekst</button>
+              <button type="button" className="btn btn-primary btn-klein" onClick={openMailto}>Open in mailprogramma</button>
             </>
           ) : (
-            <button type="button" className="primary-btn small" onClick={() => void versturen()} disabled={busy}>{busy ? "Versturen…" : "Verstuur per mail"}</button>
+            <button type="button" className="btn btn-primary btn-klein" onClick={() => void versturen()} disabled={busy}>{busy ? "Versturen…" : "Verstuur per mail"}</button>
           )}
         </div>
       </div>

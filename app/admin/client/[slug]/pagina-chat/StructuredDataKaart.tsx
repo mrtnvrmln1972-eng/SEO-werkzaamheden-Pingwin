@@ -116,7 +116,7 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
                     <div className="sch-json">
                       <div className="sch-json-head">
                         <button type="button" className="pch-canni-toggle" onClick={() => setSchJsonOpen((o) => !o)}>{schJsonOpen ? "▾" : "▸"} De JSON-LD (voor de developer)</button>
-                        <button type="button" className="ghost-btn small" onClick={copySchJson}>{schCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
+                        <button type="button" className="btn btn-klein" onClick={copySchJson}>{schCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
                       </div>
                       {schJsonOpen && <pre className="sch-json-pre">{sch.jsonld}</pre>}
                     </div>

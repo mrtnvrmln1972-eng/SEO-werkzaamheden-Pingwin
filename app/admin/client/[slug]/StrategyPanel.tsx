@@ -111,7 +111,7 @@ export default function StrategyPanel({ slug, initialSessions, openSessionId, on
                     <span className="strategy-session-title">{s.title}</span>
                     <span className="strategy-session-date">{dNl(s.createdAt)}</span>
                   </button>
-                  <button type="button" className="ghost-btn small strategy-del" onClick={() => removeSession(s.id)} title="Sessie verwijderen">verwijderen</button>
+                  <button type="button" className="btn btn-klein strategy-del" onClick={() => removeSession(s.id)} title="Sessie verwijderen">verwijderen</button>
                 </div>
                 {isOpen && (
                   <div className="strategy-session-body">
@@ -123,16 +123,16 @@ export default function StrategyPanel({ slug, initialSessions, openSessionId, on
                           <div key={i} className={"strategy-action" + (a.done ? " strategy-action-verwerkt" : "")}>
                             <span className="strategy-action-taak">{a.taak}</span>
                             {a.done
-                              ? <button type="button" className="ghost-btn small strategy-verwerkt-btn on" onClick={() => toggleDone(s.id, i, false)} title="Klik om het verwerkt-vinkje weer weg te halen">Verwerkt</button>
-                              : <button type="button" className="ghost-btn small strategy-verwerkt-btn" onClick={() => toggleDone(s.id, i, true)} title="Markeer dit actiepunt als verwerkt (zonder er een taak van te maken)">Verwerkt</button>}
+                              ? <button type="button" className="btn btn-klein strategy-verwerkt-btn on" onClick={() => toggleDone(s.id, i, false)} title="Klik om het verwerkt-vinkje weer weg te halen">Verwerkt</button>
+                              : <button type="button" className="btn btn-klein strategy-verwerkt-btn" onClick={() => toggleDone(s.id, i, true)} title="Markeer dit actiepunt als verwerkt (zonder er een taak van te maken)">Verwerkt</button>}
                             {a.taskId
                               ? <span className="strategy-action-done" title="Deze staat al tussen de werkzaamheden">✓ in taken</span>
-                              : <button type="button" className="ghost-btn small" disabled={busyKey === `${s.id}:${i}`} onClick={() => addTask(s.id, i)}>{busyKey === `${s.id}:${i}` ? "Bezig…" : "+ Toevoegen aan taken"}</button>}
+                              : <button type="button" className="btn btn-klein" disabled={busyKey === `${s.id}:${i}`} onClick={() => addTask(s.id, i)}>{busyKey === `${s.id}:${i}` ? "Bezig…" : "+ Toevoegen aan taken"}</button>}
                           </div>
                         ))}
                       </div>
                     )}
-                    <button type="button" className="ghost-btn small" style={{ marginTop: "var(--s-2)" }} onClick={() => toggleId(s.id, openTranscript, setOpenTranscript)}>
+                    <button type="button" className="btn btn-klein" style={{ marginTop: "var(--s-2)" }} onClick={() => toggleId(s.id, openTranscript, setOpenTranscript)}>
                       {openTranscript.has(s.id) ? "Volledig gesprek verbergen" : "Volledig gesprek tonen"}
                     </button>
                     {openTranscript.has(s.id) && <div className="md strategy-transcript" dangerouslySetInnerHTML={{ __html: mdToHtml(s.transcript) }} />}

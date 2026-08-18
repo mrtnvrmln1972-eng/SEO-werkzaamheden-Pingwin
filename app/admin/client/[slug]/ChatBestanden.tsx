@@ -117,7 +117,7 @@ export default function ChatBestanden({ slug, thread }: { slug: string; thread: 
         <span className="cb-uitleg">
           Sleep een document of screenshot hierheen (of plak hem). Hij komt in de klantmap in Drive én in dit gesprek.
         </span>
-        <button type="button" className="ghost-btn small" onClick={() => kiesRef.current?.click()}>Bladeren</button>
+        <button type="button" className="btn btn-klein" onClick={() => kiesRef.current?.click()}>Bladeren</button>
         <input ref={kiesRef} type="file" multiple style={{ display: "none" }}
           onChange={(e) => { void stuur(Array.from(e.target.files || [])); e.target.value = ""; }} />
       </div>

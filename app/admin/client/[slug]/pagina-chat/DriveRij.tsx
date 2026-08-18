@@ -20,8 +20,8 @@ export default function DriveRij({ folder, legeTekst, onKies, onNaarDownload, st
       {folder
         ? <span className="pcd-folder">{folder.path || folder.name}</span>
         : <span className="pcd-folder muted">{legeTekst}</span>}
-      <button type="button" className="ghost-btn small" onClick={onKies}>{folder ? "Map wijzigen" : "Kies Drive-map"}</button>
-      {onNaarDownload && folder && <button type="button" className="ghost-btn small" onClick={onNaarDownload}>Naar download</button>}
+      <button type="button" className="btn btn-klein" onClick={onKies}>{folder ? "Map wijzigen" : "Kies Drive-map"}</button>
+      {onNaarDownload && folder && <button type="button" className="btn btn-klein" onClick={onNaarDownload}>Naar download</button>}
     </div>
   );
 }

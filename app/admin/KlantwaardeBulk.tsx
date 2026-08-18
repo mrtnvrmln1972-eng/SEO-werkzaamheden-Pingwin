@@ -73,7 +73,7 @@ export default function KlantwaardeBulk() {
           </p>
         </div>
         <div className="bulk-knoppen">
-          <button type="button" className="logout-btn" onClick={() => setOpen((v) => !v)}>
+          <button type="button" className="btn btn-klein" onClick={() => setOpen((v) => !v)}>
             {open ? "− Sluiten" : "+ Invullen"}
           </button>
         </div>
@@ -125,7 +125,7 @@ export default function KlantwaardeBulk() {
               </ul>
 
               <div className="bulk-acties">
-                <button type="button" className="primary-btn" onClick={bewaar} disabled={bezig}>
+                <button type="button" className="btn btn-primary" onClick={bewaar} disabled={bezig}>
                   {bezig ? "Bezig…" : "Alles opslaan"}
                 </button>
                 <span className="muted">

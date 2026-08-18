@@ -332,7 +332,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 zitten; hij gaat bovendien over de hele pagina, niet over die ene
                 lijst. */}
             {result && (
-              <button type="button" className="ghost-btn small" onClick={() => void weegOpnieuw()} disabled={weegKlus.bezig || running}
+              <button type="button" className="btn btn-klein" onClick={() => void weegOpnieuw()} disabled={weegKlus.bezig || running}
                 title="Rekent de lijsten opnieuw door met de actuele cijfers: pagina's met een waardevolle eigen zoekterm gaan van de opruimlijst af, de onderwerpen en de ontbrekende pagina's worden opnieuw bepaald. Duurt een paar minuten, geen twintig.">
                 {weegKlus.bezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
               </button>
@@ -381,7 +381,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                   onChange={(e) => { setAdsTekst(e.target.value); if (e.target.value.trim()) setAdsGeen(false); }}
                   placeholder={"/landing-page/\n/ads/\n/actie-soa-test/"} aria-label="Advertentiepagina's" />
                 <div className="opr-vorm-rij">
-                  <button type="button" className="ghost-btn small" onClick={() => void bewaarAds()}>Opslaan</button>
+                  <button type="button" className="btn btn-klein" onClick={() => void bewaarAds()}>Opslaan</button>
                   <label className="opr-ads-geen">
                     <input type="checkbox" checked={adsGeen} disabled={!!adsTekst.trim()}
                       onChange={(e) => { setAdsGeen(e.target.checked); if (e.target.checked) void bewaarAds(true); }} />
@@ -405,7 +405,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                     placeholder="wat één klant opbrengt, bijv. 350" aria-label="Waarde van één klant in euro's" />
                   <input className="opr-zoek" style={{ maxWidth: 220 }} value={conversie} onChange={(e) => setConversie(e.target.value)}
                     placeholder="% dat klant wordt, bijv. 2" aria-label="Conversiepercentage" />
-                  <button type="button" className="ghost-btn small" onClick={() => void bewaarEuro()}>Opslaan</button>
+                  <button type="button" className="btn btn-klein" onClick={() => void bewaarEuro()}>Opslaan</button>
                 </div>
                 <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-0)" }}>
                   <strong>Gok gerust bij die conversie.</strong> Niemand weet precies welk deel van de bezoekers klant
@@ -432,7 +432,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                   <input className="opr-zoek" value={vorm} onChange={(e) => setVorm(e.target.value)}
                     placeholder="bijvoorbeeld: /soa-klinieken/soa-test-&lt;plaats&gt;/" spellCheck={false}
                     aria-label="Gekozen URL-structuur" />
-                  <button type="button" className="ghost-btn small" onClick={bewaarVorm}>Opslaan</button>
+                  <button type="button" className="btn btn-klein" onClick={bewaarVorm}>Opslaan</button>
                 </div>
                 {vormMsg && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>{vormMsg}</div>}
               </div>
@@ -452,11 +452,11 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
               </p>
               {deelUrl && <p style={{ margin: "var(--s-0)" }}><a className="opr-pad" href={deelUrl} target="_blank" rel="noreferrer">{deelUrl}</a></p>}
               <div className="opr-vorm-rij">
-                {!deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("maken")}>Maak een deellink</button>}
-                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => { void navigator.clipboard.writeText(deelUrl); setDeelMsg("Gekopieerd."); }}>Kopieer</button>}
-                {deelUrl && <a className="ghost-btn small" href={deelUrl} target="_blank" rel="noreferrer">Bekijk zoals de klant hem ziet</a>}
-                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("vernieuwen")} title="Maakt een nieuw adres; de oude link werkt daarna niet meer.">Nieuw adres</button>}
-                {deelUrl && <button type="button" className="ghost-btn small" onClick={() => void deellink("intrekken")}>Intrekken</button>}
+                {!deelUrl && <button type="button" className="btn btn-klein" onClick={() => void deellink("maken")}>Maak een deellink</button>}
+                {deelUrl && <button type="button" className="btn btn-klein" onClick={() => { void navigator.clipboard.writeText(deelUrl); setDeelMsg("Gekopieerd."); }}>Kopieer</button>}
+                {deelUrl && <a className="btn btn-klein" href={deelUrl} target="_blank" rel="noreferrer">Bekijk zoals de klant hem ziet</a>}
+                {deelUrl && <button type="button" className="btn btn-klein" onClick={() => void deellink("vernieuwen")} title="Maakt een nieuw adres; de oude link werkt daarna niet meer.">Nieuw adres</button>}
+                {deelUrl && <button type="button" className="btn btn-klein" onClick={() => void deellink("intrekken")}>Intrekken</button>}
               </div>
               {deelMsg && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}><strong>{deelMsg}</strong></div>}
             </div>
@@ -597,7 +597,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 <div className="opr-kaart-acties" style={{ marginBottom: "var(--s-3)" }}>
                   {/* Downloaden als CSV: opent met een dubbelklik in Excel en is te
                       importeren in Google Sheets. */}
-                  <a className="ghost-btn small" href={`/api/admin/opruim-export?slug=${encodeURIComponent(slug)}`}
+                  <a className="btn btn-klein" href={`/api/admin/opruim-export?slug=${encodeURIComponent(slug)}`}
                      title="Downloadt de volledige lijst als CSV. Dubbelklikken opent hem in Excel; in Google Sheets via Bestand, Importeren.">
                     Download voor Excel of Sheets
                   </a>

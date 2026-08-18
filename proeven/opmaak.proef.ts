@@ -365,29 +365,8 @@ checkWaar("elk scherm heeft nog de opmaak die het gebruikt", zonderOpmaak.length
 // wordt meteen rood. De lijst mag alleen korter worden, verbouw je een
 // bestand naar de knopconventie, haal het er dan af.
 const KNOPCONVENTIE_ERFENIS = new Set<string>([
-  "app/admin/client/[slug]/ActionCard.tsx", "app/admin/client/[slug]/AntwoordBlokken.tsx",
-  "app/admin/client/[slug]/BespreekLijsten.tsx", "app/admin/client/[slug]/CannibalPanel.tsx",
-  "app/admin/client/[slug]/ChatBestanden.tsx", "app/admin/client/[slug]/ChatPanel.tsx",
-  "app/admin/client/[slug]/ClientCockpit.tsx", "app/admin/client/[slug]/Concurrenten.tsx",
-  "app/admin/client/[slug]/DeelKnoppen.tsx", "app/admin/client/[slug]/DevDoorzetten.tsx",
-  "app/admin/client/[slug]/ImportAnalysis.tsx",
-  "app/admin/client/[slug]/InvoiceAlert.tsx", "app/admin/client/[slug]/Kennisbank.tsx",
-  "app/admin/client/[slug]/KlussenChip.tsx", "app/admin/client/[slug]/KpiPanel.tsx",
-  "app/admin/client/[slug]/LeadChat.tsx", "app/admin/client/[slug]/LeadTab.tsx",
-  "app/admin/client/[slug]/MailAllowlist.tsx",
-  "app/admin/client/[slug]/MailControlePanel.tsx", "app/admin/client/[slug]/MailPopup.tsx",
-  "app/admin/client/[slug]/MailUitKaart.tsx", "app/admin/client/[slug]/MailVenster.tsx",
-  "app/admin/client/[slug]/MetaCtrPanel.tsx", "app/admin/client/[slug]/Notities.tsx",
-  "app/admin/client/[slug]/OnboardingPanel.tsx", "app/admin/client/[slug]/OpruimEenLijst.tsx",
-  "app/admin/client/[slug]/OpruimEindstructuur.tsx", "app/admin/client/[slug]/OpruimPlaatsen.tsx",
-  "app/admin/client/[slug]/OpruimTabel.tsx", "app/admin/client/[slug]/OverviewChat.tsx",
-  "app/admin/client/[slug]/PageSummaryCard.tsx",
-  "app/admin/client/[slug]/PagesPanel.tsx", "app/admin/client/[slug]/Planning.tsx",
-  "app/admin/client/[slug]/PrioriteitenPanel.tsx", "app/admin/client/[slug]/SelectionActions.tsx",
-  "app/admin/client/[slug]/ShareLinkBar.tsx", "app/admin/client/[slug]/StrategyPanel.tsx",
-  "app/admin/client/[slug]/TakenVoorstel.tsx",
-  "app/admin/client/[slug]/Voortgang.tsx",
-  "app/admin/client/[slug]/WijzigingenPanel.tsx",
+  "app/admin/client/[slug]/AntwoordBlokken.tsx", "app/admin/client/[slug]/BespreekLijsten.tsx",
+  "app/admin/client/[slug]/Kennisbank.tsx", "app/admin/client/[slug]/Planning.tsx",
 ]);
 const OUDE_KNOPKLASSEN = /\b(ghost-btn|wp-fase-btn|primary-btn)\b/;
 const knopMap = path.join(WORTEL, "app/admin/client/[slug]");

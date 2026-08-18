@@ -201,7 +201,7 @@ function FinanceChat() {
       <div style={{ display: "flex", alignItems: "baseline", gap: "var(--s-3)", marginBottom: "var(--s-2)" }}>
         <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--label-muted)" }}>Vraag het de cijfers</div>
         <span style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)" }}>besparingen, winstpotentieel, prognose einde jaar</span>
-        {messages.length > 0 && <button type="button" className="ghost-btn small" style={{ marginLeft: "auto" }} onClick={wis}>Gesprek wissen</button>}
+        {messages.length > 0 && <button type="button" className="btn btn-klein" style={{ marginLeft: "auto" }} onClick={wis}>Gesprek wissen</button>}
       </div>
       {messages.length > 0 && (
         <div style={{ maxHeight: 420, overflowY: "auto", padding: "var(--s-1) var(--s-1)", marginBottom: "var(--s-3)" }}>
@@ -225,7 +225,7 @@ function FinanceChat() {
           placeholder="Bijv. Waar kan ik kosten besparen? Wat is de prognose voor het einde van het jaar?"
           disabled={busy}
         />
-        <button type="button" className="primary-btn small" onClick={send} disabled={busy || !input.trim()}>{busy ? "Bezig…" : "Vraag"}</button>
+        <button type="button" className="btn btn-primary btn-klein" onClick={send} disabled={busy || !input.trim()}>{busy ? "Bezig…" : "Vraag"}</button>
       </div>
     </div>
   );

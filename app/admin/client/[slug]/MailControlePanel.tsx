@@ -167,11 +167,11 @@ export default function MailControlePanel({
           onKeyDown={(e) => { if (e.key === "Enter" && !bezig) void start(); }}
           placeholder="Kun je even controleren of dit op de juiste manier verwerkt is?"
         />
-        <button type="button" className="primary-btn small" onClick={() => void start()} disabled={bezig || draait}>
+        <button type="button" className="btn btn-primary btn-klein" onClick={() => void start()} disabled={bezig || draait}>
           {bezig || draait ? "Bezig…" : "Controleer of dit verwerkt is"}
         </button>
         {controle && !open && (
-          <button type="button" className="ghost-btn small" onClick={() => setOpen(true)}>Toon uitslag</button>
+          <button type="button" className="btn btn-klein" onClick={() => setOpen(true)}>Toon uitslag</button>
         )}
       </div>
       <div className="mc-uitleg muted">
@@ -219,10 +219,10 @@ export default function MailControlePanel({
                   <span className="mc-bewijs" dangerouslySetInnerHTML={{ __html: linkify(p.bewijs, domein) }} />
                 </div>
                 <div className="mc-knoppen">
-                  <button type="button" className="ghost-btn small" onClick={() => void zetOordeel(p.puntKey, p.handmatig === "goed" ? "" : "goed")}>
+                  <button type="button" className="btn btn-klein" onClick={() => void zetOordeel(p.puntKey, p.handmatig === "goed" ? "" : "goed")}>
                     {p.handmatig === "goed" ? "oordeel terugdraaien" : "toch goed"}
                   </button>
-                  <button type="button" className="ghost-btn small" onClick={() => void zetOordeel(p.puntKey, p.handmatig === "niet" ? "" : "niet")}>
+                  <button type="button" className="btn btn-klein" onClick={() => void zetOordeel(p.puntKey, p.handmatig === "niet" ? "" : "niet")}>
                     {p.handmatig === "niet" ? "oordeel terugdraaien" : "toch niet goed"}
                   </button>
                 </div>
@@ -264,7 +264,7 @@ export default function MailControlePanel({
                 /* concept_html komt uit mdToHtml() in lib/mail-controle.ts, al gerenderd bewaard */
               />
               <div className="mc-knoppen">
-                <button type="button" className="primary-btn small" onClick={() => void verstuur()} disabled={verstuurBezig || controle.status === "verstuurd"}>
+                <button type="button" className="btn btn-primary btn-klein" onClick={() => void verstuur()} disabled={verstuurBezig || controle.status === "verstuurd"}>
                   {controle.status === "verstuurd" ? "Verstuurd" : verstuurBezig ? "Versturen…" : "Verstuur in deze thread"}
                 </button>
                 {verstuurd && <span className="mc-verstuurd">{verstuurd}</span>}
@@ -272,7 +272,7 @@ export default function MailControlePanel({
             </div>
           )}
 
-          <button type="button" className="ghost-btn small" onClick={() => setOpen(false)}>Uitslag verbergen</button>
+          <button type="button" className="btn btn-klein" onClick={() => setOpen(false)}>Uitslag verbergen</button>
         </div>
       )}
     </div>

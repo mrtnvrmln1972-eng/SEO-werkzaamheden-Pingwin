@@ -98,7 +98,7 @@ export default function VervolgstappenKaart({ slug, url, docRun, lastAssistant, 
               {run.status === "running" && (
                 <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-1)", display: "flex", alignItems: "center", gap: "var(--s-3)", flexWrap: "wrap" }}>
                   <span>Loopt server-side door; wegklikken mag. Verschijnt ook als werkzaamheid.</span>
-                  <button type="button" className="ghost-btn small"
+                  <button type="button" className="btn btn-klein"
                     title="Stop deze run direct. Alles wat nog niet af is wordt weggegooid: er wordt niets opgeslagen en er belandt geen half document in Drive."
                     onClick={async () => {
                       await fetch(`/api/admin/page-doc/run?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`, { method: "DELETE" }).catch(() => {});

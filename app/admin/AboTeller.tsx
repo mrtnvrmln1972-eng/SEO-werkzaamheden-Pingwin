@@ -38,7 +38,7 @@ export default function AboTeller() {
     <div className="hm-wrap at-wrap" ref={wrapRef}>
       <button
         type="button"
-        className={"logout-btn at-knop" + (open ? " hm-open" : "")}
+        className={"btn btn-klein at-knop" + (open ? " hm-open" : "")}
         aria-haspopup="true"
         aria-expanded={open}
         title="Je Claude-abonnement: chatten en Claude Code. Saldo niet op te halen, wel te bekijken."
