@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8433,
-    "stijlregels": 4366,
-    "classnamen": 2888
+    "regels": 8469,
+    "stijlregels": 4377,
+    "classnamen": 2898
   },
   "kleuren": {
     "verschillend": 330,
@@ -2132,7 +2132,7 @@
     }
   ],
   "inline": {
-    "totaal": 618,
+    "totaal": 621,
     "metVasteWaarde": 50,
     "perBestand": [
       {
@@ -4983,6 +4983,529 @@
       "stapel": "doorzichtig"
     }
   ],
+  "afrondingen": [
+    {
+      "soort": "Ronding",
+      "waarde": "30px",
+      "aantal": 1,
+      "naar": "14px",
+      "naarToken": "--r-lg",
+      "verschil": 16,
+      "selectors": [
+        ".chat-fab"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "60px",
+      "aantal": 1,
+      "naar": "48px",
+      "naarToken": "--s-12",
+      "verschil": 12,
+      "selectors": [
+        ".loading"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "34px",
+      "aantal": 1,
+      "naar": "26px",
+      "naarToken": "--fs-xl",
+      "verschil": 8,
+      "selectors": [
+        ".ut-hero-titel"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "20px",
+      "aantal": 2,
+      "naar": "14px",
+      "naarToken": "--r-lg",
+      "verschil": 6,
+      "selectors": [
+        ".badge-done",
+        ".meta-live-badge"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "2px",
+      "aantal": 2,
+      "naar": "6px",
+      "naarToken": "--r-sm",
+      "verschil": 4,
+      "selectors": [
+        ".section-title::before",
+        ".pcd-btn.busy::after"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "8px",
+      "aantal": 74,
+      "naar": "6px",
+      "naarToken": "--r-sm",
+      "verschil": 2,
+      "selectors": [
+        ".client-switch",
+        ".month-btn",
+        ".invoice-alert",
+        ".task-tip",
+        ".error-msg",
+        ".login-card input"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "10px",
+      "aantal": 41,
+      "naar": "8px",
+      "naarToken": "--s-2",
+      "verschil": 2,
+      "selectors": [
+        ".invoice-alert",
+        ".dev-week-grid",
+        ".dev-pool-body",
+        ".import-review-top",
+        ".page-chat-head",
+        ".page-chat-log"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "6px",
+      "aantal": 34,
+      "naar": "4px",
+      "naarToken": "--s-1",
+      "verschil": 2,
+      "selectors": [
+        ".dev-task-top",
+        ".client-profile-toggle",
+        ".import-bulk",
+        ".canni-actions",
+        ".doc-run-steps",
+        ".pcd-step"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "12px",
+      "aantal": 20,
+      "naar": "10px",
+      "naarToken": "--r-md",
+      "verschil": 2,
+      "selectors": [
+        ".task-table-wrap",
+        ".created-box",
+        ".pages-plan-card",
+        ".profile-part",
+        ".page-chat",
+        ".pch-card"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "2px",
+      "aantal": 17,
+      "naar": "0px",
+      "naarToken": "--s-0",
+      "verschil": 2,
+      "selectors": [
+        ".pch-msg-ctrl",
+        ".drive-crumbs",
+        ".wz-star",
+        ".ov-card",
+        ".kb-kaart-velden",
+        ".wp-fase-rij .btn.btn-ghost.btn-klein"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "14px",
+      "aantal": 8,
+      "naar": "12px",
+      "naarToken": "--s-3",
+      "verschil": 2,
+      "selectors": [
+        ".stats-grid",
+        ".pch-canni-row",
+        ".month-cards",
+        ".budget-block",
+        ".sov-links",
+        ".sov-side"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "9px",
+      "aantal": 7,
+      "naar": "11px",
+      "naarToken": "--fs-xs",
+      "verschil": 2,
+      "selectors": [
+        ".dev-task-fase",
+        ".wie-badge",
+        ".wz-ml-arrow",
+        ".wz-spark-axis",
+        ".wz-aio",
+        ".wz-sort-ind"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "18px",
+      "aantal": 6,
+      "naar": "16px",
+      "naarToken": "--fs-md",
+      "verschil": 2,
+      "selectors": [
+        ".login-card h1",
+        ".pch-del",
+        ".ktr-col-val",
+        ".row-del",
+        ".row-send",
+        ".wz-star"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "24px",
+      "aantal": 3,
+      "naar": "26px",
+      "naarToken": "--fs-xl",
+      "verschil": 2,
+      "selectors": [
+        ".chat-float-close",
+        ".kpi-value",
+        ".org-share-inner h1"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "16px",
+      "aantal": 2,
+      "naar": "14px",
+      "naarToken": "--r-lg",
+      "verschil": 2,
+      "selectors": [
+        ".login-card",
+        ".hh-modal"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "4px",
+      "aantal": 2,
+      "naar": "6px",
+      "naarToken": "--r-sm",
+      "verschil": 2,
+      "selectors": [
+        ".pcd-progress",
+        "button:focus-visible, a:focus-visible, input:focus-visible, [role=\"button\"]:focus-visible"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "22px",
+      "aantal": 1,
+      "naar": "20px",
+      "naarToken": "--fs-lg",
+      "verschil": 2,
+      "selectors": [
+        ".stat-value"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "26px",
+      "aantal": 1,
+      "naar": "24px",
+      "naarToken": "--s-6",
+      "verschil": 2,
+      "selectors": [
+        ".wp-onder-rij"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "9.5px",
+      "aantal": 2,
+      "naar": "11px",
+      "naarToken": "--fs-xs",
+      "verschil": 1.5,
+      "selectors": [
+        ".wz-marker-label",
+        ".wp-cijfer-nu-lab, .wp-cijfer-toen-lab"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "10px",
+      "aantal": 30,
+      "naar": "11px",
+      "naarToken": "--fs-xs",
+      "verschil": 1,
+      "selectors": [
+        ".header-contact-label",
+        ".dev-week-row-nu-badge",
+        ".dev-task-client",
+        ".plan-chip",
+        ".import-fase",
+        ".pch-badge"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "5px",
+      "aantal": 16,
+      "naar": "6px",
+      "naarToken": "--r-sm",
+      "verschil": 1,
+      "selectors": [
+        ".progress-bar",
+        ".progress-fill",
+        ".pt-fase",
+        ".pt-wie",
+        ".dev-date",
+        ".rt-toolbar button"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "7px",
+      "aantal": 15,
+      "naar": "6px",
+      "naarToken": "--r-sm",
+      "verschil": 1,
+      "selectors": [
+        ".dev-task-card",
+        ".page-task",
+        ".pch-item:not(.open) .pch-item-head",
+        ".chat-float-clear",
+        ".chat-thread-select",
+        ".kpi-kw-search"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "9px",
+      "aantal": 11,
+      "naar": "10px",
+      "naarToken": "--r-md",
+      "verschil": 1,
+      "selectors": [
+        ".import-fase",
+        ".pch-badge",
+        ".kw-intent",
+        ".pg-kans.quickwin",
+        ".taak-cluster",
+        ".pcd-btn"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "15px",
+      "aantal": 9,
+      "naar": "14px",
+      "naarToken": "--fs-base",
+      "verschil": 1,
+      "selectors": [
+        ".header-title",
+        ".chat-float-head",
+        ".kpi-toolbar-title",
+        ".kpi-section-toggle",
+        ".ktr-col-val.ktr-prev",
+        ".org-share-intro h2"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "7px",
+      "aantal": 9,
+      "naar": "8px",
+      "naarToken": "--s-2",
+      "verschil": 1,
+      "selectors": [
+        ".help-hint-bubble",
+        ".compose-dashlink-opt",
+        ".psc-body",
+        ".ovc-afgerond-rij",
+        ".wp-docvoorstel",
+        ".kb-cat ul"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "5px",
+      "aantal": 7,
+      "naar": "4px",
+      "naarToken": "--s-1",
+      "verschil": 1,
+      "selectors": [
+        ".dev-check-label",
+        ".contact-chip",
+        ".kc-cur",
+        ".add-month-row",
+        ".sov-check",
+        ".meta-live-badge"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "3px",
+      "aantal": 2,
+      "naar": "4px",
+      "naarToken": "--s-1",
+      "verschil": 1,
+      "selectors": [
+        ".pg-fases",
+        ".kb-gaps ul"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "13px",
+      "aantal": 1,
+      "naar": "12px",
+      "naarToken": "--s-3",
+      "verschil": 1,
+      "selectors": [
+        ".login-card button"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "11px",
+      "aantal": 1,
+      "naar": "12px",
+      "naarToken": "--s-3",
+      "verschil": 1,
+      "selectors": [
+        ".step-head"
+      ]
+    },
+    {
+      "soort": "Ruimte",
+      "waarde": "9px",
+      "aantal": 1,
+      "naar": "8px",
+      "naarToken": "--s-2",
+      "verschil": 1,
+      "selectors": [
+        ".chat-fab"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "17px",
+      "aantal": 1,
+      "naar": "16px",
+      "naarToken": "--fs-md",
+      "verschil": 1,
+      "selectors": [
+        ".ovc-topic-del"
+      ]
+    },
+    {
+      "soort": "Ronding",
+      "waarde": "13px",
+      "aantal": 1,
+      "naar": "14px",
+      "naarToken": "--r-lg",
+      "verschil": 1,
+      "selectors": [
+        ".wp-card-tile"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "12px",
+      "aantal": 107,
+      "naar": "12.5px",
+      "naarToken": "--fs-sm",
+      "verschil": 0.5,
+      "selectors": [
+        ".header-contact",
+        ".header-updated",
+        ".stat-sub",
+        "thead th",
+        ".task-desc",
+        ".invoice-badge"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "13px",
+      "aantal": 105,
+      "naar": "12.5px",
+      "naarToken": "--fs-sm",
+      "verschil": 0.5,
+      "selectors": [
+        ".header-tabs .tab",
+        ".progress-title",
+        ".progress-pct",
+        ".cat-row td",
+        ".doc-link",
+        ".task-name-text"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "11.5px",
+      "aantal": 14,
+      "naar": "11px",
+      "naarToken": "--fs-xs",
+      "verschil": 0.5,
+      "selectors": [
+        ".canni-score",
+        ".wz-ml-val",
+        ".pg-kw",
+        ".kpi-site-badge",
+        ".sch-json-pre",
+        ".wp-docvoorstel-acties"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "13.5px",
+      "aantal": 7,
+      "naar": "14px",
+      "naarToken": "--fs-base",
+      "verschil": 0.5,
+      "selectors": [
+        ".pch-apply-panel",
+        ".strategy-session-toggle",
+        ".org-share-intro p, .org-share-intro li",
+        ".org-share-error",
+        ".org-share-locked",
+        ".org-sitewide-head"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "14.5px",
+      "aantal": 1,
+      "naar": "14px",
+      "naarToken": "--fs-base",
+      "verschil": 0.5,
+      "selectors": [
+        ".step-title"
+      ]
+    },
+    {
+      "soort": "Tekstmaat",
+      "waarde": "10.5px",
+      "aantal": 1,
+      "naar": "11px",
+      "naarToken": "--fs-xs",
+      "verschil": 0.5,
+      "selectors": [
+        ".wp-wie"
+      ]
+    }
+  ],
   "betekenis": {
     "namen": [
       {
@@ -5227,7 +5750,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 842,
-    "schaalGebruik": 5739
+    "gebruik": 864,
+    "schaalGebruik": 5743
   }
 }

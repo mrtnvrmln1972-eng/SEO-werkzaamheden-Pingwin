@@ -94,6 +94,8 @@ export type Meting = {
   tokens: { naam: string; waarde: string }[];
   /** Elke losse kleur naast de token die er het dichtst bij ligt. */
   kleurNaastToken: KleurNaast[];
+  /** Maten die niet op een stap van de schaal vallen, met wat ze zouden worden. */
+  afrondingen: Afronding[];
   /** De betekenislaag: namen die zeggen waarvóór een waarde dient. */
   betekenis: {
     namen: { naam: string; wijstNaar: string; groep: string }[];
@@ -104,6 +106,31 @@ export type Meting = {
     /** Hoe vaak de opmaak nog rechtstreeks op de schaal eronder zit. */
     schaalGebruik: number;
   };
+};
+
+/**
+ * Een maat die niet op een stap van de schaal valt, naast de stap die er het
+ * dichtst bij ligt.
+ *
+ * Dit is het deel van het opruimen dat NIET onzichtbaar kan. Een kleur die al
+ * een naam heeft omzetten verandert niets; een tekstmaat van 13 pixels bestaat
+ * niet in de schaal, dus die wordt 12,5 of hij blijft 13. Dat is een keuze, en
+ * hij hoort bij Maarten te liggen in plaats van bij een afrondingsregel. Daarom
+ * staan ze op /admin/stijl in beeld, met de huidige en de nieuwe maat naast
+ * elkaar getekend, in plaats van in een lijst in de chat.
+ */
+export type Afronding = {
+  soort: "Tekstmaat" | "Ronding" | "Ruimte";
+  /** Zoals hij nu in de opmaak staat, bijvoorbeeld "13px". */
+  waarde: string;
+  aantal: number;
+  /** De dichtstbijzijnde stap van de schaal. */
+  naar: string;
+  naarToken: string;
+  /** Hoeveel pixels het verschuift. Onder de 1 ziet niemand het. */
+  verschil: number;
+  /** Waar hij staat, hooguit een handvol, om te kunnen kijken. */
+  selectors: string[];
 };
 
 /**
@@ -241,6 +268,78 @@ function legNaastTokens(los: Waarde[], tokens: { naam: string; waarde: string }[
       besteAfstand < 3 ? "gelijk" : besteAfstand < 30 ? "bijna" : besteAfstand < 60 ? "familie" : "anders";
     return { waarde, aantal, dichtst: beste.naam, afstand: Math.round(besteAfstand), stapel };
   });
+}
+
+/**
+ * Zoekt elke maat op die niet op een stap van de schaal valt, en legt hem naast
+ * de stap die er het dichtst bij ligt.
+ *
+ * Waarom dit met de selector erbij gaat: "13px komt 32 keer voor" is nog geen
+ * beslissing. "13px staat op de kop van een taakkaart" wél, want dan weet je
+ * waar je gaat kijken. De selector wordt bijgehouden door mee te lezen welk
+ * blok er open staat; een regel binnen `@media` hoort bij de selector eronder,
+ * niet bij de media-regel zelf.
+ */
+function zoekAfrondingen(css: string, tokens: { naam: string; waarde: string }[]): Afronding[] {
+  const schaal = (voorvoegsel: string) =>
+    tokens
+      .filter((t) => t.naam.startsWith(voorvoegsel) && /^\d+(\.\d+)?px$/.test(t.waarde.trim()))
+      .map((t) => ({ naam: t.naam, px: parseFloat(t.waarde) }))
+      .sort((a, b) => a.px - b.px);
+
+  const SOORTEN = [
+    { soort: "Tekstmaat" as const, eigenschap: "font-size", stappen: schaal("--fs-") },
+    { soort: "Ronding" as const, eigenschap: "border-radius", stappen: schaal("--r-") },
+    { soort: "Ruimte" as const, eigenschap: "(?:padding|margin|gap)", stappen: schaal("--s-") },
+  ];
+
+  const gevonden = new Map<string, Afronding>();
+  const stapel: string[] = [];
+  for (const regel of css.split("\n")) {
+    const onder = [...stapel].reverse().find((s) => !s.startsWith("@")) ?? "";
+    const eigen = regel.includes("{") ? regel.split("{")[0] : "";
+    const selector = regel.includes("{") && !eigen.trim().startsWith("@") ? eigen.trim() : onder;
+
+    for (const { soort, eigenschap, stappen } of SOORTEN) {
+      if (!stappen.length) continue;
+      for (const m of regel.matchAll(new RegExp(`${eigenschap}:\\s*([^;{}]+)`, "g"))) {
+        const w = m[1].trim();
+        if (w.includes("var(")) continue;
+        const enkel = /^(\d+(?:\.\d+)?)px$/.exec(w);
+        if (!enkel) continue;
+        const px = parseFloat(enkel[1]);
+        // 0 en 1 horen bij niemand: 0 is "geen", 1 is een haarlijn. Die tellen
+        // niet als afwijking, anders staat de lijst vol met randjes.
+        if (px === 0 || px === 1) continue;
+        if (stappen.some((s) => s.px === px)) continue;
+        const dichtst = stappen.reduce((a, b) => (Math.abs(b.px - px) < Math.abs(a.px - px) ? b : a));
+        const sleutel = `${soort}|${w}`;
+        const bestaand = gevonden.get(sleutel);
+        if (bestaand) {
+          bestaand.aantal++;
+          if (selector && bestaand.selectors.length < 6 && !bestaand.selectors.includes(selector)) {
+            bestaand.selectors.push(selector);
+          }
+        } else {
+          gevonden.set(sleutel, {
+            soort, waarde: w, aantal: 1,
+            naar: `${dichtst.px}px`, naarToken: dichtst.naam,
+            verschil: Math.round(Math.abs(dichtst.px - px) * 100) / 100,
+            selectors: selector ? [selector] : [],
+          });
+        }
+      }
+    }
+
+    for (const teken of regel) {
+      if (teken === "{") stapel.push(eigen.trim() || onder);
+      else if (teken === "}") stapel.pop();
+    }
+  }
+
+  // Het grootste verschil bovenaan: dat is wat je als eerste moet bekijken,
+  // want daar verandert er echt iets aan het scherm.
+  return [...gevonden.values()].sort((a, b) => b.verschil - a.verschil || b.aantal - a.aantal);
 }
 
 /** Alle .tsx-schermen onder app/, zonder node_modules. */
@@ -404,6 +503,7 @@ export function meet(): Meting {
     inline: { totaal: inlineTotaal, metVasteWaarde: inlineVast, perBestand: inlinePerBestand },
     tokens,
     kleurNaastToken: legNaastTokens(losseKleuren, tokens),
+    afrondingen: zoekAfrondingen(rest, tokens),
     betekenis: meetBetekenislaag(rest, tokens),
   };
 }

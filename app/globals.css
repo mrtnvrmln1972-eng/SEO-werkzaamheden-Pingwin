@@ -8430,3 +8430,39 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 .stijl-betekenis-pijl {
   font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
 }
+
+/* Wat niet op de schaal past, op /admin/stijl. Elke maat wordt getekend zoals
+   hij eruitziet, want "13px wordt 12,5px" is een getal waar je niets aan hebt. */
+.stijl-afrond { display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+.stijl-afrondregel {
+  display: grid; grid-template-columns: 88px 150px 130px 44px 1fr;
+  align-items: center; gap: var(--ruimte-regel);
+  padding: var(--ruimte-krap) var(--s-0); border-bottom: 1px solid var(--kleur-rand-zacht);
+}
+.stijl-afrondregel:last-child { border-bottom: none; }
+.stijl-afrond-soort {
+  font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700;
+  color: var(--kleur-accent-diep);
+}
+.stijl-afrond-proef { display: flex; align-items: center; gap: var(--ruimte-naast); }
+.stijl-afrond-pijl {
+  font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
+}
+.stijl-afrond-tekst { color: var(--kleur-tekst); font-weight: 700; }
+.stijl-afrond-hoek {
+  display: inline-block; width: var(--s-6); height: var(--s-6);
+  background: var(--kleur-accent-vlak); border: 1px solid var(--kleur-rand-accent); flex: none;
+}
+.stijl-afrond-balk {
+  display: inline-block; height: var(--s-4); background: var(--kleur-accent);
+  border-radius: var(--ronding-klein); flex: none;
+}
+.stijl-afrond-aantal {
+  font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
+  font-variant-numeric: tabular-nums; text-align: right;
+}
+.stijl-afrond-waar {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

@@ -73,6 +73,8 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
   const aandeelBreedte = `${Math.max(1, Math.round((betekenis.gebruik / Math.max(totaalGebruik, 1)) * 100))}%`;
   const groepen = [...new Set(betekenis.namen.map((n) => n.groep))];
 
+  const afrondingen = meting.afrondingen;
+
   const zichtbareKleuren = alleKleuren ? meting.kleuren.los : meting.kleuren.los.slice(0, 72);
 
   return (
@@ -370,6 +372,48 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
           </div>
         </div>
 
+        {/* ── Wat niet op de schaal past ── */}
+        <div className="card section">
+          <h2 className="stijl-h2">Wat nog niet past, en wat dat kost</h2>
+          <p className="stijl-p">
+            Alles hierboven kan onzichtbaar: een kleur die al een naam heeft krijgt die naam, en
+            er verandert niets. Dit stuk kan dat niet. Een tekst van 13 pixels bestaat niet in de
+            schaal, dus die wordt 12,5 of hij blijft 13. Dat is een keuze, geen rekensom, en
+            daarom staat hij hier in plaats van dat ik hem voor je maak.{" "}
+            <strong>{afrondingen.length} maten</strong> passen niet, samen{" "}
+            <strong>{afrondingen.reduce((n, a) => n + a.aantal, 0)} plekken</strong>.
+          </p>
+
+          {[
+            { kop: "Dit zie je", drempel: 1, wat: "Een verschil van een hele pixel of meer. Kijk hier per regel naar; een afwijkende maat mag blijven, als het een besluit is en geen restje." },
+            { kop: "Dit ziet niemand", drempel: 0, wat: "Een halve pixel. Deze kan ik gewoon doen, tenzij je het anders wilt." },
+          ].map(({ kop, drempel, wat }) => {
+            const groep = afrondingen.filter((a) => (drempel >= 1 ? a.verschil >= 1 : a.verschil < 1));
+            if (!groep.length) return null;
+            return (
+              <div key={kop}>
+                <h3 className="stijl-h3">{kop} ({groep.reduce((n, a) => n + a.aantal, 0)} plekken)</h3>
+                <p className="stijl-p stijl-p-klein">{wat}</p>
+                <div className="stijl-afrond">
+                  {groep.map((a) => (
+                    <div key={a.soort + a.waarde} className="stijl-afrondregel">
+                      <span className="stijl-afrond-soort">{a.soort}</span>
+                      <span className="stijl-afrond-proef">
+                        <AfrondProef soort={a.soort} maat={a.waarde} />
+                        <span className="stijl-afrond-pijl">wordt</span>
+                        <AfrondProef soort={a.soort} maat={a.naar} />
+                      </span>
+                      <code className="stijl-code">{a.waarde} → {a.naar}</code>
+                      <span className="stijl-afrond-aantal">{a.aantal}×</span>
+                      <span className="stijl-afrond-waar">{a.selectors.slice(0, 3).join(", ") || "\u2014"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         {/* ── De werklijst ── */}
         <div className="card section">
           <h2 className="stijl-h2">Waar we beginnen</h2>
@@ -408,4 +452,15 @@ function SoortLijst({ kop, soort, eenheid }: { kop: string; soort: Soort; eenhei
       </div>
     </>
   );
+}
+
+/**
+ * Tekent één maat zoals hij eruitziet: een tekstmaat als tekst, een ronding als
+ * een hoekje, een ruimte als een balkje. Zonder dit is "13px wordt 12,5px" een
+ * getal waar je niets aan hebt; mét dit zie je meteen of het uitmaakt.
+ */
+function AfrondProef({ soort, maat }: { soort: string; maat: string }) {
+  if (soort === "Tekstmaat") return <span className="stijl-afrond-tekst" style={{ fontSize: maat }}>Taken</span>;
+  if (soort === "Ronding") return <span className="stijl-afrond-hoek" style={{ borderRadius: maat }} />;
+  return <span className="stijl-afrond-balk" style={{ width: maat }} />;
 }
