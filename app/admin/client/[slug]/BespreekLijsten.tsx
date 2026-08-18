@@ -206,8 +206,8 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
                     />
                   </div>
                   <div className="bl-add-knoppen">
-                    <button type="button" className="wp-fase-btn" disabled={busy || !(invoer[p] || "").replace(/<br>|\s/g, "")} onClick={() => void voegToe(p)}>Voeg toe</button>
-                    <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={busy || !open.length} title="Alle open punten als nette mail, met opmaak en klikbare links; de lijst onthoudt dat je ze gedeeld hebt." onClick={() => mailOpenen(p)}>Mail ({open.length})</button>
+                    <button type="button" className="btn btn-klein" disabled={busy || !(invoer[p] || "").replace(/<br>|\s/g, "")} onClick={() => void voegToe(p)}>Voeg toe</button>
+                    <button type="button" className="btn btn-primary btn-klein wp-fase-btn-primair" disabled={busy || !open.length} title="Alle open punten als nette mail, met opmaak en klikbare links; de lijst onthoudt dat je ze gedeeld hebt." onClick={() => mailOpenen(p)}>Mail ({open.length})</button>
                   </div>
                 </div>
                 {mailVoor === p && (
@@ -220,9 +220,9 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
                     <AdresVeld waarde={mailAan} onChange={setMailAan} className="wp-docdrop-input"
                       placeholder="naam@bedrijf.nl" />
                     {mailKan
-                      ? <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={mailBusy || !mailAan.trim()} onClick={() => void mailVersturen(p)}>{mailBusy ? "Versturen…" : "Verstuur"}</button>
-                      : <button type="button" className="wp-fase-btn" disabled={!mailAan.trim()} title="Geen mailkoppeling; dit opent je eigen mailprogramma zonder opmaak." onClick={() => mailProgramma(p)}>Open in mailprogramma</button>}
-                    <button type="button" className="wp-fase-btn" onClick={() => { setMailVoor(null); setMailMsg(""); }}>Annuleren</button>
+                      ? <button type="button" className="btn btn-primary btn-klein wp-fase-btn-primair" disabled={mailBusy || !mailAan.trim()} onClick={() => void mailVersturen(p)}>{mailBusy ? "Versturen…" : "Verstuur"}</button>
+                      : <button type="button" className="btn btn-klein" disabled={!mailAan.trim()} title="Geen mailkoppeling; dit opent je eigen mailprogramma zonder opmaak." onClick={() => mailProgramma(p)}>Open in mailprogramma</button>}
+                    <button type="button" className="btn btn-klein" onClick={() => { setMailVoor(null); setMailMsg(""); }}>Annuleren</button>
                   </div>
                 )}
                 {mailMsg && <div className="bl-mail-msg muted">{mailMsg}</div>}

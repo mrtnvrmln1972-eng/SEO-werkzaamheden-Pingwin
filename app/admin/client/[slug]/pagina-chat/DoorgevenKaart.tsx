@@ -108,7 +108,7 @@ export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, tas
             <div className="pchf-lead">Raakt deze analyse ook andere pagina&rsquo;s in het cluster? Geef hun advies alvast door.</div>
             {clusterDone > 0 ? (
               <>
-                <button type="button" className="pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
+                <button type="button" className="btn btn-klein pcd-btn pcd-btn-done" disabled>&#10003; Doorgegeven aan {clusterDone} pagina&rsquo;s</button>
                 {outgoing === null ? (
                   <div className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-2)" }}>Overzicht laden…</div>
                 ) : outgoing.length === 0 ? null : (
@@ -127,7 +127,7 @@ export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, tas
               </>
             ) : clusterItems === null ? (
               <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
-                <button type="button" className="pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
+                <button type="button" className="btn btn-klein pcd-btn" onClick={findClusterAdvice} disabled={clusterBusy}>{clusterBusy ? "Betrokken pagina's zoeken…" : "Advies doorgeven aan betrokken pagina's"}</button>
                 {clusterBusy && (
                   <button type="button" className="btn btn-klein" onClick={() => clusterAbortRef.current?.abort()}
                     title="Onderbreek het zoeken; er wordt niets opgeslagen.">&times; Onderbreken</button>
@@ -149,7 +149,7 @@ export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, tas
                   ))}
                 </ul>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
-                  <button type="button" className="pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
+                  <button type="button" className="btn btn-klein pcd-btn pcd-btn-primary" onClick={applyClusterAdvice} disabled={clusterBusy || clusterSel.length === 0}>{clusterBusy ? "Doorgeven…" : `Doorgeven aan ${clusterSel.length} pagina('s)`}</button>
                   <HelpHint wide title="Doorgeven aan de aangevinkte pagina's" text={"Stuurt het advies uit deze analyse naar de aangevinkte pagina's. Elke ontvangende pagina krijgt het als **vertrekpunt ('half plan')**: het staat daar klaar in de strategie-stap en in het pagina-overzicht, mét de volledige conclusie van dit gesprek als context.\nZo hoef je de clusterbeslissing maar één keer te nemen en spreekt geen enkele pagina hem later per ongeluk tegen."} />
                 </span>
               </>

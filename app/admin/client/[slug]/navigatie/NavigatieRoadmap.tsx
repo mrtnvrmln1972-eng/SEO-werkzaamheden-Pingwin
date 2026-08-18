@@ -367,24 +367,24 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
           </span>
           <span className="nv-spacer" />
           {ontbrekend.length > 0 && (
-            <button type="button" className="wp-fase-btn" disabled={!!busy} title="Haalt deze pagina's op en meet tekst, koppen, meta en alt-teksten opnieuw. Zolang dit niet is gedraaid, is het woordaantal een schatting (te herkennen aan de tilde)." onClick={() => void meet()}>
+            <button type="button" className="btn btn-klein" disabled={!!busy} title="Haalt deze pagina's op en meet tekst, koppen, meta en alt-teksten opnieuw. Zolang dit niet is gedraaid, is het woordaantal een schatting (te herkennen aan de tilde)." onClick={() => void meet()}>
               {busy === "meten" ? "Pagina\u2019s meten… (kan een minuut duren)" : `Meet ${ontbrekend.length} pagina\u2019s precies`}
             </button>
           )}
           {blik === "huidig" ? (
             <>
-              <button type="button" className="wp-fase-btn" disabled={!!busy} title="Drie stappen achter elkaar: welke pagina's bestaan er, hoe hangt het menu in elkaar, en daarna elke pagina opnieuw meten voor een verse score. Duurt een paar minuten; het werk loopt door als je dit scherm sluit." onClick={() => void scanSite()}>{busy === "scan" ? "Site scannen… (paar minuten)" : "Hele site opnieuw scannen"}</button>
-              <button type="button" className="wp-fase-btn" disabled={!!busy} title="Alleen het menu opnieuw uitlezen; dat is in tien seconden klaar." onClick={() => void post({ action: "menu" }, "menu")}>{busy === "menu" ? "Menu uitlezen…" : "Alleen het menu"}</button>
+              <button type="button" className="btn btn-klein" disabled={!!busy} title="Drie stappen achter elkaar: welke pagina's bestaan er, hoe hangt het menu in elkaar, en daarna elke pagina opnieuw meten voor een verse score. Duurt een paar minuten; het werk loopt door als je dit scherm sluit." onClick={() => void scanSite()}>{busy === "scan" ? "Site scannen… (paar minuten)" : "Hele site opnieuw scannen"}</button>
+              <button type="button" className="btn btn-klein" disabled={!!busy} title="Alleen het menu opnieuw uitlezen; dat is in tien seconden klaar." onClick={() => void post({ action: "menu" }, "menu")}>{busy === "menu" ? "Menu uitlezen…" : "Alleen het menu"}</button>
             </>
           ) : (
             <>
-              <button type="button" className="wp-fase-btn" disabled={!!busy} title="De AI bouwt een voorstel voor de beoogde eindstructuur uit de live pagina's, je afspraken uit het Overzicht-veld en de zoekwoorddata; jij bevestigt." onClick={() => void post({ action: "voorstel" }, "voorstel")}>{busy === "voorstel" ? "Voorstel maken… (halve minuut)" : "Stel de structuur voor"}</button>
+              <button type="button" className="btn btn-klein" disabled={!!busy} title="De AI bouwt een voorstel voor de beoogde eindstructuur uit de live pagina's, je afspraken uit het Overzicht-veld en de zoekwoorddata; jij bevestigt." onClick={() => void post({ action: "voorstel" }, "voorstel")}>{busy === "voorstel" ? "Voorstel maken… (halve minuut)" : "Stel de structuur voor"}</button>
               {nieuwIn === "" ? (
                 <input className="nv-term-input" autoFocus value={nieuwPad} placeholder="/pad/nieuwe-pagina/"
                   onChange={(e) => setNieuwPad(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && nieuwPad.trim()) { void post({ action: "add", url: nieuwPad.trim(), parent: "" }, "add"); setNieuwIn(null); setNieuwPad(""); } if (e.key === "Escape") setNieuwIn(null); }} />
               ) : (
-                <button type="button" className="wp-fase-btn" onClick={() => { setNieuwIn(""); setNieuwPad(""); }}>+ hoofdmenu-item</button>
+                <button type="button" className="btn btn-klein" onClick={() => { setNieuwIn(""); setNieuwPad(""); }}>+ hoofdmenu-item</button>
               )}
             </>
           )}
@@ -403,8 +403,8 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
         <div className="nv-voorstel">
           <strong>Voorstel klaar: {voorstel.length} pagina&rsquo;s in de beoogde structuur.</strong>
           <span className="nv-muted">Bevestig om hem te gebruiken (daarna kun je alles aanpassen), of gooi hem weg.</span>
-          <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={!!busy} onClick={() => void post({ action: "bevestig" }, "bevestig")}>Gebruik dit voorstel</button>
-          <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void post({ action: "verwerp" }, "verwerp")}>Weggooien</button>
+          <button type="button" className="btn btn-primary btn-klein wp-fase-btn-primair" disabled={!!busy} onClick={() => void post({ action: "bevestig" }, "bevestig")}>Gebruik dit voorstel</button>
+          <button type="button" className="btn btn-klein" disabled={!!busy} onClick={() => void post({ action: "verwerp" }, "verwerp")}>Weggooien</button>
         </div>
       )}
 

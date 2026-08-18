@@ -85,7 +85,7 @@ export default function FloatVenster({ titel, onClose, children }: { titel: stri
       <div className="zp-kop zp-kop-sleep" onPointerDown={(e) => { if (!(e.target as HTMLElement).closest("button")) startSleep("verplaats", e); }}>
         <span className="zp-titel">{titel}</span>
         <span className="zp-kop-knoppen">
-          <button type="button" className="zp-knop" title={stand.vol ? "Terug naar je eigen maat" : "Zo groot als het scherm toelaat"} onClick={() => bewaar({ ...stand, vol: !stand.vol })}>
+          <button type="button" className="btn btn-klein" title={stand.vol ? "Terug naar je eigen maat" : "Zo groot als het scherm toelaat"} onClick={() => bewaar({ ...stand, vol: !stand.vol })}>
             {stand.vol ? "⇲ kleiner" : "⇱ groter"}
           </button>
           <button type="button" className="wp-icon wp-del" title="Terugzetten in de pagina" onClick={onClose}>×</button>

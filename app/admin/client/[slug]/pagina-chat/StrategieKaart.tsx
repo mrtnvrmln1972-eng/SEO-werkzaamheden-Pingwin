@@ -114,7 +114,7 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
               documentstap, klein en eerlijk benoemd. */}
           {(taskDone || stratLink) && (
           <div className="page-chat-tools">
-            {taskDone && <span className="pcd-btn pcd-btn-done">✓ Strategie vastgelegd.</span>}
+            {taskDone && <span className="btn btn-klein pcd-btn pcd-btn-done">✓ Strategie vastgelegd.</span>}
             {stratLink
               ? <a href={stratLink} target="_blank" rel="noreferrer" className="pcd-doclink">Document openen ↗</a>
               : taskDone && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>het document wordt gemaakt; de link verschijnt hier vanzelf</span>}
@@ -138,7 +138,7 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
               <button type="button" className="btn btn-primary btn-klein" onClick={() => send(input)} disabled={busy || !input.trim()}>Vraag</button>
             </div>
             <span style={{ display: "inline-flex", alignItems: "center", gap: "var(--s-2)" }}>
-              <button type="button" className="pcd-btn pcd-btn-primary" onClick={() => ensureDriveMap(() => void summarizeAndFinalize())} disabled={busy || taskGen || !!finalizePhase}
+              <button type="button" className="btn btn-klein pcd-btn pcd-btn-primary" onClick={() => ensureDriveMap(() => void summarizeAndFinalize())} disabled={busy || taskGen || !!finalizePhase}
                 title="Vat het hele gesprek samen tot de definitieve conclusie, zet die als vastgelegde strategie bovenaan en maakt er het Pingwin-document van in de Drive-map. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.">
                 {finalizePhase === "samenvatten" ? "Samenvatten…" : finalizePhase === "vastleggen" ? "Strategie vastleggen…" : finalizePhase === "document" ? "Document maken…" : (planDone || taskDone) ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
               </button>

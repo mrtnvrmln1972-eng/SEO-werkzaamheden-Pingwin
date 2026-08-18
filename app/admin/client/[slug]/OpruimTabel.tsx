@@ -304,8 +304,8 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
                   </td>
                   {!alleenLezen && <td>
                     <div className="opr-knoppen">
-                      <button type="button" className={"opr-btn" + (reg?.besluit === "houden" ? " aan" : "")} onClick={() => bewaar(v, { besluit: reg?.besluit === "houden" ? "redirect" : "houden" })} title="Deze pagina blijft staan; de volgende analyse stelt hem nooit meer voor">Houden</button>
-                      <button type="button" className={"opr-btn" + (reg?.besluit === "genegeerd" ? " aan" : "")} onClick={() => bewaar(v, { besluit: reg?.besluit === "genegeerd" ? "redirect" : "genegeerd" })} title="Niet meer tonen">Negeren</button>
+                      <button type="button" className={"btn btn-klein opr-btn" + (reg?.besluit === "houden" ? " aan" : "")} onClick={() => bewaar(v, { besluit: reg?.besluit === "houden" ? "redirect" : "houden" })} title="Deze pagina blijft staan; de volgende analyse stelt hem nooit meer voor">Houden</button>
+                      <button type="button" className={"btn btn-klein opr-btn" + (reg?.besluit === "genegeerd" ? " aan" : "")} onClick={() => bewaar(v, { besluit: reg?.besluit === "genegeerd" ? "redirect" : "genegeerd" })} title="Niet meer tonen">Negeren</button>
                     </div>
                   </td>}
                   <td className="opr-reden">

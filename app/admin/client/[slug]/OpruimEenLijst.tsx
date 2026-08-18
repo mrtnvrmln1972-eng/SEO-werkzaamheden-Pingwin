@@ -686,7 +686,7 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
                     </td>
                     {!alleenLezen && (
                       <td>
-                        <button type="button" className="opr-btn" disabled={!!planBezig} onClick={() => void naarPlanning(r)}
+                        <button type="button" className="btn btn-klein opr-btn" disabled={!!planBezig} onClick={() => void naarPlanning(r)}
                           title="Zet deze pagina als taak op de planning. De kaart krijgt daar vanzelf zijn fases, met de onderbouwing erbij.">
                           {planBezig === r.pad ? "Bezig…" : "Naar planning"}
                         </button>

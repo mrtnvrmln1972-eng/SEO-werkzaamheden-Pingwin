@@ -1533,7 +1533,6 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .pch-wp-foot { margin-top: var(--ruimte-naast); }
 .pch-wp-form { display: flex; gap: var(--ruimte-naast); flex-wrap: wrap; align-items: center; background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-naast) var(--ruimte-regel); }
 .pch-wp-form input { flex: 1 1 200px; min-width: 160px; padding: var(--ruimte-naast) var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); font-size: var(--type-bijschrift); font-family: inherit; }
-.pcd-btn.small { padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-bijschrift); }
 .pcd-btn.pcd-done { border-color: #2e9e5b; color: #1c7a44; background: var(--kleur-goed-vlak); }
 .pcd-btn.pcd-warn { border-color: #d9930d; color: #a86f04; background: var(--kleur-let-op-vlak); }
 /* Kleine actie-knopjes in de Reden-kolom van de cannibalisatie-tabel. */
@@ -2757,7 +2756,11 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .pages-row:hover .pg-fase.next { background: var(--kleur-kaart); }
 
 /* Pagina-chat: mooiere, iets grotere knoppen met dun oranje randje */
-.pcd-btn { position: relative; overflow: hidden; font-size: var(--type-bijschrift); font-weight: 600; padding: var(--ruimte-naast) var(--ruimte-groep); border: 1px solid var(--kleur-accent); border-radius: var(--ronding-knop); background: var(--kleur-kaart); color: var(--dark); cursor: pointer; transition: background .15s; }
+/* Deze knop draagt een voortgangsbalk in zijn eigen vlak (.pcd-fill), en dat is
+   het enige wat hij zelf nog regelt: sinds 18-08-2026 staat hij op .btn, net als
+   elke andere knop. De kleurvarianten hieronder (done, warn, blue, purple) winnen
+   van .btn omdat ze twee klassen diep zijn. */
+.pcd-btn { position: relative; overflow: hidden; border-color: var(--kleur-accent); color: var(--dark); }
 /* Bepaalde voortgang IN de knop (bijv. 'Alles achter elkaar', stap X/3). */
 .pcd-fill { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--kleur-kaart); opacity: 0.85; transition: width .4s ease; }
 .pcd-btn:not(.pcd-btn-primary) .pcd-fill { background: var(--kleur-accent); }
@@ -3478,7 +3481,8 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-doc-vergelijk.wp-doc-ouder { color: var(--bad); }
 .wp-docvoorstel-tekst { font-size: var(--type-bijschrift); line-height: 1.5; }
 .wp-docvoorstel-acties { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; font-size: var(--type-label); }
-.wp-fase-btn-primair { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); border-color: var(--kleur-rand-accent); }
+/* De faseknoppen staan sinds 18-08-2026 op .btn; deze twee zijn alleen nog kleur. */
+.btn.wp-fase-btn-primair { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); border-color: var(--kleur-rand-accent); }
 .wp-doc-ok { font-size: var(--type-bijschrift); color: var(--kleur-goed); }
 .wp-doc-fout { font-size: var(--type-bijschrift); color: var(--bad); }
 /* Copy als concept naar de site (R6): knop + terugmelding, los van de doclijst
@@ -3765,7 +3769,6 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 
 /* Werklijst sitebouwer: knop + status rechts in de weekplanning-kop. */
 .wp-intro-acties { margin-left: auto; display: flex; align-items: center; gap: var(--ruimte-naast); flex-shrink: 0; }
-.wp-intro-acties .wp-fase-btn { padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-bijschrift); }
 .wp-intro-acties .wp-link { font-size: var(--type-bijschrift); }
 /* Werklijst-blok op de sitebouwer-kaart: knop, status en het document bij elkaar. */
 .wp-werklijst { border: 1px solid var(--kleur-rand-zacht); border-left: 3px solid var(--kleur-accent); border-radius: var(--ronding-knop); padding: var(--ruimte-naast) var(--ruimte-regel); margin: var(--ruimte-naast) 0; display: flex; flex-direction: column; gap: var(--ruimte-naast); background: var(--kleur-kaart); font-size: var(--type-bijschrift); }
@@ -3815,8 +3818,6 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .zp-kop { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-bottom: var(--s-2); }
 .zp-titel { color: var(--orange-dark); font-weight: 800; font-size: var(--fs-base); }
 .zp-kop-knoppen { display: inline-flex; align-items: center; gap: var(--s-2); flex: 0 0 auto; }
-.zp-knop { border: 1px solid var(--card-border); background: #fff; color: var(--orange-dark); font-size: var(--fs-xs); font-weight: 700; padding: var(--s-1) var(--s-2); border-radius: var(--r-sm); cursor: pointer; }
-.zp-knop:hover { background: var(--orange-light); border-color: var(--orange); }
 /* Greep aan de linkerrand: breder of smaller slepen. */
 /* De greep om het paneel breder te slepen. Was een doorzichtige strook van acht
    pixels: dat wérkte, maar niemand vond het. Nu een zichtbaar handvat met stipjes,
@@ -3979,7 +3980,7 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-fase-rij .wp-fase-chip { min-width: 40px; padding: 0 var(--ruimte-krap); }
 .wp-fase-rij .wp-fase-chip.wp-fase-klaar, .wp-fase-rij .wp-fase-chip.wp-fase-open { min-width: 30px; font-size: var(--type-label); }
 .wp-fase-sturing { margin: var(--ruimte-krap) 0 1px var(--s-6); font-size: var(--type-label); color: var(--kleur-tekst-zacht); line-height: 1.5; }
-.wp-fase-btn-licht { color: var(--kleur-tekst-stil); border-color: var(--kleur-rand); }
+.btn.wp-fase-btn-licht { color: var(--kleur-tekst-stil); border-color: var(--kleur-rand); }
 .wp-fase-label { font-size: var(--type-bijschrift); font-weight: 600; color: var(--dark); }
 .wp-fase-chip { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700; border-radius: var(--ronding-pil); padding: 1px var(--ruimte-naast); color: var(--kleur-tekst-zacht); background: var(--brand-taupe-light); border: 1px solid var(--kleur-rand); white-space: nowrap; }
 .wp-fase-chip.wp-fase-klaar { color: var(--kleur-goed); background: var(--kleur-goed-vlak); border-color: #bfe6cc; }
@@ -4034,9 +4035,6 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
   color: #1e824c; background: var(--kleur-goed-vlak); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel);
 }
 .wp-fase-spacer { flex: 1; }
-.wp-fase-btn { font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600; border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-regel); cursor: pointer; color: var(--dark); white-space: nowrap; }
-.wp-fase-btn:hover:not(:disabled) { border-color: var(--kleur-rand-accent); color: var(--kleur-accent-diep); }
-.wp-fase-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .wp-fase-check { display: flex; align-items: center; }
 .wp-fase-check input { accent-color: var(--kleur-accent); cursor: pointer; }
 .wp-fase-hint { padding: var(--ruimte-krap) var(--ruimte-naast); font-size: var(--type-label); color: var(--kleur-accent-diep); background: var(--kleur-accent-vlak); border-top: 1px solid var(--kleur-rand); border-radius: 0 0 var(--ronding-klein) var(--ronding-klein); }
@@ -4046,12 +4044,9 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
    checkbox-kolom), de startknop in dezelfde knoppenkolom als de fase-acties. */
 .wp-fase-alles { background: var(--kleur-kaart); }
 .wp-fase-alles-label { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 600; color: var(--kleur-tekst-zacht); margin-left: var(--s-6); }
-.wp-fase-alles .wp-fase-btn { min-width: 112px; margin-right: calc(72px + var(--ruimte-naast)); }
 /* "Ruim op"-rij boven het Doel-blok. */
 /* "Ruim op" rechts uitgelijnd op dezelfde lijn als de kaartinhoud, niet zwevend links. */
 .wp-opruim-rij { display: flex; align-items: center; justify-content: flex-end; gap: var(--ruimte-naast); margin: 0 0 var(--ruimte-naast); }
-.wp-opruim-rij .wp-fase-btn { padding: var(--ruimte-krap) var(--ruimte-naast); font-size: var(--type-label); opacity: 0.75; }
-.wp-opruim-rij .wp-fase-btn:hover { opacity: 1; }
 .wp-opruim-ok { font-size: var(--type-label); font-weight: 600; color: var(--kleur-goed); }
 .wp-opruim-fout { font-size: var(--type-label); color: #a12622; }
 /* Verwijder-kruisje per onderwerp in de Bird's eye-lijst. */
@@ -4393,11 +4388,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-kw { font-weight: 600; color: var(--kleur-tekst-zacht); }
 .wp-docs { color: #1e824c; }
 .wp-btns { display: flex; flex-wrap: wrap; gap: var(--ruimte-krap); margin-top: var(--ruimte-naast); }
-.wp-btn { font-family: inherit; font-size: var(--type-label); font-weight: 600; padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-klein); border: 1px solid var(--kleur-accent); background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); cursor: pointer; text-decoration: none; display: inline-block; }
-.wp-btn:hover { background: var(--kleur-accent-diep); border-color: var(--kleur-accent-diep); }
-.wp-btn.busy { opacity: 0.6; pointer-events: none; }
-.wp-btn-ghost { background: var(--kleur-kaart); color: var(--kleur-tekst-stil); border-color: var(--kleur-rand); }
-.wp-btn-ghost:hover { background: var(--kleur-accent-vlak); color: var(--kleur-accent-diep); border-color: var(--kleur-rand-accent); }
 .wp-msg { margin-top: var(--ruimte-naast); font-size: var(--type-bijschrift); color: #1e824c; line-height: 1.4; }
 .wp-msg-err { color: var(--bad); }
 
@@ -4538,7 +4528,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 
 /* "Eén volgende zet" op een werkplan-kaart */
 .wp-next { margin-top: var(--ruimte-naast); font-size: var(--type-bijschrift); line-height: 1.45; color: var(--kleur-kop); }
-.wp-btn-primary { font-weight: 700; }
 .wp-more { margin-top: var(--ruimte-krap); }
 
 /* Knop per overzicht-item (fruit → Pagina's, CTR → Meta-tab) */
@@ -5012,9 +5001,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .opr-chip.merge { background: rgba(231, 119, 63, 0.14); color: var(--dark); }
 .opr-leeg { color: var(--kleur-rand); }
 .opr-knoppen { display: flex; gap: var(--ruimte-krap); }
-.opr-btn { border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); color: var(--kleur-tekst-stil); cursor: pointer; font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700; padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-klein); white-space: nowrap; }
-.opr-btn.aan { border-color: var(--kleur-rand-accent); background: rgba(231, 119, 63, 0.12); color: var(--kleur-accent-diep); }
-.opr-btn:focus-visible { outline: 2px solid var(--kleur-accent); outline-offset: 1px; }
+.btn.opr-btn.aan { border-color: var(--kleur-rand-accent); background: rgba(231, 119, 63, 0.12); color: var(--kleur-accent-diep); }
 /* Uitleg leest van links naar rechts, nooit gecentreerd; de tabel erft anders de
    centrering van het kaartje eromheen en dan staat elke zin als een gedicht. */
 .opr-reden { max-width: 380px; text-align: left; }
@@ -6846,7 +6833,6 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
    geen tweede naam meer voor dezelfde knop. De wp-namen hieronder zijn de
    volgende die aan de beurt zijn. */
 .btn-ghost,
-.wp-fase-btn,
 .wp-act,
 .wp-link-btn,
 .wp-icon,
@@ -6860,20 +6846,17 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .btn-ghost:hover:not(:disabled),
-.wp-fase-btn:hover:not(:disabled),
 .wp-act:hover:not(:disabled),
 .wp-link-btn:hover:not(:disabled),
 .wp-icon:hover:not(:disabled),
 .wp-titel-pen:hover:not(:disabled),
 .pd-ververs:hover:not(:disabled),
 .btn-ghost:disabled,
-.wp-fase-btn:disabled,
 .wp-act:disabled,
 .wp-link-btn:disabled,
 .wp-icon:disabled,
 .pd-ververs:disabled,
 .btn-ghost:focus-visible,
-.wp-fase-btn:focus-visible,
 .wp-act:focus-visible,
 .wp-link-btn:focus-visible,
 .wp-icon:focus-visible,
@@ -6895,7 +6878,6 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 .btn.btn-ghost.btn-klein { font-size: var(--knop-klein-tekst); line-height: var(--knop-klein-regel); padding: var(--knop-klein-ruimte); }
 
 /* De uitzonderingen die moeten blijven winnen. */
-.wp-fase-btn.wp-fase-btn-primair { background: var(--kleur-accent); border-color: var(--kleur-rand-accent); color: var(--kleur-tekst-op-vlak); }
 .btn-ghost.btn-ghost-aan { background: var(--kleur-goed-vlak); border-color: var(--kleur-goed); color: var(--kleur-goed); }
 .wp-icon.wp-del:hover:not(:disabled) { background: var(--kleur-fout-vlak); border-color: var(--bad); color: var(--bad); }
 /* Een pictogramknop blijft vierkant genoeg om als icoon te lezen. */

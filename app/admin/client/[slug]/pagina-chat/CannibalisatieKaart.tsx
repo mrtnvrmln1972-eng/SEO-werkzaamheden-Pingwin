@@ -32,7 +32,7 @@ export default function CannibalisatieKaart({ canni, driveFolder, openPicker, en
         {canniOpen && (<div className="step-body">
         <div className="pch-canni-row">
           <span className="pch-canni-lead">Brengt per zoekwoord in kaart (top-10 + volume) of het een eigen pagina verdient of naar deze pagina geclusterd wordt, en welke pagina&rsquo;s deze pagina kapen, met de actie per pagina.</span>
-          <button type="button" className={"pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
+          <button type="button" className={"btn btn-klein pcd-btn" + (pcBusy || pc?.status === "running" ? " busy" : "")} disabled={pcBusy || pc?.status === "running"} onClick={runPc} title="Draait op de achtergrond met echte Ahrefs-data; je kunt wegklikken.">{pc?.status === "running" ? "Analyse draait…" : pc?.result ? "Opnieuw analyseren" : "Cannibalisatie oplossen"}</button>
         </div>
         {pc?.status === "error" && pc.error && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{pc.error}</div>}
         {pc?.status === "running" && !pc.result && (
@@ -52,7 +52,7 @@ export default function CannibalisatieKaart({ canni, driveFolder, openPicker, en
                     <div className="pch-wp-form">
                       <input type="text" placeholder="WordPress-gebruikersnaam" value={wpForm.user} onChange={(e) => setWpForm((f) => ({ ...f, user: e.target.value }))} autoComplete="off" />
                       <input type="password" placeholder="Application password" value={wpForm.pass} onChange={(e) => setWpForm((f) => ({ ...f, pass: e.target.value }))} autoComplete="new-password" />
-                      <button type="button" className="pcd-btn" disabled={wpSaving} onClick={saveWpConn}>{wpSaving ? "Opslaan…" : "Koppeling opslaan"}</button>
+                      <button type="button" className="btn btn-klein pcd-btn" disabled={wpSaving} onClick={saveWpConn}>{wpSaving ? "Opslaan…" : "Koppeling opslaan"}</button>
                     </div>
                   )}
                   {wpMsg && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{wpMsg}</div>}
@@ -62,7 +62,7 @@ export default function CannibalisatieKaart({ canni, driveFolder, openPicker, en
             {/* Map + overnemen blijven ook zichtbaar als de analyse is ingeklapt. */}
             <DriveRij folder={driveFolder} legeTekst="nog geen Drive-map, kies er een zodat het taak-document in de juiste map komt" onKies={openPicker} style={{ margin: "var(--s-3) 0 var(--s-2)" }} />
             <div className="pch-canni-apply">
-              <button type="button" className={"pcd-btn pcd-btn-primary" + (applyBusy ? " busy" : "") + (canniDone && !applyBusy ? " pcd-done" : "")} disabled={applyBusy} onClick={() => ensureDriveMap(applyRec)} title="Zet de redirects + interne links door als Dev-taak met document, en de de-optimalisatie-info als basis naar de betreffende pagina's. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.">{applyBusy ? "Overnemen…" : canniDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
+              <button type="button" className={"btn btn-klein pcd-btn pcd-btn-primary" + (applyBusy ? " busy" : "") + (canniDone && !applyBusy ? " pcd-done" : "")} disabled={applyBusy} onClick={() => ensureDriveMap(applyRec)} title="Zet de redirects + interne links door als Dev-taak met document, en de de-optimalisatie-info als basis naar de betreffende pagina's. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.">{applyBusy ? "Overnemen…" : canniDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
               {applyInfo && (
                 <div className="pch-apply-panel">
                   <div className="pch-apply-row">

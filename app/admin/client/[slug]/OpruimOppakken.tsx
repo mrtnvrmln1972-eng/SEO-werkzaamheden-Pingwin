@@ -222,11 +222,11 @@ export default function OpruimOppakken({ slug, domain, rijen, clientName, client
                   </td>
                 )}
                 {!alleenLezen && <td>
-                  <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
+                  <button type="button" className="btn btn-klein opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
                     title="Zet deze pagina als taak op de weekplanning. Daar krijgt hij zijn fases: analyse, blauwdruk, copy.">
                     {bezig === o.pad ? "Bezig…" : "Zet op de weekplanning"}
                   </button>
-                  <button type="button" className="opr-btn" onClick={() => setMailVoor(o)}
+                  <button type="button" className="btn btn-klein opr-btn" onClick={() => setMailVoor(o)}
                     title="Mail de klant wat we met deze pagina gaan doen, met de onderbouwing erbij.">
                     Mail naar klant
                   </button>

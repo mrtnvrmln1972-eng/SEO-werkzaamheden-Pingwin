@@ -456,9 +456,9 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       {profileOpen && (
       <div className="client-profile-body">
       <div className="profile-gen-buttons">
-      <button type="button" className={"pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : made.profile ? "Klantprofiel gemaakt ✓" : "Klantprofiel opstellen"}</button>
+      <button type="button" className={"btn btn-klein pcd-btn" + (genBusy === "profile" ? " busy" : "")} onClick={() => generateProfile("profile")} disabled={!!genBusy}>{genBusy === "profile" ? "Klantprofiel opstellen…" : made.profile ? "Klantprofiel gemaakt ✓" : "Klantprofiel opstellen"}</button>
       <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Klantprofiel opstellen'?" text={"Deze knop laat de AI de LIVE website van de klant lezen (homepage plus de belangrijkste pagina's) en daaruit een compleet klantprofiel opstellen. Dat gaat in vier stappen:\n- De AI leest de site en destilleert daaruit: wie het bedrijf is, het aanbod en de diensten, de doelgroep en hun vragen of twijfels, het werkgebied en de positionering (waarin onderscheidt dit bedrijf zich).\n- Het resultaat komt als concept in het veld 'Uit klantprofiel' hieronder te staan. Je kunt het daar gewoon nalezen en aanpassen; het is een vertrekpunt, geen eindstation.\n- Er wordt een net opgemaakt Pingwin-document van gemaakt, dat in de gekozen Drive-klantmap komt (of als download als er geen map of Drive-koppeling is).\n- Het verschijnt als afgeronde werkzaamheid in de takenlijst én op het klantdashboard, zodat de klant ziet dat dit werk gedaan is.\nHet profiel wordt daarna automatisch gebruikt door alle chats, analyses en documenten voor deze klant (zie het vraagteken bij 'Klantprofiel' hierboven). Draait op de achtergrond en kost een klein beetje Claude-tegoed; je kunt hem later gewoon opnieuw draaien als de site wezenlijk verandert."} /></span>
-      <button type="button" className={"pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : made.tov ? "Tone-of-voice gemaakt ✓" : "Tone-of-voice analyse"}</button>
+      <button type="button" className={"btn btn-klein pcd-btn" + (genBusy === "tov" ? " busy" : "")} onClick={() => generateProfile("tov")} disabled={!!genBusy}>{genBusy === "tov" ? "Tone-of-voice analyseren…" : made.tov ? "Tone-of-voice gemaakt ✓" : "Tone-of-voice analyse"}</button>
       <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat gebeurt er bij 'Tone-of-voice analyse'?" text={"Deze knop laat de AI de bestaande teksten op de live website analyseren op schrijfstijl: hoe klinkt dit bedrijf?\n- De AI kijkt naar aanspreekvorm (je/u), toon (zakelijk, warm, nuchter, speels), zinslengte en woordkeuze, hoe claims worden onderbouwd, en wat het bedrijf juist NIET zegt.\n- Het resultaat komt als apart tone-of-voice-blok in het klantprofiel-veld te staan (onder de kop 'Tone of voice'), naast het inhoudelijke profiel; je kunt het nalezen en bijstellen.\n- Er wordt een Pingwin-document van gemaakt in de Drive-klantmap (of als download) en een afgeronde werkzaamheid in de takenlijst en het klantdashboard.\nWaarom dit belangrijk is: de copy-stap (stap 3) en alle andere teksten die de AI voor deze klant schrijft, volgen deze tone-of-voice. Zo klinken nieuwe teksten als de klant zelf en niet als een willekeurige tekstrobot, en blijft de site consistent als meerdere mensen eraan werken. Draait op de achtergrond; opnieuw draaien mag altijd."} /></span>
       <span className="muted" style={{ fontSize: "var(--fs-xs)" }}>Leest de live site, zet een concept in het veld en maakt er een Pingwin-document + taak van.</span>
       </div>
@@ -538,9 +538,9 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
               value={domainInput}
               onChange={(e) => setDomainInput(e.target.value)}
             />
-            <button type="button" className="pcd-btn" onClick={() => setImporting(true)}>Analyse importeren</button>
-            <button type="button" className={"pcd-btn" + (inlezen.bezig ? " busy" : "")} onClick={scan} disabled={inlezen.bezig}>{inlezen.bezig ? "Inlezen…" : "Website inlezen"}</button>
-            <button type="button" className={"pcd-btn" + (newPageOpen ? " active" : "")} onClick={() => setNewPageOpen((v) => !v)}>+ Nieuwe pagina</button>
+            <button type="button" className="btn btn-klein pcd-btn" onClick={() => setImporting(true)}>Analyse importeren</button>
+            <button type="button" className={"btn btn-klein pcd-btn" + (inlezen.bezig ? " busy" : "")} onClick={scan} disabled={inlezen.bezig}>{inlezen.bezig ? "Inlezen…" : "Website inlezen"}</button>
+            <button type="button" className={"btn btn-klein pcd-btn" + (newPageOpen ? " active" : "")} onClick={() => setNewPageOpen((v) => !v)}>+ Nieuwe pagina</button>
           </span>
         </div>
 
@@ -564,7 +564,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
             <div style={{ display: "flex", gap: "var(--s-2)", flexWrap: "wrap", alignItems: "center" }}>
               <input className="pages-search" style={{ flex: "1 1 280px", minWidth: 220 }} placeholder="Pad of volledige URL, bijv. /nieuwe-dienst/" value={newPath} onChange={(e) => setNewPath(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPage(); }} />
               <input className="pages-search" style={{ flex: "1 1 220px", minWidth: 180 }} placeholder="Titel (optioneel)" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") addPage(); }} />
-              <button type="button" className={"pcd-btn" + (addingPage ? " busy" : "")} onClick={addPage} disabled={addingPage}>{addingPage ? "Toevoegen…" : "Toevoegen"}</button>
+              <button type="button" className={"btn btn-klein pcd-btn" + (addingPage ? " busy" : "")} onClick={addPage} disabled={addingPage}>{addingPage ? "Toevoegen…" : "Toevoegen"}</button>
               <button type="button" className="btn btn-klein" onClick={() => { setNewPageOpen(false); setNewPath(""); setNewTitle(""); }}>Annuleren</button>
             </div>
           </div>

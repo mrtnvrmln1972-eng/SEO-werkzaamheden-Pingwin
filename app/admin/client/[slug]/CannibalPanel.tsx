@@ -337,7 +337,7 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
                 {weegKlus.bezig ? "Bezig met controleren…" : "Controleer op gemiste kansen"}
               </button>
             )}
-            <button type="button" className={"pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running || !adsIngevuld}
+            <button type="button" className={"btn btn-klein pcd-btn pcd-btn-primary" + (running ? " busy" : "")} onClick={run} disabled={busy || running || !adsIngevuld}
               title={adsIngevuld ? "" : "Vul eerst de advertentiepagina's in, anders kan de analyse er een voorstellen om op te ruimen."}>
               {running ? "Analyse draait…" : result ? "Opnieuw analyseren" : "Analyse draaien"}
             </button>

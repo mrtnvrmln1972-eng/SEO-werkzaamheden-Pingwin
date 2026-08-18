@@ -100,7 +100,7 @@ export default function PageSummaryCard({ slug, url, planDone, autoGenSignal }: 
       ) : planDone ? (
         <div className="psc-empty">
           <span className="muted">Nog geen korte samenvatting. Maak hem in één klik uit de vastgelegde strategie.</span>
-          <button type="button" className={"pcd-btn pcd-btn-primary" + (busy ? " busy" : "")} onClick={generate} disabled={busy}>{busy ? "Samenvatten…" : "Vat de strategie samen"}</button>
+          <button type="button" className={"btn btn-klein pcd-btn pcd-btn-primary" + (busy ? " busy" : "")} onClick={generate} disabled={busy}>{busy ? "Samenvatten…" : "Vat de strategie samen"}</button>
         </div>
       ) : (
         <div className="muted psc-empty">Zodra de strategie hieronder is vastgelegd, verschijnt hier vanzelf de korte samenvatting: wat deze pagina nu doet, wat hij moet worden en de belangrijkste zet.</div>

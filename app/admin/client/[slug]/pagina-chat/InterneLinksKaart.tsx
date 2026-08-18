@@ -84,7 +84,7 @@ export default function InterneLinksKaart({ slug, url, siteBase, setErr, onAppli
         {linksOpen && (<div className="step-body">
           <div className="pch-canni-row">
             <span className="pch-canni-lead">Vindt per pagina de beste interne links hiernaartoe, gerangschikt op relevantie, autoriteit (verwijzende domeinen) en verkeer, met ankertekst en een bewerk-link naar de bronpagina.</span>
-            <button type="button" className={"pcd-btn" + (ilBusy || il?.status === "running" ? " busy" : "")} disabled={ilBusy || il?.status === "running"} onClick={runIl} title="Draait op de achtergrond; je kunt wegklikken.">{il?.status === "running" ? "Analyse draait…" : il?.result ? "Opnieuw zoeken" : "Interne links zoeken"}</button>
+            <button type="button" className={"btn btn-klein pcd-btn" + (ilBusy || il?.status === "running" ? " busy" : "")} disabled={ilBusy || il?.status === "running"} onClick={runIl} title="Draait op de achtergrond; je kunt wegklikken.">{il?.status === "running" ? "Analyse draait…" : il?.result ? "Opnieuw zoeken" : "Interne links zoeken"}</button>
           </div>
           {il?.status === "error" && il.error && <div className="login-error" style={{ marginTop: "var(--s-2)" }}>{il.error}</div>}
           {il?.status === "running" && !il.result && (
@@ -99,7 +99,7 @@ export default function InterneLinksKaart({ slug, url, siteBase, setErr, onAppli
               {/* Map + overnemen blijven ook zichtbaar als het voorstel is ingeklapt. */}
               <DriveRij folder={driveFolder} legeTekst="nog geen Drive-map, kies er een zodat het taak-document in de juiste map komt" onKies={openPicker} style={{ margin: "var(--s-3) 0 var(--s-2)" }} />
               <div className="pch-canni-apply">
-                <button type="button" className={"pcd-btn pcd-btn-primary" + (ilApplyBusy ? " busy" : "") + (ilDone && !ilApplyBusy ? " pcd-done" : "")} disabled={ilApplyBusy} onClick={() => ensureDriveMap(applyIl)} title="Zet het interne-links-voorstel door als Dev-taak met een begrijpelijk document. Is er nog geen Drive-map gekozen, dan vraagt deze knop er eerst een.">{ilApplyBusy ? "Overnemen…" : ilDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
+                <button type="button" className={"btn btn-klein pcd-btn pcd-btn-primary" + (ilApplyBusy ? " busy" : "") + (ilDone && !ilApplyBusy ? " pcd-done" : "")} disabled={ilApplyBusy} onClick={() => ensureDriveMap(applyIl)} title="Zet het interne-links-voorstel door als Dev-taak met een begrijpelijk document. Is er nog geen Drive-map gekozen, dan vraagt deze knop er eerst een.">{ilApplyBusy ? "Overnemen…" : ilDone ? "✓ Aanbevelingen overgenomen" : "Aanbevelingen overnemen"}</button>
                 {ilApplyInfo && (
                   <div className="pch-apply-panel">
                     <div className="pch-apply-row">

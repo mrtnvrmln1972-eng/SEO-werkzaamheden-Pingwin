@@ -335,7 +335,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
             {voorstellen.length === 1 ? "1 aanlevering wacht" : `${voorstellen.length} aanleveringen wachten`} op je akkoord.
           </strong>
           <span className="muted">Pas na verwerken komen de gegevens in de velden hierboven.</span>
-          <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={!!busy} onClick={() => void verwerkAlles()}>
+          <button type="button" className="btn btn-primary btn-klein wp-fase-btn-primair" disabled={!!busy} onClick={() => void verwerkAlles()}>
             {busy === "alles" ? "Verwerken…" : voorstellen.length === 1 ? "Verwerk en zet in de velden" : `Verwerk alle ${voorstellen.length} en zet in de velden`}
           </button>
         </div>
@@ -361,8 +361,8 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
             ))}
           </ul>
           <div className="wp-docvoorstel-acties">
-            <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={!!busy} onClick={() => void besluit("verwerk", voorstel.id)}>{busy === `verwerk-${voorstel.id}` ? "Verwerken…" : "Verwerk in kennisbank"}</button>
-            <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void besluit("negeer", voorstel.id)}>Negeer</button>
+            <button type="button" className="btn btn-primary btn-klein wp-fase-btn-primair" disabled={!!busy} onClick={() => void besluit("verwerk", voorstel.id)}>{busy === `verwerk-${voorstel.id}` ? "Verwerken…" : "Verwerk in kennisbank"}</button>
+            <button type="button" className="btn btn-klein" disabled={!!busy} onClick={() => void besluit("negeer", voorstel.id)}>Negeer</button>
             <span className="muted">Bestaande gegevens blijven bewaard; nieuwe waarden vullen aan.</span>
           </div>
         </div>
@@ -393,7 +393,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
             <>
               <div className="muted" style={{ fontSize: "var(--fs-xs)", marginBottom: "var(--s-1)" }}>Dit is wat er ná het verwerken van al het materiaal hierboven nog steeds ontbreekt; overlapt met wat er nu al rood staat in het formulier, maar is niet exact hetzelfde lijstje.</div>
               <ul>{gaps.map((r, i) => <li key={i}>{r}</li>)}</ul>
-              <button type="button" className="wp-fase-btn" disabled={!!busy} onClick={() => void maakTaak()}>{busy === "taak" ? "Bezig…" : "Zet als kaart in de weekplanning"}</button>
+              <button type="button" className="btn btn-klein" disabled={!!busy} onClick={() => void maakTaak()}>{busy === "taak" ? "Bezig…" : "Zet als kaart in de weekplanning"}</button>
             </>
           )}
         </div>

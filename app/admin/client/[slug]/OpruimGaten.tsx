@@ -134,11 +134,11 @@ export default function OpruimGaten({ slug, domain, rijen, clientName, clientEma
                 )}
                 {!alleenLezen && (
                   <td>
-                    <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(g)}
+                    <button type="button" className="btn btn-klein opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(g)}
                       title="Zet dit als taak op de weekplanning: blauwdruk en copy.">
                       {bezig === g.term ? "Bezig…" : "Zet op de weekplanning"}
                     </button>
-                    <button type="button" className="opr-btn" onClick={() => setMailVoor(g)}>Mail naar klant</button>
+                    <button type="button" className="btn btn-klein opr-btn" onClick={() => setMailVoor(g)}>Mail naar klant</button>
                     {klaar[g.term] && <div className="opr-melding" style={{ marginTop: "var(--s-1)" }}>{klaar[g.term]}</div>}
                   </td>
                 )}

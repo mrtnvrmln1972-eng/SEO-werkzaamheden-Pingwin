@@ -90,7 +90,7 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
         {schemaOpen && (<div className="step-body">
           <div className="pch-canni-row">
             <span className="pch-canni-lead">Adviseert de structured data (schema.org) voor deze pagina op basis van het bedrijfstype en de bevestigde bedrijfsgegevens, en levert de kant-en-klare JSON-LD voor de developer.</span>
-            <button type="button" className={"pcd-btn" + (schBusy || sch?.status === "running" ? " busy" : "")} disabled={schBusy || sch?.status === "running"} onClick={runSch} title="Draait op de achtergrond; je kunt wegklikken.">{sch?.status === "running" ? "Analyse draait…" : sch?.result ? "Opnieuw analyseren" : "Analyseer structured data"}</button>
+            <button type="button" className={"btn btn-klein pcd-btn" + (schBusy || sch?.status === "running" ? " busy" : "")} disabled={schBusy || sch?.status === "running"} onClick={runSch} title="Draait op de achtergrond; je kunt wegklikken.">{sch?.status === "running" ? "Analyse draait…" : sch?.result ? "Opnieuw analyseren" : "Analyseer structured data"}</button>
           </div>
           {sch?.stale && (
             <div className="sch-warning" style={{ marginTop: "var(--s-2)" }}>⚠ De pagina is gewijzigd ná de laatste structured data-analyse; de markup past mogelijk niet meer bij de zichtbare content. Draai de analyse opnieuw en geef de developer de nieuwe JSON.</div>
@@ -125,7 +125,7 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
               )}
               <DriveRij folder={driveFolder} legeTekst="nog geen Drive-map, kies er een zodat het document en het .json-bestand in de juiste map komen" onKies={openPicker} style={{ margin: "var(--s-3) 0 var(--s-2)" }} />
               <div className="pch-canni-apply">
-                <button type="button" className={"pcd-btn pcd-btn-primary" + (schApplyBusy ? " busy" : "") + (schDone && !schApplyBusy ? " pcd-done" : "")} disabled={schApplyBusy} onClick={() => ensureDriveMap(applySch)} title="Maakt een kort uitleg-document + los .json-bestand in de Drive-map en één Dev-taak. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.">{schApplyBusy ? "Overnemen…" : schDone ? "✓ Overgenomen" : "Overnemen (document + JSON + taak)"}</button>
+                <button type="button" className={"btn btn-klein pcd-btn pcd-btn-primary" + (schApplyBusy ? " busy" : "") + (schDone && !schApplyBusy ? " pcd-done" : "")} disabled={schApplyBusy} onClick={() => ensureDriveMap(applySch)} title="Maakt een kort uitleg-document + los .json-bestand in de Drive-map en één Dev-taak. Is er nog geen map gekozen, dan vraagt deze knop er eerst een.">{schApplyBusy ? "Overnemen…" : schDone ? "✓ Overgenomen" : "Overnemen (document + JSON + taak)"}</button>
                 {schApplyInfo && (
                   <div className="pch-apply-panel">
                     <div className="pch-apply-row">

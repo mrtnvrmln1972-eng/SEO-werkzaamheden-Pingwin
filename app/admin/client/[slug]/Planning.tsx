@@ -527,8 +527,8 @@ export default function Planning({
                   if (e.key === "Enter") { e.preventDefault(); void bewaarTitel(t); }
                   if (e.key === "Escape") { e.preventDefault(); setTitelBewerk(null); }
                 }} />
-              <button type="button" className="wp-fase-btn" disabled={titelBezig} onClick={() => void bewaarTitel(t)}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
-              <button type="button" className="wp-fase-btn wp-fase-btn-licht" disabled={titelBezig} onClick={() => setTitelBewerk(null)}>Annuleer</button>
+              <button type="button" className="btn btn-klein" disabled={titelBezig} onClick={() => void bewaarTitel(t)}>{titelBezig ? "Bezig…" : "Bewaar"}</button>
+              <button type="button" className="btn btn-klein wp-fase-btn-licht" disabled={titelBezig} onClick={() => setTitelBewerk(null)}>Annuleer</button>
             </span>
           ) : (
             <span className="wb-wat">

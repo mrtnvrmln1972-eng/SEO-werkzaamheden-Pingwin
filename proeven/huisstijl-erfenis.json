@@ -41,7 +41,6 @@
     "app/admin/client/[slug]/TakenVoorstel.tsx",
     "app/admin/client/[slug]/WerkplanPanel.tsx",
     "app/admin/client/[slug]/WijzigingenPanel.tsx",
-    "app/admin/client/[slug]/ZijPaneel.tsx",
     "app/admin/client/[slug]/navigatie/NavigatieRoadmap.tsx",
     "app/admin/client/[slug]/pagina-chat/CannibalisatieKaart.tsx",
     "app/admin/client/[slug]/pagina-chat/InterneLinksKaart.tsx",

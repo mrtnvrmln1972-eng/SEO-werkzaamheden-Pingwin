@@ -24,8 +24,8 @@ export default function AfwijsVenster({ canni }: { canni: ReturnType<typeof useC
               style={{ width: "100%", padding: "var(--s-2) var(--s-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", fontSize: "var(--fs-base)", fontFamily: "inherit" }}
             />
             <div className="ccp-actions">
-              <button type="button" className="pcd-btn small pcd-warn" onClick={confirmReject}>Afwijzen</button>
-              <button type="button" className="pcd-btn small wp-ghost" onClick={() => { setRejectPath(""); setRejectReason(""); }}>Annuleren</button>
+              <button type="button" className="btn btn-klein pcd-btn pcd-warn" onClick={confirmReject}>Afwijzen</button>
+              <button type="button" className="btn btn-klein pcd-btn wp-ghost" onClick={() => { setRejectPath(""); setRejectReason(""); }}>Annuleren</button>
             </div>
           </div>
         </div>

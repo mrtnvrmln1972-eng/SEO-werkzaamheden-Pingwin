@@ -101,19 +101,19 @@ function PageCard({ it, slug, onGoToPage, onGoToMeta }: { it: Item; slug: string
 
       <div className="wp-btns">
         {it.status !== "gedaan" && (
-          <button type="button" className={"wp-btn wp-btn-primary" + (busy ? " busy" : "")} onClick={doNext} disabled={!!busy} title="Pak precies deze ene stap; de rest draait erachter.">{busy ? "Bezig…" : it.next.label}</button>
+          <button type="button" className={"btn btn-primary btn-klein wp-btn-primary" + (busy ? " busy" : "")} onClick={doNext} disabled={!!busy} title="Pak precies deze ene stap; de rest draait erachter.">{busy ? "Bezig…" : it.next.label}</button>
         )}
-        <button type="button" className="wp-btn wp-btn-ghost" onClick={() => setMore((m) => !m)}>{more ? "Minder" : "Meer"}</button>
+        <button type="button" className="btn btn-klein" onClick={() => setMore((m) => !m)}>{more ? "Minder" : "Meer"}</button>
       </div>
 
       {more && (
         <div className="wp-btns wp-more">
-          <button type="button" className={"wp-btn wp-btn-ghost" + (busy === "meta_verbeteren" ? " busy" : "")} onClick={() => run("meta_verbeteren", { keyword: it.keyword })} disabled={!!busy} title="Genereer een betere meta-title en description (pixelbreedte + criteria).">Meta</button>
-          <button type="button" className={"wp-btn wp-btn-ghost" + (busy === "alt_teksten" ? " busy" : "")} onClick={() => run("alt_teksten")} disabled={!!busy} title="Genereer een alt-tekst-lijst voor de sitebouwer.">Alt-teksten</button>
-          <button type="button" className={"wp-btn wp-btn-ghost" + (busy === "pijplijn_starten" ? " busy" : "")} onClick={() => run("pijplijn_starten")} disabled={!!busy} title="Draai de hele pijplijn (analyse, blauwdruk, copy).">Hele pijplijn</button>
-          {onGoToPage && <button type="button" className="wp-btn wp-btn-ghost" onClick={() => onGoToPage(it.url)} title="Open deze pagina in de Pagina's-tab voor de diepgaande analyse.">Open in Pagina&rsquo;s</button>}
-          {onGoToMeta && it.kansLevel !== "none" && <button type="button" className="wp-btn wp-btn-ghost" onClick={onGoToMeta} title="Bekijk deze pagina in de Meta & CTR-tab: nu, wat het moet worden, en doorzetten naar de site.">Open in Meta-tab</button>}
-          {it.keyword && <a className="wp-btn wp-btn-ghost" href={ahrefsKwUrl(it.keyword)} target="_blank" rel="noreferrer" title="Bekijk dit zoekwoord in Ahrefs.">Ahrefs</a>}
+          <button type="button" className={"btn btn-klein" + (busy === "meta_verbeteren" ? " busy" : "")} onClick={() => run("meta_verbeteren", { keyword: it.keyword })} disabled={!!busy} title="Genereer een betere meta-title en description (pixelbreedte + criteria).">Meta</button>
+          <button type="button" className={"btn btn-klein" + (busy === "alt_teksten" ? " busy" : "")} onClick={() => run("alt_teksten")} disabled={!!busy} title="Genereer een alt-tekst-lijst voor de sitebouwer.">Alt-teksten</button>
+          <button type="button" className={"btn btn-klein" + (busy === "pijplijn_starten" ? " busy" : "")} onClick={() => run("pijplijn_starten")} disabled={!!busy} title="Draai de hele pijplijn (analyse, blauwdruk, copy).">Hele pijplijn</button>
+          {onGoToPage && <button type="button" className="btn btn-klein" onClick={() => onGoToPage(it.url)} title="Open deze pagina in de Pagina's-tab voor de diepgaande analyse.">Open in Pagina&rsquo;s</button>}
+          {onGoToMeta && it.kansLevel !== "none" && <button type="button" className="btn btn-klein" onClick={onGoToMeta} title="Bekijk deze pagina in de Meta & CTR-tab: nu, wat het moet worden, en doorzetten naar de site.">Open in Meta-tab</button>}
+          {it.keyword && <a className="btn btn-klein" href={ahrefsKwUrl(it.keyword)} target="_blank" rel="noreferrer" title="Bekijk dit zoekwoord in Ahrefs.">Ahrefs</a>}
         </div>
       )}
 

@@ -198,7 +198,7 @@ export default function OpruimPlaatsen({ slug, domain, data, clientName, clientE
                         {a.onderbouwing.map((z, i) => <Zin key={i} tekst={z} />)}
                       </div>
                       {!alleenLezen && (
-                        <button type="button" className="opr-btn" style={{ marginTop: "var(--s-3)" }} onClick={() => setMailVoor(a)}>Mail naar klant</button>
+                        <button type="button" className="btn btn-klein opr-btn" style={{ marginTop: "var(--s-3)" }} onClick={() => setMailVoor(a)}>Mail naar klant</button>
                       )}
                     </div>
                   </td>

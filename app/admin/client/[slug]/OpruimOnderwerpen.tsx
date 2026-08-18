@@ -125,11 +125,11 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
             {o.kamp && KAMP_TEKST[o.kamp] && <span className="opr-chip">{KAMP_TEKST[o.kamp]}</span>}
             {!alleenLezen && (
               <span className="opr-kaart-acties">
-                <button type="button" className="opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
+                <button type="button" className="btn btn-klein opr-btn" disabled={!!bezig} onClick={() => void naarWeekplan(o)}
                   title="Zet dit onderwerp als taak op de weekplanning, met de thuisbasis als doelpagina.">
                   {bezig === o.sleutel ? "Bezig…" : "Zet op de weekplanning"}
                 </button>
-                <button type="button" className="opr-btn" onClick={() => setMailVoor(o)}>Mail naar klant</button>
+                <button type="button" className="btn btn-klein opr-btn" onClick={() => setMailVoor(o)}>Mail naar klant</button>
               </span>
             )}
           </div>

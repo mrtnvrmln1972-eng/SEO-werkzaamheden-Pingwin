@@ -142,14 +142,14 @@ export default function ZijPaneel({ label, top = 140, children }: { label: strin
         >
           <span className="zp-titel">{label}</span>
           <span className="zp-kop-knoppen">
-            <button type="button" className="zp-knop"
+            <button type="button" className="btn btn-klein"
               title={stand.vol ? "Terug naar je eigen maat" : "Zo groot als het scherm toelaat. Je eigen maat blijft bewaard."}
               onClick={() => bewaar({ ...stand, vol: !stand.vol })}>
               {stand.vol ? "\u21F2 kleiner" : "\u21F1 groter"}
             </button>
             {stand.los
-              ? <button type="button" className="zp-knop" title="Zet het paneel terug tegen de rechterrand" onClick={() => bewaar({ ...stand, los: false })}>&#8677; zijkant</button>
-              : <button type="button" className="zp-knop" title="Losmaken: als venster midden op je scherm, te verslepen en te vergroten" onClick={losMaken}>&#10696; losmaken</button>}
+              ? <button type="button" className="btn btn-klein" title="Zet het paneel terug tegen de rechterrand" onClick={() => bewaar({ ...stand, los: false })}>&#8677; zijkant</button>
+              : <button type="button" className="btn btn-klein" title="Losmaken: als venster midden op je scherm, te verslepen en te vergroten" onClick={losMaken}>&#10696; losmaken</button>}
             <button type="button" className="wp-icon wp-del" title="Sluiten" onClick={() => setOpen(false)}>×</button>
           </span>
         </div>

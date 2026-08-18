@@ -471,7 +471,7 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
           knop stuurt het antwoord door zoals het hier staat. */}
       <div className="ovc-doorstuur">
         {!stuurOpen ? (
-          <button type="button" className="wp-fase-btn" onClick={() => setStuurOpen(true)}
+          <button type="button" className="btn btn-klein" onClick={() => setStuurOpen(true)}
             title="Stuur deze analyse door met dezelfde opmaak: koppen, tabellen en lijsten blijven staan">
             Mail deze analyse
           </button>
@@ -492,9 +492,9 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
                 placeholder="Korte begeleidende zin (mag leeg)" />
             </div>
             <div className="ovc-doorstuur-acties">
-              <button type="button" className="wp-fase-btn wp-fase-btn-primair" disabled={stuurBezig || !stuurAan.trim()}
+              <button type="button" className="btn btn-primary btn-klein wp-fase-btn-primair" disabled={stuurBezig || !stuurAan.trim()}
                 onClick={() => void stuurAnalyse()}>{stuurBezig ? "Versturen…" : "Verstuur"}</button>
-              <button type="button" className="wp-fase-btn" disabled={stuurBezig} onClick={() => { setStuurOpen(false); setStuurMsg(null); }}>Annuleren</button>
+              <button type="button" className="btn btn-klein" disabled={stuurBezig} onClick={() => { setStuurOpen(false); setStuurMsg(null); }}>Annuleren</button>
               <span className="muted">De opmaak gaat mee zoals hierboven.</span>
             </div>
             {stuurMsg && <div className={stuurMsg.ok ? "wp-doc-ok" : "wp-doc-fout"}>{stuurMsg.tekst}</div>}
@@ -517,7 +517,7 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
         <div className="ovc-lijstpop" style={{ left: Math.max(8, Math.min(lijstVoor.x, window.innerWidth - 300)), top: lijstVoor.y + 6 }}>
           <span className="ovc-lijstpop-kop">Op welke bespreeklijst?</span>
           {personen.map((p) => (
-            <button key={p} type="button" className="wp-fase-btn" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? devLabel(devNaam) : p}</button>
+            <button key={p} type="button" className="btn btn-klein" onClick={() => void zetOpLijst(p)}>{p === "Dev" ? devLabel(devNaam) : p}</button>
           ))}
           <button type="button" className="wp-icon wp-del" title="Annuleren" onClick={() => setLijstVoor(null)}>×</button>
         </div>
