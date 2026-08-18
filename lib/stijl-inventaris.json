@@ -10,7 +10,7 @@
     "los": [
       {
         "waarde": "#fff",
-        "aantal": 107
+        "aantal": 66
       },
       {
         "waarde": "#1c7a3f",
@@ -18,7 +18,7 @@
       },
       {
         "waarde": "#2e7d32",
-        "aantal": 38
+        "aantal": 31
       },
       {
         "waarde": "#b3261e",
@@ -546,10 +546,6 @@
       },
       {
         "waarde": "#fff3e0",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fff6e5",
         "aantal": 2
       },
       {
@@ -1122,6 +1118,10 @@
       },
       {
         "waarde": "#fff4e5",
+        "aantal": 1
+      },
+      {
+        "waarde": "#fff6e5",
         "aantal": 1
       },
       {
@@ -2658,7 +2658,7 @@
   "kleurNaastToken": [
     {
       "waarde": "#fff",
-      "aantal": 107,
+      "aantal": 66,
       "dichtst": "--white",
       "afstand": 0,
       "stapel": "gelijk"
@@ -2672,7 +2672,7 @@
     },
     {
       "waarde": "#2e7d32",
-      "aantal": 38,
+      "aantal": 31,
       "dichtst": "--good",
       "afstand": 0,
       "stapel": "gelijk"
@@ -3600,13 +3600,6 @@
       "dichtst": "--highlight-manual",
       "afstand": 9,
       "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff6e5",
-      "aantal": 2,
-      "dichtst": "--highlight-manual",
-      "afstand": 0,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#fff8f3",
@@ -4608,6 +4601,13 @@
       "dichtst": "--highlight-manual",
       "afstand": 4,
       "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff6e5",
+      "aantal": 1,
+      "dichtst": "--highlight-manual",
+      "afstand": 0,
+      "stapel": "gelijk"
     },
     {
       "waarde": "#fff6ec",
@@ -5642,7 +5642,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 1284,
-    "schaalGebruik": 5665
+    "gebruik": 2695,
+    "schaalGebruik": 4303
   }
 }
