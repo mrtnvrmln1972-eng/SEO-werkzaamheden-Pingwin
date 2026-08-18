@@ -40,6 +40,31 @@ const APPARATEN: Record<Apparaat, { breedte: number; hoogte: number; mobiel: boo
   mobiel: { breedte: 390, hoogte: 844, mobiel: true },
 };
 
+/**
+ * Naar de pagina toe, en niet stukgaan op het wachten.
+ *
+ * "Alles is stil op het netwerk" is de beste maat voor "de pagina is af", maar
+ * op een site met trackers en chatwidgets wordt het nóóit helemaal stil. Dan
+ * loopt het wachten tegen zijn limiet aan, gooit puppeteer een fout, en krijg
+ * je geen foto terwijl de pagina allang in beeld stond. Precies dat gebeurde op
+ * de eerste meting. Dus: wachten tot het stil is, en als dat niet lukt gewoon
+ * verder met wat er staat.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function gaNaar(page: any, url: string): Promise<any> {
+  try {
+    return await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
+  } catch {
+    try {
+      return await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
+    } catch {
+      // Al onderweg naar deze pagina: de tweede goto naar hetzelfde adres kan
+      // afketsen terwijl het beeld er wel is. Verder met wat er staat.
+      return null;
+    }
+  }
+}
+
 export type Kop = { niveau: number; tekst: string };
 export type Verwijzing = { pad: string; tekst: string; extern: boolean };
 export type Beeld = { bron: string; alt: string; breedte: number; hoogte: number };
@@ -119,7 +144,7 @@ export async function leesPagina(url: string, apparaat: Apparaat = "desktop"): P
   return await metBrowser(async (page) => {
     await page.setViewport({ width: scherm.breedte, height: scherm.hoogte, isMobile: scherm.mobiel, hasTouch: scherm.mobiel });
     await page.setUserAgent(BEZOEKER_UA);
-    const resp = await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    const resp = await gaNaar(page, url);
     await new Promise((r) => setTimeout(r, 900));
     const eindUrl: string = page.url();
     const fout = await waaromNiet(eindUrl);
@@ -198,18 +223,21 @@ export async function fotografeerPagina(url: string, opties: FotoOpties = {}): P
   return await metBrowser(async (page) => {
     await page.setViewport({ width: scherm.breedte, height: scherm.hoogte, isMobile: scherm.mobiel, hasTouch: scherm.mobiel });
     await page.setUserAgent(BEZOEKER_UA);
-    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    await gaNaar(page, url);
     const fout = await waaromNiet(page.url());
     if (fout) throw new Error("De pagina stuurde door naar een adres dat niet opgehaald mag worden.");
     // Eerst helemaal naar beneden en terug: anders staat alles wat pas bij het
     // scrollen inlaadt nog als leeg vlak op de foto, en dat is precies het soort
-    // vals oordeel dat we hier niet willen.
+    // vals oordeel dat we hier niet willen. Wel begrensd: een pagina van twintig
+    // schermen lang zou anders in zijn eentje de hele tijd opsouperen, en dan
+    // krijg je geen foto maar een tijdslimiet.
     await page.evaluate(async () => {
       const stap = window.innerHeight;
       const eind = document.body ? document.body.scrollHeight : 0;
-      for (let y = 0; y < eind; y += stap) {
-        window.scrollTo(0, y);
-        await new Promise((r) => setTimeout(r, 120));
+      const stappen = Math.min(30, Math.ceil(eind / Math.max(1, stap)));
+      for (let i = 0; i < stappen; i++) {
+        window.scrollTo(0, i * stap);
+        await new Promise((r) => setTimeout(r, 90));
       }
       window.scrollTo(0, 0);
     });

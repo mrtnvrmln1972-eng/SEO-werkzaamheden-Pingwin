@@ -3,7 +3,11 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth"
 import { fotografeerPagina, leesPagina, waaromNiet, type Apparaat } from "../../../../../lib/pagina-lab/bron";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Ruim genomen, net als de contentscan. Een browser starten kost op een koude
+// server al seconden, en daarna moet een zware klantpagina nog laden, scrollen
+// en gefotografeerd worden. Op 60 seconden liep de eerste meting van een
+// homepage tegen de limiet aan.
+export const maxDuration = 300;
 
 // ═══════════════════════════════════════════════════════════
 // ÉÉN PAGINA VAN BUITEN, GELEZEN OF GEFOTOGRAFEERD
