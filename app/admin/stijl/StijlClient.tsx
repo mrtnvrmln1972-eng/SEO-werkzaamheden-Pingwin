@@ -53,8 +53,8 @@ const STAPPEN: { nr: number; titel: string; wat: string; stand: "af" | "bezig" |
     wat: "Scherm voor scherm, zonder dat er iets verandert aan hoe het eruitziet. Dit is het saaie stuk en tegelijk het stuk waar alles op wacht.",
   },
   {
-    nr: 4, stand: "open", titel: "Het ontwerp kiezen en doorvoeren",
-    wat: "Pas hier gaat het over hoe het eruitziet: kleuren, lettertype, hoeken, ruimte. Dan is dat een handvol regels veranderen in plaats van honderden plekken langslopen, en zie je op dit scherm meteen wat het doet.",
+    nr: 4, stand: "bezig", titel: "Het ontwerp kiezen en doorvoeren",
+    wat: "Hier gaat het over hoe het eruitziet: kleuren, lettertype, hoeken, ruimte. Kiezen kan nu, in de speelruimte hierboven: je draait en het hele scherm verandert mee. Wat er nog moet gebeuren is de keuze zelf, en dan zet ik hem door voor het hele dashboard.",
   },
 ];
 
