@@ -85,6 +85,26 @@ export async function fileName(idOrUrl: string): Promise<string> {
   } catch { return ""; }
 }
 
+/**
+ * Wanneer is dit Drive-bestand voor het laatst gewijzigd?
+ *
+ * Voor een gedeeld document is dit de betrouwbaarste datum die er is: Google
+ * houdt hem zelf bij, en hij verandert niet doordat iemand het bestand opent of
+ * downloadt. Leeg als het niet lukt; dan telt de aanlevering als "geen datum
+ * bekend" en overschrijft hij niets (zie lib/bron-datum.ts).
+ */
+export async function fileModifiedTime(idOrUrl: string): Promise<string> {
+  const id = driveIdFromUrl(idOrUrl);
+  if (!id) return "";
+  try {
+    const t = await token();
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=modifiedTime&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${t}` } });
+    if (!res.ok) return "";
+    const j = await res.json();
+    return (j.modifiedTime as string) || "";
+  } catch { return ""; }
+}
+
 // ── Documentinhoud lezen (Google Doc/Sheet/Slides) ──
 // Haalt een Drive-file-id uit een geplakte URL of losse id. Ondersteunt de
 // gangbare Google-linkvormen (/d/<id>/, ?id=<id>) plus een kale id.

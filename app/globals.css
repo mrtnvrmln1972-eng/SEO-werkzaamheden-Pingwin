@@ -3491,6 +3491,13 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 /* Is er maar één document van een soort, dan is "geldt" geen keuze maar een feit:
    hetzelfde woord, zonder aankruisvakje dat suggereert dat je nog iets moet doen. */
 .wp-docrij-geldt-vast { color: var(--kleur-accent); font-weight: 600; white-space: nowrap; }
+/* Structured data heeft op een taakkaart geen keuze: wat erin stond is per
+   gegeven in de kennisbank verwerkt, en dáár staat wat geldt. Deze verwijzing
+   staat op de plek waar anders het vinkje stond. */
+.wp-docrij-kennisbank { color: var(--kleur-accent); font-weight: 600; white-space: nowrap; text-decoration: underline; }
+/* Wat dit document is, onder de regel die je aanklikt. */
+.wp-docrij-uitleg { flex-basis: 100%; margin-top: var(--ruimte-krap); display: flex; flex-direction: column;
+  gap: var(--ruimte-krap); color: var(--kleur-tekst); }
 
 /* De uitkomst van de criteria-toets, onder de regel waar hij bij hoort. */
 .wp-toets { flex-basis: 100%; margin-top: var(--ruimte-naast); padding: var(--ruimte-regel);
@@ -3623,6 +3630,20 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .kb-veld dt { font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); font-weight: 600; }
 .kb-veld dd { margin: 0; font-size: var(--type-label); line-height: var(--regel-label); color: var(--dark); overflow-wrap: anywhere; }
 .kb-veld dd a { color: var(--kleur-accent); }
+/* Van wanneer een gegeven is en waar het vandaan komt. Rustig gezet: het is de
+   verantwoording bij de waarde, niet de waarde zelf, maar het moet wel te lezen
+   zijn zonder ergens op te klikken, want hierop wordt besloten wie wint. */
+.kb-veld-stempel { display: block; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
+/* De datum van een aanlevering, boven het voorstel. Zonder datum is het een
+   waarschuwing (dit vervangt niets), dus dan krijgt hij de let-op-kleur. */
+.kb-voorstel-datum { font-size: var(--type-label); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); margin-bottom: var(--ruimte-krap); }
+.kb-voorstel-datum-onbekend { color: var(--kleur-let-op); font-weight: 600; }
+/* Wat het dashboard bewust niet heeft overgenomen. Hoort in beeld te staan:
+   het dashboard beslist zelf, dus waar het niet zeker was moet zichtbaar zijn. */
+.kb-botsingen { border-left: 3px solid var(--kleur-accent); border-radius: var(--ronding-klein); background: var(--kleur-let-op-vlak);
+  padding: var(--ruimte-naast) var(--ruimte-regel); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
+  color: var(--kleur-tekst); display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+.kb-botsingen ul { margin: 0; padding-left: var(--ruimte-groep); display: flex; flex-direction: column; gap: var(--ruimte-krap); }
 @media (max-width: 620px) { .kb-veld { grid-template-columns: 1fr; gap: 0; } }
 
 .kb-voorstel-balk {

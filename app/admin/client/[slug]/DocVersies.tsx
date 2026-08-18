@@ -23,6 +23,15 @@ type Toets = { oordeel: "goed" | "let-op" | "niet-goed"; kop: string; behouden: 
 type Versie = {
   id: number; kind: string; source: "pingwin" | "klant"; naam: string; driveLink: string;
   samenvatting: string; vergelijking: string; status: string; createdAt: string; goedgekeurd: boolean;
+  /** Van wanneer de inhoud zelf is (uit het document), tegenover createdAt: het
+      moment waarop het bestand hier binnenkwam. Twee documenten die je op één
+      ochtend toevoegt hebben dezelfde createdAt en zeggen dan niets. */
+  inhoudDatum: string; datumBron: string; datumUitleg: string;
+};
+
+const DATUM_BRON: Record<string, string> = {
+  document: "staat in het document zelf", bestand: "datum van het bestand", drive: "laatst gewijzigd in Drive",
+  geplakt: "door jou geplakt", opgehaald: "door ons opgehaald", mail: "datum van de mail", onbekend: "datum onbekend",
 };
 
 const KIND_LABEL: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", structured: "Structured data", overig: "Overig" };
@@ -64,8 +73,10 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
   for (const v of versies) aantalPerSoort[v.kind] = (aantalPerSoort[v.kind] || 0) + 1;
   // Ligt er van een soort meer dan één versie zonder dat er één is aangewezen?
   // Dan wacht de mail en de sitebouwer op jouw keuze, en gaat het blok open.
+  // Structured data telt hier niet in mee: daarvoor is de kennisbank de plek waar
+  // per gegeven vastligt wat geldt, dus er valt op deze kaart niets te kiezen.
   const moetKiezen = Object.keys(aantalPerSoort).some((kind) =>
-    aantalPerSoort[kind] > 1 && !versies.some((v) => v.kind === kind && v.goedgekeurd));
+    kind !== "structured" && aantalPerSoort[kind] > 1 && !versies.some((v) => v.kind === kind && v.goedgekeurd));
 
   // De kaart tekent de knop voor dit blok, dus die moet weten wat erin zit.
   useEffect(() => { onStand?.({ aantal: versies.length, moetKiezen }); }, [versies.length, moetKiezen, onStand]);
@@ -113,6 +124,10 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
     try {
       const form = new FormData();
       form.append("file", file); form.append("slug", slug); form.append("url", url);
+      // Wanneer dit bestand voor het laatst is gewijzigd. Gaat niet vanzelf mee
+      // bij een upload, en zonder die datum kan het dashboard niet bepalen of dit
+      // nieuwer is dan wat er al ligt (zie lib/bron-datum.ts).
+      form.append("gewijzigd", String(file.lastModified || 0));
       const d = await fetch("/api/admin/page-doc/upload", { method: "POST", body: form }).then((r) => r.json());
       if (d?.ok) { if (Array.isArray(d.versions)) setVersies(d.versions); else void laad(); }
       else setFout(d?.error || "Kon het bestand niet verwerken.");
@@ -123,7 +138,7 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
   // Een bijlage die uit het paneel Laatste mails hierheen gesleept wordt. Het
   // dashboard haalt hem zelf bij Microsoft op; downloaden en opnieuw uploaden
   // hoeft dus niet.
-  async function uitMail(data: { messageId: string; attachmentId: string; naam: string }) {
+  async function uitMail(data: { messageId: string; attachmentId: string; naam: string; mailDatum?: string }) {
     setBusy("lezen"); setFout("");
     try {
       const d = await fetch("/api/admin/page-doc/upload", {
@@ -241,7 +256,16 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
               onClick={() => setGekozen(gekozen === v.id ? null : v.id)}
               onDoubleClick={() => setPreview(v)}
               title="Klik om te kiezen, spatiebalk voor een voorvertoning">
-              <span className="wp-docrij-datum">{dd(v.createdAt)}{aantalPerSoort[v.kind] > 1 ? ` ${tt(v.createdAt)}` : ""}</span>
+              {/* De datum van het document zelf als we die kennen, anders het
+                  moment van binnenkomst. Dat verschil is precies waarom twee
+                  documenten van dezelfde ochtend niet uit elkaar te houden waren. */}
+              <span className="wp-docrij-datum"
+                title={v.inhoudDatum
+                  ? `${v.datumUitleg}. Hier binnengekomen op ${dd(v.createdAt)} ${tt(v.createdAt)}.`
+                  : `Van dit document is geen eigen datum te vinden; dit is het moment waarop het hier binnenkwam (${dd(v.createdAt)} ${tt(v.createdAt)}).`}>
+                {v.inhoudDatum ? dd(v.inhoudDatum) : dd(v.createdAt)}
+                {!v.inhoudDatum && aantalPerSoort[v.kind] > 1 ? ` ${tt(v.createdAt)}` : ""}
+              </span>
               <span className={"wp-docversie-bron " + (v.source === "klant" ? "wp-bron-klant" : "wp-bron-pingwin")}>
                 {v.source === "klant" ? "Klant" : "Pingwin"}
               </span>
@@ -268,7 +292,17 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                     nadat de klant een versie terugstuurde). Ligt er maar één, dan geldt
                     hij vanzelf en zou het vinkje alleen een klusje zijn dat je kunt
                     vergeten, met een stilgevallen mail en werklijst als gevolg. */}
-                {aantalPerSoort[v.kind] > 1 ? (
+                {/* Structured data kent geen keuze op deze kaart. Het document is
+                    daar een doorgeefluik: wat erin staat is per gegeven verwerkt in
+                    de kennisbank van de klant, en dáár staat wat geldt, met per
+                    gegeven een datum. Een vinkje "welke versie geldt" zou een
+                    tweede waarheid maken naast die kennisbank. */}
+                {v.kind === "structured" ? (
+                  <a className="wp-docrij-kennisbank" href={`/admin/client/${slug}?tab=klant`}
+                    title="Wat hierin stond is per gegeven verwerkt in de kennisbank van deze klant. Daar staat welke waarde geldt en van wanneer die is; dit bestand is het archief.">
+                    in de kennisbank
+                  </a>
+                ) : aantalPerSoort[v.kind] > 1 ? (
                   <label className="wp-docrij-geldt-vink" title={`Er liggen ${aantalPerSoort[v.kind]} versies van dit soort. Vink aan welke er geldt: die gaat mee in een mail en naar de sitebouwer, en is de tekst waar de rest mee rekent.`}>
                     <input type="checkbox" checked={v.goedgekeurd} disabled={!!busy}
                       onChange={(e) => void stuur({ action: "goedkeur", id: v.id, aan: e.target.checked }, "goedkeur")} />
@@ -293,6 +327,20 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                   onClick={() => void stuur({ action: "negeer", id: v.id }, "weg")}>×</button>
               </span>
 
+              {/* Wat dit document is en wat er anders in staat. Stond al in de
+                  database maar kwam nooit in beeld, waardoor je twee regels zag
+                  waarvan je niet kon zien welke welke was. Alleen bij de regel
+                  die je aanklikt, anders wordt de lijst een muur tekst. */}
+              {gekozen === v.id && (v.samenvatting || v.datumUitleg) && (
+                <div className="wp-docrij-uitleg">
+                  {v.samenvatting && <span>{v.samenvatting}</span>}
+                  <span className="muted">
+                    {v.inhoudDatum ? `${DATUM_BRON[v.datumBron] || v.datumBron}: ${dd(v.inhoudDatum)}` : "Geen eigen datum in dit document gevonden."}
+                    {" · "}hier binnengekomen {dd(v.createdAt)} {tt(v.createdAt)}
+                    {" · "}dubbelklik voor een voorvertoning
+                  </span>
+                </div>
+              )}
               {toets?.id === v.id && (
                 <div className={"wp-toets " + OORDEEL_KLEUR[toets.uitkomst.oordeel]}>
                   <strong>{toets.uitkomst.kop}</strong>

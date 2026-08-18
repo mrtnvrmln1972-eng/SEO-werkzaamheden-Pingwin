@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { uploadEnConverteer, readDriveDoc } from "../../../../lib/drive";
+import { uploadEnConverteer, readDriveDoc, fileModifiedTime } from "../../../../lib/drive";
 import { kanDirectGelezen, tekstUitLokaalBestand } from "../../../../lib/bestand-tekst";
 import { ensureClientFolder } from "../../../../lib/drive-map";
 import { getClientBySlug } from "../../../../lib/clients";
+import { datumUitBestand, maakBronDatum, GEEN_DATUM, type BronDatum } from "../../../../lib/bron-datum";
 import { listKnowledge, getOpenProposals, proposeKnowledge, confirmKnowledge, confirmAllKnowledge, ignoreKnowledge, knowledgeGaps, knowledgeGapsPerVeld, applyKnowledgeToOrg, opruimenDubbel, deleteKnowledgeEntity } from "../../../../lib/schema-knowledge";
 
 export const runtime = "nodejs";
@@ -39,17 +40,22 @@ async function clientFolderId(slug: string): Promise<string> {
 // pdf en scans/foto's: artsen-fiches komen meestal als pdf binnen en werden
 // eerder simpelweg geweigerd. Drive doet de omzetting (inclusief tekstherkenning
 // op een scan), daar hoeft geen extra pakket voor in de app.
-async function tekstUitBestand(slug: string, file: File): Promise<{ naam: string; tekst: string; fout?: string }> {
+async function tekstUitBestand(slug: string, file: File, bestandMs?: number): Promise<{ naam: string; tekst: string; fout?: string; aanlevering: BronDatum }> {
   const naam = file.name || "aangeleverd-materiaal";
   const buf = Buffer.from(await file.arrayBuffer());
   const datum = new Date().toISOString().slice(0, 10);
+  // Van wanneer is dit materiaal? Uit het document zelf als het daar staat,
+  // anders de datum van het bestand. Dit beslist straks per gegeven wie wint,
+  // dus het gebeurt hier één keer, vlak nadat het bestand binnenkomt.
+  const aanlevering = await datumUitBestand(naam, buf, bestandMs).catch(() => GEEN_DATUM);
+  const uit = (r: { naam: string; tekst: string; fout?: string }) => ({ ...r, aanlevering });
   try {
     // Word, Excel en platte tekst lezen we hier, zonder omweg via Drive. Een
     // .docx ging eerder wél naar Drive maar zonder omzetting naar een Google Doc,
     // en kwam dan terug als "kan ik niet als tekst lezen".
     if (kanDirectGelezen(naam)) {
       const tekst = await tekstUitLokaalBestand(naam, buf);
-      return { naam, tekst, fout: tekst.trim() ? undefined : "het bestand lijkt leeg of bevat geen tekst" };
+      return uit({ naam, tekst, fout: tekst.trim() ? undefined : "het bestand lijkt leeg of bevat geen tekst" });
     }
     if (/\.(pdf|doc|rtf|odt|png|jpe?g|webp|gif|tiff?)$/i.test(naam)) {
       const mime = /\.pdf$/i.test(naam) ? "application/pdf"
@@ -62,10 +68,10 @@ async function tekstUitBestand(slug: string, file: File): Promise<{ naam: string
         : /\.tiff?$/i.test(naam) ? "image/tiff" : "image/jpeg";
       const up = await uploadEnConverteer(await clientFolderId(slug), `Kennisbank-${datum}-${naam}`, buf, mime);
       const read = await readDriveDoc(up.id, 60000);
-      return { naam, tekst: read.ok ? read.text || "" : "", fout: read.ok ? undefined : read.error };
+      return uit({ naam, tekst: read.ok ? read.text || "" : "", fout: read.ok ? undefined : read.error });
     }
-    return { naam, tekst: "", fout: "dit bestandstype kan ik niet lezen. Wel: Word (.docx), Excel (.xlsx), pdf, tekst (.txt, .md, .json, .csv), en scans of foto's" };
-  } catch (e) { return { naam, tekst: "", fout: (e as Error).message }; }
+    return uit({ naam, tekst: "", fout: "dit bestandstype kan ik niet lezen. Wel: Word (.docx), Excel (.xlsx), pdf, tekst (.txt, .md, .json, .csv), en scans of foto's" });
+  } catch (e) { return uit({ naam, tekst: "", fout: (e as Error).message }); }
 }
 
 export async function POST(req: NextRequest) {
@@ -84,10 +90,14 @@ export async function POST(req: NextRequest) {
 
     const proposals: unknown[] = [];
     const fouten: string[] = [];
-    for (const file of files) {
-      const { naam, tekst, fout } = await tekstUitBestand(slug, file);
+    // De browser weet wanneer een bestand op de computer voor het laatst is
+    // gewijzigd, maar dat gaat niet vanzelf mee bij een upload. Het scherm stuurt
+    // die datums daarom apart mee, in dezelfde volgorde als de bestanden.
+    const bestandDatums = form.getAll("gewijzigd").map((v) => Number(v) || 0);
+    for (const [i, file] of files.entries()) {
+      const { naam, tekst, fout, aanlevering } = await tekstUitBestand(slug, file, bestandDatums[i] || undefined);
       if (fout || !tekst.trim()) { fouten.push(`${naam}: ${fout || "geen leesbare tekst gevonden"}`); continue; }
-      try { proposals.push(await proposeKnowledge(slug, naam, tekst)); }
+      try { proposals.push(await proposeKnowledge(slug, naam, tekst, aanlevering)); }
       catch (e) { fouten.push(`${naam}: ${(e as Error).message}`); }
     }
     if (!proposals.length) {
@@ -107,14 +117,21 @@ export async function POST(req: NextRequest) {
     if (action === "tekst") {
       const tekst = String(body.tekst || "").trim();
       if (!tekst) return NextResponse.json({ ok: false, error: "Geen tekst ontvangen." }, { status: 400 });
-      const proposal = await proposeKnowledge(slug, "geplakte tekst", tekst);
+      // Wat jij zelf plakt is een handeling van nu: je kijkt ernaar en zet het
+      // er bewust in. Dat mag dus wél overschrijven, anders zou het dashboard
+      // jouw eigen correctie negeren omdat er "geen datum bekend" is.
+      const proposal = await proposeKnowledge(slug, "geplakte tekst", tekst, maakBronDatum(new Date(), "geplakt"));
       return NextResponse.json({ ok: true, proposal });
     }
     if (action === "link") {
       const driveLink = String(body.driveLink || "").trim();
       const read = await readDriveDoc(driveLink, 60000);
       if (!read.ok) return NextResponse.json({ ok: false, error: read.error || "Kon het document niet lezen." }, { status: 400 });
-      const proposal = await proposeKnowledge(slug, read.name || "gedeeld document", read.text || "");
+      // Google weet zelf wanneer een gedeeld document voor het laatst is
+      // gewijzigd; dat is betrouwbaarder dan welke bestandsdatum dan ook.
+      const gewijzigd = await fileModifiedTime(driveLink).catch(() => "");
+      const aanlevering = gewijzigd ? maakBronDatum(new Date(gewijzigd), "drive") : GEEN_DATUM;
+      const proposal = await proposeKnowledge(slug, read.name || "gedeeld document", read.text || "", aanlevering);
       return NextResponse.json({ ok: true, proposal });
     }
     if (action === "verwerk") {
@@ -123,7 +140,7 @@ export async function POST(req: NextRequest) {
       // Meteen doorzetten naar de bedrijfsgegevens: de kennisbank is geen
       // eindstation, de velden in het formulier moeten gevuld raken.
       const toegepast = await applyKnowledgeToOrg(slug).catch(() => ({ gevuld: 0, nieuweVestigingen: 0, nieuweArtsen: 0 }));
-      return NextResponse.json({ ok: true, verwerkt: r.verwerkt, ...toegepast });
+      return NextResponse.json({ ok: true, verwerkt: r.verwerkt, botsingen: r.botsingen || [], ...toegepast });
     }
     if (action === "verwerkAlles") {
       const r = await confirmAllKnowledge(slug);

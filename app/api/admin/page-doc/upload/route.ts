@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { guardSlug } from "../../../../../lib/admin-scope";
-import { readDriveDoc } from "../../../../../lib/drive";
+import { readDriveDoc, fileModifiedTime } from "../../../../../lib/drive";
+import { datumUitBestand, maakBronDatum, GEEN_DATUM } from "../../../../../lib/bron-datum";
 import { listVersions, voegVersieToe, ignoreVersion, leesAangeleverdDocument,
          hernoemVersie, keurVersieGoed } from "../../../../../lib/doc-versions";
 import { toetsVersie } from "../../../../../lib/criteria-toets";
@@ -52,7 +53,12 @@ export async function POST(req: NextRequest) {
     if (!lees.ok || !lees.tekst?.trim()) {
       return NextResponse.json({ ok: false, error: lees.error || "Kon geen leesbare tekst uit het bestand halen." }, { status: 400 });
     }
-    const versie = await voegVersieToe(slug, url, naam, lees.tekst, lees.driveLink || "", kindHint || undefined);
+    // Van wanneer de inhoud zelf is: uit het document, anders de datum van het
+    // bestand die het scherm meestuurt. Niet het moment van uploaden, want dat
+    // is voor elk document dat je op dezelfde ochtend binnenhaalt hetzelfde.
+    const bestandMs = Number(form.get("gewijzigd") || 0) || undefined;
+    const aanlevering = await datumUitBestand(naam, buf, bestandMs).catch(() => GEEN_DATUM);
+    const versie = await voegVersieToe(slug, url, naam, lees.tekst, lees.driveLink || "", kindHint || undefined, aanlevering);
     return NextResponse.json({ ok: true, versie, versions: await listVersions(slug, url) });
   }
 
@@ -69,7 +75,10 @@ export async function POST(req: NextRequest) {
     if (!url || !driveLink) return NextResponse.json({ ok: false, error: "Pagina en Drive-link zijn verplicht." }, { status: 400 });
     const read = await readDriveDoc(driveLink, 60000);
     if (!read.ok) return NextResponse.json({ ok: false, error: read.error || "Kon het document niet lezen." }, { status: 400 });
-    const versie = await voegVersieToe(slug, url, read.name || "gedeeld document", read.text || "", driveLink, String(body.kind || "") || undefined);
+    // Google houdt zelf bij wanneer een gedeeld document is gewijzigd.
+    const gewijzigd = await fileModifiedTime(driveLink).catch(() => "");
+    const versie = await voegVersieToe(slug, url, read.name || "gedeeld document", read.text || "", driveLink,
+      String(body.kind || "") || undefined, gewijzigd ? maakBronDatum(new Date(gewijzigd), "drive") : GEEN_DATUM);
     return NextResponse.json({ ok: true, versie, versions: await listVersions(slug, url) });
   }
   // Een bijlage die vanuit het paneel Laatste mails naar een taak gesleept is.
@@ -87,7 +96,15 @@ export async function POST(req: NextRequest) {
     if (!lees.ok || !lees.tekst?.trim()) {
       return NextResponse.json({ ok: false, error: lees.error || "Kon geen leesbare tekst uit de bijlage halen." }, { status: 400 });
     }
-    const versie = await voegVersieToe(slug, url, naam, lees.tekst, lees.driveLink || "");
+    // Een bijlage is zo oud als de mail waarin hij zat, tenzij het document zelf
+    // een datum draagt. Die eerste is een eerlijke ondergrens: verstuurd worden
+    // kan niet later dan geschreven worden.
+    const uitDocument = await datumUitBestand(naam, bin.buffer).catch(() => GEEN_DATUM);
+    const mailDatum = String(body.mailDatum || "").trim();
+    const aanlevering = uitDocument.datum
+      ? uitDocument
+      : mailDatum ? maakBronDatum(new Date(mailDatum), "mail") : GEEN_DATUM;
+    const versie = await voegVersieToe(slug, url, naam, lees.tekst, lees.driveLink || "", undefined, aanlevering);
     return NextResponse.json({ ok: true, versie, versions: await listVersions(slug, url) });
   }
 

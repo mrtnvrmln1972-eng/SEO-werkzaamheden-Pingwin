@@ -5,6 +5,7 @@ import { getClientBySlug } from "./clients";
 import { ontbrekendeVelden, identiteit, naamKaal, isEchteVestiging, LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
 export { identiteit, isEchteVestiging } from "./org-vereist";
 import { callClaude } from "./anthropic";
+import { GEEN_DATUM, isNieuwerDan, leesbaar, type BronDatum, type DatumBron } from "./bron-datum";
 
 // ═══════════════════════════════════════════════════════════
 // STRUCTURED DATA-KENNISBANK PER KLANT (Klant-tab)
@@ -22,10 +23,24 @@ import { callClaude } from "./anthropic";
 export const KENNIS_CATEGORIEEN = ["organisatie", "persoon", "locatie", "dienst", "overig"] as const;
 export const CAT_LABEL: Record<string, string> = { organisatie: "Organisatie", persoon: "Personen", locatie: "Locaties", dienst: "Diensten", overig: "Overig" };
 
-export type KennisEntiteit = { id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string };
+// Van wanneer is één gegeven, en waar kwam het vandaan. Per veld, niet per
+// document: een screenshot van alleen de openingstijden mag het adres van
+// vorige week niet overschrijven omdat het bestand toevallig nieuwer is.
+export type VeldStempel = { datum: string; bron: DatumBron; waar: string };
+export type VeldStempels = Record<string, VeldStempel>;
+
+export type KennisEntiteit = {
+  id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string;
+  /** Per veld: van wanneer die waarde is en waar hij vandaan komt. */
+  stempels: VeldStempels;
+};
 export type KennisVoorstel = {
   id: number; bron: string; samenvatting: string;
   entiteiten: { categorie: string; naam: string; velden: Record<string, string>; oordeel: "nieuw" | "aanvulling" | "ouder" }[];
+  /** Van wanneer dit aangeleverde materiaal zelf is, en hoe we dat weten. */
+  inhoudDatum: string;
+  datumBron: DatumBron;
+  datumUitleg: string;
 };
 
 // ─── Veldnamen gelijktrekken (weergave-laag, dus ook voor bestaande gegevens) ───
@@ -90,15 +105,83 @@ export function normaliseerVelden(velden: Record<string, string>): Record<string
 // lib/org-vereist.ts, zodat zowel de kennisbank als het automatisch ophalen
 // dezelfde regels gebruiken zonder kringverwijzing tussen de bestanden.
 
-// Velden samenvoegen. Bij "ouder" materiaal vullen we alleen lege plekken aan,
-// zodat verouderde gegevens nooit een nieuwere waarde overschrijven.
-function voegVeldenSamen(bestaand: Record<string, string>, nieuw: Record<string, string>, ouder: boolean): Record<string, string> {
-  const uit = { ...(bestaand || {}) };
-  for (const [k, v] of Object.entries(nieuw || {})) {
-    const waarde = String(v || "").trim();
+// ─── Samenvoegen op datum, per gegeven ───
+//
+// Hier zit de hele afspraak in, en het is bewust één functie: nieuwer wint,
+// gelijk verandert niets, en zonder datum wordt er niet overschreven.
+//
+// Waarom per gégeven en niet per document: stuurt de klant een schermafdruk van
+// alleen de openingstijden, dan is dat bestand nieuwer dan alles wat er ligt,
+// maar het zegt niets over het adres. Vergelijken per document zou het hele
+// adresblok weggooien omdat er een nieuwer bestand langskwam. Vergelijken per
+// gegeven kijkt alleen naar wat er écht in staat.
+//
+// Waarom een gelijke waarde de oude datum houdt: halen wij vandaag het adres van
+// de site en het staat daar al twee jaar hetzelfde, dan is "sinds wanneer weten
+// we dit" belangrijker dan "wanneer keken we voor het laatst". Anders zou elke
+// controle-ronde onze eigen gegevens kunstmatig verjongen, en dan verliest een
+// klantdocument van vorige week het van een adres dat al jaren zo staat.
+export type Botsing = { veld: string; oud: string; nieuw: string; reden: string };
+
+export function voegVeldenSamen(
+  bestaand: Record<string, string>,
+  bestaandeStempels: VeldStempels,
+  nieuw: Record<string, string>,
+  aanlevering: BronDatum,
+  waar: string,
+): { velden: Record<string, string>; stempels: VeldStempels; botsingen: Botsing[] } {
+  const velden = { ...(bestaand || {}) };
+  const stempels: VeldStempels = { ...(bestaandeStempels || {}) };
+  const botsingen: Botsing[] = [];
+  const stempel = (): VeldStempel => ({ datum: aanlevering.datum, bron: aanlevering.bron, waar });
+
+  for (const [veld, ruw] of Object.entries(nieuw || {})) {
+    const waarde = String(ruw || "").trim();
     if (!waarde) continue;
-    if (ouder && String(uit[k] || "").trim()) continue;
-    uit[k] = waarde;
+    const oud = String(velden[veld] || "").trim();
+
+    // 1. Nog niets bekend: aanvullen mag altijd, ook zonder datum. Er gaat
+    //    niets verloren, dus er valt niets te beslissen.
+    if (!oud) { velden[veld] = waarde; stempels[veld] = stempel(); continue; }
+
+    // 2. Zelfde waarde: niets veranderen, en de oorspronkelijke datum houden.
+    if (oud === waarde) continue;
+
+    // 3. Andere waarde: alleen de aantoonbaar nieuwere wint.
+    const oudeDatum = stempels[veld]?.datum || "";
+    if (isNieuwerDan(aanlevering.datum, oudeDatum)) {
+      velden[veld] = waarde;
+      stempels[veld] = stempel();
+      continue;
+    }
+    botsingen.push({
+      veld, oud, nieuw: waarde,
+      reden: !aanlevering.datum
+        ? "van het aangeleverde materiaal is geen datum bekend"
+        : !oudeDatum
+          ? "van wat er nu staat is geen datum bekend"
+          : `het aangeleverde stuk is van ${leesbaar(aanlevering.datum)}, wat er staat van ${leesbaar(oudeDatum)}`,
+    });
+  }
+  return { velden, stempels, botsingen };
+}
+
+/**
+ * De stempels van een bestaande regel, met terugwerkende kracht.
+ *
+ * Alles wat er vóór deze aanpak in stond heeft geen stempel per veld. Die
+ * krijgen de datum waarop de regel in het dashboard kwam. Dat is een eerlijke
+ * ondergrens (verder terug dan dit kan het niet zijn) en het zorgt ervoor dat de
+ * vergelijking meteen werkt in plaats van pas over een half jaar.
+ */
+function stempelsMetTerugwerkendeKracht(ruw: unknown, velden: Record<string, string>, gemaaktOp: string): VeldStempels {
+  const opgeslagen = (ruw || {}) as VeldStempels;
+  const uit: VeldStempels = {};
+  for (const veld of Object.keys(velden || {})) {
+    const s = opgeslagen[veld];
+    uit[veld] = s && s.datum
+      ? { datum: s.datum, bron: (s.bron || "onbekend") as DatumBron, waar: s.waar || "" }
+      : { datum: gemaaktOp, bron: "onbekend", waar: "stond er al" };
   }
   return uit;
 }
@@ -106,7 +189,7 @@ function voegVeldenSamen(bestaand: Record<string, string>, nieuw: Record<string,
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "schema-knowledge-5bb76227";
+const SCHEMA_VERSIE = "schema-knowledge-77c46347";
 
 function ensureTable(): Promise<void> {
   return eenmalig("schema-knowledge", SCHEMA_VERSIE, doEnsure);
@@ -126,20 +209,33 @@ async function doEnsure(): Promise<void> {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
   await sql`CREATE INDEX IF NOT EXISTS idx_csk_slug ON client_schema_knowledge (client_slug, status)`;
+  // Per veld: van wanneer die waarde is en waar hij vandaan komt. Hierop wordt
+  // besloten wie wint bij een nieuwe aanlevering, dus dit is de kern van het
+  // versiebeheer en niet zomaar een extraatje voor op het scherm.
+  await sql`ALTER TABLE client_schema_knowledge ADD COLUMN IF NOT EXISTS veld_stempels JSONB`;
+  // Van wanneer het aangeleverde materiaal zelf is (staat op de 'drop'-rij),
+  // plus hoe we aan die datum komen, in gewone taal.
+  await sql`ALTER TABLE client_schema_knowledge ADD COLUMN IF NOT EXISTS inhoud_datum TIMESTAMPTZ`;
+  await sql`ALTER TABLE client_schema_knowledge ADD COLUMN IF NOT EXISTS datum_bron TEXT`;
+  await sql`ALTER TABLE client_schema_knowledge ADD COLUMN IF NOT EXISTS datum_uitleg TEXT`;
 }
 
 export async function listKnowledge(slug: string): Promise<KennisEntiteit[]> {
   await ensureSchema();
   await ensureTable();
   const { rows } = await sql`
-    SELECT id, categorie, naam, velden, bron, created_at FROM client_schema_knowledge
+    SELECT id, categorie, naam, velden, bron, created_at, veld_stempels FROM client_schema_knowledge
     WHERE client_slug = ${slug} AND soort = 'entiteit' AND status = 'actueel'
     ORDER BY categorie, naam`;
-  return rows.map((r) => ({
-    id: r.id as number, categorie: (r.categorie as string) || "overig", naam: (r.naam as string) || "",
-    velden: normaliseerVelden((r.velden as Record<string, string>) || {}), bron: (r.bron as string) || "",
-    updatedAt: r.created_at ? new Date(r.created_at as string).toISOString() : "",
-  }));
+  return rows.map((r) => {
+    const velden = normaliseerVelden((r.velden as Record<string, string>) || {});
+    const gemaakt = r.created_at ? new Date(r.created_at as string).toISOString() : "";
+    return {
+      id: r.id as number, categorie: (r.categorie as string) || "overig", naam: (r.naam as string) || "",
+      velden, bron: (r.bron as string) || "", updatedAt: gemaakt,
+      stempels: stempelsMetTerugwerkendeKracht(r.veld_stempels, velden, gemaakt),
+    };
+  });
 }
 
 // ALLE openstaande voorstellen. Eerder werd er maar één getoond en gooide een
@@ -151,11 +247,14 @@ export async function getOpenProposals(slug: string): Promise<KennisVoorstel[]> 
   await ensureSchema();
   await ensureTable();
   const { rows } = await sql`
-    SELECT id, bron, samenvatting, velden FROM client_schema_knowledge
+    SELECT id, bron, samenvatting, velden, inhoud_datum, datum_bron, datum_uitleg FROM client_schema_knowledge
     WHERE client_slug = ${slug} AND soort = 'drop' AND status = 'voorstel' ORDER BY id ASC`;
   return rows.map((r) => ({
     id: r.id as number, bron: (r.bron as string) || "", samenvatting: (r.samenvatting as string) || "",
     entiteiten: ((r.velden as { entiteiten?: KennisVoorstel["entiteiten"] }) || {}).entiteiten || [],
+    inhoudDatum: r.inhoud_datum ? new Date(r.inhoud_datum as string).toISOString() : "",
+    datumBron: ((r.datum_bron as string) || "onbekend") as DatumBron,
+    datumUitleg: (r.datum_uitleg as string) || GEEN_DATUM.uitleg,
   }));
 }
 
@@ -325,7 +424,12 @@ export function entiteitenUitJsonLd(tekst: string): { samenvatting: string; enti
     const bestaat = index.get(k);
     if (bestaat === undefined) { index.set(k, samengevoegd.length); samengevoegd.push(e); continue; }
     const doel = samengevoegd[bestaat];
-    doel.velden = voegVeldenSamen(doel.velden, e.velden, true);
+    // Twee nodes uit hetzelfde bestand: er is geen ouder of nieuwer, dus alleen
+    // aanvullen wat nog leeg is. De eerste vermelding blijft leidend.
+    for (const [veld, ruw] of Object.entries(e.velden || {})) {
+      const waarde = String(ruw || "").trim();
+      if (waarde && !String(doel.velden[veld] || "").trim()) doel.velden[veld] = waarde;
+    }
     if (e.naam.length > doel.naam.length) doel.naam = e.naam;
   }
   entiteiten.length = 0; entiteiten.push(...samengevoegd);
@@ -343,7 +447,12 @@ export function entiteitenUitJsonLd(tekst: string): { samenvatting: string; enti
 }
 
 // Drop → AI structureert naar entiteiten en vergelijkt met wat er al staat.
-export async function proposeKnowledge(slug: string, bron: string, tekst: string): Promise<KennisVoorstel> {
+//
+// `aanlevering` is van wanneer het materiaal zélf is (zie lib/bron-datum.ts).
+// Die datum reist mee tot het verwerken en beslist dan per gegeven wie wint.
+// Wordt hij niet meegegeven, dan geldt "onbekend", en dan vult dit materiaal
+// alleen lege plekken aan in plaats van iets te overschrijven.
+export async function proposeKnowledge(slug: string, bron: string, tekst: string, aanlevering: BronDatum = GEEN_DATUM): Promise<KennisVoorstel> {
   await ensureSchema();
   await ensureTable();
   const huidig = await listKnowledge(slug);
@@ -358,10 +467,14 @@ export async function proposeKnowledge(slug: string, bron: string, tekst: string
       oordeel: bestaand.has(`${e.categorie}|${sleutel(e.naam)}`) ? ("aanvulling" as const) : ("nieuw" as const),
     }));
     const { rows } = await sql`
-      INSERT INTO client_schema_knowledge (client_slug, soort, bron, samenvatting, velden, status)
-      VALUES (${slug}, 'drop', ${bron}, ${uitJson.samenvatting}, ${JSON.stringify({ entiteiten })}, 'voorstel')
+      INSERT INTO client_schema_knowledge (client_slug, soort, bron, samenvatting, velden, status, inhoud_datum, datum_bron, datum_uitleg)
+      VALUES (${slug}, 'drop', ${bron}, ${uitJson.samenvatting}, ${JSON.stringify({ entiteiten })}, 'voorstel',
+              ${aanlevering.datum || null}, ${aanlevering.bron}, ${aanlevering.uitleg})
       RETURNING id`;
-    return { id: rows[0].id as number, bron, samenvatting: uitJson.samenvatting, entiteiten };
+    return {
+      id: rows[0].id as number, bron, samenvatting: uitJson.samenvatting, entiteiten,
+      inhoudDatum: aanlevering.datum, datumBron: aanlevering.bron, datumUitleg: aanlevering.uitleg,
+    };
   }
 
   const huidigTekst = huidig.map((e) => `- [${e.categorie}] ${e.naam}: ${JSON.stringify(e.velden)}`).join("\n") || "(kennisbank is nog leeg)";
@@ -393,44 +506,79 @@ Antwoord met UITSLUITEND geldige JSON: {"samenvatting":"...","entiteiten":[{"cat
   // Bewust GEEN eerder voorstel sluiten: elk aangeleverd stuk blijft staan tot
   // Maarten het verwerkt of negeert. Anders verdwijnt materiaal ongemerkt.
   const { rows } = await sql`
-    INSERT INTO client_schema_knowledge (client_slug, soort, bron, samenvatting, velden, status)
-    VALUES (${slug}, 'drop', ${bron}, ${samenvatting}, ${JSON.stringify({ entiteiten })}, 'voorstel')
+    INSERT INTO client_schema_knowledge (client_slug, soort, bron, samenvatting, velden, status, inhoud_datum, datum_bron, datum_uitleg)
+    VALUES (${slug}, 'drop', ${bron}, ${samenvatting}, ${JSON.stringify({ entiteiten })}, 'voorstel',
+            ${aanlevering.datum || null}, ${aanlevering.bron}, ${aanlevering.uitleg})
     RETURNING id`;
-  return { id: rows[0].id as number, bron, samenvatting, entiteiten };
+  return {
+    id: rows[0].id as number, bron, samenvatting, entiteiten,
+    inhoudDatum: aanlevering.datum, datumBron: aanlevering.bron, datumUitleg: aanlevering.uitleg,
+  };
 }
 
 // Verwerken: entiteiten samenvoegen in de kennisbank (append-only, oude rij blijft).
-export async function confirmKnowledge(slug: string, id: number): Promise<{ ok: boolean; error?: string; verwerkt?: number }> {
+//
+// Per gegeven wint de nieuwste, gemeten aan de datum van het materiaal zelf (zie
+// voegVeldenSamen hierboven). Wat níet overgenomen kon worden, verdwijnt niet
+// stilletjes: dat komt als botsing terug en staat daarna op het scherm, met de
+// reden erbij. Dat is de enige eerlijke uitkomst als het dashboard zelf beslist:
+// alles wat het zeker weet gaat vanzelf, en wat het niet zeker weet komt bij jou.
+export async function confirmKnowledge(slug: string, id: number): Promise<{ ok: boolean; error?: string; verwerkt?: number; botsingen?: string[] }> {
   await ensureSchema();
   await ensureTable();
-  const { rows } = await sql`SELECT velden FROM client_schema_knowledge WHERE client_slug = ${slug} AND id = ${id} AND soort = 'drop' AND status = 'voorstel' LIMIT 1`;
+  const { rows } = await sql`
+    SELECT velden, bron, inhoud_datum, datum_bron, datum_uitleg FROM client_schema_knowledge
+    WHERE client_slug = ${slug} AND id = ${id} AND soort = 'drop' AND status = 'voorstel' LIMIT 1`;
   if (!rows[0]) return { ok: false, error: "Voorstel niet gevonden (misschien al verwerkt)." };
   const entiteiten = ((rows[0].velden as { entiteiten?: KennisVoorstel["entiteiten"] })?.entiteiten) || [];
+  const waar = String(rows[0].bron || "aangeleverd materiaal");
+  const aanlevering: BronDatum = {
+    datum: rows[0].inhoud_datum ? new Date(rows[0].inhoud_datum as string).toISOString() : "",
+    bron: ((rows[0].datum_bron as string) || "onbekend") as DatumBron,
+    uitleg: (rows[0].datum_uitleg as string) || GEEN_DATUM.uitleg,
+  };
   const huidig = await listKnowledge(slug);
   // Op identiteit vergelijken, en de kaart meelopend bijwerken: zo landt een
   // gegeven dat twee keer in dezelfde aanlevering staat óók op één regel.
   const byKey = new Map<string, KennisEntiteit>();
   for (const e of huidig) if (!byKey.has(identiteit(e.categorie, e.naam, e.velden))) byKey.set(identiteit(e.categorie, e.naam, e.velden), e);
   let verwerkt = 0;
+  const botsingen: string[] = [];
   for (const e of entiteiten) {
     const sleutelId = identiteit(e.categorie, e.naam, e.velden || {});
     const bestaand = byKey.get(sleutelId);
-    const velden = voegVeldenSamen(bestaand?.velden || {}, e.velden || {}, e.oordeel === "ouder");
+    const samen = voegVeldenSamen(bestaand?.velden || {}, bestaand?.stempels || {}, e.velden || {}, aanlevering, waar);
+    for (const b of samen.botsingen) {
+      botsingen.push(`${e.naam}, ${VELD_TEKST[b.veld] || b.veld}: "${kort(b.nieuw)}" niet overgenomen, "${kort(b.oud)}" blijft staan (${b.reden}).`);
+    }
     // De duidelijkste naam winnen laten: de langste van de twee (met titel of
     // met plaatsaanduiding) zegt doorgaans meer dan de korte variant.
     const naam = bestaand && bestaand.naam.length >= e.naam.trim().length ? bestaand.naam : e.naam.trim();
     if (bestaand) await sql`UPDATE client_schema_knowledge SET status = 'vervangen' WHERE client_slug = ${slug} AND id = ${bestaand.id}`;
     const ins = await sql`
-      INSERT INTO client_schema_knowledge (client_slug, soort, categorie, naam, velden, bron, status)
-      VALUES (${slug}, 'entiteit', ${e.categorie}, ${naam}, ${JSON.stringify(velden)}, ${`voorstel #${id}`}, 'actueel')
+      INSERT INTO client_schema_knowledge (client_slug, soort, categorie, naam, velden, bron, status, veld_stempels)
+      VALUES (${slug}, 'entiteit', ${e.categorie}, ${naam}, ${JSON.stringify(samen.velden)}, ${`voorstel #${id}`}, 'actueel', ${JSON.stringify(samen.stempels)})
       RETURNING id`;
-    byKey.set(sleutelId, { id: ins.rows[0].id as number, categorie: e.categorie, naam, velden, bron: `voorstel #${id}`, updatedAt: "" });
+    byKey.set(sleutelId, {
+      id: ins.rows[0].id as number, categorie: e.categorie, naam,
+      velden: samen.velden, stempels: samen.stempels, bron: `voorstel #${id}`, updatedAt: "",
+    });
     verwerkt++;
   }
   await sql`UPDATE client_schema_knowledge SET status = 'verwerkt' WHERE client_slug = ${slug} AND id = ${id}`;
   await opruimenDubbel(slug);
-  return { ok: true, verwerkt };
+  return { ok: true, verwerkt, botsingen };
 }
+
+// Namen van velden in gewone taal, voor de melding hierboven. Eén lijstje, want
+// de kaartjes op het scherm hebben er ook een; die leest hieruit.
+export const VELD_TEKST: Record<string, string> = {
+  adres: "adres", postcode: "postcode", plaats: "plaats", telefoon: "telefoon", email: "e-mailadres",
+  openingstijden: "openingstijden", functie: "functie", specialisatie: "specialisatie", big: "BIG-nummer",
+  linkedin: "LinkedIn", profielUrl: "pagina", foto: "foto", omschrijving: "omschrijving", kvk: "KVK-nummer",
+  btw: "btw-id", logo: "logo", oprichtingsjaar: "oprichtingsjaar", mapsUrl: "Google Maps",
+};
+const kort = (s: string) => (s.length > 60 ? `${s.slice(0, 57)}…` : s);
 
 // Wat er al dubbel in de kennisbank staat (van vóór het ontdubbelen) alsnog
 // samenvoegen: nieuwste regel wint per veld, oudere regels gaan op "vervangen".
@@ -446,10 +594,23 @@ export async function opruimenDubbel(slug: string): Promise<number> {
     if (groep.length < 2) continue;
     const gesorteerd = [...groep].sort((a, b) => b.id - a.id); // nieuwste eerst
     const winnaar = gesorteerd[0];
-    let velden = { ...winnaar.velden };
-    for (const ouder of gesorteerd.slice(1)) velden = voegVeldenSamen(velden, ouder.velden, true);
+    const velden = { ...winnaar.velden };
+    const stempels: VeldStempels = { ...winnaar.stempels };
+    // Bij ontdubbelen vullen oudere regels alleen lege plekken aan; ze
+    // overschrijven nooit. De stempel van het gegeven reist mee, anders zou een
+    // waarde na het opruimen zijn datum kwijt zijn en daarna alles verliezen.
+    for (const ouder of gesorteerd.slice(1)) {
+      for (const [veld, ruw] of Object.entries(ouder.velden || {})) {
+        const waarde = String(ruw || "").trim();
+        if (!waarde || String(velden[veld] || "").trim()) continue;
+        velden[veld] = waarde;
+        stempels[veld] = ouder.stempels[veld] || { datum: ouder.updatedAt, bron: "onbekend", waar: "stond er al" };
+      }
+    }
     const naam = gesorteerd.map((g) => g.naam).sort((a, b) => b.length - a.length)[0];
-    await sql`UPDATE client_schema_knowledge SET velden = ${JSON.stringify(velden)}, naam = ${naam} WHERE client_slug = ${slug} AND id = ${winnaar.id}`;
+    await sql`
+      UPDATE client_schema_knowledge SET velden = ${JSON.stringify(velden)}, naam = ${naam}, veld_stempels = ${JSON.stringify(stempels)}
+      WHERE client_slug = ${slug} AND id = ${winnaar.id}`;
     for (const weg of gesorteerd.slice(1)) {
       await sql`UPDATE client_schema_knowledge SET status = 'vervangen' WHERE client_slug = ${slug} AND id = ${weg.id}`;
       opgeruimd++;
@@ -459,14 +620,15 @@ export async function opruimenDubbel(slug: string): Promise<number> {
 }
 
 // Alle openstaande voorstellen in één klik verwerken (na een reeks drops).
-export async function confirmAllKnowledge(slug: string): Promise<{ voorstellen: number; verwerkt: number }> {
+export async function confirmAllKnowledge(slug: string): Promise<{ voorstellen: number; verwerkt: number; botsingen: string[] }> {
   const open = await getOpenProposals(slug);
   let verwerkt = 0;
+  const botsingen: string[] = [];
   for (const v of open) {
     const r = await confirmKnowledge(slug, v.id);
-    if (r.ok) verwerkt += r.verwerkt || 0;
+    if (r.ok) { verwerkt += r.verwerkt || 0; botsingen.push(...(r.botsingen || [])); }
   }
-  return { voorstellen: open.length, verwerkt };
+  return { voorstellen: open.length, verwerkt, botsingen };
 }
 
 // Eén regel uit de kennisbank halen. Hij verdwijnt uit het overzicht, uit het

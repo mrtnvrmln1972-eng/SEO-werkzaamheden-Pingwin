@@ -8,6 +8,7 @@ import { ensureFolderFor } from "./drive-map";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { uploadBestand, uploadEnConverteer, readDriveDoc } from "./drive";
 import { kanDirectGelezen, tekstUitLokaalBestand } from "./bestand-tekst";
+import { GEEN_DATUM, type BronDatum, type DatumBron } from "./bron-datum";
 
 const DOCX_MIME_IN = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
@@ -33,12 +34,18 @@ export type DocVersion = {
   createdAt: string;
   /** Door Maarten aangemerkt als de versie die geldt. */
   goedgekeurd: boolean;
+  /** Van wanneer de inhoud zelf is (uit het document), en hoe we dat weten.
+      createdAt hierboven is alleen wanneer het bestand hier binnenkwam, en dat
+      zegt niets over welke versie nieuwer is. */
+  inhoudDatum: string;
+  datumBron: DatumBron;
+  datumUitleg: string;
 };
 
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "doc-versions-d08f5fcb";
+const SCHEMA_VERSIE = "doc-versions-3304b82d";
 
 function ensureTable(): Promise<void> {
   return eenmalig("doc-versions", SCHEMA_VERSIE, doEnsure);
@@ -66,6 +73,12 @@ async function doEnsure(): Promise<void> {
   // een beslissing opleverde, ook als er niets veranderd was.
   await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS goedgekeurd BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS goedgekeurd_op TIMESTAMPTZ`;
+  // Van wanneer de inhoud zelf is. Twee documenten die op dezelfde ochtend
+  // binnenkwamen zagen er in de lijst identiek uit, terwijl het ene een
+  // klantversie van vorige week was en het andere iets van maanden ervoor.
+  await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS inhoud_datum TIMESTAMPTZ`;
+  await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS datum_bron TEXT`;
+  await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS datum_uitleg TEXT`;
   // Met terugwerkende kracht: staat er van een soort maar één document, dan geldt
   // hij vanzelf (zie geldtAlsEnige hieronder voor het waarom). Zonder deze regel
   // gold de nieuwe afspraak alleen voor documenten van na vandaag, en bleven de
@@ -88,6 +101,9 @@ function rowToVersion(r: Record<string, unknown>): DocVersion {
     status: ((r.status as string) as DocVersion["status"]) || "verwerkt",
     createdAt: r.created_at ? new Date(r.created_at as string).toISOString() : "",
     goedgekeurd: !!r.goedgekeurd,
+    inhoudDatum: r.inhoud_datum ? new Date(r.inhoud_datum as string).toISOString() : "",
+    datumBron: ((r.datum_bron as string) || "onbekend") as DatumBron,
+    datumUitleg: (r.datum_uitleg as string) || GEEN_DATUM.uitleg,
   };
 }
 
@@ -115,7 +131,8 @@ export async function listVersions(slug: string, url: string): Promise<DocVersio
   await ensureSchema();
   await ensureTable();
   const { rows } = await sql`
-    SELECT id, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at, goedgekeurd
+    SELECT id, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at, goedgekeurd,
+           inhoud_datum, datum_bron, datum_uitleg
     FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND status <> 'genegeerd'
     ORDER BY id DESC LIMIT 40`;
   return ontdubbelVersies(rows.map(rowToVersion));
@@ -130,7 +147,8 @@ export async function listVersionsForKey(slug: string, url: string): Promise<Doc
   await ensureTable();
   const k = urlKey(url);
   const { rows } = await sql`
-    SELECT id, url, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at, goedgekeurd
+    SELECT id, url, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at, goedgekeurd,
+           inhoud_datum, datum_bron, datum_uitleg
     FROM page_doc_versions WHERE client_slug = ${slug} AND status <> 'genegeerd'
     ORDER BY id DESC LIMIT 400`;
   return ontdubbelVersies(rows.filter((r) => urlKey(String(r.url || "")) === k).slice(0, 40).map(rowToVersion));
@@ -238,7 +256,7 @@ export async function leesAangeleverdDocument(
   }
 }
 
-export async function voegVersieToe(slug: string, url: string, naam: string, tekst: string, driveLink: string, kindHint?: string): Promise<NieuweVersie> {
+export async function voegVersieToe(slug: string, url: string, naam: string, tekst: string, driveLink: string, kindHint?: string, aanlevering: BronDatum = GEEN_DATUM): Promise<NieuweVersie> {
   await ensureSchema();
   await ensureTable();
   const outputs = await getPageDocOutputs(slug, url).catch(() => ({} as Record<string, string>));
@@ -262,8 +280,10 @@ Antwoord met UITSLUITEND geldige JSON: {"kind":"...","vergelijking":"...","samen
     if (p.samenvatting) samenvatting = String(p.samenvatting).trim();
   } catch { /* voorstel zonder AI-oordeel is ook bruikbaar */ }
   const { rows } = await sql`
-    INSERT INTO page_doc_versions (client_slug, url, kind, source, naam, drive_link, tekst, samenvatting, vergelijking, status)
-    VALUES (${slug}, ${url}, ${kind}, 'klant', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting}, ${vergelijking}, 'verwerkt')
+    INSERT INTO page_doc_versions (client_slug, url, kind, source, naam, drive_link, tekst, samenvatting, vergelijking, status,
+                                   inhoud_datum, datum_bron, datum_uitleg)
+    VALUES (${slug}, ${url}, ${kind}, 'klant', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting}, ${vergelijking}, 'verwerkt',
+            ${aanlevering.datum || null}, ${aanlevering.bron}, ${aanlevering.uitleg})
     RETURNING id`;
   await geldtAlsEnige(slug, url, kind, Number(rows[0].id));
   return { id: rows[0].id as number, kind, kindLabel: KIND_LABEL[kind] || kind, naam, vergelijking, samenvatting };

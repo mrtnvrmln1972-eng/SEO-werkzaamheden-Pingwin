@@ -740,7 +740,7 @@ export default function ClientCockpit({
                             {/* De bijlagen van deze mail, sleepbaar naar een taak.
                                 Een teruggestuurd copy-document hoeft zo niet meer
                                 gedownload en opnieuw geüpload te worden. */}
-                            {mailLive && <MailBijlagen slug={client.slug} messageId={e.id} />}
+                            {mailLive && <MailBijlagen slug={client.slug} messageId={e.id} mailDatum={e.receivedAt || ""} />}
                             {mailLive && e.conversationId && (
                               <MailControlePanel
                                 slug={client.slug}

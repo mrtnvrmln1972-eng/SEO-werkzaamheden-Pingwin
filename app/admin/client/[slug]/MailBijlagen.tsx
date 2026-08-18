@@ -15,7 +15,11 @@ type Bijlage = { id: string; naam: string; type: string; grootte: number };
 
 const kb = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} kB`);
 
-export default function MailBijlagen({ slug, messageId }: { slug: string; messageId: string }) {
+export default function MailBijlagen({ slug, messageId, mailDatum }: { slug: string; messageId: string;
+  /** Wanneer de mail binnenkwam. Een bijlage zonder eigen datum is nooit jonger
+      dan de mail waarin hij zat, dus dat is een eerlijke ondergrens om mee te
+      vergelijken als het dashboard bepaalt welke versie de nieuwste is. */
+  mailDatum?: string }) {
   const [bijlagen, setBijlagen] = useState<Bijlage[] | null>(null);
 
   useEffect(() => {
@@ -38,7 +42,7 @@ export default function MailBijlagen({ slug, messageId }: { slug: string; messag
           onDragStart={(e) => {
             e.dataTransfer.effectAllowed = "copy";
             e.dataTransfer.setData("application/pingwin-bijlage",
-              JSON.stringify({ messageId, attachmentId: b.id, naam: b.naam }));
+              JSON.stringify({ messageId, attachmentId: b.id, naam: b.naam, mailDatum: mailDatum || "" }));
             // Ook als platte tekst, zodat er iets zinnigs gebeurt als je hem
             // ergens anders neerlegt dan op een taak.
             e.dataTransfer.setData("text/plain", b.naam);

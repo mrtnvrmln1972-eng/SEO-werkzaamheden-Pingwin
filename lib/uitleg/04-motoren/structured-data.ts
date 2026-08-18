@@ -52,4 +52,30 @@ export const BLOKKEN: Uitklapper[] = [
       "ruwe-materiaal-archief mét herkomst per gegeven, het formulier erboven is de schone, bevestigde bron " +
       "waar de structured data zelf uit gebouwd wordt.",
   },
+  {
+    titel: "Welke versie geldt: het dashboard kiest zelf, op datum",
+    kern: "Nieuwer wint per gegeven, gemeten aan de datum van het materiaal zelf; zonder datum wordt er niets overschreven.",
+    tekst:
+      "Lever je nieuw materiaal aan over een klant die al gegevens heeft, dan is de vraag: mag dit " +
+      "vervangen wat er staat? Sinds 18 augustus 2026 beslist het dashboard dat zelf, **per gegeven en op " +
+      "datum**, in plaats van dat je ergens een vinkje moet zetten.\n\n" +
+      "**Van wanneer is het materiaal?** Niet het moment waarop je het toevoegt (dan zou alles wat je op " +
+      "één ochtend binnenhaalt even oud zijn), maar de datum van de inhoud zelf. Word, Excel en pdf " +
+      "bewaren wanneer ze voor het laatst zijn opgeslagen; een foto bewaart wanneer hij genomen is; van " +
+      "een Google-document weet Drive het; een mailbijlage is nooit jonger dan de mail. Staat er in het " +
+      "bestand zelf niets, dan telt de datum van het bestand op je computer. Wat jij zelf plakt telt als " +
+      "nu, want dat is een bewuste handeling.\n\n" +
+      "**Wat er dan gebeurt.** Per gegeven (adres, telefoon, openingstijden, BIG-nummer) wint de nieuwste. " +
+      "Een leeg veld wordt altijd gevuld. Een gegeven dat níet in het nieuwe materiaal staat, blijft " +
+      "staan: een schermafdruk van alleen de openingstijden gooit het adres dus niet weg. Een waarde die " +
+      "gelijk blijft houdt zijn oorspronkelijke datum, zodat een controle-ronde onze eigen gegevens niet " +
+      "kunstmatig verjongt.\n\n" +
+      "**Zonder datum wordt er niets overschreven.** Kunnen we nergens een datum vinden, dan vult het " +
+      "materiaal alleen lege plekken aan en zie je onder het voorstel staan wat er níet is overgenomen, " +
+      "met de reden erbij. Fout is erger dan onbekend: onbekend overschrijft niets, fout overschrijft " +
+      "alles.\n\n" +
+      "**Op het scherm.** Bij elk gegeven in de kennisbank staat van wanneer het is en waar het vandaan " +
+      "komt. Op een taakkaart is de keuze bij structured-data-documenten verdwenen: die bestanden zijn " +
+      "het archief, de kennisbank is wat geldt, en de regel linkt daarheen.",
+  },
 ];

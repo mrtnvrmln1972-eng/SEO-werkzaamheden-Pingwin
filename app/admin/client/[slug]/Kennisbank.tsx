@@ -8,12 +8,25 @@
 import { useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 
-type Entiteit = { id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string };
-type Voorstel = { id: number; bron: string; samenvatting: string; entiteiten: { categorie: string; naam: string; velden: Record<string, string>; oordeel: string }[] };
+type Stempel = { datum: string; bron: string; waar: string };
+type Entiteit = { id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string; stempels: Record<string, Stempel> };
+type Voorstel = { id: number; bron: string; samenvatting: string; entiteiten: { categorie: string; naam: string; velden: Record<string, string>; oordeel: string }[]; inhoudDatum: string; datumBron: string; datumUitleg: string };
 
 const CAT_LABEL: Record<string, string> = { organisatie: "Organisatie", persoon: "Personen", locatie: "Locaties", dienst: "Diensten", overig: "Overig" };
 const CAT_VOLGORDE = ["organisatie", "persoon", "locatie", "dienst", "overig"];
 const OORDEEL: Record<string, string> = { nieuw: "nieuw", aanvulling: "aanvulling", ouder: "let op: ouder" };
+
+// Waar de datum van een gegeven vandaan komt, in gewone taal. Dezelfde woorden
+// als in lib/bron-datum.ts; die is de bron, dit is alleen de weergave.
+const DATUM_BRON: Record<string, string> = {
+  document: "uit het document zelf", bestand: "datum van het bestand", drive: "laatst gewijzigd in Drive",
+  geplakt: "door jou geplakt", opgehaald: "door ons opgehaald", mail: "datum van de mail", onbekend: "datum onbekend",
+};
+const datumKort = (iso: string) => {
+  if (!iso) return "";
+  try { return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }); }
+  catch { return iso.slice(0, 10); }
+};
 
 // De knoppen stonden via een portal in de knoppenrij van Bedrijfsgegevens, zodat
 // ze fysiek in die rij kwamen. Dat maakte ze onvindbaar als kennisbank-knoppen:
@@ -27,6 +40,10 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
   const [busy, setBusy] = useState("");
   const [fout, setFout] = useState("");
   const [okMsg, setOkMsg] = useState("");
+  // Wat het dashboard bewust NIET heeft overgenomen omdat het ouder was of
+  // omdat de datum ontbrak. Dit hoort in beeld: het dashboard beslist zelf, en
+  // dan moet zichtbaar zijn waar het niet zeker van was.
+  const [botsingen, setBotsingen] = useState<string[]>([]);
   const [plakVeld, setPlakVeld] = useState("");
   const [bezigMet, setBezigMet] = useState("");
   const [dropOpen, setDropOpen] = useState(false);
@@ -63,7 +80,10 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
       setBezigMet(`${Math.min(i + groep.length, files.length)} van ${files.length}: ${groep.map((f) => f.name).join(", ")}`);
       const form = new FormData();
       form.append("slug", slug);
-      for (const f of groep) form.append("file", f);
+      // De browser weet wanneer elk bestand voor het laatst is gewijzigd, maar
+      // dat gaat niet vanzelf mee bij een upload. Zonder deze regel zou een
+      // schermafdruk van vorige maand niet van vandaag te onderscheiden zijn.
+      for (const f of groep) { form.append("file", f); form.append("gewijzigd", String(f.lastModified || 0)); }
       try {
         const d = await fetch("/api/admin/schema-knowledge", { method: "POST", body: form }).then((r) => r.json());
         if (!d?.ok) mislukt.push(d?.error || groep.map((f) => f.name).join(", "));
@@ -94,7 +114,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: actie, slug, id }) }).then((r) => r.json());
       if (d?.ok) {
-        if (actie === "verwerk") { setOkMsg(melding(d)); onVerwerkt?.(); }
+        if (actie === "verwerk") { setOkMsg(melding(d)); setBotsingen(d.botsingen || []); onVerwerkt?.(); }
         void laad();
       }
       else setFout(d?.error || "Dat lukte niet.");
@@ -107,7 +127,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
     setBusy("alles"); setFout(""); setOkMsg("");
     try {
       const d = await fetch("/api/admin/schema-knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "verwerkAlles", slug }) }).then((r) => r.json());
-      if (d?.ok) { setOkMsg(`${d.voorstellen || 0} aanleveringen verwerkt. ${melding(d)}`); onVerwerkt?.(); void laad(); }
+      if (d?.ok) { setOkMsg(`${d.voorstellen || 0} aanleveringen verwerkt. ${melding(d)}`); setBotsingen(d.botsingen || []); onVerwerkt?.(); void laad(); }
       else setFout(d?.error || "Dat lukte niet.");
     } catch { setFout("Dat lukte niet; probeer het nog een keer."); }
     finally { setBusy(""); }
@@ -210,12 +230,25 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
         </button>
         {open && (velden.length ? (
           <dl className="kb-kaart-velden">
-            {velden.map(([k, v]) => (
-              <div className="kb-veld" key={k}>
-                <dt>{LABELS[k] || k}</dt>
-                <dd>{isLink(v) ? <a href={v} target="_blank" rel="noreferrer">{v.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</a> : v}</dd>
-              </div>
-            ))}
+            {velden.map(([k, v]) => {
+              const s = e.stempels?.[k];
+              return (
+                <div className="kb-veld" key={k}>
+                  <dt>{LABELS[k] || k}</dt>
+                  <dd>
+                    {isLink(v) ? <a href={v} target="_blank" rel="noreferrer">{v.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</a> : v}
+                    {/* Van wanneer dit gegeven is en waar het vandaan komt. Hierop
+                        wordt besloten of een nieuwe aanlevering het mag vervangen,
+                        dus het hoort zichtbaar te zijn en niet alleen in de database. */}
+                    {s?.datum && (
+                      <span className="kb-veld-stempel" title={`${DATUM_BRON[s.bron] || s.bron}${s.waar ? `, uit: ${s.waar}` : ""}. Alleen materiaal dat aantoonbaar nieuwer is dan deze datum vervangt deze waarde.`}>
+                        {datumKort(s.datum)}{s.waar ? ` · ${s.waar}` : ""}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              );
+            })}
           </dl>
         ) : <div className="muted">Nog geen details bekend.</div>)}
       </div>
@@ -305,6 +338,13 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
       {voorstellen.map((voorstel) => (
         <div className="wp-docvoorstel" key={voorstel.id}>
           <div className="wp-docvoorstel-kop">Voorstel uit &ldquo;{voorstel.bron}&rdquo; ({voorstel.entiteiten.length} gegevens)</div>
+          {/* Van wanneer dit materiaal is. Dat bepaalt of het bestaande gegevens
+              mag vervangen, dus je ziet het vóór je op verwerken drukt. */}
+          <div className={"kb-voorstel-datum" + (voorstel.inhoudDatum ? "" : " kb-voorstel-datum-onbekend")}>
+            {voorstel.inhoudDatum
+              ? `Materiaal van ${datumKort(voorstel.inhoudDatum)} · ${DATUM_BRON[voorstel.datumBron] || voorstel.datumBron}`
+              : "Geen datum te vinden in dit materiaal; het vult alleen lege plekken aan en vervangt niets."}
+          </div>
           <div className="wp-docvoorstel-tekst">{voorstel.samenvatting}</div>
           <ul className="kb-voorstel-lijst">
             {voorstel.entiteiten.map((e, i) => (
@@ -323,6 +363,13 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
         </div>
       ))}
       {okMsg && <div className="wp-doc-ok">{okMsg}</div>}
+      {botsingen.length > 0 && (
+        <div className="kb-botsingen">
+          <strong>Niet overgenomen, want ouder of zonder datum ({botsingen.length}):</strong>
+          <ul>{botsingen.map((r, i) => <li key={i}>{r}</li>)}</ul>
+          <span className="muted">Klopt een van deze regels niet, pas de waarde dan met de hand aan in de bedrijfsgegevens hierboven; die telt daarna als de nieuwste.</span>
+        </div>
+      )}
       {fout && <div className="wp-doc-fout">{fout}</div>}
       {gaps.length > 0 && (
         <div className="kb-gaps">
