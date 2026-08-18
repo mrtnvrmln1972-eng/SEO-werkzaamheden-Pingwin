@@ -56,7 +56,7 @@ dashboard zoals je het kent.
 
 **Als het misgaat.** De instelling nergens zetten en het slot slaapt.
 
-## Stap 2: de verhuizing, één klik
+## Stap 2: de verhuizing, één klik (gebouwd, 18-08-2026)
 
 **Wat er gebeurt.** In de NOC-cockpit komt één knop: "Zet deze klant over naar het
 Pingwin-dashboard". Die verzamelt daar alles wat aan NOC hangt en stuurt het rechtstreeks door.
@@ -68,8 +68,14 @@ alle vierenzeventig soorten in één keer mee in plaats van een handmatig lijstj
 dingen zit anders in elkaar (de Google-koppeling, redirects, agenda-blokken); die loop ik apart
 na en meld ik apart.
 
-**Wat jij doet.** Eén keer op die knop klikken. Ik kan er vanaf mijn kant niet bij, want deze
-omgeving mag alleen bij het Pingwin-dashboard.
+**Wat jij doet.** Drie handelingen, allemaal klikwerk:
+1. In het Pingwin-dashboard: Intern, Verhuizen, typ `noc` bij de klant, knop "Verhuiscode maken",
+   code kopiëren.
+2. In de NOC-cockpit: hetzelfde scherm, kies Nationaal Oogcentrum, plak de code, knop "Verhuizen".
+3. Terug in het Pingwin-dashboard: NOC staat in je klantenlijst.
+
+Ik kan die klikken niet zelf doen: deze omgeving mag alleen bij het Pingwin-dashboard, en
+meekijken is alleen-lezen.
 
 **Wat je daarna ziet.** Je NOC-werk staat in het Pingwin-dashboard, op de plek waar je Kamsteeg
 en Strandtuin ook vindt.
@@ -130,7 +136,8 @@ aantoonbaar dicht zijn.
 ## Stand
 
 - Stap 1: klaar op 18-08-2026. Het slot staat in de code en slaapt tot het ergens aangezet wordt.
-- Stap 2 tot en met 5: nog te doen, in deze volgorde.
+- Stap 2: gebouwd op 18-08-2026, wacht op de drie klikken hierboven.
+- Stap 3 tot en met 5: nog te doen, in deze volgorde.
 
 ## Technisch voetnootje
 
@@ -139,3 +146,5 @@ verhuizing is daardoor generiek in plaats van een handmatige lijst, met een apar
 tabellen die anders sleutelen (`oauth_tokens`, `page_redirects`, `page_canni_rows`, agenda).
 Het slot is `WERELD_KLANT` in `lib/klantvenster.ts`, aangehaakt op de bestaande scope-poort
 (`lib/admin-scope.ts`) plus de middleware, en bewaakt door `proeven/klantvenster.proef.ts`.
+De verhuizing zit in `lib/verhuizing.ts` (tabellen uit `information_schema`), `lib/verhuis-code.ts`,
+`/admin/verhuizen` en `/api/verhuis-inlaad`, bewaakt door `proeven/verhuizing.proef.ts`.
