@@ -10,6 +10,7 @@ import Tellers from "../Tellers";
 import MeldingenMenu from "../MeldingenMenu";
 import MailPopup from "../client/[slug]/MailPopup";
 import ControleUitslag, { type Meting } from "../client/[slug]/weekplan-kaart/KaartControle";
+import { PijlLinks } from "../../_ui/Pijl";
 
 // Verwijdert scripts/handlers/inline font-kleur uit opgeslagen taak-HTML, houdt
 // links en basis-opmaak. De inhoud is bij invoer al geschoond; dit is de vangnet.
@@ -676,7 +677,7 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
           <MeldingenMenu />
           <Tellers />
         <OntwikkelMenu />
-          <a className="logout-btn" href="/admin">&larr; Alle klanten</a>
+          <a className="logout-btn" href="/admin"><PijlLinks /> Alle klanten</a>
           <button className="logout-btn" onClick={logout} style={{ marginLeft: "var(--s-2)" }}>Uitloggen</button>
         </div>
       </div>

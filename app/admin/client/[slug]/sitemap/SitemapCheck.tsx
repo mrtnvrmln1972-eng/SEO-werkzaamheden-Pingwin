@@ -11,6 +11,7 @@ import { Paneel, Blok, Signaal, Signalen, Pad, Tabel, Leeg, Tekst } from "../../
 import { useKlus } from "../useKlus";
 import type { SitemapCheckUitkomst } from "../../../../../lib/sitemap-check";
 import type { GooglebotInspectie } from "../../../../../lib/googlebot-check";
+import { PijlLinks } from "../../../../_ui/Pijl";
 
 export default function SitemapCheck({ slug, clientName, domain }: { slug: string; clientName: string; domain: string }) {
   const [data, setData] = useState<SitemapCheckUitkomst | null>(null);
@@ -90,7 +91,7 @@ export default function SitemapCheck({ slug, clientName, domain }: { slug: strin
   return (
     <div className="nv-wrap">
       <div className="nv-kop">
-        <a className="nv-terug" href={`/admin/client/${slug}?tab=paginas`}>&larr; terug naar de cockpit</a>
+        <a className="nv-terug" href={`/admin/client/${slug}?tab=paginas`}><PijlLinks /> terug naar de cockpit</a>
         <h1>Sitemap-check: {clientName}</h1>
       </div>
 

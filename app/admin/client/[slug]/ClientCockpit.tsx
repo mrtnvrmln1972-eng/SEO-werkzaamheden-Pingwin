@@ -59,6 +59,7 @@ import Tellers from "../../Tellers";
 import KlantKiezer from "./KlantKiezer";
 import KlussenChip from "./KlussenChip";
 import MeldingenMenu from "../../MeldingenMenu";
+import { PijlRechts } from "../../../_ui/Pijl";
 import {
   metricLabel, fmtMetric, periodLabel, sanitizeEmail, cleanReplyHtml,
   daysSince, daysAgoLabel, contactColor, fmtDate, fmtDateTime, shortUrl,
@@ -638,7 +639,7 @@ export default function ClientCockpit({
                       staat al op deze toggle), dus daar was hij onbereikbaar. */}
                   <a className="wp-bordlink" href={`/admin/client/${client.slug}/weekbord`}
                      onClick={(e) => e.stopPropagation()}
-                     title="Dezelfde planning op volle breedte, over al je klanten heen">alle klanten &rarr;</a>
+                     title="Dezelfde planning op volle breedte, over al je klanten heen">alle klanten <PijlRechts /></a>
                 </button>
                 {ovOpen.week && (
                   <div className="strategy-body">

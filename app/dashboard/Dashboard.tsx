@@ -13,6 +13,7 @@ import {
 import LinkPreview from "../admin/client/[slug]/LinkPreview";
 import { Paneel, Blok, Tekst, Signalen, Chip } from "../_ui/Uitkomst";
 import type { OntwikkelingDezeMaand } from "../../lib/ontwikkeling";
+import { PijlLinks } from "../_ui/Pijl";
 
 // "?"-uitleg bij een taak: klik opent een nette gecentreerde popup (zelfde
 // opmaak als de uitleg-popups in de cockpit), sluiten via kruisje/buiten/Escape.
@@ -320,7 +321,7 @@ export default function Dashboard({ name, sheetId, gid, budget, adminPreview, in
             {updatedAt ? `Laatste update: ${updatedAt}` : "Laden..."}
           </span>
           {adminPreview ? (
-            <a className="logout-btn" href="/admin">&larr; Terug naar beheer</a>
+            <a className="logout-btn" href="/admin"><PijlLinks /> Terug naar beheer</a>
           ) : (
             <button className="logout-btn" onClick={logout}>Uitloggen</button>
           )}

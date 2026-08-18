@@ -13,6 +13,7 @@ import Meters from "./Meters";
 import { claudeStand, budgetUitEnv } from "../../../lib/claude-teller";
 // Leesbare namen voor de acties: één lijst, gedeeld met de Claude-teller in de kopbalk.
 import { ACTION_LABEL, actieLabelMetDienst } from "../../../lib/usage-labels";
+import { PijlLinks } from "../../_ui/Pijl";
 
 
 export const dynamic = "force-dynamic";
@@ -195,7 +196,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
             ))}
           </div>
         </div>
-        <Link href="/admin" style={{ color: "var(--label-muted)", fontSize: "var(--fs-base)", textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
+        <Link href="/admin" style={{ color: "var(--label-muted)", fontSize: "var(--fs-base)", textDecoration: "none" }}><PijlLinks /> Terug naar overzicht</Link>
       </div>
       {/* De drie meters naast elkaar, met de tips. Stond eerst als één alinea
           uitleg boven dit scherm, maar drie rekeningen die alle drie "Claude" of

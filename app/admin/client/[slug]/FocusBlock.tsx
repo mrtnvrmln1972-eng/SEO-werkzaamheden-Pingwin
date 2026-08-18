@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
+import { PijlRechts } from "../../../_ui/Pijl";
 
 /**
  * Eén vrij opmaakbaar tekstveld per klant, met knoppenbalk en automatisch opslaan.
@@ -195,8 +196,8 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel, k
     <div className="sov-tasks">
       {soort === "focus" && (
         <div className="sov-tasks-head focus-head focus-head-links-only">
-          <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap &rarr;</a>
-          <a className="focus-nav-link" href={`/admin/client/${slug}/sitemap`} target="_blank" rel="noreferrer" title="De sitemap vers opgehaald en naast de echte site gelegd: is hij bereikbaar, welke live pagina's missen erin, en welke regels kloppen niet meer">Sitemap-check &rarr;</a>
+          <a className="focus-nav-link" href={`/admin/client/${slug}/navigatie`} target="_blank" rel="noreferrer" title="De hele sitestructuur (huidig én beoogd) met voortgang per pagina">Navigatie-roadmap <PijlRechts /></a>
+          <a className="focus-nav-link" href={`/admin/client/${slug}/sitemap`} target="_blank" rel="noreferrer" title="De sitemap vers opgehaald en naast de echte site gelegd: is hij bereikbaar, welke live pagina's missen erin, en welke regels kloppen niet meer">Sitemap-check <PijlRechts /></a>
         </div>
       )}
       {veldBlok}

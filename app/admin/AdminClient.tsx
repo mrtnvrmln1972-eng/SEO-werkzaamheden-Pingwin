@@ -8,6 +8,7 @@ import Tellers from "./Tellers";
 import MeldingenMenu from "./MeldingenMenu";
 import BulkOnboarding from "./BulkOnboarding";
 import KlantwaardeBulk from "./KlantwaardeBulk";
+import { PijlRechts } from "../_ui/Pijl";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
@@ -479,7 +480,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                   </span>
                 </td>
               )}
-              <td><strong>{c.name}</strong> <span className="row-arrow">&rarr;</span></td>
+              <td><strong>{c.name}</strong> <span className="row-arrow"><PijlRechts /></span></td>
               <td>
                 {c.domain
                   ? <a href={`https://${c.domain}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{c.domain}</a>
@@ -561,7 +562,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                       >{onb[c.slug].klaar ? "onboarding compleet" : `onboarding ${onb[c.slug].af}/${onb[c.slug].totaal}`}</span>
                     </>
                   )}
-                  {" "}<span className="row-arrow">&rarr;</span>
+                  {" "}<span className="row-arrow"><PijlRechts /></span>
                 </td>
                 <td>{c.loginEnabled ? c.loginId : <span className="muted">geen login</span>}</td>
                 <td>{c.email || <span className="muted">&mdash;</span>}</td>

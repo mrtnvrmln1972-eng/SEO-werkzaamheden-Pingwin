@@ -10,6 +10,7 @@ import { getPrognose } from "../../../lib/prognose";
 import FinancienClient from "./FinancienClient";
 import PrognosePaneel from "./PrognosePaneel";
 import AdminKop from "../AdminKop";
+import { PijlLinks } from "../../_ui/Pijl";
 
 export const dynamic = "force-dynamic";
 
@@ -115,7 +116,7 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
     <div style={wrap}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--s-3)", flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "var(--fs-xl)", margin: "var(--s-0)", color: "var(--accent-warm)" }}>Financi&euml;n</h1>
-        <Link href="/admin" style={{ color: "var(--label-muted)", fontSize: "var(--fs-base)", textDecoration: "none" }}>&larr; Terug naar overzicht</Link>
+        <Link href="/admin" style={{ color: "var(--label-muted)", fontSize: "var(--fs-base)", textDecoration: "none" }}><PijlLinks /> Terug naar overzicht</Link>
       </div>
       <p style={{ color: "var(--text-secondary)", maxWidth: 640, lineHeight: "var(--lh-base)", marginTop: "var(--s-2)" }}>
         {blik === "prognose"

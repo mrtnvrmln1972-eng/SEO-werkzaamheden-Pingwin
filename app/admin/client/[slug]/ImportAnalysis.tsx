@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ImportItem } from "../../../../lib/analysis-import";
+import { PijlLinks } from "../../../_ui/Pijl";
 
 export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string; onClose: () => void; onDone: () => void }) {
   const [step, setStep] = useState<"upload" | "review">("upload");
@@ -113,7 +114,7 @@ export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string
 
             {msg && <div className="login-error" style={{ marginTop: "var(--s-3)" }}>{msg}</div>}
             <div className="compose-foot" style={{ marginTop: "var(--s-3)" }}>
-              <button type="button" className="logout-btn" onClick={() => setStep("upload")}>&larr; Terug</button>
+              <button type="button" className="logout-btn" onClick={() => setStep("upload")}><PijlLinks /> Terug</button>
               <button type="button" className="primary-btn small" onClick={accept} disabled={busy || chosen === 0}>{busy ? "Overnemen..." : `Neem ${chosen} over`}</button>
             </div>
           </div>

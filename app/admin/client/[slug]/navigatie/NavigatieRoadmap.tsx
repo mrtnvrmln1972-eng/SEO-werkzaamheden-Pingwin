@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { kaartTekst, faseVoorstel } from "../../../../../lib/weekplan-kaarttekst";
 import { wachtOpKlus } from "../useKlus";
+import { PijlLinks } from "../../../../_ui/Pijl";
 
 type Punt = { naam: string; behaald: number; max: number; uitleg: string };
 type Node = {
@@ -338,7 +339,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
       <div className="nv-kop">
         {/* Terug gaat naar Taken, niet naar Pagina's: dit scherm bekijk je terwijl
             je aan het werk bent, en dat werk staat op de takenpagina. */}
-        <a className="nv-terug" href={`/admin/client/${slug}?tab=werkzaamheden`}>&larr; terug naar de cockpit</a>
+        <a className="nv-terug" href={`/admin/client/${slug}?tab=werkzaamheden`}><PijlLinks /> terug naar de cockpit</a>
         <h1>Navigatie &amp; voortgang: {clientName}</h1>
         <div className="nv-cijfers">
           <span className="nv-cijfer"><strong>{totaalPct}%</strong> gemiddeld af</span>
