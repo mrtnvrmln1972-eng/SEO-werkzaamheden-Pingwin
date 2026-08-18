@@ -2,7 +2,7 @@ import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
 import { getOrgData, saveOrgData, type OrgData } from "./org-data";
 import { getClientBySlug } from "./clients";
-import { ontbrekendeVelden, identiteit, naamKaal, isEchteVestiging, LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
+import { ontbrekendeVelden, identiteit, magOpNaamKoppelen, naamKaal, isEchteVestiging, LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
 export { identiteit, isEchteVestiging } from "./org-vereist";
 import { callClaude } from "./anthropic";
 import { GEEN_DATUM, isNieuwerDan, leesbaar, type BronDatum, type DatumBron } from "./bron-datum";
@@ -164,6 +164,46 @@ export function voegVeldenSamen(
     });
   }
   return { velden, stempels, botsingen };
+}
+
+/**
+ * Bij welke bestaande regel hoort dit aangeleverde gegeven?
+ *
+ * Eerst op identiteit: postcode plus huisnummer voor een vestiging, BIG-nummer
+ * voor een persoon, anders de naam. Levert dat niets op én draagt het stuk zelf
+ * geen adres of BIG (zie magOpNaamKoppelen), dan zoeken we op naam.
+ *
+ * Waarom dit erbij moest (18-08-2026): een schermafdruk met de openingstijden
+ * van tien vestigingen noemt per vestiging alleen de naam en de tijden. De
+ * identiteit viel daardoor terug op de naam, terwijl de bestaande regel op
+ * postcode plus huisnummer stond. Gevolg: tien nieuwe, adresloze regels naast de
+ * bestaande, en die tellen nergens mee, want zonder bezoekadres is iets geen
+ * vestiging. De tijden kwamen dus wel binnen en toch nergens aan.
+ *
+ * Alleen bij precies één naamgenoot, anders zouden twee vestigingen van dezelfde
+ * keten (of twee mensen met dezelfde naam) samenvallen. Bij twijfel liever een
+ * losse regel die je ziet dan een stille samenvoeging die je niet ziet.
+ */
+export function koppelSleutel(bestaand: Map<string, KennisEntiteit>, categorie: string, naam: string, velden: Record<string, string>): string {
+  const eigen = identiteit(categorie, naam, velden || {});
+  if (bestaand.has(eigen)) return eigen;
+  if (!magOpNaamKoppelen(categorie, velden || {})) return eigen;
+  const kaal = naamKaal(naam);
+  if (!kaal) return eigen;
+  const treffers = [...bestaand.entries()].filter(([, e]) => e.categorie === categorie && naamKaal(e.naam) === kaal);
+  return treffers.length === 1 ? treffers[0][0] : eigen;
+}
+
+/**
+ * De regel die het meeste houvast geeft, staat vooraan.
+ *
+ * Belangrijk bij het koppelen hierboven: de regel mét adres moet als eerste in
+ * het register staan, anders wordt de adresloze regel het anker en koppelt de
+ * regel met adres er niet meer aan vast (die mag immers niet op naam gokken).
+ */
+function ankerEerst(a: KennisEntiteit, b: KennisEntiteit): number {
+  const hard = (e: KennisEntiteit) => (magOpNaamKoppelen(e.categorie, e.velden) ? 0 : 1);
+  return hard(b) - hard(a) || Object.keys(b.velden).length - Object.keys(a.velden).length;
 }
 
 /**
@@ -540,12 +580,17 @@ export async function confirmKnowledge(slug: string, id: number): Promise<{ ok: 
   const huidig = await listKnowledge(slug);
   // Op identiteit vergelijken, en de kaart meelopend bijwerken: zo landt een
   // gegeven dat twee keer in dezelfde aanlevering staat óók op één regel.
+  // De regels met een echt adres of BIG-nummer eerst, want die zijn het anker
+  // waar een aanlevering zonder adres straks op naam aan vastgeknoopt wordt.
   const byKey = new Map<string, KennisEntiteit>();
-  for (const e of huidig) if (!byKey.has(identiteit(e.categorie, e.naam, e.velden))) byKey.set(identiteit(e.categorie, e.naam, e.velden), e);
+  for (const e of [...huidig].sort(ankerEerst)) {
+    const k = identiteit(e.categorie, e.naam, e.velden);
+    if (!byKey.has(k)) byKey.set(k, e);
+  }
   let verwerkt = 0;
   const botsingen: string[] = [];
   for (const e of entiteiten) {
-    const sleutelId = identiteit(e.categorie, e.naam, e.velden || {});
+    const sleutelId = koppelSleutel(byKey, e.categorie, e.naam, e.velden || {});
     const bestaand = byKey.get(sleutelId);
     const samen = voegVeldenSamen(bestaand?.velden || {}, bestaand?.stempels || {}, e.velden || {}, aanlevering, waar);
     for (const b of samen.botsingen) {
@@ -584,9 +629,14 @@ const kort = (s: string) => (s.length > 60 ? `${s.slice(0, 57)}…` : s);
 // samenvoegen: nieuwste regel wint per veld, oudere regels gaan op "vervangen".
 export async function opruimenDubbel(slug: string): Promise<number> {
   const huidig = await listKnowledge(slug);
+  // Dezelfde koppelregel als bij het verwerken, zodat een adresloze regel die
+  // eerder als los gegeven is binnengekomen (de openingstijden-schermafdruk)
+  // alsnog bij zijn vestiging landt in plaats van er eeuwig naast te blijven staan.
   const groepen = new Map<string, KennisEntiteit[]>();
-  for (const e of huidig) {
-    const k = identiteit(e.categorie, e.naam, e.velden);
+  const anker = new Map<string, KennisEntiteit>();
+  for (const e of [...huidig].sort(ankerEerst)) {
+    const k = koppelSleutel(anker, e.categorie, e.naam, e.velden);
+    if (!anker.has(k)) anker.set(k, e);
     groepen.set(k, [...(groepen.get(k) || []), e]);
   }
   let opgeruimd = 0;

@@ -76,6 +76,14 @@ export const BLOKKEN: Uitklapper[] = [
       "alles.\n\n" +
       "**Op het scherm.** Bij elk gegeven in de kennisbank staat van wanneer het is en waar het vandaan " +
       "komt. Op een taakkaart is de keuze bij structured-data-documenten verdwenen: die bestanden zijn " +
-      "het archief, de kennisbank is wat geldt, en de regel linkt daarheen.",
+      "het archief, de kennisbank is wat geldt, en de regel linkt daarheen.\n\n" +
+      "**Een aanlevering landt op de bestaande regel, niet ernaast.** Een schermafdruk met de " +
+      "openingstijden van tien vestigingen noemt per vestiging alleen de naam en de tijden, verder " +
+      "niets. Een vestiging wordt normaal herkend aan postcode plus huisnummer, dus zo'n aanlevering " +
+      "kwam als tien nieuwe, adresloze regels naast de bestaande te staan, en die telden nergens mee " +
+      "(zonder bezoekadres is iets geen vestiging). Draagt het aangeleverde stuk zelf geen adres of " +
+      "BIG-nummer, dan wordt er nu op naam gekoppeld, maar alleen bij precies één naamgenoot. Zit er " +
+      "wél een adres bij, dan gokken we niet: twee vestigingen van dezelfde keten mogen nooit stilletjes " +
+      "samenvallen.",
   },
 ];

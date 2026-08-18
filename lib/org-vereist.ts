@@ -174,6 +174,26 @@ export function isEchteVestiging(velden: Record<string, string>): boolean {
   return /\d/.test(adres) || !!postcode;
 }
 
+/**
+ * Mag dit aangeleverde gegeven op naam aan een bestaande regel gekoppeld worden?
+ *
+ * Ja, zolang het stuk zelf niets draagt waarmee we het hárd kunnen herkennen.
+ * Een schermafdruk met alleen openingstijden per vestiging noemt de vestiging bij
+ * naam en verder niets: geen adres, geen postcode. De identiteit hieronder valt
+ * dan terug op de naam, en die botst niet met de bestaande regel die wél een
+ * adres heeft. Zonder deze uitzondering komt zo'n aanlevering als een tweede,
+ * adresloze regel naast de bestaande te staan, en dan telt hij nergens meer mee.
+ *
+ * Draagt het stuk wél een adres of een BIG-nummer, dan is de identiteit
+ * betrouwbaar en gokken we niet op de naam: twee vestigingen van dezelfde keten
+ * zouden anders samenvallen.
+ */
+export function magOpNaamKoppelen(categorie: string, velden: Record<string, string>): boolean {
+  if (categorie === "locatie") return !isEchteVestiging(velden || {});
+  if (categorie === "persoon") return cijfers(velden?.big || "").length < 8;
+  return true; // organisatie, dienst en overig gaan sowieso al op naam
+}
+
 export function identiteit(categorie: string, naam: string, velden: Record<string, string>): string {
   const v = velden || {};
   if (categorie === "persoon" && cijfers(v.big).length >= 8) return `persoon|big:${cijfers(v.big)}`;
