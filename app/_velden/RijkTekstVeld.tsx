@@ -5,6 +5,7 @@ import { cleanPastedHtml, lijktOpMarkdown, linkifyPlainText } from "../../lib/ri
 import { mdToHtml } from "../../lib/markdown";
 import {
   blokVoorSlepen,
+  blokOpHoogte,
   checklistItemHtml,
   herstelStructuur,
   magSlepenNaar,
@@ -157,7 +158,11 @@ export default function RijkTekstVeld({
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el || el === handleRef.current || handleRef.current?.contains(el)) return;
     if (!veld.contains(el)) { toonHandleBij(null); return; }
-    toonHandleBij(blokVoorSlepen(veld, el));
+    // Onder de muis kijken werkt alleen boven tekst. Beweeg je naar links om het
+    // vlekje te pakken, dan kom je door de inspringing van een lijst, en daar
+    // zit geen lijstregel: dan kwam er `null` uit en verdween het vlekje precies
+    // op het moment dat je hem wilde pakken. Vandaar de terugval op de hoogte.
+    toonHandleBij(blokVoorSlepen(veld, el) || blokOpHoogte(veld, e.clientY));
   }
   function onWrapMouseLeave() {
     if (!sleepBlokRef.current) toonHandleBij(null);
@@ -195,7 +200,10 @@ export default function RijkTekstVeld({
     if (!veld || !sleepBlok) return;
     e.preventDefault();
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    const blok = el ? blokVoorSlepen(veld, el) : null;
+    // Zelfde terugval als bij het tonen van het vlekje: sleep je over de
+    // inspringing van een lijst, dan zit daar geen lijstregel onder de muis en
+    // zou de landingsstreep knipperen.
+    const blok = (el ? blokVoorSlepen(veld, el) : null) || blokOpHoogte(veld, e.clientY);
     // Zelfde regel als bij het echte verplaatsen, uit dezelfde bron: wat de
     // streep laat zien moet exact zijn wat er straks gebeurt.
     if (!blok || !magSlepenNaar(sleepBlok, blok)) {

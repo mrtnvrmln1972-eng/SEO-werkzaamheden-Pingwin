@@ -188,6 +188,30 @@ check("en het staat op de hoogte van die regel",
   Math.abs((hBox.y + hBox.height / 2) - (liBox.y + Math.min(liBox.height, 24) / 2)) < 8,
   `vlekje ${Math.round(hBox.y)}, regel ${Math.round(liBox.y)}`);
 
+// ── 7b. Het vlekje blijft staan terwijl je ernaartoe beweegt ──
+// Dit is precies waar het misging (18-08-2026): het vlekje verscheen netjes
+// boven de tekst en verdween zodra je ernaartoe bewoog, dus je kon het niet
+// pakken. De reden is met een teleporterende muis onzichtbaar, en test 8
+// hieronder teleporteert: die zet de muis in één keer op het vlekje. Een echte
+// muis legt de weg af, en die weg loopt door de inspringing van de lijst. Daar
+// zit geen lijstregel onder de muis, alleen het tekstvak zelf, en dáár werd het
+// vlekje verborgen. Vandaar: stapje voor stapje, zoals een hand het doet.
+await page.mouse.move(liBox.x + 40, liBox.y + liBox.height / 2);
+await page.waitForTimeout(150);
+const naarX = hBox.x + hBox.width / 2, naarY = hBox.y + hBox.height / 2;
+const vanX = liBox.x + 40, vanY = liBox.y + liBox.height / 2;
+let kwijtOp = null;
+for (let i = 1; i <= 14; i++) {
+  const x = vanX + (naarX - vanX) * (i / 14);
+  const y = vanY + (naarY - vanY) * (i / 14);
+  await page.mouse.move(x, y);
+  await page.waitForTimeout(40);
+  if ((await page.locator(".rtv-drag-handle-actief").count()) === 0) { kwijtOp = Math.round(x); break; }
+}
+check("het vlekje blijft staan op de hele weg ernaartoe",
+  kwijtOp === null,
+  `hij verdween op x=${kwijtOp} (tekstvak begint op ${Math.round(editorBox.x)}, vlekje op ${Math.round(hBox.x)}); je kunt hem dan niet pakken`);
+
 await page.screenshot({ path: "veld-proef.png" });
 
 // ── 8. Slepen verplaatst en verliest niets ──

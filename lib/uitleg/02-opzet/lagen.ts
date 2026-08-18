@@ -53,7 +53,11 @@ export const BLOKKEN: Uitklapper[] = [
         "rijtje regels en klik 'vinklijst', dan wordt elke regel een eigen vinkpunt) en een **uitklapper** " +
         "(een onderwerp met een driehoekje, met alles wat erbij hoort eronder). Elk onderdeel is te " +
         "**verslepen**: zweef erover, pak het grijpvlekje in de strook links van het tekstvak en zet het boven " +
-        "of onder een andere regel neer.\n\n" +
+        "of onder een andere regel neer. Dat vlekje blijft sinds 18 augustus 2026 ook staan terwijl je ernaartoe " +
+        "beweegt. Daarvóór verscheen het netjes boven de tekst en verdween het precies op het moment dat je hem " +
+        "wilde pakken: onderweg naar links kom je door de inspringing van een lijst, en daar staat geen regel " +
+        "maar het lege tekstvak, dus dacht het scherm dat je nergens meer boven zweefde. Nu wordt er op de " +
+        "hoogte van je muis gekeken in plaats van alleen recht eronder.\n\n" +
         "Op een vinkregel werkt Enter zoals je het van een lijstje verwacht: aan het eind krijg je een nieuw " +
         "punt eronder, middenin splitst de regel (de tekst achter je cursor gaat mee), en op een lege regel " +
         "stap je uit de lijst. Backspace helemaal vooraan haalt alleen het vinkje weg; je tekst blijft staan " +

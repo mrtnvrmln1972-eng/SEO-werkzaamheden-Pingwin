@@ -106,9 +106,16 @@ function stepTaskTitleHtml(taak: string): string {
 // die zelf een link is) omzetten naar "Titel (link)" met de klantversie-link erachter.
 // Zelfbeperkend: rijen die de nieuwe "(link)" al hebben worden overgeslagen.
 async function migrateStepTaskLinks(slug: string): Promise<void> {
+  // Alleen de pijplijn-taken van `upsertStepTask` (analyse, blauwdruk, copy):
+  // dáár gaat deze omzetting over. De taken die de motoren via `appendTasks`
+  // aanmaken hebben sinds 18-08-2026 óók een step_kind (dat werd daarvóór
+  // stilzwijgend niet opgeslagen), en die schrijven hun link bewust als
+  // "(document)". Zonder deze uitzondering zou deze migratie dat woord in
+  // "(link)" veranderen, wat niemand gevraagd heeft.
   const { rows } = await sql`
     SELECT id, taak, doc_link, client_doc_link FROM client_tasks
     WHERE client_slug = ${slug} AND step_kind IS NOT NULL
+      AND step_kind NOT IN ('structured_data', 'structured_data_sitewide', 'internal_links', 'cannibal_redirects')
       AND taak LIKE '%<a %' AND taak NOT LIKE '%>link</a>%'`;
   if (rows.length === 0) return;
   const a = (href: string, label: string) => `<a href="${escHtml(href)}" target="_blank" rel="noreferrer">${escHtml(label)}</a>`;
@@ -167,11 +174,20 @@ export async function appendTasks(slug: string, tasks: Partial<TaskRow>[]): Prom
   const ids: number[] = [];
   for (const t of tasks) {
     if (!t.taak || !t.taak.trim()) continue;
+    // step_kind, doc_link en client_doc_link horen hier ECHT bij, en dat ging
+    // lang mis: ze werden wel meegegeven en stilzwijgend niet weggeschreven.
+    // Gevolg (18-08-2026 gevonden bij Bogard): elke motor die zijn eigen taak
+    // ontdubbelt op `stepKind` vond nooit de vorige, dus stond dezelfde taak er
+    // na vier klikken vier keer. Dat gold voor site-brede structured data,
+    // structured data per pagina, interne links en de cannibalisatie-redirects.
+    // De documenten die bij zo'n taak horen (doc_link) kwamen er evenmin in, dus
+    // de sitebouwer kreeg de opdracht zonder het document erbij.
     const res = await sql`
       INSERT INTO client_tasks (client_slug, sort_order, categorie, taak, toelichting, klant_toelichting, uren, status, maand, link, wie, klant_zichtbaar,
-                                fase, cluster, geblokkeerd, blokkade_reden, page_url, updated_at)
+                                fase, cluster, geblokkeerd, blokkade_reden, page_url, step_kind, doc_link, client_doc_link, updated_at)
       VALUES (${slug}, ${order}, ${t.categorie || null}, ${t.taak.trim()}, ${t.toelichting || null}, ${t.klantToelichting || null}, ${t.uren ?? null}, ${t.status || "Gepland"}, ${(t.maand || "").toLowerCase() || null}, ${t.link || null}, ${t.wie || null}, ${t.klantZichtbaar !== false},
-              ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null}, now())
+              ${t.fase || null}, ${t.cluster || null}, ${!!t.geblokkeerd}, ${t.blokkadeReden || null}, ${t.pageUrl || null},
+              ${t.stepKind || null}, ${t.docLink || null}, ${t.clientDocLink || null}, now())
       RETURNING id`;
     if (res.rows[0]?.id != null) ids.push(Number(res.rows[0].id));
     order++;

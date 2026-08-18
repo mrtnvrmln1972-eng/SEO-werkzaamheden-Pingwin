@@ -14,6 +14,16 @@ function admin(req: NextRequest): boolean {
   return verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value);
 }
 
+// De vaste titel van deze taak. Staat hier één keer, want hij wordt zowel
+// gebruikt om de taak aan te maken als om de vorige exemplaren te herkennen.
+const TAAK_TITEL = "Site-brede structured data doorvoeren (alle pagina's)";
+
+/** Zelfde taak? Zonder opmaak en zonder losse spaties vergeleken. */
+function zelfdeTitel(a: string, b: string): boolean {
+  const kaal = (s: string) => (s || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+  return !!kaal(a) && kaal(a) === kaal(b);
+}
+
 function siteOf(domain: string): string {
   const d = (domain || "").trim();
   if (!d) return "";
@@ -59,7 +69,14 @@ export async function POST(req: NextRequest) {
   try {
     const json = await uploadPlainFile("root", `schema-sitewide-${slug}.json`, jsonld, "application/json");
     const existing = await getTasks(slug).catch(() => []);
-    const dupes = existing.filter((t) => t.stepKind === "structured_data_sitewide" && typeof t.id === "number").map((t) => t.id as number);
+    // Ontdubbelen op de soort taak, met de titel als terugval: de taken die vóór
+    // 18-08-2026 langs deze weg zijn aangemaakt hebben géén step_kind (dat werd
+    // stilzwijgend niet opgeslagen), dus zonder die terugval blijven ze staan.
+    // Bij Bogard stonden er zo vier identieke.
+    const dupes = existing.filter((t) =>
+      typeof t.id === "number"
+      && (t.stepKind === "structured_data_sitewide" || zelfdeTitel(t.taak, TAAK_TITEL)),
+    ).map((t) => t.id as number);
     if (dupes.length) await deleteTasksByIds(slug, dupes).catch(() => { /* dedupe is hulp */ });
     // De leeslink voor de sitebouwer (bedrijfsgegevens + dit JSON-LD, in context)
     // gaat mee in de taak, zodat afvinken in Werkzaamheden en delen met de
@@ -72,10 +89,14 @@ export async function POST(req: NextRequest) {
         : "Er is geen bestaand organisatie-schema op de homepage gevonden; dit is het volledige, zelfstandige blok.";
     const ids = await appendTasks(slug, [{
       categorie: "Structured data",
-      taak: "Site-brede structured data doorvoeren (alle pagina's)",
+      taak: TAAK_TITEL,
       toelichting: `JSON-LD (copy-paste, toevoegen in de head van elke pagina, als los script-blok naast wat er al staat): ${json.link}${devUrl ? `\nLeesbaar overzicht voor de sitebouwer (bedrijfsgegevens + deze code, alleen-lezen): ${devUrl}` : ""}\n${plugToelichting}\nNa plaatsing controleren met search.google.com/test/rich-results.`,
       klantToelichting: "We voegen de vaste bedrijfsinformatie (naam, contact, profielen) als onzichtbare structured data toe aan de hele site, zodat Google en AI-zoekmachines het bedrijf herkennen.",
-      status: "Gepland",
+      // "Naar dev", niet "Gepland": dit is de knop "Delen met developer", dus dit
+      // ís het moment van doorzetten. Op "Gepland" bleef de taak alleen in
+      // Werkzaamheden staan en kwam hij nooit op /admin/developer, terwijl de
+      // mail die hier direct achteraan gaat wél naar de developer verwijst.
+      status: "Naar dev",
       wie: "Dev",
       fase: "Bouwen",
       stepKind: "structured_data_sitewide",

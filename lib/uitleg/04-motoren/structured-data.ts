@@ -32,7 +32,12 @@ export const BLOKKEN: Uitklapper[] = [
       "'Deel JSON' waren twee knoppen voor dezelfde stap en zijn samengevoegd tot 'Delen met developer': in " +
       "één klik het site-brede blok bouwen (aanvullend op een eventuele plugin), als .json-bestand naar " +
       "Drive zetten, een Dev-taak aanmaken in Werkzaamheden, en een mailvenster openen met een kant-en-klare " +
-      "introductie. De ruwe JSON-code bekijken of los kopiëren kan in dat mailvenster, onder 'Bekijk de " +
+      "introductie. **Die taak staat sinds 18 augustus 2026 ook echt op de developerlijst** (`/admin/developer`). " +
+      "Dat was een gat: hij werd aangemaakt met de stand 'Gepland', en die lijst toont alleen wat op 'Naar dev' " +
+      "staat. De mail verwees er dus wél naartoe terwijl er niets stond. Deze knop ís het doorzetten, dus de " +
+      "taak krijgt die stand meteen. Klik je nog eens op de knop, dan vervangt de nieuwe taak de vorige in " +
+      "plaats van er een tweede naast te zetten; dat ontdubbelen werkte een tijd niet, waardoor er bij één " +
+      "klant vier identieke taken stonden. De ruwe JSON-code bekijken of los kopiëren kan in dat mailvenster, onder 'Bekijk de " +
       "JSON-code'; die staat standaard dicht. Zo ook 'Link kopiëren' en 'Mail naar klant': dat waren twee " +
       "knoppen voor bijna hetzelfde, nu is dat 'Delen met klant', één mailvenster met de deel-link erin én " +
       "een eigen kopieerknop voor die link.\n\n" +

@@ -112,6 +112,45 @@ export function blokVoorSlepen(veld: HTMLElement, node: Node | null): HTMLElemen
 }
 
 /**
+ * Welk onderdeel staat er op deze hoogte in het veld?
+ *
+ * Waarom dit naast `blokVoorSlepen` moest (18-08-2026): dat zoekt het onderdeel
+ * ONDER de muis, en dat werkt alleen zolang je muis over tekst zweeft. Beweeg je
+ * naar links om het grijpvlekje te pakken, dan kom je onderweg door de inspringing
+ * van een lijst. Daar zit geen lijstregel, alleen het veld zelf, dus kwam er
+ * `null` uit en verdween het vlekje precies op het moment dat je hem wilde pakken.
+ * Op de hoogte kijken kan dat niet overkomen: een onderdeel houdt zijn hele
+ * regelhoogte, inspringing en al.
+ *
+ * Het diepste onderdeel wint, want een lijstregel zit in een lijst en die zit
+ * misschien weer in een uitklapper; je wilt de regel pakken, niet het hele blok.
+ */
+export function blokOpHoogte(veld: HTMLElement, y: number): HTMLElement | null {
+  if (!veld) return null;
+  // Eerst een paar goedkope prikken naar rechts, op dezelfde hoogte: daar staat
+  // de tekst wél. Dit draait bij elke muisbeweging, dus het mag niet elke keer
+  // de hele inhoud nameten.
+  const r = veld.getBoundingClientRect();
+  for (const deel of [0.5, 0.25, 0.75, 0.1]) {
+    const el = veld.ownerDocument?.elementFromPoint(r.left + r.width * deel, y);
+    const blok = el && veld.contains(el) ? blokVoorSlepen(veld, el) : null;
+    if (blok) return blok;
+  }
+  // Lukt dat niet (een lege regel, een gat tussen twee blokken), dan alsnog
+  // nameten. Het diepste onderdeel wint, want een lijstregel zit in een lijst en
+  // die zit misschien weer in een uitklapper; je wilt de regel pakken.
+  let beste: HTMLElement | null = null;
+  let kleinste = Infinity;
+  for (const el of Array.from(veld.querySelectorAll<HTMLElement>("*"))) {
+    if (blokVoorSlepen(veld, el) !== el) continue;
+    const b = el.getBoundingClientRect();
+    if (b.height <= 0 || y < b.top || y > b.bottom) continue;
+    if (b.height < kleinste) { kleinste = b.height; beste = el; }
+  }
+  return beste;
+}
+
+/**
  * Mag dit onderdeel bij dat andere onderdeel landen?
  *
  * Nooit in jezelf of in je eigen inhoud (dan verdwijnt het blok samen met zijn
