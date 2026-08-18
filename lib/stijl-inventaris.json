@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8473,
-    "stijlregels": 4378,
-    "classnamen": 2898
+    "regels": 8499,
+    "stijlregels": 4389,
+    "classnamen": 2907
   },
   "kleuren": {
     "verschillend": 330,
@@ -1331,17 +1331,9 @@
     ]
   },
   "lettergroottes": {
-    "verschillend": 21,
+    "verschillend": 16,
     "benoemd": 6,
     "los": [
-      {
-        "waarde": "12px",
-        "aantal": 107
-      },
-      {
-        "waarde": "13px",
-        "aantal": 106
-      },
       {
         "waarde": "11px",
         "aantal": 81
@@ -1359,16 +1351,8 @@
         "aantal": 27
       },
       {
-        "waarde": "11.5px",
-        "aantal": 14
-      },
-      {
         "waarde": "15px",
         "aantal": 9
-      },
-      {
-        "waarde": "13.5px",
-        "aantal": 7
       },
       {
         "waarde": "16px",
@@ -1399,11 +1383,7 @@
         "aantal": 2
       },
       {
-        "waarde": "10.5px",
-        "aantal": 1
-      },
-      {
-        "waarde": "14.5px",
+        "waarde": "13px",
         "aantal": 1
       },
       {
@@ -1421,13 +1401,9 @@
     ]
   },
   "rondingen": {
-    "verschillend": 19,
+    "verschillend": 18,
     "benoemd": 4,
     "los": [
-      {
-        "waarde": "8px",
-        "aantal": 74
-      },
       {
         "waarde": "10px",
         "aantal": 44
@@ -5042,22 +5018,6 @@
       ]
     },
     {
-      "soort": "Ronding",
-      "waarde": "8px",
-      "aantal": 74,
-      "naar": "6px",
-      "naarToken": "--r-sm",
-      "verschil": 2,
-      "selectors": [
-        ".client-switch",
-        ".month-btn",
-        ".invoice-alert",
-        ".task-tip",
-        ".error-msg",
-        ".login-card input"
-      ]
-    },
-    {
       "soort": "Ruimte",
       "waarde": "10px",
       "aantal": 41,
@@ -5418,92 +5378,6 @@
       "selectors": [
         ".wp-card-tile"
       ]
-    },
-    {
-      "soort": "Tekstmaat",
-      "waarde": "12px",
-      "aantal": 107,
-      "naar": "12.5px",
-      "naarToken": "--fs-sm",
-      "verschil": 0.5,
-      "selectors": [
-        ".header-contact",
-        ".header-updated",
-        ".stat-sub",
-        "thead th",
-        ".task-desc",
-        ".invoice-badge"
-      ]
-    },
-    {
-      "soort": "Tekstmaat",
-      "waarde": "13px",
-      "aantal": 105,
-      "naar": "12.5px",
-      "naarToken": "--fs-sm",
-      "verschil": 0.5,
-      "selectors": [
-        ".header-tabs .tab",
-        ".progress-title",
-        ".progress-pct",
-        ".cat-row td",
-        ".doc-link",
-        ".task-name-text"
-      ]
-    },
-    {
-      "soort": "Tekstmaat",
-      "waarde": "11.5px",
-      "aantal": 14,
-      "naar": "11px",
-      "naarToken": "--fs-xs",
-      "verschil": 0.5,
-      "selectors": [
-        ".canni-score",
-        ".wz-ml-val",
-        ".pg-kw",
-        ".kpi-site-badge",
-        ".sch-json-pre",
-        ".wp-docvoorstel-acties"
-      ]
-    },
-    {
-      "soort": "Tekstmaat",
-      "waarde": "13.5px",
-      "aantal": 7,
-      "naar": "14px",
-      "naarToken": "--fs-base",
-      "verschil": 0.5,
-      "selectors": [
-        ".pch-apply-panel",
-        ".strategy-session-toggle",
-        ".org-share-intro p, .org-share-intro li",
-        ".org-share-error",
-        ".org-share-locked",
-        ".org-sitewide-head"
-      ]
-    },
-    {
-      "soort": "Tekstmaat",
-      "waarde": "14.5px",
-      "aantal": 1,
-      "naar": "14px",
-      "naarToken": "--fs-base",
-      "verschil": 0.5,
-      "selectors": [
-        ".step-title"
-      ]
-    },
-    {
-      "soort": "Tekstmaat",
-      "waarde": "10.5px",
-      "aantal": 1,
-      "naar": "11px",
-      "naarToken": "--fs-xs",
-      "verschil": 0.5,
-      "selectors": [
-        ".wp-wie"
-      ]
     }
   ],
   "betekenis": {
@@ -5750,7 +5624,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 864,
-    "schaalGebruik": 5743
+    "gebruik": 888,
+    "schaalGebruik": 6054
   }
 }

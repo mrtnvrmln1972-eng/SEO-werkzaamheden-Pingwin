@@ -21,8 +21,8 @@
   ],
   "plafond": {
     "kleuren": 330,
-    "lettergroottes": 21,
-    "rondingen": 19,
+    "lettergroottes": 16,
+    "rondingen": 18,
     "schaduwen": 45,
     "afstanden": 21,
     "inlineOpmaak": 50
@@ -37,6 +37,6 @@
     "inlineOpmaak": 0
   },
   "vloer": {
-    "betekenislaag": 842
+    "betekenislaag": 888
   }
 }

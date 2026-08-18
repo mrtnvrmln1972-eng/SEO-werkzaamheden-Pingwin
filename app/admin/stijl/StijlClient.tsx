@@ -29,6 +29,34 @@ const METERS: { sleutel: string; naam: string; uitleg: string; losseWerklijst?: 
   { sleutel: "inlineOpmaak", naam: "Opmaak in de code", uitleg: "Opmaak die niet in het stylesheet staat maar los in een scherm, waar geen enkele controle bij kan." },
 ];
 
+/**
+ * De vier stappen van de verbouwing, in gewone taal.
+ *
+ * Waarom dit hier staat en niet in een document: een verbouwing die maanden
+ * duurt en waarin de eerste drie stappen niets veranderen aan wat je ziet, is
+ * onmogelijk te volgen als het verhaal alleen in losse chats leeft. Dan lijkt
+ * het alsof er niets gebeurt, of erger, alsof er iets aan het ontwerp veranderd
+ * is terwijl dat niet zo is.
+ */
+const STAPPEN: { nr: number; titel: string; wat: string; stand: "af" | "bezig" | "open" }[] = [
+  {
+    nr: 1, stand: "af", titel: "Tellen wat er is",
+    wat: "Uitzoeken hoeveel losse keuzes er in het dashboard staan, en een meter erop zetten die alleen mag dalen. Zonder dat getal weet je niet of je vooruitgaat.",
+  },
+  {
+    nr: 2, stand: "af", titel: "Namen geven",
+    wat: "Elke maat en kleur een naam geven die zegt waarvóór hij dient, in plaats van hoe groot hij is. Niet \u201c12,5 pixels\u201d maar \u201cde maat van een bijschrift\u201d. Daarna kun je alle bijschriften tegelijk veranderen.",
+  },
+  {
+    nr: 3, stand: "bezig", titel: "Elk scherm die namen laten gebruiken",
+    wat: "Scherm voor scherm, zonder dat er iets verandert aan hoe het eruitziet. Dit is het saaie stuk en tegelijk het stuk waar alles op wacht.",
+  },
+  {
+    nr: 4, stand: "open", titel: "Het ontwerp kiezen en doorvoeren",
+    wat: "Pas hier gaat het over hoe het eruitziet: kleuren, lettertype, hoeken, ruimte. Dan is dat een handvol regels veranderen in plaats van honderden plekken langslopen, en zie je op dit scherm meteen wat het doet.",
+  },
+];
+
 const STAPEL_TEKST: Record<Stapel, { kop: string; wat: string }> = {
   gelijk: { kop: "Dezelfde kleur, anders opgeschreven", wat: "#FFF naast #ffffff. Puur zoeken en vervangen." },
   bijna: { kop: "Niet te onderscheiden", wat: "Het verschil is op een scherm niet te zien. Ook zoeken en vervangen." },
@@ -74,6 +102,7 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
   const groepen = [...new Set(betekenis.namen.map((n) => n.groep))];
 
   const afrondingen = meting.afrondingen;
+  const aandeelTekst = `${(100 * meting.betekenis.gebruik / Math.max(meting.betekenis.gebruik + meting.betekenis.schaalGebruik, 1)).toFixed(1)}%`;
 
   const zichtbareKleuren = alleKleuren ? meting.kleuren.los : meting.kleuren.los.slice(0, 72);
 
@@ -81,6 +110,41 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
     <>
       <AdminKop titel="Stijl" />
       <div className="stijl-pagina">
+
+        {/* ── Waar we staan in het traject ── */}
+        {/* Dit blok staat er omdat Maarten op 18-08-2026 zei: "ik ben het spoor
+            een beetje kwijt". Terecht. Het verhaal van de verbouwing leefde
+            alleen in de chat, en een chat scroll je kwijt. Nu staat het op het
+            scherm waar het over gaat, dus hoeft hij er nooit meer naar te vragen. */}
+        <div className="card section">
+          <h2 className="stijl-h2">Waar we staan</h2>
+          <p className="stijl-p">
+            Het doel is één samenhangend ontwerp over het hele dashboard, dat je daarna met een
+            paar knoppen kunt veranderen. Dat kan pas als alles uit dezelfde bron leest. Vandaar
+            deze vier stappen; de eerste drie veranderen niets aan hoe het eruitziet, ze maken
+            alleen mogelijk dat de vierde in één keer kan.
+          </p>
+          <ol className="stijl-stappen">
+            {STAPPEN.map((st) => (
+              <li key={st.nr} className={`stijl-stap stijl-stap-${st.stand}`}>
+                <span className="stijl-stap-nr">{st.nr}</span>
+                <span className="stijl-stap-tekst">
+                  <span className="stijl-stap-titel">
+                    {st.titel}
+                    <span className="chip">{st.stand === "af" ? "klaar" : st.stand === "bezig" ? "hier zijn we" : "nog niet"}</span>
+                  </span>
+                  <span className="stijl-stap-wat">{st.wat}</span>
+                  {st.nr === 3 && (
+                    <span className="stijl-stap-wat">
+                      Nu op {aandeelTekst} van de opmaak. Elk scherm dat om is, is hierboven
+                      terug te zien als een lager getal.
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
 
         {/* ── Waarom je hier kijkt ── */}
         <div className="card section">
