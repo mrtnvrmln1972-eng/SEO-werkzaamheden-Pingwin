@@ -439,7 +439,13 @@ export function meet(): Meting {
     inlineTotaal += stukken.length;
     let vastHier = 0;
     for (const stuk of stukken) {
-      const heeftVast = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\d+(\.\d+)?px/.test(stuk);
+      // Alleen wat een opmaakkeuze IS telt mee. Een kolombreedte, een minimale
+      // hoogte of een flex-basis is een indelingsmaat: die hoort in het scherm en
+      // niet op de schaal, en meetellen maakte de meter een lijst die nooit nul kan
+      // worden. Dan is hij geen werklijst meer maar ruis.
+      const zonderLayout = stuk.replace(
+        /\b(width|minWidth|maxWidth|height|minHeight|maxHeight|flex|flexBasis|top|left|right|bottom|transform|gridTemplateColumns)\s*:\s*[^,}]+/g, "");
+      const heeftVast = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\d+(\.\d+)?px/.test(zonderLayout);
       if (heeftVast) { vastHier++; inlineVast++; }
       inlineKleuren.push(...kleurenIn(stuk));
       // Ook hier geldt: een scherm dat `fontSize: "var(--fs-sm)"` schrijft doet

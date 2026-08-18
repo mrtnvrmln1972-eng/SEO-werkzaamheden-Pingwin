@@ -826,15 +826,11 @@
   ],
   "inline": {
     "totaal": 622,
-    "metVasteWaarde": 46,
+    "metVasteWaarde": 34,
     "perBestand": [
       {
         "bestand": "app/admin/financien/page.tsx",
-        "aantal": 10
-      },
-      {
-        "bestand": "app/admin/developer/DeveloperOverview.tsx",
-        "aantal": 6
+        "aantal": 7
       },
       {
         "bestand": "app/admin/usage/page.tsx",
@@ -842,10 +838,6 @@
       },
       {
         "bestand": "app/admin/client/[slug]/MetaCtrPanel.tsx",
-        "aantal": 4
-      },
-      {
-        "bestand": "app/admin/client/[slug]/PagesPanel.tsx",
         "aantal": 4
       },
       {
@@ -857,7 +849,7 @@
         "aantal": 2
       },
       {
-        "bestand": "app/admin/client/[slug]/pagina-chat/AfwijsVenster.tsx",
+        "bestand": "app/admin/client/[slug]/PagesPanel.tsx",
         "aantal": 2
       },
       {
@@ -878,6 +870,10 @@
       },
       {
         "bestand": "app/admin/client/[slug]/SelectionActions.tsx",
+        "aantal": 1
+      },
+      {
+        "bestand": "app/admin/client/[slug]/pagina-chat/AfwijsVenster.tsx",
         "aantal": 1
       },
       {
