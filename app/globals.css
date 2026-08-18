@@ -6429,7 +6429,12 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
   padding: 0 var(--ruimte-regel);
   font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht);
 }
-.btn-klein { padding: var(--ruimte-naast) var(--ruimte-regel); font-size: var(--type-bijschrift); align-self: flex-start; }
+/* De compacte maat. Bewust één stap kleiner dan hij was: toen alle knoppen op
+   het knopsysteem gingen (18-08-2026) werd de klantenlijst er 477 pixels langer
+   van, want de oude tabelknoppen waren krapper dan .btn-klein. Eén systeem mag
+   geen dichtheid kosten, dus is de maat hier aangepast in plaats van dat er een
+   uitzondering per tabel bij kwam. */
+.btn-klein { padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-label); line-height: var(--regel-label); align-self: flex-start; }
 
 /* ── De volledige beschrijving, bij het punt zelf ─────────────────
    Stond eerst als link naar /uitleg#agenda, en dan zocht je in een lang
