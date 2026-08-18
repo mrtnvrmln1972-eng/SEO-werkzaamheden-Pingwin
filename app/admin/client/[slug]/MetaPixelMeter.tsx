@@ -6,8 +6,8 @@ import { metaPixelInfo, type MetaKind } from "@/lib/meta-rules";
 // exact dezelfde meting als de server (lib/meta-rules.ts is de enige bron).
 const STATUS_STYLE: Record<string, { bar: string; text: string; woord: string }> = {
   ok: { bar: "#2e9e5b", text: "var(--kleur-goed)", woord: "past" },
-  bijna: { bar: "#f0a020", text: "#b26a00", woord: "past, bijna vol" },
-  kort: { bar: "#f0a020", text: "#b26a00", woord: "te kort, ruimte over" },
+  bijna: { bar: "#f0a020", text: "var(--kleur-let-op)", woord: "past, bijna vol" },
+  kort: { bar: "#f0a020", text: "var(--kleur-let-op)", woord: "te kort, ruimte over" },
   over: { bar: "#d64545", text: "var(--bad)", woord: "te lang, wordt afgekapt" },
 };
 

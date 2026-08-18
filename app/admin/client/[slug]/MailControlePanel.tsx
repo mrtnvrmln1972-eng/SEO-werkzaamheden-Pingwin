@@ -48,9 +48,9 @@ type Controle = {
 };
 
 const LABEL: Record<string, { tekst: string; kleur: string }> = {
-  goed: { tekst: "staat goed", kleur: "#1a7f37" },
-  deels: { tekst: "half", kleur: "#b26a00" },
-  niet: { tekst: "staat er niet", kleur: "#b42318" },
+  goed: { tekst: "staat goed", kleur: "var(--kleur-goed)" },
+  deels: { tekst: "half", kleur: "var(--kleur-let-op)" },
+  niet: { tekst: "staat er niet", kleur: "var(--bad)" },
   onmeetbaar: { tekst: "kon ik niet meten", kleur: "#667085" },
   vervallen: { tekst: "vervallen", kleur: "#3538cd" },
 };

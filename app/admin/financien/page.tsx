@@ -96,15 +96,15 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
     ? `${MONTH_NAMES[Number(p.slice(4, 6)) - 1]} ${year}`
     : `heel ${year}`;
 
-  const wrap: React.CSSProperties = { maxWidth: 1080, margin: "0 auto", padding: "28px 20px 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#1f2937" };
-  const card: React.CSSProperties = { border: "1px solid #eadfce", borderRadius: 12, background: "#fff", padding: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
+  const wrap: React.CSSProperties = { maxWidth: 1080, margin: "0 auto", padding: "28px 20px 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "var(--kleur-kop)" };
+  const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: 12, background: "#fff", padding: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
   const pill = (active: boolean): React.CSSProperties => ({
     padding: "6px 14px", borderRadius: 999, fontSize: 14, textDecoration: "none",
-    border: "1px solid " + (active ? "var(--accent-warm)" : "#eadfce"),
+    border: "1px solid " + (active ? "var(--accent-warm)" : "var(--kleur-rand-zacht)"),
     background: active ? "var(--accent-warm)" : "#fff",
     color: active ? "#fff" : "var(--text-secondary)",
   });
-  const th: React.CSSProperties = { textAlign: "right", padding: "8px 10px", borderBottom: "2px solid #eadfce", fontSize: 13, color: "var(--label-muted)", fontWeight: 600 };
+  const th: React.CSSProperties = { textAlign: "right", padding: "8px 10px", borderBottom: "2px solid var(--kleur-rand-zacht)", fontSize: 13, color: "var(--label-muted)", fontWeight: 600 };
   const td: React.CSSProperties = { padding: "8px 10px", borderBottom: "1px solid var(--kleur-rand-zacht)", fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" };
 
   return (
@@ -194,26 +194,26 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
                       </Link>
                     </th>
                   ))}
-                  <th style={{ ...th, borderLeft: "2px solid #eadfce" }}>totaal</th>
+                  <th style={{ ...th, borderLeft: "2px solid var(--kleur-rand-zacht)" }}>totaal</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>Opbrengsten</td>
                   {months.map((m, i) => <td key={i} style={td}>{euro(m.totalRevenue)}</td>)}
-                  <td style={{ ...td, fontWeight: 700, borderLeft: "2px solid #eadfce" }}>{euro(sum((m) => m.totalRevenue))}</td>
+                  <td style={{ ...td, fontWeight: 700, borderLeft: "2px solid var(--kleur-rand-zacht)" }}>{euro(sum((m) => m.totalRevenue))}</td>
                 </tr>
                 <tr>
                   <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>Kosten</td>
                   {months.map((m, i) => <td key={i} style={td}>{euro(m.totalExpenses)}</td>)}
-                  <td style={{ ...td, fontWeight: 700, borderLeft: "2px solid #eadfce" }}>{euro(sum((m) => m.totalExpenses))}</td>
+                  <td style={{ ...td, fontWeight: 700, borderLeft: "2px solid var(--kleur-rand-zacht)" }}>{euro(sum((m) => m.totalExpenses))}</td>
                 </tr>
                 <tr>
                   <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>Resultaat</td>
                   {months.map((m, i) => (
                     <td key={i} style={{ ...td, color: m.netProfit >= 0 ? "var(--good)" : "var(--bad)", fontWeight: 600 }}>{euro(m.netProfit)}</td>
                   ))}
-                  <td style={{ ...td, fontWeight: 700, borderLeft: "2px solid #eadfce", color: sum((m) => m.netProfit) >= 0 ? "var(--good)" : "var(--bad)" }}>{euro(sum((m) => m.netProfit))}</td>
+                  <td style={{ ...td, fontWeight: 700, borderLeft: "2px solid var(--kleur-rand-zacht)", color: sum((m) => m.netProfit) >= 0 ? "var(--good)" : "var(--bad)" }}>{euro(sum((m) => m.netProfit))}</td>
                 </tr>
               </tbody>
             </table>

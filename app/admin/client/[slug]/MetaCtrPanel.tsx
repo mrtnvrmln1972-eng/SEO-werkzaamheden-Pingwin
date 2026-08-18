@@ -60,7 +60,7 @@ const REDEN_LABEL: Record<Reden, { txt: string; bg: string; fg: string; uitleg: 
   klikwinst: { txt: "klikwinst", bg: "var(--kleur-let-op-vlak)", fg: "var(--kleur-let-op)", uitleg: "Wordt goed gevonden, maar krijgt te weinig klikken voor zijn positie." },
   kapot: { txt: "meta niet in orde", bg: "var(--kleur-fout-vlak)", fg: "var(--bad)", uitleg: "De meta ontbreekt of valt buiten de regels (lengte, pijp, vierkante haken)." },
   goed: { txt: "staat al goed", bg: "var(--kleur-goed-vlak)", fg: "var(--kleur-goed)", uitleg: "Niets aan de hand; staat hier zodat je ziet dat de pagina bekeken is." },
-  onbekend: { txt: "nog niet gemeten", bg: "var(--kleur-rustig)", fg: "#777", uitleg: "Deze pagina is nog niet gelezen, dus we weten niet of zijn meta deugt. Druk op \u201cMeet de pagina\u2019s\u201d." },
+  onbekend: { txt: "nog niet gemeten", bg: "var(--kleur-rustig)", fg: "var(--brand-taupe)", uitleg: "Deze pagina is nog niet gelezen, dus we weten niet of zijn meta deugt. Druk op \u201cMeet de pagina\u2019s\u201d." },
 };
 
 function pad(url: string): string {
@@ -77,7 +77,7 @@ const STATUS_LABEL: Record<string, { txt: string; bg: string; fg: string }> = {
   open: { txt: "voorstel klaar", bg: "var(--kleur-let-op-vlak)", fg: "var(--kleur-let-op)" },
   goedgekeurd: { txt: "goedgekeurd, wacht op site", bg: "var(--brand-blue-light)", fg: "#1a5da6" },
   doorgevoerd: { txt: "live", bg: "var(--kleur-goed-vlak)", fg: "var(--kleur-goed)" },
-  afgewezen: { txt: "afgewezen", bg: "var(--kleur-rustig)", fg: "#777" },
+  afgewezen: { txt: "afgewezen", bg: "var(--kleur-rustig)", fg: "var(--brand-taupe)" },
 };
 
 // Vast herkenningspunt per rij, zodat een ander scherm hierheen kan scrollen.

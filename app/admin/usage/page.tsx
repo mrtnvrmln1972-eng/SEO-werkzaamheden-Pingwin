@@ -61,7 +61,7 @@ function Hint({ text }: { text: string }) {
       title={text}
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        width: 16, height: 16, borderRadius: "50%", background: "#eadfce",
+        width: 16, height: 16, borderRadius: "50%", background: "var(--kleur-rand-zacht)",
         color: "var(--label-muted)", fontSize: 11, fontWeight: 700, cursor: "help",
         marginLeft: 6, verticalAlign: "text-bottom", flex: "0 0 auto",
       }}
@@ -155,8 +155,8 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   }
   const ahrefsTotals = byService.get("ahrefs");
 
-  const wrap: React.CSSProperties = { maxWidth: 1320, margin: "0 auto", padding: "26px 24px 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "#1f2937" };
-  const card: React.CSSProperties = { border: "1px solid #eadfce", borderRadius: 12, background: "#fff", padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
+  const wrap: React.CSSProperties = { maxWidth: 1320, margin: "0 auto", padding: "26px 24px 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "var(--kleur-kop)" };
+  const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: 12, background: "#fff", padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
   // Let op: de globale stylesheet geeft thead th een donkere achtergrond; de
   // koptekst moet dus wit zijn. Nooit laten omvallen: nowrap op koppen en cijfers.
   const th: React.CSSProperties = { textAlign: "left", padding: "8px 12px", fontSize: 12, color: "#fff", fontWeight: 700, whiteSpace: "nowrap" };
@@ -185,7 +185,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
                 href={`/admin/usage?period=${p.key}`}
                 style={{
                   padding: "var(--s-1) var(--s-3)", borderRadius: "var(--r-full)", fontSize: "var(--fs-sm)", textDecoration: "none",
-                  border: "1px solid " + (p.key === period ? "var(--accent-warm)" : "#eadfce"),
+                  border: "1px solid " + (p.key === period ? "var(--accent-warm)" : "var(--kleur-rand-zacht)"),
                   background: p.key === period ? "var(--accent-warm)" : "var(--white)",
                   color: p.key === period ? "var(--white)" : "var(--text-secondary)",
                 }}
