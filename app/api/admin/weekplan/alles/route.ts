@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope } from "../../../../../lib/admin-scope";
+import { vensterKlant } from "../../../../../lib/klantvenster";
 import { getWeekplanAlleKlanten, isoWeek } from "../../../../../lib/weekplan";
 import { getWeekplanPages } from "../../../../../lib/overview";
 import { urlKey } from "../../../../../lib/url-key";
@@ -20,7 +21,9 @@ export async function GET(req: NextRequest) {
   const scope = await getAdminScope(req);
   if (!scope) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
 
-  const tasks = await getWeekplanAlleKlanten(scope.allowedSlugs);
+  // In een klantvenster gaat dit overzicht alleen over die ene klant.
+  const venster = vensterKlant();
+  const tasks = await getWeekplanAlleKlanten(venster ? [venster] : scope.allowedSlugs);
 
   // De fase-standen erbij, maar alleen voor de klanten die hier echt in beeld
   // komen, en alleen voor de pagina's die aan een kaart hangen. Alle negentien

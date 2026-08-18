@@ -6,6 +6,7 @@ import {
 import { replaceTasks, type TaskRow } from "../../../../lib/tasks";
 import { saveFocus, type ClientFocus } from "../../../../lib/focus";
 import { setClientBudget } from "../../../../lib/clients";
+import { vensterPoort } from "../../../../lib/klantvenster";
 
 export const runtime = "nodejs";
 
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
   if (!slug) {
     return NextResponse.json({ ok: false, error: "Geen klant (slug) opgegeven." }, { status: 400 });
   }
+  const weg = vensterPoort(slug); if (weg) return weg;
 
   const result = { emails: 0, metrics: 0, keywords: 0, pages: 0, status: 0, tasks: 0 };
   try {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { getSetting, setSetting, SETTING_GOOGLE_ACCOUNT, SETTING_GMB_UITNODIGING } from "../../../../../lib/settings";
+import { vensterPoort } from "../../../../../lib/klantvenster";
 
 export const runtime = "nodejs";
 
@@ -8,6 +9,7 @@ export const runtime = "nodejs";
 // toegang vragen, en met welke tekst. Eén keer instellen voor heel Pingwin, niet
 // per klant: het adres is hetzelfde en de tekst hoort dat ook te zijn.
 export async function GET(req: NextRequest) {
+  const weg = vensterPoort(); if (weg) return weg;
   if (!verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value)) {
     return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   }
@@ -19,6 +21,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const weg = vensterPoort(); if (weg) return weg;
   if (!verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value)) {
     return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   }

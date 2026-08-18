@@ -36,20 +36,25 @@ verkeerde scherm blijkt te hebben gewerkt.
 
 ---
 
-## Stap 1: klaarzetten (er verandert nog niets zichtbaars)
+## Stap 1: het slot (klaar, 18-08-2026)
 
-**Wat er gebeurt.** Nationaal Oogcentrum wordt aangemaakt als klant in het Pingwin-dashboard,
-met domein `laatjeogenlaseren.nl`. Zonder eigen klantlogin, want NOC hoort in de cockpit en heeft
-geen klantdashboard nodig. Daarnaast bouw ik het slot voor de NOC-voordeur: één instelling die
-zegt "op dit adres bestaat alleen deze klant", en die dat afdwingt op elk scherm en elke knop,
-niet als afspraak maar hard. Er komt meteen een proef bij die de bouw laat mislukken zodra er
-ooit een scherm bijkomt dat zich er niet aan houdt.
+**Wat er gebeurt.** Het slot voor de NOC-voordeur: één instelling die zegt "op dit adres bestaat
+alleen deze klant", hard afgedwongen op elk scherm, elke knop en elke schermfoto. Het werkt
+omgekeerd aan een lijst met verboden schermen, want zo'n lijst veroudert zodra er een scherm
+bijkomt: alles is dicht behalve de cockpit van die ene klant en de inlogschermen. Het zit vóór de
+rechten, dus het houdt ook de eigenaar tegen. De automatische nachtronden draaien er niet, zodat
+werk niet dubbel gebeurt. Een proef rekent bij elke bouw na dat elke route aan de beheerkant een
+poort heeft; een nieuw scherm is daarmee vanzelf dicht op de voordeur.
 
-**Wat jij doet.** Niets, behalve later even kijken of de klantkaart klopt.
+**Wat er níet meer apart hoeft.** Nationaal Oogcentrum met de hand aanmaken. De klantkaart
+ontstaat vanzelf bij de verhuizing in stap 2, met domein `laatjeogenlaseren.nl`, zonder
+klantlogin en **zonder budget, uren of facturatie**: dit is Maartens eigen tak, geen betalende
+SEO-klant, dus die velden blijven leeg en de klant telt niet mee in de financiën.
 
-**Wat je daarna ziet.** Een lege NOC in je klantenlijst. De NOC-cockpit werkt gewoon door.
+**Wat jij doet.** Niets. Zolang de instelling nergens aanstaat verandert er niets aan het
+dashboard zoals je het kent.
 
-**Als het misgaat.** Klant weer weghalen, verder is er niets geraakt.
+**Als het misgaat.** De instelling nergens zetten en het slot slaapt.
 
 ## Stap 2: de verhuizing, één klik
 
@@ -122,10 +127,15 @@ aantoonbaar dicht zijn.
 3. **De deur wordt nagerekend, niet onthouden.** Een proef bewaakt dat de NOC-voordeur alleen NOC
    toont, zodat een later toegevoegd scherm dat niet stilletjes kan doorbreken.
 
+## Stand
+
+- Stap 1: klaar op 18-08-2026. Het slot staat in de code en slaapt tot het ergens aangezet wordt.
+- Stap 2 tot en met 5: nog te doen, in deze volgorde.
+
 ## Technisch voetnootje
 
 Vierenzeventig van de negenennegentig tabellen zijn klantgebonden via `client_slug`; de
 verhuizing is daardoor generiek in plaats van een handmatige lijst, met een aparte pas langs de
 tabellen die anders sleutelen (`oauth_tokens`, `page_redirects`, `page_canni_rows`, agenda).
-Het slot komt op de bestaande scope-poort (`lib/admin-scope.ts`, `guardSlug`) plus middleware, met
-een nieuwe proef in `proeven/`.
+Het slot is `WERELD_KLANT` in `lib/klantvenster.ts`, aangehaakt op de bestaande scope-poort
+(`lib/admin-scope.ts`) plus de middleware, en bewaakt door `proeven/klantvenster.proef.ts`.

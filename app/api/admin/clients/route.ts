@@ -13,8 +13,9 @@ export async function GET(req: NextRequest) {
   // van een verkeerd gespelde klantnaam). Alleen voor de eigenaar, en het mag
   // het scherm niet ophouden, dus zonder erop te wachten.
   if (scope.isOwner) void opruimWeesOrgData().catch(() => 0);
-  // Gast: alleen de klanten waar hij toegang toe heeft.
-  const clients = scope.isOwner ? all : all.filter((c) => canAccessSlug(scope, c.slug));
+  // Gast: alleen de klanten waar hij toegang toe heeft. In een klantvenster geldt
+  // diezelfde filter ook voor de eigenaar, want daar bestaat maar één klant.
+  const clients = all.filter((c) => canAccessSlug(scope, c.slug));
   return NextResponse.json({ ok: true, clients });
 }
 

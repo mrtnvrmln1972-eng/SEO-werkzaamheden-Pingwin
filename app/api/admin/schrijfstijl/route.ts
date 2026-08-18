@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { getSchrijfstijl, setSchrijfstijl, leidSchrijfstijlAf } from "../../../../lib/schrijfstijl";
+import { vensterPoort } from "../../../../lib/klantvenster";
 
 export const runtime = "nodejs";
 // Het afleiden bevraagt de mailbox per klant; dat is een reeks aanroepen.
@@ -11,6 +12,7 @@ function admin(req: NextRequest): boolean {
 }
 
 export async function GET(req: NextRequest) {
+  const weg = vensterPoort(); if (weg) return weg;
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   return NextResponse.json({ ok: true, stijl: await getSchrijfstijl() });
 }
@@ -21,6 +23,7 @@ export async function GET(req: NextRequest) {
  * POST met `{ opnieuw: true }` leidt hem opnieuw af uit de mailbox.
  */
 export async function POST(req: NextRequest) {
+  const weg = vensterPoort(); if (weg) return weg;
   if (!admin(req)) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }

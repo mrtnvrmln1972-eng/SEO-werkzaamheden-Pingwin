@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { maakSchermafbeelding } from "../../../../lib/schermbeeld";
+import { magVensterPad, vensterGeweigerd } from "../../../../lib/klantvenster";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -42,6 +43,10 @@ export async function GET(req: NextRequest) {
   if (!pad.startsWith("/") || pad.startsWith("//") || pad.includes("://")) {
     return NextResponse.json({ ok: false, error: "Geef een pad op dit domein, bijvoorbeeld /admin/client/kamsteeg?tab=werkzaamheden." }, { status: 400 });
   }
+  // In een klantvenster mag deze foto niet meer laten zien dan het scherm zelf:
+  // hetzelfde pad-slot als de middleware, anders zou je hier alsnog een blik op
+  // een andere klant kunnen halen.
+  if (!magVensterPad(pad)) return vensterGeweigerd();
   const basis = req.nextUrl.origin;
   // Extra wachttijd vóór de foto, in milliseconden (?wacht=5000). Nodig voor een
   // scherm dat zijn lijst zelf nabezorgt: dat staat na het laden nog even op

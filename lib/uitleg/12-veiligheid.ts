@@ -37,6 +37,22 @@ export const HOOFDSTUK: Hoofdstuk = {
         "onderdeel.",
     },
     {
+      titel: "Een omgeving die maar één klant kan tonen",
+      kern: "Eén adres, één klant, alles daarbuiten bestaat er niet.",
+      tekst:
+        "Naast het gewone dashboard kan hetzelfde systeem op een tweede adres draaien dat maar één klant " +
+        "toont, met dezelfde gegevens erachter. Bedoeld om je scherm mee te delen en om er iemand van buiten " +
+        "in te laten zonder dat er ooit een andere klant in beeld komt.\n\n" +
+        "Dat slot werkt omgekeerd aan een lijst met verboden schermen, want zo'n lijst veroudert zodra er een " +
+        "scherm bijkomt. Hier is alles dicht behalve wat expliciet openstaat: de cockpit van die ene klant en " +
+        "de inlogschermen. De klantenlijst, financiën, prognose, agenda, verbruik en teambeheer bestaan er " +
+        "niet, en ook een schermfoto kan niet buiten die klant kijken. Het slot zit vóór de rechten, dus het " +
+        "houdt ook de eigenaar tegen. De automatische ronden draaien er niet, zodat nachtwerk niet dubbel " +
+        "gebeurt op dezelfde gegevens.\n\n" +
+        "Een proef rekent bij elke bouw na dat elke route aan de beheerkant een poort heeft; een nieuw scherm " +
+        "is daarmee vanzelf dicht op zo'n voordeur.",
+    },
+    {
       titel: "Twee poorten in plaats van één",
       kern: "Snelle afwijzing aan de rand, echte controle in de kern.",
       tekst:

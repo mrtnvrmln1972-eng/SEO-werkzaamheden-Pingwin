@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, getAdminPrincipal, parseViewAsToken } from "./admin-auth"
 import { ADMIN_VIEWAS_COOKIE } from "./constants";
 import { getTeamUserById } from "./team-users";
 import { setAhrefsContext } from "./ahrefs";
+import { vensterKlant, magVensterSlug, vensterGeweigerd } from "./klantvenster";
 
 // ═══════════════════════════════════════════════════════════
 // TOEGANGSBEREIK (scope) van de ingelogde adminsessie
@@ -44,6 +45,22 @@ export async function getScopeFromCookie(
 ): Promise<AdminScope | null> {
   const principal = getAdminPrincipal(value);
   if (!principal) return null;
+  return venstert(await scopeVoor(principal, viewAsValue));
+}
+
+// Draait deze omgeving op één klant (het klantvenster), dan krijgt elke sessie
+// die ene klant als bereik, ook de eigenaar. Zo filtert elk scherm dat de lijst
+// gebruikt vanzelf mee, en hoeft dat nergens apart geregeld te worden.
+function venstert(scope: AdminScope | null): AdminScope | null {
+  const venster = vensterKlant();
+  if (!scope || !venster) return scope;
+  return { ...scope, allowedSlugs: [venster] };
+}
+
+async function scopeVoor(
+  principal: NonNullable<ReturnType<typeof getAdminPrincipal>>,
+  viewAsValue?: string | undefined | null,
+): Promise<AdminScope | null> {
 
   // Claude die meekijkt: ziet alles wat Maarten ziet, mag niets veranderen.
   // isOwner false houdt hem uit de eigenaar-only routes (klant aanmaken,
@@ -107,6 +124,9 @@ export async function getAdminScope(req: NextRequest): Promise<AdminScope | null
 // Mag deze scope bij deze klant (slug)? Owner: altijd. Gast: alleen als de slug
 // in zijn lijst staat.
 export function canAccessSlug(scope: AdminScope, slug: string): boolean {
+  // Het klantvenster gaat vóór alle rechten: draait deze omgeving op één klant,
+  // dan bestaat een andere klant hier niet, ook niet voor de eigenaar.
+  if (!magVensterSlug(slug)) return false;
   if (scope.isOwner || scope.allowedSlugs === null) return true;
   const s = (slug || "").trim().toLowerCase();
   if (!s) return false;
@@ -116,6 +136,7 @@ export function canAccessSlug(scope: AdminScope, slug: string): boolean {
 // Mag deze scope op deze klant (slug) schrijven? Owner en canEdit=true: altijd.
 // Anders alleen als de slug in het per-klant schrijfrecht (editSlugs) staat.
 export function canEditSlug(scope: AdminScope, slug: string): boolean {
+  if (!magVensterSlug(slug)) return false;
   if (scope.isOwner || scope.canEdit || scope.editSlugs === null) return true;
   const s = (slug || "").trim().toLowerCase();
   if (!s) return false;
@@ -192,9 +213,13 @@ export async function guardDev(
 }
 
 // Poort voor eigenaar-only routes (klant aanmaken/verwijderen, team beheren).
+// Dat zijn stuk voor stuk bureau-brede zaken, dus in een klantvenster bestaan ze
+// niet. Blijkt een van deze routes tóch bij één klant te horen, zet hem dan om
+// naar `guardSlug`; daar hoort hij dan ook thuis.
 export async function guardOwner(
   req: NextRequest,
 ): Promise<{ ok: true; scope: AdminScope } | { ok: false; res: NextResponse }> {
+  if (vensterKlant()) return { ok: false, res: vensterGeweigerd() };
   const scope = await getAdminScope(req);
   if (!scope) {
     return { ok: false, res: NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 }) };

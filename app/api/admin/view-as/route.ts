@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, getAdminPrincipal, makeViewAsToken } from "../../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../../lib/constants";
 import { getTeamUserById } from "../../../../lib/team-users";
+import { vensterPoort } from "../../../../lib/klantvenster";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,7 @@ function isRealOwner(req: NextRequest): boolean {
 }
 
 export async function POST(req: NextRequest) {
+  const weg = vensterPoort(); if (weg) return weg;
   if (!isRealOwner(req)) {
     return NextResponse.json({ ok: false, error: "Alleen de eigenaar mag dit." }, { status: 403 });
   }
@@ -38,6 +40,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const weg = vensterPoort(); if (weg) return weg;
   if (!isRealOwner(req)) {
     return NextResponse.json({ ok: false, error: "Alleen de eigenaar mag dit." }, { status: 403 });
   }

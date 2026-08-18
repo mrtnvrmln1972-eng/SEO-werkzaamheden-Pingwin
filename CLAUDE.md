@@ -427,6 +427,12 @@ legacy/                    Oude losse HTML-versies (referentie)
 - `ONE_DAY_CLINIC_PASSWORD` bestaat nog maar is ONGEBRUIKT (klant zit nu in DB).
 - `AHREFS_PRIJS_PER_UNIT_USD` (optioneel): prijs per Ahrefs-unit in dollar, voor de echte marge per klant op `/admin/usage`. Zet hem op (je maandbedrag bij Ahrefs) gedeeld door (units in je abonnement). Niet ingesteld = Ahrefs telt nog met €0 mee in de marge.
 - `CLAUDE_MAANDBUDGET_USD` (optioneel): maandbudget voor de Claude-teller in de kopbalk.
+- `WERELD_KLANT` (optioneel, **alleen op een klantvoordeur, nooit op het Pingwin-project**): de slug
+  van de enige klant die die omgeving mag tonen. Staat hij aan, dan bestaat er daar geen andere
+  klant, geen klantenlijst, geen financiën, prognose, agenda, verbruik of teambeheer, kan een
+  schermfoto niet buiten die klant kijken en draaien de nachtronden er niet mee. Het slot zit vóór
+  de rechten, dus het houdt ook de eigenaar tegen. Uitleg in `lib/klantvenster.ts`, bewaakt door
+  `proeven/klantvenster.proef.ts`, plan in `NOC-NAAR-PINGWIN.md`.
 
 Lokaal staan deze in `.env.local` (gitignored). De DB-vars zijn afgeschermd; lokaal draaien tegen de echte DB werkt daardoor niet, test op productie.
 

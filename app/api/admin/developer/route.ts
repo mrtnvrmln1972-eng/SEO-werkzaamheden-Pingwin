@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardDev } from "../../../../lib/admin-scope";
+import { magVensterSlug, vensterPoort } from "../../../../lib/klantvenster";
 import {
   getDeveloperTasks, saveDeveloperOrder, setDeveloperStatus, setOwnerDone,
   nieuweDevTaak, bewerkDevTaak, voegDevDocToe, verwijderDevDoc, verwijderDevTaak,
@@ -18,7 +19,10 @@ const MAX_BYTES = 20 * 1024 * 1024;
 export async function GET(req: NextRequest) {
   // Cross-client developer-overzicht: de eigenaar en de developer zelf.
   const g = await guardDev(req); if (!g.ok) return g.res;
-  return NextResponse.json({ ok: true, tasks: await getDeveloperTasks() });
+  const tasks = await getDeveloperTasks();
+  // In een klantvenster blijft dit overzicht bestaan, maar dan met alleen de
+  // taken van die ene klant.
+  return NextResponse.json({ ok: true, tasks: tasks.filter((t) => magVensterSlug(t.clientSlug)) });
 }
 
 // De naam bij een gast-id, met een nette terugval. Een melding zonder naam is
@@ -39,6 +43,7 @@ export async function POST(req: NextRequest) {
     const form = await req.formData().catch(() => null);
     if (!form) return NextResponse.json({ ok: false, error: "Geen bestand ontvangen." }, { status: 400 });
     const clientSlug = String(form.get("clientSlug") || "").trim();
+    const wegF = vensterPoort(clientSlug); if (wegF) return wegF;
     const taskKey = String(form.get("taskKey") || "").trim();
     const file = form.get("file");
     if (!clientSlug || !taskKey) return NextResponse.json({ ok: false, error: "Taak ontbreekt." }, { status: 400 });
@@ -62,6 +67,7 @@ export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
   const clientSlug = String(body.clientSlug || "").trim();
+  const weg = vensterPoort(clientSlug); if (weg) return weg;
   const taskKey = String(body.taskKey || "").trim();
 
   // Actie "status": één taak afvinken (klaar/niet klaar) + terugkoppeling opslaan.

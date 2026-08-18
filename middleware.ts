@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, ADMIN_COOKIE } from "./lib/constants";
+import { vensterKlant, magVensterPad, vensterStartPad } from "./lib/klantvenster";
 
 // Eerste poort (Edge): kijkt alleen of de juiste cookie aanwezig is. De
 // échte handtekening-controle gebeurt in Node (de pagina's zelf verifiëren
@@ -7,6 +8,28 @@ import { SESSION_COOKIE, ADMIN_COOKIE } from "./lib/constants";
 // Edge-runtime ondersteunt Node's crypto niet.
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
+
+  // ── Klantvenster: deze omgeving toont maar één klant ──
+  // Alleen actief als WERELD_KLANT ingesteld is (zie lib/klantvenster.ts).
+  // De echte controle gebeurt verderop in Node, bij elke route; dit is de
+  // voorpoort die voorkomt dat er überhaupt een verkeerd scherm opent.
+  // Automatische ronden horen bij het gewone dashboard, niet bij een venster.
+  // Zou de planner ze hier ook aanroepen, dan draait elk nachtwerk dubbel op
+  // dezelfde gegevens. Zonder venster gaan ze gewoon door.
+  if (path.startsWith("/api/cron/")) {
+    return vensterKlant()
+      ? NextResponse.json({ ok: true, overgeslagen: "klantvenster" })
+      : NextResponse.next();
+  }
+
+  if (vensterKlant()) {
+    if (!magVensterPad(path)) {
+      const url = req.nextUrl.clone();
+      url.pathname = vensterStartPad();
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+  }
 
   // Maarten met een admin-sessie hoort nooit op de klant-login of het
   // klantdashboard te stranden: stuur hem door naar zijn cockpit (daar
@@ -46,5 +69,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/dashboard/:path*", "/admin", "/admin/:path*"],
+  matcher: ["/login", "/dashboard/:path*", "/admin", "/admin/:path*", "/api/cron/:path*"],
 };

@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope } from "../../../../../lib/admin-scope";
 import { callClaude, anthropicConfigured } from "../../../../../lib/anthropic";
+import { vensterPoort } from "../../../../../lib/klantvenster";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // Zet een SEO-analyse om in een nette, begrijpelijke e-mail voor de klant.
 export async function POST(req: NextRequest) {
+  const weg = vensterPoort(); if (weg) return weg;
   const scope = await getAdminScope(req);
   if (!scope) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   if (!scope.canEdit) return NextResponse.json({ ok: false, error: "Je hebt nog geen rechten om deze actie uit te voeren." }, { status: 403 });
