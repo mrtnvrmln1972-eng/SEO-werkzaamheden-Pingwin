@@ -20,10 +20,10 @@
     "nog steeds te veel, maar het houdt geen bouw meer tegen."
   ],
   "plafond": {
-    "kleuren": 64,
-    "lettergroottes": 1,
+    "kleuren": 40,
+    "lettergroottes": 0,
     "rondingen": 4,
-    "schaduwen": 7,
+    "schaduwen": 2,
     "afstanden": 2,
     "inlineOpmaak": 0
   },

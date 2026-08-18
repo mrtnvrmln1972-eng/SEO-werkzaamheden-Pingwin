@@ -92,7 +92,7 @@ export const WIJZIG_EVENT = "pingwin-proefstijl-gewijzigd";
 /** De tokens die deze proefstijl overschrijft. Alles hierbuiten blijft staan. */
 const GESTUURD = [
   "--letter", "--orange", "--accent", "--orange-dark", "--orange-light", "--brand-orange-faint",
-  "--r-sm", "--r-md", "--r-lg", "--shadow-xs", "--shadow-sm", "--shadow-md", "--shadow-lg", "--shadow-xl", "--shadow-druk",
+  "--r-sm", "--r-md", "--r-lg", "--shadow-xs", "--shadow-sm", "--shadow-md", "--shadow-lg", "--shadow-xl", "--shadow-druk", "--shadow-xl-links", "--shadow-xl-boven",
   "--s-1", "--s-2", "--s-3", "--s-4", "--s-5", "--s-6", "--s-8", "--s-10", "--s-12",
   "--fs-xs", "--fs-sm", "--fs-base", "--fs-md", "--fs-lg", "--fs-xl", "--fs-2xl",
   "--lh-xs", "--lh-sm", "--lh-base", "--lh-md", "--lh-lg", "--lh-xl", "--lh-2xl",
@@ -165,6 +165,8 @@ export function themaTokens(thema: Thema, basis: (naam: string) => number): Reco
     : `0 ${8 * d}px ${24 * d}px rgba(51, 48, 46, ${0.1 * d}), 0 2px 6px rgba(51, 48, 46, ${0.06 * d})`;
   uit["--shadow-xl"] = d === 0 ? "none" : `0 ${12 * d}px ${36 * d}px rgba(0, 0, 0, ${0.22 * d})`;
   uit["--shadow-druk"] = d === 0 ? "none" : `0 ${2 * d}px ${6 * d}px rgba(51, 48, 46, ${0.24 * d})`;
+  uit["--shadow-xl-links"] = d === 0 ? "none" : `-${12 * d}px ${8 * d}px ${34 * d}px rgba(0, 0, 0, ${0.18 * d})`;
+  uit["--shadow-xl-boven"] = d === 0 ? "none" : `0 -${6 * d}px ${16 * d}px rgba(0, 0, 0, ${0.12 * d})`;
 
   return uit;
 }
