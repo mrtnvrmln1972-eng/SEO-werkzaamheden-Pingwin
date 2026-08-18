@@ -5,6 +5,7 @@ import { parseJsonSoepel } from "./json-herstel";
 import { callClaudeWebSearch } from "./anthropic";
 import { LEGE_VESTIGING, identiteit, naamKaal, ontbrekendeVelden, type OrgVestiging } from "./org-vereist";
 import crypto from "crypto";
+import { type DatumBron } from "./bron-datum";
 
 // ═══════════════════════════════════════════════════════════
 // BEDRIJFSGEGEVENS PER KLANT (fundament voor structured data)
@@ -60,12 +61,32 @@ export const EMPTY_ORG: OrgData = {
   artsen: [], merken: [], retourUrl: "", retourTermijn: "", verzendInfo: "", diensten: [],
 };
 
-export type OrgRecord = { data: OrgData; locked: boolean; shareToken: string; devShareToken: string; updatedAt: string | null; updatedBy: string };
+/**
+ * Van wanneer is één veld in dit formulier, en wie heeft het gezet?
+ *
+ * Per veld, niet voor het formulier als geheel. Dat verschil telt: met één datum
+ * voor alles verzet je met één keer opslaan de grens voor élk veld, en dan
+ * verliest een klantdocument van vorige week ineens van een adres dat je nooit
+ * hebt aangeraakt. Nu weet elk veld voor zichzelf wanneer hij voor het laatst is
+ * gezet, en alleen dát veld wordt daarmee vergeleken.
+ *
+ * De sleutel is het pad naar het veld: "telefoon", of "vestiging|<sleutel>|
+ * openingstijden". Zie plattePaden() hieronder.
+ */
+export type OrgVeldStempel = { datum: string; bron: DatumBron; waar: string };
+export type OrgVeldStempels = Record<string, OrgVeldStempel>;
+
+export type OrgRecord = {
+  data: OrgData; locked: boolean; shareToken: string; devShareToken: string;
+  updatedAt: string | null; updatedBy: string;
+  /** Per veld: wanneer die waarde er kwam en waar hij vandaan komt. */
+  veldStempels: OrgVeldStempels;
+};
 
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "org-data-a29c4282";
+const SCHEMA_VERSIE = "org-data-c9471ea7";
 
 function ensureTable(): Promise<void> {
   return eenmalig("org-data", SCHEMA_VERSIE, doEnsure);
@@ -84,6 +105,9 @@ async function doEnsure(): Promise<void> {
   // bewerkbare klant-link hierboven): eigen token, zodat de twee doelgroepen
   // nooit per ongeluk elkaars link (en rechten) in handen krijgen.
   await sql`ALTER TABLE client_org_data ADD COLUMN IF NOT EXISTS dev_share_token TEXT`;
+  // Per veld een datum, zodat "wat jij zelf invult wint" per veld geldt en niet
+  // voor het hele formulier tegelijk.
+  await sql`ALTER TABLE client_org_data ADD COLUMN IF NOT EXISTS veld_stempels JSONB`;
 }
 
 function normalize(raw: unknown): OrgData {
@@ -134,7 +158,53 @@ function rowToRecord(r: any): OrgRecord {
     devShareToken: (r.dev_share_token as string) || "",
     updatedAt: r.updated_at ? new Date(r.updated_at as string).toISOString() : null,
     updatedBy: (r.updated_by as string) || "",
+    veldStempels: (r.veld_stempels && typeof r.veld_stempels === "object" ? r.veld_stempels : {}) as OrgVeldStempels,
   };
+}
+
+/**
+ * Het formulier platgeslagen tot pad → waarde, zodat je twee versies veld voor
+ * veld kunt vergelijken.
+ *
+ * Vestigingen en artsen krijgen een sleutel die aan de rij hangt en niet aan zijn
+ * plek in de lijst: sleep je een vestiging naar boven, dan verhuizen zijn datums
+ * mee in plaats van bij de buurman te blijven hangen.
+ */
+/**
+ * De sleutel van één rij in een pad. Postcode bij een vestiging, BIG bij een
+ * persoon, anders de naam. Eén functie, want de kennisbank moet exact hetzelfde
+ * pad uitrekenen als het formulier; wijkt dat af, dan vindt hij de datum niet
+ * terug en wint er ineens niets meer.
+ */
+export const padSleutel = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+export function plattePaden(d: OrgData): Record<string, string> {
+  const uit: Record<string, string> = {};
+  const zet = (pad: string, waarde: unknown) => {
+    const v = String(waarde ?? "").trim();
+    if (v) uit[pad] = v;
+  };
+  const kaal = padSleutel;
+  for (const veld of ["bedrijfsnaam", "rechtsvorm", "kvk", "btw", "telefoon", "email", "straat", "postcode",
+    "plaats", "openingstijden", "logoUrl", "priceRange", "oprichtingsjaar", "reviewUrl", "reviewGemiddelde",
+    "reviewAantal", "bedrijfstype", "retourUrl", "retourTermijn", "verzendInfo"] as const) {
+    zet(veld, (d as unknown as Record<string, unknown>)[veld]);
+  }
+  for (const v of d.vestigingen || []) {
+    const k = kaal(v.postcode || "") || kaal(v.naam) || kaal(v.plaats);
+    if (!k) continue;
+    for (const veld of ["naam", "straat", "postcode", "plaats", "telefoon", "email", "openingstijden", "mapsUrl"] as const) {
+      zet(`vestiging|${k}|${veld}`, v[veld]);
+    }
+  }
+  for (const a of d.artsen || []) {
+    const k = kaal(a.big || "") || kaal(a.naam);
+    if (!k) continue;
+    for (const veld of ["functie", "specialisatie", "big", "fotoUrl", "profielUrl"] as const) {
+      zet(`arts|${k}|${veld}`, a[veld]);
+    }
+  }
+  return uit;
 }
 
 // Bestaat deze klant echt? Zonder deze controle maakte élke typefout in een
@@ -161,22 +231,45 @@ export async function getOrgData(slug: string): Promise<OrgRecord> {
     return rec;
   }
   // Nog geen rij: alleen aanmaken voor een klant die echt bestaat.
-  if (!(await klantBestaat(slug))) return { data: { ...EMPTY_ORG }, locked: false, shareToken: "", devShareToken: "", updatedAt: null, updatedBy: "" };
+  if (!(await klantBestaat(slug))) return { data: { ...EMPTY_ORG }, locked: false, shareToken: "", devShareToken: "", updatedAt: null, updatedBy: "", veldStempels: {} };
   const token = crypto.randomBytes(18).toString("base64url");
   const devToken = crypto.randomBytes(18).toString("base64url");
   await sql`INSERT INTO client_org_data (client_slug, data, share_token, dev_share_token) VALUES (${slug}, ${JSON.stringify(EMPTY_ORG)}, ${token}, ${devToken}) ON CONFLICT (client_slug) DO NOTHING`;
-  return { data: { ...EMPTY_ORG }, locked: false, shareToken: token, devShareToken: devToken, updatedAt: null, updatedBy: "" };
+  return { data: { ...EMPTY_ORG }, locked: false, shareToken: token, devShareToken: devToken, updatedAt: null, updatedBy: "", veldStempels: {} };
 }
 
-export async function saveOrgData(slug: string, data: OrgData, by: "admin" | "klant"): Promise<{ ok: boolean; error?: string }> {
+/**
+ * Opslaan, en meteen bijhouden welke velden er veranderd zijn.
+ *
+ * Elk veld dat een andere waarde krijgt, krijgt de datum van nu en de bron
+ * "handmatig": dat is een bewuste handeling van een mens. Alleen díe velden;
+ * de rest houdt de datum die hij had, want die is niet aangeraakt.
+ *
+ * `stempels` is voor de kennisbank: die zet zijn eigen datums (van het
+ * aangeleverde materiaal) en die horen niet als handwerk gestempeld te worden.
+ */
+export async function saveOrgData(slug: string, data: OrgData, by: "admin" | "klant", stempels?: OrgVeldStempels): Promise<{ ok: boolean; error?: string }> {
   await ensureSchema();
   await ensureTable();
   if (!(await klantBestaat(slug))) return { ok: false, error: "Deze klant bestaat niet (meer)." };
   const current = await getOrgData(slug);
   if (current.locked && by === "klant") return { ok: false, error: "Deze gegevens zijn vergrendeld; alleen Pingwin kan ze nog aanpassen." };
+  const schoon = normalize(data);
+  const nieuweStempels: OrgVeldStempels = { ...(stempels || current.veldStempels || {}) };
+  if (!stempels) {
+    const voor = plattePaden(current.data);
+    const na = plattePaden(schoon);
+    const nu = new Date().toISOString();
+    for (const [pad, waarde] of Object.entries(na)) {
+      if (voor[pad] === waarde) continue;
+      nieuweStempels[pad] = { datum: nu, bron: "handmatig", waar: by === "klant" ? "door de klant ingevuld" : "zelf ingevuld" };
+    }
+  }
   await sql`
-    INSERT INTO client_org_data (client_slug, data, updated_by, updated_at) VALUES (${slug}, ${JSON.stringify(normalize(data))}, ${by}, now())
-    ON CONFLICT (client_slug) DO UPDATE SET data = ${JSON.stringify(normalize(data))}, updated_by = ${by}, updated_at = now()`;
+    INSERT INTO client_org_data (client_slug, data, updated_by, updated_at, veld_stempels)
+    VALUES (${slug}, ${JSON.stringify(schoon)}, ${by}, now(), ${JSON.stringify(nieuweStempels)})
+    ON CONFLICT (client_slug) DO UPDATE SET data = ${JSON.stringify(schoon)}, updated_by = ${by}, updated_at = now(),
+      veld_stempels = ${JSON.stringify(nieuweStempels)}`;
   return { ok: true };
 }
 

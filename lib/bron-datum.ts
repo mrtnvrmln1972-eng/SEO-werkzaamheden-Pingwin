@@ -23,7 +23,7 @@
 // ═══════════════════════════════════════════════════════════
 
 /** Waar een datum vandaan komt. De volgorde hierboven, plus "onbekend". */
-export type DatumBron = "document" | "bestand" | "drive" | "geplakt" | "opgehaald" | "mail" | "onbekend";
+export type DatumBron = "document" | "bestand" | "drive" | "geplakt" | "handmatig" | "opgehaald" | "mail" | "onbekend";
 
 export type BronDatum = {
   /** ISO-datum, of leeg als er niets betrouwbaars te vinden was. */
@@ -40,6 +40,7 @@ const BRON_TEKST: Record<DatumBron, string> = {
   bestand: "datum van het bestand",
   drive: "laatst gewijzigd in Drive",
   geplakt: "door jou geplakt",
+  handmatig: "zelf ingevuld",
   opgehaald: "door ons opgehaald",
   mail: "datum van de mail",
   onbekend: "geen datum bekend",

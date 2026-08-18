@@ -18,7 +18,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { voegVeldenSamen, kennisNaarOrg, type KennisEntiteit, type VeldStempels } from "../lib/schema-knowledge";
-import { EMPTY_ORG } from "../lib/org-data";
+import { EMPTY_ORG, plattePaden } from "../lib/org-data";
+import { LEGE_VESTIGING } from "../lib/org-vereist";
 import { bruikbareDatum, datumUitBestand, isNieuwerDan, maakBronDatum, GEEN_DATUM } from "../lib/bron-datum";
 
 let fouten = 0;
@@ -125,6 +126,36 @@ const legeVulling = kennisNaarOrg(formulier, orgMet({ kvk: "12345678" }, MEI), "
 proef("een leeg veld wordt nog steeds gewoon gevuld, ook met ouder materiaal",
   legeVulling.data.kvk === "12345678" && legeVulling.vervangen.length === 0,
   "Aanvullen kan geen kwaad; er gaat niets verloren.");
+
+// ── 6b. Per veld een eigen datum, niet één datum voor het hele formulier ──
+// Met één datum voor alles verzet je met één keer opslaan de grens voor élk veld.
+// Dan verliest een klantdocument van vorige week ineens van een adres dat je nooit
+// hebt aangeraakt. Per veld is dat opgelost: alleen het veld dat je zelf hebt
+// gezet is "vers", de rest niet.
+const stempelsVanFormulier = {
+  openingstijden: { datum: AUG, bron: "handmatig" as const, waar: "zelf ingevuld" },
+};
+const gemengd = kennisNaarOrg(
+  { ...EMPTY_ORG, telefoon: "010-1111111", openingstijden: "ma-vr 9-17" },
+  orgMet({ openingstijden: "ma-vr 8-18", telefoon: "020-2222222" }, "2026-07-01T10:00:00.000Z"),
+  "", MEI, stempelsVanFormulier,
+);
+proef("een veld dat jij zelf later zette, blijft staan",
+  gemengd.data.openingstijden === "ma-vr 9-17",
+  "De openingstijden zijn door jou gezet in augustus; materiaal van juli mag daar niet overheen.");
+proef("en een veld dat je niet aanraakte beweegt gewoon mee",
+  gemengd.data.telefoon === "020-2222222",
+  "Dit is precies wat één datum voor het hele formulier onmogelijk maakte.");
+
+// Het pad van een vestiging moet aan de rij hangen, niet aan zijn plek in de
+// lijst; anders verhuizen de datums bij het slepen naar de buurman.
+const metVestiging = { ...EMPTY_ORG, vestigingen: [
+  { ...LEGE_VESTIGING, naam: "Loods 5 Maastricht", straat: "Sphinxcour 5", postcode: "6211 XZ", plaats: "Maastricht", openingstijden: "ma 11:00-17:30" },
+] };
+const paden = plattePaden(metVestiging);
+proef("een vestiging krijgt een pad dat aan de rij hangt",
+  Object.keys(paden).some((k) => k === "vestiging|6211-xz|openingstijden"),
+  `Gevonden paden: ${Object.keys(paden).filter((k) => k.startsWith("vestiging")).join(", ") || "geen"}`);
 
 // ── 7. De datum echt uit een bestand halen ──
 // Niet nagespeeld maar echt gedaan: hieronder staan een Word-bestand, een pdf,

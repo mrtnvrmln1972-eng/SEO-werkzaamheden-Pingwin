@@ -83,9 +83,16 @@ export const BLOKKEN: Uitklapper[] = [
       "de oude tijd staan. Nu vervangt een gegeven uit de kennisbank ook een ingevulde waarde, mits het " +
       "aantoonbaar nieuwer is dan de laatste keer dat het formulier is opgeslagen. Met andere woorden: wat " +
       "jij zelf invult wint, tot er materiaal komt van ná jouw wijziging. Wat er vervangen is, staat na " +
-      "afloop op het scherm, met de datum erbij, want dit gebeurt zonder dat je erom vraagt. Eén " +
-      "beperking, eerlijk gezegd: het formulier houdt één datum bij voor het geheel, niet per veld, dus " +
-      "een keer opslaan zet die grens voor alle velden opnieuw.\n\n" +
+      "afloop op het scherm, met de datum erbij, want dit gebeurt zonder dat je erom vraagt.\n\n" +
+      "**En dat gaat per veld, niet per formulier.** Elk veld weet voor zichzelf wanneer die waarde er " +
+      "kwam en wie hem zette. Sla je het formulier op, dan krijgen alleen de velden die je écht hebt " +
+      "veranderd de datum van nu; de rest houdt de datum die hij had. Zonder dat onderscheid zou één keer " +
+      "opslaan de grens voor álle velden verzetten, en dan verliest een klantdocument van vorige week " +
+      "ineens van een adres dat je nooit hebt aangeraakt. Bij een vestiging of een arts hangt die datum " +
+      "aan de rij zelf (aan de postcode of het BIG-nummer), dus sleep je een vestiging naar boven, dan " +
+      "verhuizen de datums mee in plaats van bij de buurman te blijven hangen. Gegevens van vóór 18 " +
+      "augustus 2026 hebben nog geen eigen datum; daarvoor telt de laatste opslag van het formulier als " +
+      "ondergrens, tot ze een keer bijgewerkt worden.\n\n" +
       "**Een aanlevering landt op de bestaande regel, niet ernaast.** Een schermafdruk met de " +
       "openingstijden van tien vestigingen noemt per vestiging alleen de naam en de tijden, verder " +
       "niets. Een vestiging wordt normaal herkend aan postcode plus huisnummer, dus zo'n aanlevering " +

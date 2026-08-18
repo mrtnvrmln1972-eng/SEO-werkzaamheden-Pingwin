@@ -1,6 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
-import { getOrgData, saveOrgData, type OrgData } from "./org-data";
+import { getOrgData, saveOrgData, plattePaden, padSleutel, type OrgData, type OrgVeldStempels } from "./org-data";
 import { getClientBySlug } from "./clients";
 import { ontbrekendeVelden, identiteit, magOpNaamKoppelen, naamKaal, isEchteVestiging, LEGE_VESTIGING, type OrgVestiging } from "./org-vereist";
 export { identiteit, isEchteVestiging } from "./org-vereist";
@@ -504,18 +504,22 @@ const vul = (huidig: string, nieuw: string) => (String(huidig || "").trim() ? hu
  * ná jouw wijziging.** Zonder datum op het materiaal gebeurt er niets, net als
  * overal elders: onbekend overschrijft nooit.
  */
-type Vervanging = { wat: string; oud: string; nieuw: string; datum: string };
+type Vervanging = { wat: string; pad: string; oud: string; nieuw: string; datum: string; bron: DatumBron; waar: string };
 function vulOfVervang(
-  huidig: string, nieuw: string, stempel: VeldStempel | undefined, formulierDatum: string,
-  wat: string, log: Vervanging[],
+  huidig: string, nieuw: string, stempel: VeldStempel | undefined,
+  /** De datum van dít veld in het formulier, of de formulierdatum als terugval. */
+  veldDatum: string, pad: string, wat: string, log: Vervanging[],
 ): string {
   const oud = String(huidig || "").trim();
   const waarde = String(nieuw || "").trim();
   if (!waarde) return huidig;
   if (!oud) return waarde;
   if (oud === waarde) return huidig;
-  if (!isNieuwerDan(stempel?.datum || "", formulierDatum)) return huidig;
-  log.push({ wat, oud, nieuw: waarde, datum: stempel?.datum || "" });
+  if (!isNieuwerDan(stempel?.datum || "", veldDatum)) return huidig;
+  log.push({
+    wat, pad, oud, nieuw: waarde,
+    datum: stempel?.datum || "", bron: stempel?.bron || "onbekend", waar: stempel?.waar || "",
+  });
   return waarde;
 }
 
@@ -527,9 +531,22 @@ export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: numbe
   // De laatste keer dat dit formulier is opgeslagen. Alleen materiaal van ná dat
   // moment mag een ingevulde waarde vervangen.
   const { data, nieuweVestigingen, nieuweArtsen, vervangen } =
-    kennisNaarOrg(rec.data, entiteiten, client?.domain || "", rec.updatedAt || "");
+    kennisNaarOrg(rec.data, entiteiten, client?.domain || "", rec.updatedAt || "", rec.veldStempels || {});
   const gevuld = JSON.stringify(data) === voor ? 0 : 1;
-  if (gevuld) await saveOrgData(slug, data, "admin");
+  if (gevuld) {
+    // Elk veld dat uit de kennisbank kwam krijgt de datum van dát materiaal, niet
+    // de datum van nu: anders zou het meteen "vers" lijken en zou het volgende
+    // klantdocument het altijd verliezen. Velden die Maarten zelf zette blijven
+    // staan zoals ze stonden.
+    const stempels: OrgVeldStempels = { ...(rec.veldStempels || {}) };
+    for (const v of vervangen) stempels[v.pad] = { datum: v.datum, bron: v.bron, waar: v.waar };
+    // Nieuw gevulde lege velden ook stempelen, met de datum van het materiaal.
+    for (const [pad, waarde] of Object.entries(plattePaden(data))) {
+      if (stempels[pad] || plattePaden(rec.data)[pad] === waarde) continue;
+      stempels[pad] = { datum: rec.updatedAt || "", bron: "onbekend", waar: "uit de kennisbank" };
+    }
+    await saveOrgData(slug, data, "admin", stempels);
+  }
   return {
     gevuld, nieuweVestigingen, nieuweArtsen,
     vervangen: vervangen.map((v) => `${v.wat}: "${kort(v.nieuw)}" vervangt "${kort(v.oud)}" (materiaal van ${leesbaar(v.datum)}).`),
@@ -537,8 +554,18 @@ export async function applyKnowledgeToOrg(slug: string): Promise<{ gevuld: numbe
 }
 
 // De omzetting zelf: los van de database, zodat hij te controleren is.
-export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigenDomein = "", formulierDatum = ""): { data: OrgData; nieuweVestigingen: number; nieuweArtsen: number; vervangen: Vervanging[] } {
+export function kennisNaarOrg(
+  bron: OrgData, entiteiten: KennisEntiteit[], eigenDomein = "",
+  /** Wanneer het formulier voor het laatst is opgeslagen: de terugval voor velden
+      die nog geen eigen datum hebben (alles van vóór 18-08-2026). */
+  formulierDatum = "",
+  /** Per veld wanneer die waarde er kwam. Dít is waar tegen gemeten wordt. */
+  formulierStempels: OrgVeldStempels = {},
+): { data: OrgData; nieuweVestigingen: number; nieuweArtsen: number; vervangen: Vervanging[] } {
   const vervangen: Vervanging[] = [];
+  // De datum van één veld: die van het veld zelf, en anders die van het hele
+  // formulier. Zo geldt de afspraak meteen ook voor gegevens van vóór vandaag.
+  const datumVan = (pad: string) => formulierStempels[pad]?.datum || formulierDatum;
   const d: OrgData = JSON.parse(JSON.stringify(bron));
   // De eigen website hoort niet tussen de sociale profielen: "sameAs" gaat over
   // vermeldingen elders (Facebook, LinkedIn, Google Business), niet over jezelf.
@@ -585,21 +612,21 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigen
     const v = o.velden;
     // Aanvullen waar het leeg is, en vervangen waar het materiaal aantoonbaar
     // nieuwer is dan de laatste keer dat dit formulier is opgeslagen.
-    const neem = (huidig: string, veld: string, waarde: string, wat: string) =>
-      vulOfVervang(huidig, waarde, o.stempels?.[veld], formulierDatum, wat, vervangen);
+    const neem = (huidig: string, veld: string, waarde: string, wat: string, pad = veld) =>
+      vulOfVervang(huidig, waarde, o.stempels?.[veld], datumVan(pad), pad, wat, vervangen);
     d.bedrijfsnaam = vul(d.bedrijfsnaam, o.naam);
     d.telefoon = neem(d.telefoon, "telefoon", v.telefoon, "Telefoon");
     d.email = neem(d.email, "email", v.email, "E-mailadres");
     d.kvk = neem(d.kvk, "kvk", v.kvk, "KVK-nummer");
     d.btw = neem(d.btw, "btw", v.btw, "Btw-id");
-    d.logoUrl = neem(d.logoUrl, "logo", v.logo, "Logo");
+    d.logoUrl = neem(d.logoUrl, "logo", v.logo, "Logo", "logoUrl");
     d.oprichtingsjaar = neem(d.oprichtingsjaar, "oprichtingsjaar", v.oprichtingsjaar, "Oprichtingsjaar");
     d.openingstijden = neem(d.openingstijden, "openingstijden", v.openingstijden, "Openingstijden");
     if (v.adres) {
       const a = splitsAdres(v.adres);
-      d.straat = neem(d.straat, "adres", a.straat, "Straat");
-      d.postcode = neem(d.postcode, "adres", a.postcode, "Postcode");
-      d.plaats = neem(d.plaats, "adres", a.plaats, "Plaats");
+      d.straat = neem(d.straat, "adres", a.straat, "Straat", "straat");
+      d.postcode = neem(d.postcode, "adres", a.postcode, "Postcode", "postcode");
+      d.plaats = neem(d.plaats, "adres", a.plaats, "Plaats", "plaats");
     }
     d.priceRange = neem(d.priceRange, "priceRange", v.priceRange, "Prijsindicatie");
     if (!d.bedrijfstype && ["kliniek", "webshop", "dienstverlener", "lokaal", "informatief"].includes(v.bedrijfstype || "")) {
@@ -627,16 +654,20 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigen
     const kern = identiteit("locatie", l.naam, l.velden);
     const bestaand = d.vestigingen.find((x) => identiteit("locatie", x.naam, { adres: x.straat, postcode: x.postcode, plaats: x.plaats }) === kern);
     const rij: OrgVestiging = bestaand || { ...LEGE_VESTIGING, naam: l.naam };
-    const neem = (huidig: string, veld: string, waarde: string, wat: string) =>
-      vulOfVervang(huidig, waarde, l.stempels?.[veld], formulierDatum, `${l.naam}, ${wat}`, vervangen);
+    const rijSleutel = padSleutel(rij.postcode || l.velden.postcode || "") || padSleutel(rij.naam || l.naam) || padSleutel(rij.plaats || "");
+    const neem = (huidig: string, veld: string, waarde: string, wat: string, padVeld = veld) =>
+      vulOfVervang(huidig, waarde, l.stempels?.[veld], datumVan(`vestiging|${rijSleutel}|${padVeld}`),
+        `vestiging|${rijSleutel}|${padVeld}`, `${l.naam}, ${wat}`, vervangen);
     rij.naam = vul(rij.naam, l.naam);
-    rij.straat = neem(rij.straat, "adres", a.straat, "straat");
+    rij.straat = neem(rij.straat, "adres", a.straat, "straat", "straat");
     rij.postcode = neem(rij.postcode, "postcode", l.velden.postcode || a.postcode, "postcode");
     rij.plaats = neem(rij.plaats, "plaats", l.velden.plaats || a.plaats, "plaats");
     rij.telefoon = neem(rij.telefoon, "telefoon", l.velden.telefoon, "telefoon");
     rij.email = neem(rij.email, "email", l.velden.email, "e-mailadres");
     rij.openingstijden = neem(rij.openingstijden, "openingstijden", l.velden.openingstijden, "openingstijden");
     rij.mapsUrl = neem(rij.mapsUrl, "mapsUrl", l.velden.mapsUrl, "Google Maps");
+    // Verhuist de sleutel doordat er nu een postcode bij staat, dan verhuist de
+    // datum mee; anders zou dit veld morgen weer "geen datum" hebben.
     if (!bestaand) { d.vestigingen.push(rij); nieuweVestigingen++; }
   }
 
@@ -646,13 +677,15 @@ export function kennisNaarOrg(bron: OrgData, entiteiten: KennisEntiteit[], eigen
     const bestaand = d.artsen.find((a) => identiteit("persoon", a.naam, { big: a.big }) === kern);
     const rij = bestaand || { naam: p.naam, functie: "", specialisatie: "", big: "", fotoUrl: "", profielUrl: "" };
     if (p.naam.length > rij.naam.length) rij.naam = p.naam;
-    const neem = (huidig: string, veld: string, waarde: string, wat: string) =>
-      vulOfVervang(huidig, waarde, p.stempels?.[veld], formulierDatum, `${p.naam}, ${wat}`, vervangen);
+    const artsSleutel = padSleutel(rij.big || p.velden.big || "") || padSleutel(rij.naam || p.naam);
+    const neem = (huidig: string, veld: string, waarde: string, wat: string, padVeld = veld) =>
+      vulOfVervang(huidig, waarde, p.stempels?.[veld], datumVan(`arts|${artsSleutel}|${padVeld}`),
+        `arts|${artsSleutel}|${padVeld}`, `${p.naam}, ${wat}`, vervangen);
     rij.functie = neem(rij.functie, "functie", p.velden.functie, "functie");
     rij.specialisatie = neem(rij.specialisatie, "specialisatie", p.velden.specialisatie, "specialisatie");
     rij.big = neem(rij.big, "big", p.velden.big, "BIG-nummer");
-    rij.fotoUrl = neem(rij.fotoUrl, "foto", p.velden.foto, "foto");
-    rij.profielUrl = neem(rij.profielUrl, "profielUrl", p.velden.profielUrl || p.velden.linkedin, "pagina");
+    rij.fotoUrl = neem(rij.fotoUrl, "foto", p.velden.foto, "foto", "fotoUrl");
+    rij.profielUrl = neem(rij.profielUrl, "profielUrl", p.velden.profielUrl || p.velden.linkedin, "pagina", "profielUrl");
     if (!bestaand) { d.artsen.push(rij); nieuweArtsen++; }
   }
 
