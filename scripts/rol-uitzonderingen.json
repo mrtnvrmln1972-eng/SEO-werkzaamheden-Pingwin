@@ -1,0 +1,240 @@
+{
+  "_uitleg": [
+    "Plekken waar een waarde BEWUST op de kale schaal blijft in plaats van een rolnaam te krijgen.",
+    "scripts/naar-betekenislaag.ts leest dit en laat ze met rust.",
+    "",
+    "WAAROM DIT BESTAAT (18-08-2026). De omzetting per scherm werd gereedschap, en dat gereedschap",
+    "heeft geen geheugen. Bij een tweede ronde over hetzelfde scherm zette hij precies de namen terug",
+    "die er de vorige ronde met de hand waren uitgehaald: een lijst-inspringing die weer 'kaartpadding'",
+    "ging heten, lopende tekst die weer 'kaartkop' ging heten. Een oordeel dat alleen in een commit-",
+    "bericht staat, is bij de volgende ronde weg. Dat is dezelfde vaste les als altijd in dit project:",
+    "wat je onthouden moet, wordt vergeten; wat in een bestand staat dat het gereedschap leest, niet.",
+    "",
+    "Elke regel heeft een reden. Staat er iets in waarvan de reden niet meer klopt, haal hem eruit;",
+    "dan pakt de volgende ronde hem alsnog op."
+  ],
+  "uitzonderingen": [
+    {
+      "selector": ".prio-samenvatting",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".prio-samenvatting",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".email-del",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "de maat van een bedieningsteken, geen kop"
+    },
+    {
+      "selector": ".rog-sluit",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-lg)",
+      "waarom": "de maat van een bedieningsteken, geen kop"
+    },
+    {
+      "selector": ".hh-modal-close",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-xl)",
+      "waarom": "de maat van een bedieningsteken, geen kop"
+    },
+    {
+      "selector": ".wp-toets ul",
+      "eigenschap": "padding-left",
+      "waarde": "var(--s-4)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".kb-dropzone-sluit",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-lg)",
+      "waarom": "de maat van een bedieningsteken, geen kop"
+    },
+    {
+      "selector": ".wp-chat-wis",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "de maat van een bedieningsteken, geen kop"
+    },
+    {
+      "selector": ".opr-kaart-tekst",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".opr-kaart-tekst",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".opr-bewijs-punten",
+      "eigenschap": "padding-left",
+      "waarde": "var(--s-4)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".opr-intro-kaart ul",
+      "eigenschap": "padding-left",
+      "waarde": "var(--s-4)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".dev-doc-weg",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "de maat van een bedieningsteken, geen kop"
+    },
+    {
+      "selector": ".pl-lijst > .wb-doel, .pl-lijst > .pl-groep",
+      "eigenschap": "margin-left",
+      "waarde": "var(--s-4)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".pl-lijst > .wb-doel, .pl-lijst > .pl-groep",
+      "eigenschap": "margin-right",
+      "waarde": "var(--s-4)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".pl-groep",
+      "eigenschap": "padding-left",
+      "waarde": "var(--s-3)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".ut-hero-tekst",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".rk-advies-code",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-xl)",
+      "waarom": "een code, geen kop en geen getal"
+    },
+    {
+      "selector": ".rk-advies-code",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-xl)",
+      "waarom": "een code, geen kop en geen getal"
+    },
+    {
+      "selector": ".rk-code",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "een code, geen kop en geen getal"
+    },
+    {
+      "selector": ".rk-code",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-md)",
+      "waarom": "een code, geen kop en geen getal"
+    },
+    {
+      "selector": ".gmb-blokkade strong",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".gmb-blokkade strong",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".rk-parallel-code",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "een code, geen kop en geen getal"
+    },
+    {
+      "selector": ".rk-parallel-code",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-md)",
+      "waarom": "een code, geen kop en geen getal"
+    },
+    {
+      "selector": ".wp-archief li",
+      "eigenschap": "padding-left",
+      "waarde": "var(--s-3)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".wp-controle-koppen > li",
+      "eigenschap": "padding-left",
+      "waarde": "var(--s-4)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".at-groot",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-lg)",
+      "waarom": "een getal van 20px; de cijfer-rol is 26px, dus omzetten zou hem groter maken"
+    },
+    {
+      "selector": ".at-groot",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-lg)",
+      "waarom": "een getal van 20px; de cijfer-rol is 26px, dus omzetten zou hem groter maken"
+    },
+    {
+      "selector": ".vm-groot",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-lg)",
+      "waarom": "een getal van 20px; de cijfer-rol is 26px, dus omzetten zou hem groter maken"
+    },
+    {
+      "selector": ".vm-groot",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-lg)",
+      "waarom": "een getal van 20px; de cijfer-rol is 26px, dus omzetten zou hem groter maken"
+    },
+    {
+      "selector": ".ut-nieuw-item",
+      "eigenschap": "padding-left",
+      "waarde": "var(--s-4)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".cw-intro",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".cw-intro",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-md)",
+      "waarom": "lopende tekst, geen kop"
+    },
+    {
+      "selector": ".cw-lijst li",
+      "eigenschap": "padding-left",
+      "waarde": "var(--s-4)",
+      "waarom": "een inspringing, geen ruimte tussen groepen"
+    },
+    {
+      "selector": ".tw-sluit",
+      "eigenschap": "font-size",
+      "waarde": "var(--fs-lg)",
+      "waarom": "de maat van een bedieningsteken, geen kop"
+    },
+    {
+      "selector": ".tw-sluit",
+      "eigenschap": "line-height",
+      "waarde": "var(--lh-md)",
+      "waarom": "de maat van een bedieningsteken, geen kop"
+    }
+  ]
+}

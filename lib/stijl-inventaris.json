@@ -5,20 +5,12 @@
     "classnamen": 2907
   },
   "kleuren": {
-    "verschillend": 330,
+    "verschillend": 325,
     "benoemd": 42,
     "los": [
       {
-        "waarde": "#fff",
-        "aantal": 66
-      },
-      {
         "waarde": "#1c7a3f",
         "aantal": 61
-      },
-      {
-        "waarde": "#2e7d32",
-        "aantal": 31
       },
       {
         "waarde": "#b3261e",
@@ -58,6 +50,10 @@
       },
       {
         "waarde": "#8a7a6c",
+        "aantal": 9
+      },
+      {
+        "waarde": "#fff",
         "aantal": 9
       },
       {
@@ -133,10 +129,6 @@
         "aantal": 5
       },
       {
-        "waarde": "#e7f6ea",
-        "aantal": 5
-      },
-      {
         "waarde": "#e8f5e9",
         "aantal": 5
       },
@@ -170,10 +162,6 @@
       },
       {
         "waarde": "#1c7a44",
-        "aantal": 4
-      },
-      {
-        "waarde": "#33302e",
         "aantal": 4
       },
       {
@@ -241,11 +229,11 @@
         "aantal": 3
       },
       {
-        "waarde": "#3b4a9e",
+        "waarde": "#33302e",
         "aantal": 3
       },
       {
-        "waarde": "#444",
+        "waarde": "#3b4a9e",
         "aantal": 3
       },
       {
@@ -857,10 +845,6 @@
         "aantal": 1
       },
       {
-        "waarde": "#e7773f",
-        "aantal": 1
-      },
-      {
         "waarde": "#e7eef7",
         "aantal": 1
       },
@@ -1118,10 +1102,6 @@
       },
       {
         "waarde": "#fff4e5",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff6e5",
         "aantal": 1
       },
       {
@@ -2657,25 +2637,11 @@
   ],
   "kleurNaastToken": [
     {
-      "waarde": "#fff",
-      "aantal": 66,
-      "dichtst": "--white",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#1c7a3f",
       "aantal": 61,
       "dichtst": "--good",
       "afstand": 35,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#2e7d32",
-      "aantal": 31,
-      "dichtst": "--good",
-      "afstand": 0,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#b3261e",
@@ -2746,6 +2712,13 @@
       "dichtst": "--brand-taupe",
       "afstand": 28,
       "stapel": "bijna"
+    },
+    {
+      "waarde": "#fff",
+      "aantal": 9,
+      "dichtst": "--white",
+      "afstand": 0,
+      "stapel": "gelijk"
     },
     {
       "waarde": "#2b2b2b",
@@ -2874,13 +2847,6 @@
       "stapel": "bijna"
     },
     {
-      "waarde": "#e7f6ea",
-      "aantal": 5,
-      "dichtst": "--good-light",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#e8f5e9",
       "aantal": 5,
       "dichtst": "--good-light",
@@ -2942,13 +2908,6 @@
       "dichtst": "--good",
       "afstand": 41,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#33302e",
-      "aantal": 4,
-      "dichtst": "--brand-charcoal",
-      "afstand": 0,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#6d28d9",
@@ -3063,18 +3022,18 @@
       "stapel": "anders"
     },
     {
+      "waarde": "#33302e",
+      "aantal": 3,
+      "dichtst": "--brand-charcoal",
+      "afstand": 0,
+      "stapel": "gelijk"
+    },
+    {
       "waarde": "#3b4a9e",
       "aantal": 3,
       "dichtst": "--text-secondary",
       "afstand": 101,
       "stapel": "anders"
-    },
-    {
-      "waarde": "#444",
-      "aantal": 3,
-      "dichtst": "--muted",
-      "afstand": 0,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#8a8d91",
@@ -4141,13 +4100,6 @@
       "stapel": "bijna"
     },
     {
-      "waarde": "#e7773f",
-      "aantal": 1,
-      "dichtst": "--orange",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#e7eef7",
       "aantal": 1,
       "dichtst": "--brand-blue-light",
@@ -4601,13 +4553,6 @@
       "dichtst": "--highlight-manual",
       "afstand": 4,
       "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff6e5",
-      "aantal": 1,
-      "dichtst": "--highlight-manual",
-      "afstand": 0,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#fff6ec",
@@ -5642,7 +5587,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 2695,
-    "schaalGebruik": 4303
+    "gebruik": 6009,
+    "schaalGebruik": 1088
   }
 }

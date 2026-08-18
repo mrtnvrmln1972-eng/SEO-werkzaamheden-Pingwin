@@ -97,6 +97,30 @@ function zetOm(regel: string): string {
   return r;
 }
 
+/**
+ * Plekken die BEWUST op de kale schaal blijven.
+ *
+ * Zonder dit heeft dit gereedschap geen geheugen: bij een tweede ronde over
+ * hetzelfde scherm zet het precies de namen terug die er de vorige ronde met de
+ * hand zijn uitgehaald. Dat is op 18-08-2026 echt gebeurd, bij een sweep over
+ * alle voorvoegsels tegelijk. Een oordeel dat alleen in een commit-bericht
+ * staat, is de volgende ronde weg.
+ */
+type Uitzondering = { selector: string; eigenschap: string; waarde: string; waarom: string };
+const UITZONDERINGEN: Uitzondering[] = JSON.parse(
+  fs.readFileSync(path.join(WORTEL, "scripts/rol-uitzonderingen.json"), "utf8")
+).uitzonderingen;
+
+/** Zet de bewust-op-de-schaal-plekken terug, ná de omzetting. */
+function respecteerUitzonderingen(regel: string, selector: string): string {
+  let r = regel;
+  for (const u of UITZONDERINGEN) {
+    if (u.selector !== selector) continue;
+    r = r.replace(new RegExp(`\\b${u.eigenschap}:\\s*var\\(--[\\w-]+\\)`), `${u.eigenschap}: ${u.waarde}`);
+  }
+  return r;
+}
+
 const regels = fs.readFileSync(BESTAND, "utf8").split("\n");
 const stapel: string[] = [];
 const geraakt: string[] = [];
@@ -109,7 +133,7 @@ for (let i = 0; i < regels.length; i++) {
   const selector = r.includes("{") && !eigen.trim().startsWith("@") ? eigen.trim() : onder;
 
   if (new RegExp(`\\.${voorvoegsel}[\\w-]*`).test(selector)) {
-    const nieuw = zetOm(r);
+    const nieuw = respecteerUitzonderingen(zetOm(r), selector);
     if (nieuw !== r) {
       om++;
       geraakt.push(`  ${i + 1}: ${nieuw.trim().slice(0, 100)}`);
