@@ -1,6 +1,6 @@
 {
   "css": {
-    "regels": 8653,
+    "regels": 8664,
     "stijlregels": 4425,
     "classnamen": 2937
   },
@@ -527,14 +527,9 @@
     ]
   },
   "lettergroottes": {
-    "verschillend": 1,
-    "benoemd": 6,
-    "los": [
-      {
-        "waarde": "34px",
-        "aantal": 1
-      }
-    ]
+    "verschillend": 0,
+    "benoemd": 7,
+    "los": []
   },
   "rondingen": {
     "verschillend": 4,
@@ -1350,6 +1345,14 @@
       "waarde": "32px"
     },
     {
+      "naam": "--fs-2xl",
+      "waarde": "34px"
+    },
+    {
+      "naam": "--lh-2xl",
+      "waarde": "42px"
+    },
+    {
       "naam": "--r-sm",
       "waarde": "6px"
     },
@@ -1490,6 +1493,14 @@
       "waarde": "var(--lh-xl)"
     },
     {
+      "naam": "--type-hero",
+      "waarde": "var(--fs-2xl)"
+    },
+    {
+      "naam": "--regel-hero",
+      "waarde": "var(--lh-2xl)"
+    },
+    {
       "naam": "--type-cijfer",
       "waarde": "var(--fs-xl)"
     },
@@ -1600,6 +1611,10 @@
     {
       "naam": "--letter",
       "waarde": "'Montserrat', sans-serif"
+    },
+    {
+      "naam": "--letter-code",
+      "waarde": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
     }
   ],
   "kleurNaastToken": [
@@ -2531,17 +2546,6 @@
       ]
     },
     {
-      "soort": "Tekstmaat",
-      "waarde": "34px",
-      "aantal": 1,
-      "naar": "26px",
-      "naarToken": "--fs-xl",
-      "verschil": 8,
-      "selectors": [
-        ".ut-hero-titel"
-      ]
-    },
-    {
       "soort": "Ronding",
       "waarde": "20px",
       "aantal": 2,
@@ -2689,6 +2693,16 @@
         "groep": "Regelhoogte"
       },
       {
+        "naam": "--type-hero",
+        "wijstNaar": "var(--fs-2xl)",
+        "groep": "Tekstmaat"
+      },
+      {
+        "naam": "--regel-hero",
+        "wijstNaar": "var(--lh-2xl)",
+        "groep": "Regelhoogte"
+      },
+      {
         "naam": "--type-cijfer",
         "wijstNaar": "var(--fs-xl)",
         "groep": "Tekstmaat"
@@ -2825,7 +2839,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8379,
-    "schaalGebruik": 1470
+    "gebruik": 8381,
+    "schaalGebruik": 1486
   }
 }

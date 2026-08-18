@@ -155,7 +155,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   }
   const ahrefsTotals = byService.get("ahrefs");
 
-  const wrap: React.CSSProperties = { maxWidth: 1320, margin: "0 auto", padding: "var(--s-6) var(--s-6) 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "var(--kleur-kop)" };
+  const wrap: React.CSSProperties = { maxWidth: 1320, margin: "0 auto", padding: "var(--s-6) var(--s-6) 60px", fontFamily: "var(--letter)", color: "var(--kleur-kop)" };
   const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: "var(--r-md)", background: "#fff", padding: "var(--s-5)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
   // Let op: de globale stylesheet geeft thead th een donkere achtergrond; de
   // koptekst moet dus wit zijn. Nooit laten omvallen: nowrap op koppen en cijfers.

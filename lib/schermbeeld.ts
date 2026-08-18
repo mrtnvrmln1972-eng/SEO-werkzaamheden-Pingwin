@@ -151,7 +151,12 @@ export async function vernieuwAlleSchermen(baseUrl: string): Promise<VernieuwUit
         uitslagen.push({ hoofdstuk: scherm.hoofdstuk, ok: false, fout: "de browser kon niet starten op deze server" });
         continue;
       }
-      const b64 = png.toString("base64");
+      // Buffer.from() eromheen, en dat is geen overbodige beleefdheid: de browser
+      // geeft tegenwoordig een Uint8Array terug in plaats van een Buffer, en
+      // Uint8Array.toString() negeert het argument "base64" stilzwijgend. Je krijgt
+      // dan "137,80,78,71,…" (de bytes als getallen) in de database, en op de
+      // uitlegpagina een kapot beeldje. Dat stond er dagen zonder dat iemand het zag.
+      const b64 = Buffer.from(png).toString("base64");
       await sql`
         INSERT INTO schermafbeeldingen (hoofdstuk, label, pad, png_base64, bytes, gemaakt_op)
         VALUES (${scherm.hoofdstuk}, ${scherm.label}, ${scherm.pad}, ${b64}, ${png.length}, now())
@@ -169,6 +174,25 @@ export async function vernieuwAlleSchermen(baseUrl: string): Promise<VernieuwUit
 
 export type OpgeslagenScherm = { hoofdstuk: string; label: string; pad: string; dataUrl: string; gemaaktOp: string };
 
+/**
+ * De opgeslagen tekst als bruikbare afbeelding, of null.
+ *
+ * Repareert onderweg wat er van de kapotte periode nog in de database staat:
+ * "137,80,78,…" is geen base64 maar de losse bytes, en dat levert een kapot
+ * beeldje op elke pagina waar het staat. Zelf herstellen is hier beter dan een
+ * knop laten indrukken, want niemand wéét dat hij moet drukken; de eerstvolgende
+ * keer dat het scherm opnieuw gefotografeerd wordt, staat het goed in de database
+ * en doet deze omweg niets meer.
+ */
+function alsBeeld(opgeslagen: string | null | undefined): string | null {
+  if (!opgeslagen) return null;
+  const bytes = /^\d+(,\d+)+$/.test(opgeslagen.slice(0, 200));
+  const b64 = bytes
+    ? Buffer.from(Uint8Array.from(opgeslagen.split(",").map(Number))).toString("base64")
+    : opgeslagen;
+  return `data:image/png;base64,${b64}`;
+}
+
 /** Voor het admin-scherm: alle opgeslagen beelden, met wanneer ze gemaakt zijn. */
 export async function alleSchermen(): Promise<OpgeslagenScherm[]> {
   await ensureTabel();
@@ -177,7 +201,7 @@ export async function alleSchermen(): Promise<OpgeslagenScherm[]> {
     hoofdstuk: r.hoofdstuk,
     label: r.label,
     pad: r.pad,
-    dataUrl: `data:image/png;base64,${r.png_base64}`,
+    dataUrl: alsBeeld(r.png_base64) ?? "",
     gemaaktOp: r.gemaakt_op,
   }));
 }
@@ -187,5 +211,5 @@ export async function schermVoorHoofdstuk(hoofdstuk: string): Promise<string | n
   await ensureTabel();
   const { rows } = await sql`SELECT png_base64 FROM schermafbeeldingen WHERE hoofdstuk = ${hoofdstuk}`;
   const rij = (rows as { png_base64: string }[])[0];
-  return rij ? `data:image/png;base64,${rij.png_base64}` : null;
+  return alsBeeld(rij?.png_base64);
 }

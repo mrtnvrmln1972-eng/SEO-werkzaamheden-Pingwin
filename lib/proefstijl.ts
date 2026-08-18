@@ -94,8 +94,8 @@ const GESTUURD = [
   "--letter", "--orange", "--accent", "--orange-dark", "--orange-light", "--brand-orange-faint",
   "--r-sm", "--r-md", "--r-lg", "--shadow-xs", "--shadow-sm", "--shadow-md", "--shadow-lg",
   "--s-1", "--s-2", "--s-3", "--s-4", "--s-5", "--s-6", "--s-8", "--s-10", "--s-12",
-  "--fs-xs", "--fs-sm", "--fs-base", "--fs-md", "--fs-lg", "--fs-xl",
-  "--lh-xs", "--lh-sm", "--lh-base", "--lh-md", "--lh-lg", "--lh-xl",
+  "--fs-xs", "--fs-sm", "--fs-base", "--fs-md", "--fs-lg", "--fs-xl", "--fs-2xl",
+  "--lh-xs", "--lh-sm", "--lh-base", "--lh-md", "--lh-lg", "--lh-xl", "--lh-2xl",
 ];
 
 function rgb(hex: string): [number, number, number] {

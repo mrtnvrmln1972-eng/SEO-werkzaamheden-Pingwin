@@ -80,6 +80,7 @@
   --fs-md: 16px;   --lh-md: 24px;   /* kaart- en paneelkoppen */
   --fs-lg: 20px;   --lh-lg: 28px;   /* sectietitels */
   --fs-xl: 26px;   --lh-xl: 32px;   /* grote cijfers, paginakoppen */
+  --fs-2xl: 34px;  --lh-2xl: 42px;  /* de titel bovenaan een openbaar document */
 
   /* Radius-schaal */
   --r-sm: 6px;     /* kleine knopjes, badges */
@@ -186,6 +187,11 @@
 
   /* ── Tekstmaten: welke rol de tekst speelt ── */
   --type-paginakop: var(--fs-xl);    --regel-paginakop: var(--lh-xl);
+  /* De ene kop die groter is dan een paginakop: de titel bovenaan /uitleg.
+     Die stond als losse 34px in het bestand, de laatste lettergrootte buiten
+     de schaal. Kleiner maken zou hem zichtbaar veranderen, dus krijgt de schaal
+     er een stap bij in plaats van andersom. */
+  --type-hero: var(--fs-2xl);        --regel-hero: var(--lh-2xl);
   --type-cijfer: var(--fs-xl);       --regel-cijfer: var(--lh-xl);   /* een groot getal, geen kop */
   --type-sectiekop: var(--fs-lg);    --regel-sectiekop: var(--lh-lg);
   --type-kaartkop: var(--fs-md);     --regel-kaartkop: var(--lh-md);
@@ -219,6 +225,11 @@
      proberen betekende 48 plekken langslopen. Nu één naam. Montserrat blijft
      de huisstijl; deze naam maakt alleen dat je hem op één plek kunt wisselen. */
   --letter: 'Montserrat', sans-serif;
+  /* Het lettertype voor code, een pad of een sleutel: alles waar de tekens
+     even breed moeten zijn. Stond in zes verschillende stapels door het
+     bestand (ui-monospace/Menlo/Consolas in wisselende volgorde, en twee keer
+     kaal 'monospace'), dus zes plekken waar hetzelfde net iets anders oogde. */
+  --letter-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* ── Design-fundament: gedeelde bouwstenen ────────────────────────
@@ -665,7 +676,7 @@ tbody td:last-child { text-align: center; }
 }
 .cred-row code {
   background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein);
-  padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-lopend); font-family: monospace; color: var(--dark);
+  padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-lopend); font-family: var(--letter-code); color: var(--dark);
   flex: 1; word-break: break-all;
 }
 .mini-btn {
@@ -1709,7 +1720,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .drive-newfolder .compose-input { flex: 1; }
 /* Klant-mail: ruim venster + nette, opgemaakte, meegroeiende bewerkbare preview */
 .mail-modal { width: 760px; max-width: 96vw; max-height: 92vh; }
-.mail-edit { min-height: 260px; max-height: 62vh; overflow-y: auto; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-groep) var(--s-5); outline: none; background: var(--kleur-kaart); font-family: Arial, Helvetica, sans-serif; font-size: var(--type-lopend); line-height: 1.5; color: var(--dark); }
+.mail-edit { min-height: 260px; max-height: 62vh; overflow-y: auto; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-groep) var(--s-5); outline: none; background: var(--kleur-kaart); font-family: var(--letter); font-size: var(--type-lopend); line-height: 1.5; color: var(--dark); }
 .mail-edit:focus { border-color: var(--kleur-rand-accent); }
 /* Nette e-mail-opmaak in het kopieerbare blok: bold, onderstreept, bullets, blauwe links. */
 .mail-edit strong { font-weight: 700; }
@@ -2642,7 +2653,7 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .wz-sign { font-weight: 700; }
 .wz-line.removed .wz-sign { color: var(--danger); }
 .wz-line.added .wz-sign { color: #1e824c; }
-.wz-file { font-size: var(--type-label); color: var(--kleur-tekst-stil); font-family: monospace; }
+.wz-file { font-size: var(--type-label); color: var(--kleur-tekst-stil); font-family: var(--letter-code); }
 .wz-pos { color: #1e824c; font-weight: 700; }
 .wz-neg { color: var(--danger); font-weight: 700; }
 
@@ -2980,7 +2991,7 @@ button.org-sec-kop:hover { color: var(--kleur-accent-diep); }
 .sch-warning { font-size: var(--type-bijschrift); background: var(--kleur-accent-vlak); color: var(--kleur-accent-diep); border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-naast); }
 .sch-json { margin-top: var(--ruimte-naast); }
 .sch-json-head { display: flex; align-items: center; gap: var(--ruimte-naast); }
-.sch-json-pre { margin-top: var(--ruimte-krap); max-height: 380px; overflow: auto; background: var(--dark); color: var(--kleur-rand-zacht); font-family: "SF Mono", Menlo, Consolas, monospace; font-size: var(--type-label); line-height: 1.5; padding: var(--ruimte-regel) var(--ruimte-regel); border-radius: var(--ronding-knop); white-space: pre; }
+.sch-json-pre { margin-top: var(--ruimte-krap); max-height: 380px; overflow: auto; background: var(--dark); color: var(--kleur-rand-zacht); font-family: var(--letter-code); font-size: var(--type-label); line-height: 1.5; padding: var(--ruimte-regel) var(--ruimte-regel); border-radius: var(--ronding-knop); white-space: pre; }
 
 .org-sitewide { margin-top: var(--ruimte-groep); border-top: 1px solid var(--kleur-rand); padding-top: var(--ruimte-regel); }
 .org-sitewide-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-lopend); }
@@ -4357,7 +4368,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .act-ok { font-size: var(--type-bijschrift); font-weight: 600; color: #1e824c; }
 .act-copybox { margin-top: var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); overflow: hidden; }
 .act-copybox-head { display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-naast); padding: var(--ruimte-krap) var(--ruimte-naast); background: var(--kleur-pagina); border-bottom: 1px solid var(--kleur-rand); }
-.act-pre { margin: 0; padding: var(--ruimte-naast) var(--ruimte-naast); font-size: var(--type-bijschrift); line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.act-pre { margin: 0; padding: var(--ruimte-naast) var(--ruimte-naast); font-size: var(--type-bijschrift); line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; font-family: var(--letter-code); }
 .act-jump { display: flex; gap: var(--ruimte-naast); flex-wrap: wrap; margin-top: var(--ruimte-naast); }
 
 /* ── Visueel werkplan: cards in drie gekleurde secties ── */
@@ -4952,7 +4963,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   border-radius: var(--ronding-knop); background: var(--kleur-accent-waas); }
 .opr-vorm-kop { font-weight: 800; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-accent); }
 .opr-vorm-rij { display: flex; gap: var(--ruimte-naast); align-items: center; flex-wrap: wrap; }
-.opr-vorm-rij .opr-zoek { flex: 1 1 320px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.opr-vorm-rij .opr-zoek { flex: 1 1 320px; font-family: var(--letter-code); }
 .opr-kop-rij { display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-regel); flex-wrap: wrap; margin-bottom: var(--ruimte-regel); }
 .opr-kop-rij .opr-kop { margin-bottom: 0; }
 .opr-kop { font-weight: 800; font-size: var(--type-kaartkop); line-height: var(--regel-kaartkop); color: var(--kleur-accent); margin-bottom: var(--ruimte-regel); }
@@ -4995,7 +5006,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .opr-tabel tr.uit .opr-pad { color: var(--kleur-tekst-stil); text-decoration: line-through; }
 .opr-vink { width: 46px; text-align: center; }
 .opr-vink input { accent-color: var(--kleur-accent); width: 18px; height: 18px; cursor: pointer; }
-.opr-pad { font-family: ui-monospace, Menlo, monospace; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-accent-diep); text-decoration: none; word-break: break-all; display: inline-block; }
+.opr-pad { font-family: var(--letter-code); font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-accent-diep); text-decoration: none; word-break: break-all; display: inline-block; }
 .opr-pad:hover { text-decoration: underline; }
 .opr-doel { font-weight: 700; }
 .opr-select { display: block; margin-top: var(--ruimte-krap); max-width: 240px; font-family: inherit; font-size: var(--type-label); padding: var(--ruimte-krap) var(--ruimte-krap); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart); color: var(--kleur-tekst-stil); }
@@ -5029,11 +5040,11 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    valt het blok op, daarna is het gewoon een rustig kaartje. */
 .opr-ads.nodig { border-color: var(--kleur-rand-accent); background: var(--kleur-accent-waas); }
 .opr-chip.nodig { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); }
-.opr-ads-veld { width: 100%; margin-top: var(--ruimte-naast); font-family: ui-monospace, Menlo, monospace; font-size: var(--type-label); line-height: 1.6; padding: var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart); color: var(--dark); resize: vertical; }
+.opr-ads-veld { width: 100%; margin-top: var(--ruimte-naast); font-family: var(--letter-code); font-size: var(--type-label); line-height: 1.6; padding: var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart); color: var(--dark); resize: vertical; }
 .opr-ads-veld:focus-visible { outline: 2px solid var(--kleur-accent); outline-offset: 1px; }
 .opr-ads-geen { display: flex; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-label); color: var(--kleur-tekst-stil); cursor: pointer; }
 .opr-ads-geen input { accent-color: var(--kleur-accent); width: 16px; height: 16px; cursor: pointer; }
-.opr-ads code { font-family: ui-monospace, Menlo, monospace; background: var(--kleur-rustig); padding: 0 var(--ruimte-krap); border-radius: var(--ronding-klein); }
+.opr-ads code { font-family: var(--letter-code); background: var(--kleur-rustig); padding: 0 var(--ruimte-krap); border-radius: var(--ronding-klein); }
 .opr-melding { margin-top: var(--ruimte-naast); font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-goed); }
 .opr-voet { margin-top: var(--ruimte-regel); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); max-width: 70ch; }
 .opr-details { margin-top: var(--s-5); border-top: 1px solid var(--kleur-rand); padding-top: var(--ruimte-regel); }
@@ -5049,7 +5060,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .opr-str-kpi span { font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
 .opr-num { text-align: right; white-space: nowrap; }
 .opr-dood { color: var(--kleur-accent-diep); }
-.opr-vb { font-family: ui-monospace, Menlo, monospace; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
+.opr-vb { font-family: var(--letter-code); font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
 .opr-details-body { margin-top: var(--ruimte-regel); }
 
 /* ── De opgeruimde structuur: het resultaat in plaats van het werk ─────
@@ -6035,7 +6046,7 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
   padding: var(--ruimte-krap) var(--ruimte-regel); border-radius: var(--ronding-pil); margin-bottom: var(--ruimte-groep);
 }
 .ut-hero-titel {
-  font-size: 34px; line-height: 42px; font-weight: 800; color: var(--kleur-kop);
+  font-size: var(--type-hero); line-height: var(--regel-hero); font-weight: 800; color: var(--kleur-kop);
   margin: 0 0 var(--ruimte-groep); max-width: 22em;
 }
 .ut-hero-titel span { color: var(--accent); }
@@ -8315,7 +8326,7 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 }
 .stijl-p-klein { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); }
 .stijl-code {
-  font-family: ui-monospace, Menlo, monospace;
+  font-family: var(--letter-code);
   font-size: var(--type-label); line-height: var(--regel-label);
   background: var(--kleur-rustig); color: var(--kleur-tekst-zacht);
   padding: var(--s-0) var(--ruimte-krap); border-radius: var(--ronding-klein);
@@ -8425,7 +8436,7 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .stijl-swatch-waarde {
-  font-family: ui-monospace, Menlo, monospace;
+  font-family: var(--letter-code);
   font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
 }
 .stijl-type { display: flex; flex-direction: column; gap: var(--ruimte-regel); }
@@ -8435,7 +8446,7 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   color: var(--kleur-accent-diep); min-width: var(--s-10);
 }
 .stijl-type-maat {
-  font-family: ui-monospace, Menlo, monospace;
+  font-family: var(--letter-code);
   font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); min-width: var(--s-12);
 }
 .stijl-type-proef { color: var(--kleur-tekst); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -8447,7 +8458,7 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 }
 .stijl-ruimte-blok { height: var(--ruimte-groep); background: var(--kleur-accent); border-radius: var(--ronding-klein); flex: none; }
 .stijl-ruimte-maat {
-  font-family: ui-monospace, Menlo, monospace;
+  font-family: var(--letter-code);
   font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
 }
 .stijl-vormen { display: flex; flex-wrap: wrap; gap: var(--s-5); }
@@ -8552,7 +8563,7 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   font-variant-numeric: tabular-nums; text-align: right;
 }
 .stijl-afrond-waar {
-  font-family: ui-monospace, Menlo, monospace;
+  font-family: var(--letter-code);
   font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -8630,7 +8641,7 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   border-top: 1px solid var(--kleur-rand-zacht);
 }
 .stijl-waardenblok {
-  font-family: ui-monospace, Menlo, monospace;
+  font-family: var(--letter-code);
   font-size: var(--type-label); line-height: var(--regel-bijschrift);
   background: var(--kleur-rustig); color: var(--kleur-tekst-zacht);
   padding: var(--ruimte-regel); border-radius: var(--ronding-knop);

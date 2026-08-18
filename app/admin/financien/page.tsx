@@ -96,7 +96,7 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
     ? `${MONTH_NAMES[Number(p.slice(4, 6)) - 1]} ${year}`
     : `heel ${year}`;
 
-  const wrap: React.CSSProperties = { maxWidth: 1080, margin: "0 auto", padding: "28px var(--s-5) 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "var(--kleur-kop)" };
+  const wrap: React.CSSProperties = { maxWidth: 1080, margin: "0 auto", padding: "var(--s-8) var(--s-5) 60px", fontFamily: "var(--letter)", color: "var(--kleur-kop)" };
   const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: "var(--r-md)", background: "#fff", padding: "var(--s-4)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
   const pill = (active: boolean): React.CSSProperties => ({
     padding: "var(--s-1) var(--s-3)", borderRadius: "var(--r-full)", fontSize: "var(--fs-base)", textDecoration: "none",
