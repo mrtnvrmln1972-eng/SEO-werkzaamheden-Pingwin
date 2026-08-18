@@ -127,7 +127,7 @@ async function klikCookieWeg(page: any): Promise<boolean> {
   return gelukt;
 }
 
-export type Kop = { niveau: number; tekst: string };
+export type Kop = { niveau: number; tekst: string; zichtbaar: boolean; y: number };
 export type Verwijzing = { pad: string; tekst: string; extern: boolean };
 export type Beeld = { bron: string; alt: string; breedte: number; hoogte: number };
 
@@ -211,12 +211,30 @@ export async function leesPagina(url: string, apparaat: Apparaat = "desktop"): P
     const eindUrl: string = page.url();
     const fout = await waaromNiet(eindUrl);
     if (fout) throw new Error(`De pagina stuurde door naar een adres dat niet opgehaald mag worden.`);
+    // Ook bij het lézen moet de cookiemelding weg. Anders begint de tekst van
+    // elke pagina met "Deze website maakt gebruik van cookies", staan de knoppen
+    // van de cookiemelder tussen de knoppen van de pagina, en telt zijn kop mee
+    // in de koppenstructuur. Dat vervuilt elk oordeel dat erop volgt.
+    await klikCookieWeg(page);
     const gelezen = await page.evaluate(() => {
       const tekstVan = (el: Element | null): string => (el?.textContent || "").replace(/\s+/g, " ").trim();
       const meta = (naam: string): string =>
         (document.querySelector(`meta[name="${naam}"]`) as HTMLMetaElement | null)?.content?.trim() || "";
+      // Zichtbaar en waar op de pagina. Beide zijn nodig om niet te gokken: een
+      // site zet vaak een tweede kop klaar voor mobiel die op desktop verborgen
+      // is, en dan lijkt het op twee H1's terwijl een bezoeker er één ziet.
       const koppen = Array.from(document.querySelectorAll("h1,h2,h3,h4,h5,h6"))
-        .map((h) => ({ niveau: Number(h.tagName.slice(1)), tekst: tekstVan(h) }))
+        .map((h) => {
+          const el = h as HTMLElement;
+          const vak = el.getBoundingClientRect();
+          const zichtbaar = el.offsetParent !== null && vak.width > 0 && vak.height > 0;
+          return {
+            niveau: Number(h.tagName.slice(1)),
+            tekst: tekstVan(h),
+            zichtbaar,
+            y: Math.round(vak.top + window.scrollY),
+          };
+        })
         .filter((k) => k.tekst.length > 0);
       const hier = location.origin;
       const links = Array.from(document.querySelectorAll("a[href]"))
