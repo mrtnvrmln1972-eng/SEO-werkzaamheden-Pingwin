@@ -8563,3 +8563,17 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   padding: var(--ruimte-regel); border-radius: var(--ronding-knop);
   margin-top: var(--ruimte-regel); overflow-x: auto;
 }
+
+/* Het balkje dat zegt dat je naar een proefstijl kijkt. Niet optioneel: een
+   proef die je niet kunt zien lopen is een valstrik, want dan kijk je op een dag
+   naar een dashboard dat er voor jou anders uitziet dan voor iedereen anders. */
+.proefstijl-balk {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: var(--ruimte-regel); padding: var(--ruimte-naast) var(--ruimte-groep);
+  background: var(--kleur-accent-vlak);
+  border-bottom: 1px solid var(--kleur-rand-accent);
+  font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
+  color: var(--kleur-accent-diep);
+}
+.proefstijl-tekst { margin-right: auto; }
+.proefstijl-knop { text-decoration: none; }

@@ -147,7 +147,7 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
           </ol>
         </div>
 
-        <Speelruimte tokens={meting.tokens} />
+        <Speelruimte />
 
         {/* ── Waarom je hier kijkt ── */}
         <div className="card section">

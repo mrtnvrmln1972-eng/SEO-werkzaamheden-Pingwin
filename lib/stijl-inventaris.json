@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8566,
-    "stijlregels": 4402,
-    "classnamen": 2920
+    "regels": 8580,
+    "stijlregels": 4405,
+    "classnamen": 2923
   },
   "kleuren": {
     "verschillend": 325,
@@ -1737,7 +1737,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 64,
+      "aantal": 65,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -1783,6 +1783,7 @@
         "prio-groepknop",
         "prio-knoppen",
         "prio-waarom-knop",
+        "proefstijl-knop",
         "profile-gen-buttons",
         "stijl-knop",
         "stijl-knoppen",
@@ -5597,7 +5598,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 6047,
+    "gebruik": 6055,
     "schaalGebruik": 1138
   }
 }
