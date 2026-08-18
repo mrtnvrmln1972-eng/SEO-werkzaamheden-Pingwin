@@ -171,7 +171,10 @@ export default function Speelruimte() {
           type="button" className="btn btn-primary" disabled={bezig || alVast}
           onClick={() => legVast(isBasis ? null : thema)}
         >
-          {bezig ? "Bezig…" : alVast ? "Dit staat al vast" : "Leg deze stijl vast voor iedereen"}
+          {bezig ? "Bezig…"
+            : !alVast ? "Leg deze stijl vast voor iedereen"
+            : vast ? "Deze stijl staat al vast"
+            : "Kies eerst een richting hierboven"}
         </button>
         {vast && (
           <button type="button" className="btn btn-ghost btn-klein" disabled={bezig} onClick={() => legVast(null)}>
