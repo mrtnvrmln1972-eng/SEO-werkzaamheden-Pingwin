@@ -538,8 +538,12 @@ function meetBetekenislaag(rest: string, tokens: { naam: string; waarde: string 
   // eigen waarde. Zodra dat wél gebeurt is het geen laag erbovenop meer maar een
   // tweede schaal ernaast, en dan lopen ze uit elkaar zoals alles wat hier twee
   // keer los is uitgeschreven.
+  // Een mengsel telt óók als verwijzing, mits er een token in zit: dat IS afgeleid
+  // van de schaal, alleen met een berekening ertussen. Zo kan een rand "de foutkleur
+  // met wat wit erdoor" zijn en meebewegen als de foutkleur verandert, in plaats van
+  // een vaste tint die je bij elke wijziging vergeet.
   const eigenWaarde = namen
-    .filter((n) => !n.wijstNaar.startsWith("var(--"))
+    .filter((n) => !n.wijstNaar.includes("var(--"))
     .map((n) => `${n.naam}: ${n.wijstNaar}`);
 
   const alleGebruiken = [...rest.matchAll(/var\((--[\w-]+)/g)].map((m) => m[1]);

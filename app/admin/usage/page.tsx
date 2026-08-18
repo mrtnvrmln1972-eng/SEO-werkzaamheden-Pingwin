@@ -208,7 +208,7 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
       </p>
 
       {loadError ? (
-        <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
+        <div style={{ ...card, borderColor: "var(--kleur-fout-rand)", background: "var(--red-light)", color: "var(--bad-deep)" }}>
           Kon het verbruik niet laden: {loadError}
         </div>
       ) : (

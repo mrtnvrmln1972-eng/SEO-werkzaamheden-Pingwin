@@ -133,18 +133,18 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
 
       {blik === "prognose" ? (
         prognoseFout ? (
-          <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
+          <div style={{ ...card, borderColor: "var(--kleur-fout-rand)", background: "var(--red-light)", color: "var(--bad-deep)" }}>
             Kon de prognose niet laden: {prognoseFout}
           </div>
         ) : prognose ? (
           <PrognosePaneel begin={prognose} />
         ) : null
       ) : !configured ? (
-        <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
+        <div style={{ ...card, borderColor: "var(--kleur-fout-rand)", background: "var(--red-light)", color: "var(--bad-deep)" }}>
           Moneybird is nog niet gekoppeld (MONEYBIRD_API_TOKEN / MONEYBIRD_ADMINISTRATION_ID ontbreken).
         </div>
       ) : loadError ? (
-        <div style={{ ...card, borderColor: "#f0c8c8", background: "var(--red-light)", color: "var(--bad-deep)" }}>
+        <div style={{ ...card, borderColor: "var(--kleur-fout-rand)", background: "var(--red-light)", color: "var(--bad-deep)" }}>
           Kon de cijfers niet laden: {loadError}
         </div>
       ) : (

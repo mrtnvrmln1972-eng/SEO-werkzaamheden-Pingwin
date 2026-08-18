@@ -20,12 +20,12 @@
     "nog steeds te veel, maar het houdt geen bouw meer tegen."
   ],
   "plafond": {
-    "kleuren": 96,
+    "kleuren": 66,
     "lettergroottes": 1,
     "rondingen": 4,
     "schaduwen": 7,
     "afstanden": 2,
-    "inlineOpmaak": 34
+    "inlineOpmaak": 30
   },
   "doel": {
     "kleuren": 45,
@@ -37,6 +37,6 @@
     "inlineOpmaak": 0
   },
   "vloer": {
-    "betekenislaag": 8379
+    "betekenislaag": 8472
   }
 }
