@@ -149,7 +149,7 @@ function Spark({ data, metric, invert, markers, hoverKey, onHover }: { data: Day
   const x = (i: number) => pad + (i / (pts.length - 1)) * (w - 2 * pad);
   const y = (v: number) => { const t = (v - min) / range; return invert ? pad + t * (h - 2 * pad) : (h - pad) - t * (h - 2 * pad); };
   const line = pts.map((d, i) => `${x(i).toFixed(1)},${y(Number(d[metric]) || 0).toFixed(1)}`).join(" ");
-  const dotColor = metric === "position" ? "#1e824c" : "var(--kleur-link)";
+  const dotColor = metric === "position" ? "var(--kleur-goed)" : "var(--kleur-link)";
   const fmtV = (v: number) => metric === "position" ? v.toFixed(1) : metric === "ctr" ? v.toFixed(1) + "%" : String(Math.round(v));
   const frac = (date: string) => { let mi = pts.findIndex((d) => d.date >= date); if (mi < 0) mi = pts.length - 1; return mi / (pts.length - 1); };
   // Per meetmoment: het gemiddelde niveau NÁ het moment (tot het volgende moment of

@@ -5,35 +5,15 @@
     "classnamen": 2945
   },
   "kleuren": {
-    "verschillend": 129,
+    "verschillend": 103,
     "benoemd": 43,
     "los": [
-      {
-        "waarde": "#1e824c",
-        "aantal": 27
-      },
       {
         "waarde": "#fff",
         "aantal": 8
       },
       {
-        "waarde": "#8a5a00",
-        "aantal": 7
-      },
-      {
-        "waarde": "#2e9e5b",
-        "aantal": 6
-      },
-      {
         "waarde": "rgba(0,0,0,0.25)",
-        "aantal": 6
-      },
-      {
-        "waarde": "rgba(231, 119, 63, 0.14)",
-        "aantal": 6
-      },
-      {
-        "waarde": "rgba(231, 119, 63, 0.15)",
         "aantal": 6
       },
       {
@@ -41,23 +21,7 @@
         "aantal": 5
       },
       {
-        "waarde": "#a12622",
-        "aantal": 5
-      },
-      {
-        "waarde": "#1a56b0",
-        "aantal": 4
-      },
-      {
-        "waarde": "#1c7a44",
-        "aantal": 4
-      },
-      {
         "waarde": "#6d28d9",
-        "aantal": 4
-      },
-      {
-        "waarde": "#8a6d00",
         "aantal": 4
       },
       {
@@ -69,31 +33,11 @@
         "aantal": 4
       },
       {
-        "waarde": "rgba(231, 119, 63, 0.10)",
-        "aantal": 4
-      },
-      {
-        "waarde": "rgba(231, 119, 63, 0.12)",
-        "aantal": 4
-      },
-      {
-        "waarde": "#0b4ea8",
-        "aantal": 3
-      },
-      {
-        "waarde": "#2a4bad",
-        "aantal": 3
-      },
-      {
         "waarde": "#3b4a9e",
         "aantal": 3
       },
       {
         "waarde": "#8a8d91",
-        "aantal": 3
-      },
-      {
-        "waarde": "#9a6b00",
         "aantal": 3
       },
       {
@@ -109,10 +53,6 @@
         "aantal": 3
       },
       {
-        "waarde": "rgba(231, 119, 63, 0.22)",
-        "aantal": 3
-      },
-      {
         "waarde": "#000",
         "aantal": 2
       },
@@ -122,14 +62,6 @@
       },
       {
         "waarde": "#0b7c91",
-        "aantal": 2
-      },
-      {
-        "waarde": "#1565c0",
-        "aantal": 2
-      },
-      {
-        "waarde": "#17679a",
         "aantal": 2
       },
       {
@@ -165,10 +97,6 @@
         "aantal": 2
       },
       {
-        "waarde": "#a86f04",
-        "aantal": 2
-      },
-      {
         "waarde": "#bfe0c8",
         "aantal": 2
       },
@@ -194,14 +122,6 @@
       },
       {
         "waarde": "rgba(0,0,0,0.28)",
-        "aantal": 2
-      },
-      {
-        "waarde": "rgba(231, 119, 63, 0.18)",
-        "aantal": 2
-      },
-      {
-        "waarde": "rgba(241, 88, 41, 0.18)",
         "aantal": 2
       },
       {
@@ -281,10 +201,6 @@
         "aantal": 1
       },
       {
-        "waarde": "#8b1e13",
-        "aantal": 1
-      },
-      {
         "waarde": "#8e1b1b",
         "aantal": 1
       },
@@ -346,10 +262,6 @@
       },
       {
         "waarde": "#cfc7bd",
-        "aantal": 1
-      },
-      {
-        "waarde": "#d9930d",
         "aantal": 1
       },
       {
@@ -421,14 +333,6 @@
         "aantal": 1
       },
       {
-        "waarde": "rgba(231, 119, 63, 0.08)",
-        "aantal": 1
-      },
-      {
-        "waarde": "rgba(231, 119, 63, 0.35)",
-        "aantal": 1
-      },
-      {
         "waarde": "rgba(232, 119, 34, 0.55)",
         "aantal": 1
       },
@@ -438,14 +342,6 @@
       },
       {
         "waarde": "rgba(240, 138, 36, .06)",
-        "aantal": 1
-      },
-      {
-        "waarde": "rgba(241, 88, 41, .12)",
-        "aantal": 1
-      },
-      {
-        "waarde": "rgba(246, 113, 44, 0.4)",
         "aantal": 1
       },
       {
@@ -554,21 +450,9 @@
     ]
   },
   "schaduwen": {
-    "verschillend": 26,
+    "verschillend": 19,
     "benoemd": 4,
     "los": [
-      {
-        "waarde": "0 0 0 3px rgba(231, 119, 63, 0.15)",
-        "aantal": 6
-      },
-      {
-        "waarde": "0 0 0 3px rgba(231, 119, 63, 0.12)",
-        "aantal": 2
-      },
-      {
-        "waarde": "0 0 0 3px rgba(241, 88, 41, 0.18)",
-        "aantal": 2
-      },
       {
         "waarde": "0 10px 40px rgba(0,0,0,0.25)",
         "aantal": 2
@@ -587,10 +471,6 @@
       },
       {
         "waarde": "0 0 0 0 rgba(232, 119, 34, 0.55)",
-        "aantal": 1
-      },
-      {
-        "waarde": "0 0 0 2px rgba(241, 88, 41, .12)",
         "aantal": 1
       },
       {
@@ -630,10 +510,6 @@
         "aantal": 1
       },
       {
-        "waarde": "0 2px 4px rgba(51, 48, 46, 0.05), 0 20px 40px -10px rgba(231, 119, 63, 0.22)",
-        "aantal": 1
-      },
-      {
         "waarde": "0 2px 5px rgba(51,48,46,0.22)",
         "aantal": 1
       },
@@ -650,15 +526,7 @@
         "aantal": 1
       },
       {
-        "waarde": "0 4px 14px rgba(231, 119, 63, 0.35)",
-        "aantal": 1
-      },
-      {
         "waarde": "0 6px 20px rgba(0,0,0,0.22)",
-        "aantal": 1
-      },
-      {
-        "waarde": "inset 0 3px 0 rgba(246, 113, 44, 0.4)",
         "aantal": 1
       }
     ]
@@ -1630,13 +1498,6 @@
   ],
   "kleurNaastToken": [
     {
-      "waarde": "#1e824c",
-      "aantal": 27,
-      "dichtst": "--good",
-      "afstand": 51,
-      "stapel": "familie"
-    },
-    {
       "waarde": "#fff",
       "aantal": 8,
       "dichtst": "--white",
@@ -1644,35 +1505,7 @@
       "stapel": "gelijk"
     },
     {
-      "waarde": "#8a5a00",
-      "aantal": 7,
-      "dichtst": "--warn-dark",
-      "afstand": 65,
-      "stapel": "anders"
-    },
-    {
-      "waarde": "#2e9e5b",
-      "aantal": 6,
-      "dichtst": "--good",
-      "afstand": 95,
-      "stapel": "anders"
-    },
-    {
       "waarde": "rgba(0,0,0,0.25)",
-      "aantal": 6,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(231, 119, 63, 0.14)",
-      "aantal": 6,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(231, 119, 63, 0.15)",
       "aantal": 6,
       "dichtst": null,
       "afstand": 0,
@@ -1686,38 +1519,10 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#a12622",
-      "aantal": 5,
-      "dichtst": "--bad",
-      "afstand": 62,
-      "stapel": "anders"
-    },
-    {
-      "waarde": "#1a56b0",
-      "aantal": 4,
-      "dichtst": "--link",
-      "afstand": 79,
-      "stapel": "anders"
-    },
-    {
-      "waarde": "#1c7a44",
-      "aantal": 4,
-      "dichtst": "--good",
-      "afstand": 41,
-      "stapel": "familie"
-    },
-    {
       "waarde": "#6d28d9",
       "aantal": 4,
       "dichtst": "--link",
       "afstand": 186,
-      "stapel": "anders"
-    },
-    {
-      "waarde": "#8a6d00",
-      "aantal": 4,
-      "dichtst": "--warn-dark",
-      "afstand": 75,
       "stapel": "anders"
     },
     {
@@ -1735,34 +1540,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "rgba(231, 119, 63, 0.10)",
-      "aantal": 4,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(231, 119, 63, 0.12)",
-      "aantal": 4,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "#0b4ea8",
-      "aantal": 3,
-      "dichtst": "--link",
-      "afstand": 102,
-      "stapel": "anders"
-    },
-    {
-      "waarde": "#2a4bad",
-      "aantal": 3,
-      "dichtst": "--link",
-      "afstand": 100,
-      "stapel": "anders"
-    },
-    {
       "waarde": "#3b4a9e",
       "aantal": 3,
       "dichtst": "--text-secondary",
@@ -1775,13 +1552,6 @@
       "dichtst": "--brand-taupe",
       "afstand": 87,
       "stapel": "anders"
-    },
-    {
-      "waarde": "#9a6b00",
-      "aantal": 3,
-      "dichtst": "--warn-dark",
-      "afstand": 52,
-      "stapel": "familie"
     },
     {
       "waarde": "#bfe6cc",
@@ -1805,13 +1575,6 @@
       "stapel": "doorzichtig"
     },
     {
-      "waarde": "rgba(231, 119, 63, 0.22)",
-      "aantal": 3,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
       "waarde": "#000",
       "aantal": 2,
       "dichtst": "--body-text",
@@ -1827,20 +1590,6 @@
     },
     {
       "waarde": "#0b7c91",
-      "aantal": 2,
-      "dichtst": "--brand-blue",
-      "afstand": 100,
-      "stapel": "anders"
-    },
-    {
-      "waarde": "#1565c0",
-      "aantal": 2,
-      "dichtst": "--link",
-      "afstand": 41,
-      "stapel": "familie"
-    },
-    {
-      "waarde": "#17679a",
       "aantal": 2,
       "dichtst": "--brand-blue",
       "afstand": 100,
@@ -1903,13 +1652,6 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#a86f04",
-      "aantal": 2,
-      "dichtst": "--warn-dark",
-      "afstand": 45,
-      "stapel": "familie"
-    },
-    {
       "waarde": "#bfe0c8",
       "aantal": 2,
       "dichtst": "--grad-blauw",
@@ -1953,20 +1695,6 @@
     },
     {
       "waarde": "rgba(0,0,0,0.28)",
-      "aantal": 2,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(231, 119, 63, 0.18)",
-      "aantal": 2,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(241, 88, 41, 0.18)",
       "aantal": 2,
       "dichtst": null,
       "afstand": 0,
@@ -2106,13 +1834,6 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#8b1e13",
-      "aantal": 1,
-      "dichtst": "--bad-deep",
-      "afstand": 97,
-      "stapel": "anders"
-    },
-    {
       "waarde": "#8e1b1b",
       "aantal": 1,
       "dichtst": "--bad-deep",
@@ -2222,13 +1943,6 @@
       "aantal": 1,
       "dichtst": "--border",
       "afstand": 77,
-      "stapel": "anders"
-    },
-    {
-      "waarde": "#d9930d",
-      "aantal": 1,
-      "dichtst": "--accent-warm",
-      "afstand": 65,
       "stapel": "anders"
     },
     {
@@ -2351,20 +2065,6 @@
       "stapel": "doorzichtig"
     },
     {
-      "waarde": "rgba(231, 119, 63, 0.08)",
-      "aantal": 1,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(231, 119, 63, 0.35)",
-      "aantal": 1,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
       "waarde": "rgba(232, 119, 34, 0.55)",
       "aantal": 1,
       "dichtst": null,
@@ -2380,20 +2080,6 @@
     },
     {
       "waarde": "rgba(240, 138, 36, .06)",
-      "aantal": 1,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(241, 88, 41, .12)",
-      "aantal": 1,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(246, 113, 44, 0.4)",
       "aantal": 1,
       "dichtst": null,
       "afstand": 0,
@@ -2850,7 +2536,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8295,
+    "gebruik": 8400,
     "schaalGebruik": 1481
   }
 }
