@@ -186,7 +186,11 @@ export type OpgeslagenScherm = { hoofdstuk: string; label: string; pad: string; 
  */
 function alsBeeld(opgeslagen: string | null | undefined): string | null {
   if (!opgeslagen) return null;
-  const bytes = /^\d+(,\d+)+$/.test(opgeslagen.slice(0, 200));
+  // Geen anker aan het eind: er wordt naar het begín van de tekst gekeken, en een
+  // afgeknipt stuk eindigt net zo vaak midden in een getal of op een komma. Met
+  // een anker mislukte de herkenning precies daar, dus stond de helft van de
+  // foto's nog steeds kapot in beeld terwijl de andere helft goed was.
+  const bytes = /^\d{1,3}(,\d{1,3}){8,}/.test(opgeslagen.slice(0, 200));
   const b64 = bytes
     ? Buffer.from(Uint8Array.from(opgeslagen.split(",").map(Number))).toString("base64")
     : opgeslagen;
