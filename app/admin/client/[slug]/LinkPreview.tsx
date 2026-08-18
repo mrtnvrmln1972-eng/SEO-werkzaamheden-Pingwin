@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { leesHintVertraging } from "../../../_ui/hint-vertraging";
 
 // Bouwt een insluitbare preview-URL voor Google-documenten; anders null.
 function googlePreview(url: string): string | null {
@@ -18,11 +19,20 @@ function hostOf(url: string): string {
 // Toont een zwevende preview bij hover op een link in de werk-tabel of het
 // focus-blok. Google-documenten als echte preview (jij bent ingelogd), andere
 // links als net kaartje (websites blokkeren insluiten meestal).
+//
+// Net als het uitleg-bolletje wacht hij tot je even stil blijft hangen
+// (--hint-vertraging, zie app/_ui/hint-vertraging.ts). Dat scheelt niet alleen
+// geflikker: bij een Google-document werd er meteen een iframe geladen van elke
+// link waar je toevallig langs bewoog.
 export default function LinkPreview() {
   const [state, setState] = useState<{ url: string; x: number; y: number } | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const toonTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const doel = useRef<HTMLAnchorElement | null>(null);
 
   useEffect(() => {
+    const vertraging = leesHintVertraging();
+
     function onOver(e: MouseEvent) {
       const el = e.target as HTMLElement | null;
       const a = el?.closest?.("a[href]") as HTMLAnchorElement | null;
@@ -31,16 +41,31 @@ export default function LinkPreview() {
       const href = a.getAttribute("href") || "";
       if (!/^https?:/i.test(href)) return;
       if (hideTimer.current) clearTimeout(hideTimer.current);
-      const r = a.getBoundingClientRect();
-      setState({ url: href, x: r.left, y: r.bottom });
+      if (doel.current === a) return; // al aan het wachten op, of open voor, deze link
+      doel.current = a;
+      if (toonTimer.current) clearTimeout(toonTimer.current);
+      toonTimer.current = setTimeout(() => {
+        if (doel.current !== a || !a.isConnected) return;
+        const r = a.getBoundingClientRect();
+        setState({ url: href, x: r.left, y: r.bottom });
+      }, vertraging);
     }
-    function onOut() {
+    function onOut(e: MouseEvent) {
+      const naar = e.relatedTarget as Node | null;
+      if (doel.current && naar && doel.current.contains(naar)) return; // nog binnen dezelfde link
+      doel.current = null;
+      if (toonTimer.current) clearTimeout(toonTimer.current);
       if (hideTimer.current) clearTimeout(hideTimer.current);
       hideTimer.current = setTimeout(() => setState(null), 250);
     }
     document.addEventListener("mouseover", onOver);
     document.addEventListener("mouseout", onOut);
-    return () => { document.removeEventListener("mouseover", onOver); document.removeEventListener("mouseout", onOut); };
+    return () => {
+      if (toonTimer.current) clearTimeout(toonTimer.current);
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+      document.removeEventListener("mouseover", onOver);
+      document.removeEventListener("mouseout", onOut);
+    };
   }, []);
 
   if (!state) return null;
