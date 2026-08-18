@@ -65,12 +65,12 @@ const STAPPEN: { nr: number; titel: string; wat: string; stand: "af" | "bezig" |
     wat: "Elke maat en kleur een naam geven die zegt waarvóór hij dient, in plaats van hoe groot hij is. Niet \u201c12,5 pixels\u201d maar \u201cde maat van een bijschrift\u201d. Daarna kun je alle bijschriften tegelijk veranderen.",
   },
   {
-    nr: 3, stand: "bezig", titel: "Elk scherm die namen laten gebruiken",
-    wat: "Scherm voor scherm, zonder dat er iets verandert aan hoe het eruitziet. Dit is het saaie stuk en tegelijk het stuk waar alles op wacht.",
+    nr: 3, stand: "af", titel: "Elk scherm die namen laten gebruiken",
+    wat: "Scherm voor scherm, zonder dat er iets verandert aan hoe het eruitziet. Dit is het saaie stuk en tegelijk het stuk waar alles op wacht. Af op 18 augustus: alle zes de meters hieronder staan op hun doel, en er staat geen losse opmaak meer in de schermen zelf.",
   },
   {
     nr: 4, stand: "bezig", titel: "Het ontwerp kiezen en doorvoeren",
-    wat: "Hier gaat het over hoe het eruitziet: kleuren, lettertype, hoeken, ruimte. Kiezen kan nu, in de speelruimte hierboven: je draait en het hele scherm verandert mee. Wat er nog moet gebeuren is de keuze zelf, en dan zet ik hem door voor het hele dashboard.",
+    wat: "Hier gaat het over hoe het eruitziet: kleuren, lettertype, hoeken, ruimte. Draaien kan in de speelruimte hierboven, en vastleggen met de knop eronder; vanaf dat moment geldt het voor iedereen. De keuze tot nu toe is 'zoals het nu is', dus het gezicht van het dashboard is niet veranderd. Wat wél veranderde: er is nu niets meer dat niet meebeweegt als je alsnog iets anders kiest.",
   },
 ];
 
