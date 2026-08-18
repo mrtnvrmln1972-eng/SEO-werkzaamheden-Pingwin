@@ -355,7 +355,11 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
             in dit compacte kaartje: de titel hierboven is genoeg om de taak te
             herkennen. Dit stipje laat alleen zien dát er een opmerking is; de
             hele tekst lees je via "Bewerk". */}
-        {(stripText(r.toelichting) || stripText(r.kaartOpm)) && <span className="dev-task-note-stip" title="Er staat een opmerking bij deze taak; open Bekijk om hem te lezen">···</span>}
+        {(stripText(r.toelichting) || stripText(r.kaartOpm)) && (
+          <button type="button" className="dev-opm-link"
+            onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }}
+            title="De hele opmerking lezen (opent de taak)">Bekijk de opmerkingen</button>
+        )}
       </div>
       {/* De documenten die bij deze taak horen. Een opdracht als "zet de nieuwe
           copy live" zonder de copy erbij is geen opdracht; dan moet de
@@ -425,7 +429,17 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       onDrop={sleepbaar ? (e) => { e.stopPropagation(); moveTo(idx); } : undefined}
     >
       <td className="drag-handle" draggable={sleepbaar} onDragStart={sleepbaar ? () => setDragIdx(idx) : undefined} onDragEnd={sleepbaar ? () => setDragIdx(null) : undefined} title={sleepbaar ? "Sleep om de prioriteit te wijzigen" : undefined}>{sleepbaar ? "⠿" : ""}</td>
-      <td><span className="dev-cell dev-cell-1regel" title={stripText(r.taak)} dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} /></td>
+      <td>
+        <span className="dev-cell dev-cell-1regel" title={stripText(r.taak)} dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} />
+        {/* De opmerking zelf staat hier bewust niet: dat is vaak een half scherm
+            instructie en dan is de lijst geen lijst meer. Wel een zichtbaar
+            linkje dat de taak opent, want een klein stipje zag niemand. */}
+        {(stripText(r.toelichting) || stripText(r.kaartOpm)) && (
+          <button type="button" className="dev-opm-link"
+            onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }}
+            title="De hele opmerking lezen (opent de taak)">Bekijk de opmerkingen</button>
+        )}
+      </td>
       <td>
         {r.docs && r.docs.length > 0 ? (
           <span className="dev-task-docs">
@@ -698,6 +712,8 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
   const [docUrl, setDocUrl] = useState("");
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
+  /** Hangt er op dit moment een bestand boven het opmerkingenveld? */
+  const [opmDrag, setOpmDrag] = useState(false);
   const bestandRef = useRef<HTMLInputElement | null>(null);
   const eigen = taak ? !!taak.eigen : true;
   const kaartOpm = taak?.kaartOpm || "";
@@ -830,7 +846,29 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
           )}
 
           <label className="compose-label">Opmerking voor de developer</label>
-          <RijkTekstVeld waarde={opm} onChange={setOpm} klasse="dev-veld-rijk" placeholder="Achtergrond, aandachtspunten, links naar documenten (plakken mag)" />
+          {/* Een afbeelding of document er rechtstreeks in slepen. Het bestand
+              gaat naar de Drive-map van deze klant en hangt daarna als document
+              aan de taak, precies zoals de knop hieronder doet: één plek waar de
+              bestanden van een taak wonen, niet een tweede stapel verstopt in de
+              opmerkingtekst. Het veld zelf vangt de drop niet af (dat is voor het
+              verslepen van regels binnen de tekst), dus dit hoort op de omlijsting
+              eromheen. */}
+          <div
+            className={"dev-opm-drop" + (opmDrag ? " dev-opm-drop-aan" : "")}
+            onDragOver={(e) => { if (!e.dataTransfer.types.includes("Files")) return; e.preventDefault(); setOpmDrag(true); }}
+            onDragLeave={() => setOpmDrag(false)}
+            onDrop={(e) => {
+              const f = e.dataTransfer.files?.[0];
+              if (!f) return;
+              e.preventDefault(); setOpmDrag(false);
+              if (!taskKey) { setMsg("Bewaar de taak eerst; daarna kun je er bestanden in slepen."); return; }
+              void bestandKiezen(f);
+            }}>
+            <RijkTekstVeld waarde={opm} onChange={setOpm} klasse="dev-veld-rijk" placeholder="Achtergrond, aandachtspunten, links naar documenten (plakken mag)" />
+            <p className="muted dev-opm-hint">
+              {busy === "upload" ? "Bezig met uploaden…" : "Sleep hier een afbeelding of document in; hij komt bij Documenten en bestanden te staan."}
+            </p>
+          </div>
 
           <label className="compose-label">Pagina op de site (mag leeg)</label>
           <input className="compose-input" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://…" />

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// SLEPEN ZONDER DATUM, EN AFVINKEN OP DE REGEL
+// SLEPEN ZONDER DATUM, EN DE STAND OP DE REGEL
 // ═══════════════════════════════════════════════════════════
 // Waarom dit bestand er is: allebei de dingen hieronder zagen er in de code
 // helemaal goed uit en werkten in de praktijk niet.
@@ -10,10 +10,11 @@
 //     heeft geen week die ergens op slaat. De som stopte er dus stilzwijgend mee.
 //     Alles compileerde, alle proeven waren groen, en niemand kon het zien
 //     zonder het echt te proberen.
-//  2. Afvinken. Dat kon alleen in de opengeklapte kaart, terwijl "dit is
-//     gebeurd" de gewoonste handeling op dat scherm is. En een afgevinkte taak
-//     uit de planning kwam nergens terecht: hij verdween van het scherm en er
-//     stond niet meer dát hij gebeurd was, laat staan wannéér.
+//  2. De stand van een taak. Waar iets ligt (bij ons, bij de developer, bij de
+//     klant, of af) kon je alleen in de opengeklapte kaart zetten, terwijl dat
+//     precies is wat je van een takenlijst wilt weten. En een afgeronde taak uit
+//     de planning kwam nergens terecht: hij verdween van het scherm en er stond
+//     niet meer dát hij gebeurd was, laat staan wannéér.
 //
 // Deze proef rekent de volgorde echt na (geen tekstvergelijking) en controleert
 // daarna dat de schermen en de opslag de draad ook echt vasthouden.
@@ -95,13 +96,24 @@ checkWaar("de volgorde gaat zonder week naar de server",
   !/bewaarLosseVolgorde\([^)]*week/i.test(planning),
   "Bij een taak zonder datum mag de week niet meegestuurd worden; die betekent daar niets en overschrijft wat er stond.");
 
-console.log("\n── Afvinken op de regel ──");
-checkWaar("er is een vinkje op de regel", /className="wb-vink"/.test(planning),
-  "Zonder vinkje op de regel kan afvinken alleen nog in de opengeklapte kaart.");
-checkWaar("het vinkje zet de taak op klaar", /function vinkAf\([^)]*\)[\s\S]{0,300}status: "klaar"/.test(planning),
-  "Het vinkje moet de taak echt op 'klaar' zetten.");
-checkWaar("een afgevinkte taak is terug te halen", /function zetTerug\(/.test(planning) && /Terugzetten/.test(planning),
-  "Een regel die bij één klik van het scherm verdwijnt zonder weg terug voelt als weggegooid.");
+console.log("\n── De stand zetten op de regel ──");
+// Hier stond een los vinkje om af te vinken. Dat is per 18-08-2026 opgegaan in
+// een keuzelijst met vier standen (gepland, bij developer, bij klant, afgerond),
+// want "waar ligt dit nu" is de vraag die je van een takenlijst wilt kunnen
+// beantwoorden én zetten, en twee knoppen voor "afgerond" in dezelfde regel is
+// er een te veel. Wat blijft gelden: het moet op de regel kunnen, en afgerond
+// moet in "Wat we doen" belanden.
+checkWaar("er staat een keuzelijst met de stand op de regel", /className=\{"wb-stand-kies/.test(planning),
+  "Zonder die lijst kun je de stand alleen nog in de opengeklapte kaart zetten.");
+checkWaar("de vier standen komen uit één bron", /STANDEN\.map/.test(planning) && /from "\.\.\/\.\.\/\.\.\/\.\.\/lib\/taak-stand"/.test(planning),
+  "De standen horen uit lib/taak-stand.ts te komen; schrijf de vertaling nooit opnieuw uit in een scherm.");
+checkWaar("kiezen schrijft de stand én de developer-vlag weg", /naarOpslag\(stand\)/.test(planning) && /naarDev: opslag\.naarDev/.test(planning),
+  "De developer-vlag woont in een eigen kolom. Zet je die niet mee, dan blijft een taak op de developerlijst staan terwijl hij daar niet meer ligt.");
+checkWaar("afgerond werk staat onderaan achter een dichte uitklapper",
+  /Afgeronde taken/.test(planning) && /useState\(false\)[\s\S]{0,40}toonAfgerond|const \[toonAfgerond, setToonAfgerond\] = useState\(false\)/.test(planning),
+  "Afgeronde taken horen onderaan in een blok dat dicht begint; anders scroll je er elke dag langs.");
+checkWaar("een afgeronde taak is terug te zetten", /function zetTerug\(/.test(planning) && /Terugzetten/.test(planning),
+  "Een regel die bij één keuze van het scherm verdwijnt zonder weg terug voelt als weggegooid.");
 
 // Het raster van de regel: evenveel kolommen als kinderen. Schuift dat uit
 // elkaar, dan puilt de datumknop uit een kolom van 22 pixels en wordt het
@@ -109,9 +121,11 @@ checkWaar("een afgevinkte taak is terug te halen", /function zetTerug\(/.test(pl
 const css = lees("app/globals.css");
 const raster = css.match(/\.wb-rij\s*\{[\s\S]*?grid-template-columns:\s*([^;]+);/);
 const kolommen = raster ? raster[1].trim().split(/\s+(?![^(]*\))/).length : 0;
-check("de regel heeft zeven kolommen (handvat, vinkje, taak, fases, volgende, datum, kruisje)", kolommen, 7);
-checkWaar("het vinkje heeft opmaak", /\.wb-vink\s*\{/.test(css),
-  "Planning.tsx zet de klasse wb-vink, maar er is geen stijlregel .wb-vink. Dan staat er een kale knop in de regel.");
+check("de regel heeft zes kolommen (handvat, taak, fases, stand, datum, kruisje)", kolommen, 6);
+checkWaar("de keuzelijst heeft opmaak", /\.wb-stand-kies\s*\{/.test(css),
+  "Planning.tsx zet de klasse wb-stand-kies, maar er is geen stijlregel. Dan staat er een kale browserlijst in de regel.");
+checkWaar("het oude vinkje is echt weg", !/wb-vink/.test(planning) && !/\.wb-vink\s*\{/.test(css),
+  "Laat geen tweede knop voor 'afgerond' in dezelfde regel staan; dan bestaan er twee wegen naar dezelfde stand.");
 
 console.log("\n── Afgevinkt werk komt in 'Wat we doen' ──");
 const weekplan = lees("lib/weekplan.ts");

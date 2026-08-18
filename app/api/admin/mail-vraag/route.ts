@@ -1,11 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { getEmails } from "../../../../lib/snapshots";
+import { getEmails, getVerborgenMails, type EmailSnapshot } from "../../../../lib/snapshots";
+import { getClientBySlug } from "../../../../lib/clients";
+import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
+import { isRuisMail } from "../../../../lib/mail-tekst";
 import { callClaude } from "../../../../lib/anthropic";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+
+/**
+ * De mails van deze klant, zoals ze op het scherm staan: eerst live uit de
+ * mailbox, en pas als dat niets oplevert wat er opgeslagen is.
+ *
+ * Waarom dit erbij moest (18-08-2026): dit veld las alleen `client_emails`, en
+ * die tabel wordt sinds de Microsoft-koppeling niet meer gevuld. Je stelde dus
+ * een vraag over mail die naast je op het scherm stond en kreeg "er hangen nog
+ * geen mails in het dashboard voor deze klant" terug. Dezelfde zeef als bij
+ * "Laatste mails", zodat een nieuwsbrief het antwoord niet vervuilt.
+ */
+async function liveMails(slug: string): Promise<EmailSnapshot[]> {
+  const client = await getClientBySlug(slug);
+  const zoek = (client?.email || client?.domain || "").trim();
+  if (!zoek) return getEmails(slug, 60);
+  const status = await msStatus();
+  if (!status.connected) return getEmails(slug, 60);
+  const live = await msSearchClientEmails(zoek, status.account || "", 60);
+  if (!live || live.length === 0) return getEmails(slug, 60);
+  const weg = new Set(await getVerborgenMails(slug).catch(() => [] as string[]));
+  const schoon = live.filter((e) => !weg.has(e.id) && !isRuisMail(e));
+  return (schoon.length ? schoon : live) as unknown as EmailSnapshot[];
+}
 
 // Slim vraagveld bij Laatste mails: een vraag in gewone taal ("ik heb een
 // document 'klantenservice Bogart', staat er iets over in de mail?") wordt
@@ -21,8 +47,18 @@ export async function POST(req: NextRequest) {
   if (!slug || !vraag) return NextResponse.json({ ok: false, error: "Klant en vraag zijn verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
 
-  const emails = await getEmails(slug, 60);
-  if (!emails.length) return NextResponse.json({ ok: false, error: "Er hangen nog geen mails in het dashboard voor deze klant." }, { status: 400 });
+  // De mails die op het scherm staan komen LIVE uit de mailbox; opgeslagen mail
+  // (client_emails) is alleen wat er ooit via de brug in de database beland is.
+  // Dit veld las alleen die database, en dus kreeg je "er hangen nog geen mails
+  // in het dashboard" terwijl er een kolom verderop tientallen mails stonden.
+  // Nu eerst de mailbox, met de opgeslagen mails als terugval.
+  const emails = await liveMails(slug).catch(() => [] as Awaited<ReturnType<typeof getEmails>>);
+  if (!emails.length) {
+    return NextResponse.json({
+      ok: false,
+      error: "Ik kan de mailbox nu niet bereiken en er staat ook nog niets opgeslagen voor deze klant. Probeer het zo nog eens, of zoek in Superhuman.",
+    }, { status: 400 });
+  }
   const strip = (html: string | null) => (html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   const lijst = emails.map((e) => {
     const inhoud = (strip(e.bodyHtml) || e.preview || "").slice(0, 700);

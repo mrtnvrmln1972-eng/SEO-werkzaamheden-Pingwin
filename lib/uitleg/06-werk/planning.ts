@@ -23,19 +23,25 @@ export const BLOKKEN: Uitklapper[] = [
       "som stopte er stilzwijgend mee. Voor die lijst telt nu alleen de onderlinge volgorde. De streep staat " +
       "boven de regel waar je boven hangt, en daar landt hij ook; loslaten in de lege ruimte onder de lijst " +
       "zet hem achteraan.\n\n" +
-      "**Afvinken kan op de regel zelf.** Links op elke regel staat een vinkje: dit is gebeurd. De taak gaat " +
-      "uit de lijst (die toont wat openstaat) en komt met datum terecht bij **Wat we doen**, zodat je later " +
-      "kunt terugzien wannéér het gebeurde, voor de verantwoording naar de klant en voor de eigen urenvraag. " +
-      "Omdat een regel die zomaar verdwijnt als weggegooid voelt, blijft hij bovenaan de lijst nog even staan " +
-      "met een knop **Terugzetten**. Daarvóór kon afvinken alleen in de opengeklapte kaart, terwijl \"dit is " +
-      "gebeurd\" de gewoonste handeling op dit scherm is.\n\n" +
+      "**Waar een taak ligt, zet je op de regel zelf.** Rechts op elke regel staat een keuzelijstje met vier " +
+      "standen: **gepland** (ligt bij ons), **bij developer**, **bij klant** en **afgerond**. Daar stond " +
+      "alleen het woord \"gepland\", dus je las de stand wel maar kon hem niet zetten; dat kon alleen in de " +
+      "opengeklapte kaart. Kies je \"bij developer\", dan komt de kaart ook echt op de developerlijst te " +
+      "staan (dat is dezelfde vlag als de knop op de kaart), en haal je hem daar weer af door een andere " +
+      "stand te kiezen.\n\n" +
+      "**Afgerond haalt de taak uit de lijst en zet hem twee plekken neer.** Onderaan de planning, in een " +
+      "blok **Afgeronde taken** dat dicht begint (je wilt het kunnen terugzien, niet er elke dag langs " +
+      "scrollen), en met datum in **Wat we doen**, voor de verantwoording naar de klant en voor de eigen " +
+      "urenvraag. Omdat een regel die zomaar verdwijnt als weggegooid voelt, blijft hij bovenaan de lijst nog " +
+      "even staan met een knop **Terugzetten**, en in dat blok onderaan kun je de stand gewoon weer " +
+      "terugzetten.\n\n" +
       "Op het tabblad Taken zie je alleen deze klant; op de volle-breedte-versie zie je alle klanten, daar " +
       "gegroepeerd per klant zodat je ziet van wie iets is.\n\n" +
       "De planning is bewust een **signaalscherm** en geen bedieningspaneel: één regel per taak, met " +
       "welke pagina, de zeven fases als gekleurde letters, de volgende stap en de dag. Die letters zijn expres " +
       "geen knoppen: een fase afvinken hoort in de kaart waar het werk gebeurt, en dan kleuren ze hier vanzelf " +
-      "mee. Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen. De hele taak afvinken is " +
-      "iets anders dan een fase, en dat kan wél op de regel (het vinkje links).\n\n" +
+      "mee. Anders bestaan er twee wegen naar dezelfde stand, en dan lopen ze uiteen. Waar de hele taak ligt " +
+      "is iets anders dan een fase, en dat zet je wél op de regel (het keuzelijstje rechts).\n\n" +
       "Klap je een regel open, dan verschijnt de échte projectkaart: de fases met hun knoppen, de chat over " +
       "deze pagina en de documenten. Niet een tweede, magere samenvatting die kan achterlopen, " +
       "maar dezelfde kaart. **De opengeklapte taak wordt daarbij uit de lijst gelicht**: een eigen blok met een " +

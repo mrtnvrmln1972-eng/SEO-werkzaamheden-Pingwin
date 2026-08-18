@@ -1125,7 +1125,23 @@ tbody td:last-child { text-align: center; }
 /* Vervangt de vroegere volle opmerkingtekst op het kaartje (die kon het
    kaartje torenhoog maken): alleen een signaal dát er een opmerking is, de
    inhoud zie je pas via "Bewerk". */
-.dev-task-note-stip { font-size: var(--type-bijschrift); font-weight: 700; color: var(--kleur-tekst-stil); letter-spacing: 1px; cursor: help; }
+/* Hier stond een stipje "···" dat alleen liet zien DAT er een opmerking was.
+   Niemand zag het en het deed niets. Nu een zichtbaar linkje dat de taak opent;
+   de opmerking zelf blijft uit de lijst, want dat is vaak een half scherm
+   instructie en dan is de lijst geen lijst meer. */
+.dev-opm-link {
+  border: 0; background: none; padding: 0; cursor: pointer; font-family: var(--letter);
+  font-size: var(--type-label); font-weight: 700; color: var(--kleur-accent-diep);
+  text-decoration: underline; white-space: nowrap;
+}
+.dev-opm-link:hover { color: var(--accent); }
+/* In de tabel staat hij onder de taaknaam, dus daar hoort wat lucht boven. */
+td .dev-opm-link { display: inline-block; margin-top: var(--ruimte-krap); }
+
+/* Een bestand in het opmerkingenveld slepen. */
+.dev-opm-drop { border-radius: var(--ronding-knop); }
+.dev-opm-drop-aan { outline: 2px dashed var(--kleur-accent); outline-offset: 2px; background: var(--kleur-accent-vlak); }
+.dev-opm-hint { font-size: var(--type-label); margin-top: var(--ruimte-krap); }
 /* De documenten bij een dev-taak: de copy, de blauwdruk, de teksten van de klant. */
 .dev-task-docs { display: flex; flex-wrap: wrap; gap: var(--ruimte-naast); margin-top: var(--ruimte-naast); }
 /* In de taaktabel blijft het bij korte chips op één regel: de rij moet één regel
@@ -5672,15 +5688,16 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    per regel uit de pas, want de ene taaknaam is nu eenmaal langer dan de andere. */
 .wb-rij {
   display: grid;
-  /* Zeven kolommen voor zeven dingen: handvat, vinkje, taak, fase-letters,
-     volgende stap, datumknop, kruisje. Tel de kolommen na als je er een element
-     bij zet of weghaalt: staat het aantal niet gelijk, dan schuift alles één
-     kolom op (dat is eerder gebeurd toen de badge SEO/DEV wegging: de datumknop
-     puilde uit een kolom van 22 pixels en het kruisje kwam als brede knop in
-     beeld). Het vinkje is er in augustus 2026 bij gekomen: afvinken kon alleen
-     in de opengeklapte kaart, terwijl "dit is gebeurd" de gewoonste handeling
-     op dit scherm is. */
-  grid-template-columns: 20px 22px minmax(0, 1fr) auto 116px 96px 22px;
+  /* Zes kolommen voor zes dingen: handvat, taak, fase-letters, de stand,
+     datumknop, kruisje. Tel de kolommen na als je er een element bij zet of
+     weghaalt: staat het aantal niet gelijk, dan schuift alles één kolom op (dat
+     is eerder gebeurd toen de badge SEO/DEV wegging: de datumknop puilde uit
+     een kolom van 22 pixels en het kruisje kwam als brede knop in beeld).
+     Er stond hier een tijdje ook een los vinkje om af te vinken; dat is per
+     18-08-2026 opgegaan in de keuzelijst met de stand, want "afgerond" is daar
+     een van de vier keuzes en twee knoppen voor dezelfde handeling in dezelfde
+     regel is er één te veel. */
+  grid-template-columns: 20px minmax(0, 1fr) auto 132px 96px 22px;
   align-items: center; gap: var(--ruimte-regel);
   padding: var(--ruimte-naast); border-bottom: 1px solid var(--kleur-rand-zacht); cursor: pointer;
 }
@@ -5695,12 +5712,24 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .wb-rij.wb-sleept { opacity: 0.45; }
 /* Afvinken op de regel: een bedieningsteken, net als het kruisje rechts. Rustig
    grijs, groen zodra je erop staat, want dan gaat het ergens over. */
-.wb-vink {
-  border: 1px solid var(--kleur-rand-zacht); background: var(--kleur-kaart); cursor: pointer;
-  color: var(--kleur-tekst-stil); font-size: var(--type-label); line-height: 1;
-  padding: var(--ruimte-krap); border-radius: var(--ronding-klein); text-align: center;
+/* De stand van een taak op de regel: gepland, bij developer, bij klant,
+   afgerond. Een gewone keuzelijst, met dezelfde maat en rand als de datumknop
+   ernaast, zodat de twee bedieningen in een regel bij elkaar horen. De kleur
+   zegt waar het ligt: rustig als het bij ons ligt, accent zodra het ergens
+   anders ligt, groen als het af is. */
+.wb-stand { justify-self: stretch; min-width: 0; }
+.wb-stand-kies {
+  width: 100%; cursor: pointer; font-family: var(--letter);
+  font-size: var(--type-label); font-weight: 700; line-height: var(--regel-label);
+  color: var(--kleur-tekst-stil); background: var(--kleur-kaart);
+  border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop);
+  padding: var(--ruimte-krap) var(--ruimte-naast);
 }
-.wb-vink:hover { color: var(--kleur-goed); border-color: var(--kleur-goed); background: var(--kleur-goed-vlak); }
+.wb-stand-kies:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent-diep); }
+.wb-stand-kies.wb-stand-dev, .wb-stand-kies.wb-stand-klant {
+  color: var(--kleur-accent-diep); border-color: var(--kleur-rand-accent); background: var(--kleur-accent-vlak);
+}
+.wb-stand-kies.wb-stand-klaar { color: var(--kleur-goed); border-color: var(--kleur-goed); background: var(--kleur-goed-vlak); }
 .wb-greep { cursor: grab; color: #8a8d91; user-select: none; font-weight: 900; letter-spacing: 1px; font-size: var(--type-bijschrift); line-height: 1; padding: var(--ruimte-krap) var(--ruimte-krap); border-radius: var(--ronding-klein); text-align: center; }
 .wb-greep:hover { background: var(--kleur-rustig); color: var(--dark); }
 .wb-greep:active { cursor: grabbing; }
@@ -5888,6 +5917,17 @@ a.wb-pad:hover { text-decoration: underline; }
 
 /* De klantgroep binnen een kaart: een kopregel met een kleurstreep ernaast, zodat
    je ziet waar het werk van de ene klant ophoudt en dat van de volgende begint. */
+/* Afgeronde taken: dezelfde staart als "Nog geen datum", maar met een kop die
+   open- en dichtklapt. Standaard dicht. */
+.pl-af-kop {
+  display: flex; align-items: center; gap: var(--ruimte-naast);
+  width: 100%; background: none; border: 0; cursor: pointer; padding: 0; text-align: left;
+}
+.pl-af-caret { color: var(--kleur-accent); font-weight: 800; font-size: var(--type-label); }
+.pl-af-kop:hover .pl-staarttitel { color: var(--kleur-accent-diep); }
+.pl-af .wb-rij { opacity: 0.75; }
+.pl-af .wb-rij:hover { opacity: 1; }
+
 .pl-groep { border-left: 2px solid var(--kleur-rand-zacht); padding-left: var(--s-3); margin: var(--ruimte-naast) 0 var(--ruimte-regel); }
 .pl-groep:hover { border-left-color: var(--kleur-accent-vlak); }
 .pl-groepkop { display: flex; align-items: baseline; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-krap); }

@@ -38,6 +38,7 @@ import MailUitKaart from "./MailUitKaart";
 import { useMailDatumLinks } from "./useMailDatumLinks";
 import DatumKiezer, { vandaagIso, langDatum } from "./DatumKiezer";
 import { haalVooraf } from "../../../../lib/vooraf";
+import { STANDEN, standVan, naarOpslag, type Stand } from "../../../../lib/taak-stand";
 
 type Taak = {
   notitie?: string;
@@ -249,18 +250,31 @@ export default function Planning({
   }
 
   /**
-   * Afvinken op de regel zelf. Dat kon alleen in de opengeklapte kaart, terwijl
-   * "dit is gebeurd" de meest gewone handeling op dit scherm is. De taak
-   * verdwijnt uit de lijst (die toont alleen wat openstaat) en komt terecht bij
-   * "Wat we doen", zodat je later kunt terugzien wannéér het gebeurde. Omdat een
-   * regel die zomaar verdwijnt schrikken is, blijft hij hierboven nog even staan
-   * met een knop om hem terug te zetten.
+   * De stand van een taak wijzigen op de regel zelf: gepland, bij developer,
+   * bij klant, afgerond. Dat kon alleen in de opengeklapte kaart, terwijl "waar
+   * ligt dit nu" precies is wat je van een takenlijst wilt weten.
+   *
+   * Twee velden naar de server, want de developer-vlag woont in een eigen kolom
+   * (daar draait de hele developerlijst op). De vertaling staat in
+   * `lib/taak-stand.ts`, niet hier: anders bestaat dezelfde regel op twee
+   * plekken en lopen ze uiteen.
+   *
+   * "Afgerond" laat de taak uit deze lijst verdwijnen (die toont wat openstaat)
+   * en zet hem in het blok Afgeronde taken onderaan én in "Wat we doen". Omdat
+   * een regel die zomaar verdwijnt schrikken is, blijft hij bovenaan nog even
+   * staan met een knop om hem terug te zetten.
    */
   const [laatstAf, setLaatstAf] = useState<Taak | null>(null);
-  async function vinkAf(t: Taak) {
-    setLaatstAf(t);
-    setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, status: "klaar" } : x)));
-    await stuur(t, { status: "klaar" });
+  async function kiesStand(t: Taak, stand: Stand) {
+    if (standVan(t) === stand) return;
+    const opslag = naarOpslag(stand);
+    setLaatstAf(stand === "klaar" ? t : null);
+    setTaken((ts) => ts.map((x) => (zelfde(x, t) ? { ...x, status: opslag.status, naarDev: opslag.naarDev } : x)));
+    // De server neemt deze twee in aparte verzoeken aan; de developer-vlag heeft
+    // een eigen route omdat er meer aan vasthangt dan een kolom (de kaart komt
+    // op de developerlijst te staan).
+    await stuur(t, { status: opslag.status });
+    if (!!t.naarDev !== opslag.naarDev) await stuur(t, { naarDev: opslag.naarDev });
   }
   async function zetTerug(t: Taak) {
     setLaatstAf(null);
@@ -427,17 +441,26 @@ export default function Planning({
       (a.sortOrder || 0) - (b.sortOrder || 0) || a.klant.localeCompare(b.klant) || a.id - b.id),
     [zichtbaar],
   );
+  /**
+   * Wat er af is. Staat onderaan achter een dichte uitklapper: je wilt het
+   * kunnen terugzien (en zo nodig terugzetten), maar niet elke dag langs
+   * scrollen. Jongste bovenaan, want "wat hebben we net gedaan" is de vraag.
+   */
+  const afgerond = useMemo(
+    () => taken
+      .filter((t) => t.status === "klaar" && (breed || t.slug === slug))
+      .sort((a, b) => (b.datum || "").localeCompare(a.datum || "") || b.id - a.id),
+    [taken, breed, slug],
+  );
+  const [toonAfgerond, setToonAfgerond] = useState(false);
 
   const infoVan = (t: Taak): WpPageInfo | undefined => (t.url ? pages[t.slug]?.[urlKey(t.url)] : undefined);
 
-  /** Waar staat deze taak nu? De eerste fase die nog niet af is. */
-  function volgende(t: Taak): string {
-    const p = infoVan(t);
-    if (!p) return t.status === "bezig" ? "bezig" : "gepland";
-    const f = volgendeFase(p, p.live);
-    if (!f) return "alle fases af";
-    return (FASE_VOLGORDE.find((x) => x.key === f)?.kort || f).toLowerCase();
-  }
+  // Hier stond `volgende(t)`: welke fase er nog open stond, als woord in de
+  // kolom rechts. Die kolom is per 18-08-2026 de keuzelijst met de stand
+  // geworden. Voor een taak MET een pagina zeiden de fase-bolletjes hetzelfde al
+  // (met kleur en tooltip), en voor een taak zonder pagina stond er niets anders
+  // dan het woord "gepland", en dat is nu een keuze in plaats van een mededeling.
 
   // ── De regel ──
   function regel(t: Taak) {
@@ -487,11 +510,6 @@ export default function Planning({
               setSleep(t);
             }}
             onDragEnd={sleepKlaar}>⋮⋮</span>
-          {/* Afvinken: één bedieningsteken, geen knop in de huisstijl (zoals het
-              kruisje rechts). Klik gaat niet door naar de regel eronder, want
-              dan klapt de kaart tegelijk open. */}
-          <button type="button" className="wb-vink" title="Afvinken: dit is gebeurd. Komt bij 'Wat we doen' te staan."
-            onClick={(e) => { e.stopPropagation(); void vinkAf(t); }}>✓</button>
           {/* Hier stond een badge SEO/DEV. Weg op 11 augustus 2026: al het werk
               komt langs Maarten, dus "voor wie" zei niets en kostte wel een
               kolom in elke regel. De kolommaat in .wb-rij is meeveranderd. */}
@@ -548,7 +566,21 @@ export default function Planning({
               vast kolomraster, en een weggelaten grid-item schuift alle
               kolommen na hem één op, met een uitgerekte datumknop en kruisje
               tot gevolg. */}
-          <span className="wb-next">{!stippen ? volgende(t) : ""}</span>
+          {/* Waar ligt deze taak: gepland, bij de developer, bij de klant, of
+              afgerond. Hier stond alleen het woord "gepland" (en bij een taak
+              zonder pagina de volgende fase), dus je las de stand wel maar kon
+              hem niet zetten. Een gewone keuzelijst, want die werkt overal en
+              met het toetsenbord. De klik mag niet doorgaan naar de regel, want
+              dan klapt de kaart tegelijk open. */}
+          <span className="wb-stand" onClick={(e) => e.stopPropagation()}>
+            <select
+              className={"wb-stand-kies wb-stand-" + standVan(t)}
+              value={standVan(t)}
+              title={STANDEN.find((s) => s.key === standVan(t))?.uitleg || ""}
+              onChange={(e) => void kiesStand(t, e.target.value as Stand)}>
+              {STANDEN.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+            </select>
+          </span>
           {/* Het klokje "herinner me over X dagen" stond bij élke taak, en die
               herinneringen belandden allemaal bij het belletje in de kopbalk.
               Een taak in de planning heeft al een datum; nog een tweede,
@@ -710,6 +742,20 @@ export default function Planning({
                 {sleep?.datum && <span className="pl-sleepdoel muted">hier loslaten haalt de dag eraf</span>}
               </div>
               {rijen(zonderDatum)}
+            </div>
+          )}
+
+          {/* Wat af is. Standaard dicht: het hoort erbij, maar niet in de weg.
+              De stand van een afgeronde taak kun je hier gewoon terugzetten,
+              dus dit is ook de weg terug als je te vroeg hebt afgevinkt. */}
+          {afgerond.length > 0 && (
+            <div className="pl-staart pl-af">
+              <button type="button" className="pl-af-kop" onClick={() => setToonAfgerond((v) => !v)}>
+                <span className="pl-af-caret">{toonAfgerond ? "▾" : "▸"}</span>
+                <span className="pl-staarttitel">Afgeronde taken</span>
+                <span className="pl-aantal">{afgerond.length}</span>
+              </button>
+              {toonAfgerond && rijen(afgerond)}
             </div>
           )}
         </div>

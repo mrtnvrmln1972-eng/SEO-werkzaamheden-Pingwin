@@ -24,6 +24,11 @@ export const HOOFDSTUK: Hoofdstuk = {
         "veld **Aantekeningen** dat op elke kaart al bestaat, en de link naar de mail eraan vast. Bewust geen " +
         "nieuw veld erbij: dezelfde soort tekst op twee plekken loopt gegarandeerd uit elkaar. Werkt de " +
         "AI-koppeling even niet, dan komt de kaart er gewoon, alleen met de onderwerpregel als titel.\n\n" +
+        "**Het vraagveld leest dezelfde mailbox als de lijst eronder (18 augustus 2026).** Stelde je een vraag " +
+        "(\"wanneer hebben we deze klant voor het laatst over de rankings bericht?\"), dan kwam er \"er hangen " +
+        "nog geen mails in het dashboard voor deze klant\" terug terwijl er een kolom verderop tientallen mails " +
+        "stonden. Het veld las alleen de opgeslagen mail, en die tabel wordt sinds de Microsoft-koppeling niet " +
+        "meer gevuld. Nu gaat de vraag over de mails die je ook echt ziet.\n\n" +
         "**Onderaan de lijst staat \"Meer mails\".** De lijst begint bij de laatste vijftien; elke klik haalt " +
         "er twintig bij, tot de mailbox niets ouders meer teruggeeft. Dan verdwijnt de knop. Voor het volledige " +
         "archief blijft de Superhuman-zoekknop bovenaan de snelste weg.",

@@ -37,6 +37,13 @@ export const BLOKKEN: Uitklapper[] = [
     titel: "Het taakvenster van de developer",
     kern: "Jouw opmerking is jouw veld, de kruisjes halen echt iets weg, en weghalen kan uit de rij.",
     tekst:
+      "**De opmerking staat niet in de lijst, maar achter een linkje (18 augustus 2026).** Bij een taak met " +
+      "een opmerking staat nu \"Bekijk de opmerkingen\"; dat opent de taak. Er stond een klein stipje dat " +
+      "hetzelfde bedoelde, en dat zag niemand. De tekst zelf blijft uit de lijst, want zo'n opmerking is vaak " +
+      "een half scherm instructie en dan is de lijst geen lijst meer. **In het opmerkingenveld kun je een " +
+      "afbeelding of document slepen**: dat gaat naar de Drive-map van deze klant en hangt daarna bij " +
+      "\"Documenten en bestanden\" van die taak, dezelfde plek als de knop eronder. Bewaar de taak wel eerst, " +
+      "anders is er nog niets om het aan te hangen.\n\n" +
       "Open je een taak in de developerlijst, dan zie je wat er moet gebeuren, jouw opmerking erbij, de pagina " +
       "en de documenten die meegaan. Sinds 17 augustus 2026 zijn daar drie dingen recht gezet die alle drie " +
       "onzichtbaar waren tot je het venster echt opende.\n\n" +
