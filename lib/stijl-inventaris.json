@@ -5,7 +5,7 @@
     "classnamen": 2930
   },
   "kleuren": {
-    "verschillend": 325,
+    "verschillend": 168,
     "benoemd": 42,
     "los": [
       {
@@ -17,48 +17,12 @@
         "aantal": 30
       },
       {
-        "waarde": "#6f645a",
-        "aantal": 29
-      },
-      {
         "waarde": "#1e824c",
         "aantal": 27
       },
       {
-        "waarde": "#f15829",
-        "aantal": 27
-      },
-      {
-        "waarde": "#c62828",
-        "aantal": 20
-      },
-      {
-        "waarde": "#e5ded6",
-        "aantal": 16
-      },
-      {
-        "waarde": "#fffdfb",
-        "aantal": 13
-      },
-      {
-        "waarde": "#fdecea",
-        "aantal": 12
-      },
-      {
-        "waarde": "#c0392b",
-        "aantal": 10
-      },
-      {
-        "waarde": "#8a7a6c",
-        "aantal": 9
-      },
-      {
         "waarde": "#fff",
         "aantal": 9
-      },
-      {
-        "waarde": "#2b2b2b",
-        "aantal": 8
       },
       {
         "waarde": "#8a5a00",
@@ -74,18 +38,6 @@
       },
       {
         "waarde": "#eadfce",
-        "aantal": 6
-      },
-      {
-        "waarde": "#eaf5ee",
-        "aantal": 6
-      },
-      {
-        "waarde": "#eaf6ef",
-        "aantal": 6
-      },
-      {
-        "waarde": "#fdecec",
         "aantal": 6
       },
       {
@@ -109,10 +61,6 @@
         "aantal": 5
       },
       {
-        "waarde": "#1f1f1f",
-        "aantal": 5
-      },
-      {
         "waarde": "#6b7280",
         "aantal": 5
       },
@@ -125,27 +73,7 @@
         "aantal": 5
       },
       {
-        "waarde": "#e7f4e8",
-        "aantal": 5
-      },
-      {
-        "waarde": "#e8f5e9",
-        "aantal": 5
-      },
-      {
-        "waarde": "#f0ebe5",
-        "aantal": 5
-      },
-      {
         "waarde": "#f1e9db",
-        "aantal": 5
-      },
-      {
-        "waarde": "#fafafa",
-        "aantal": 5
-      },
-      {
-        "waarde": "#fffaf7",
         "aantal": 5
       },
       {
@@ -177,39 +105,7 @@
         "aantal": 4
       },
       {
-        "waarde": "#e7f6ec",
-        "aantal": 4
-      },
-      {
-        "waarde": "#ede9fe",
-        "aantal": 4
-      },
-      {
-        "waarde": "#eef7ee",
-        "aantal": 4
-      },
-      {
         "waarde": "#f0c8c8",
-        "aantal": 4
-      },
-      {
-        "waarde": "#f0f1f3",
-        "aantal": 4
-      },
-      {
-        "waarde": "#f3e9e1",
-        "aantal": 4
-      },
-      {
-        "waarde": "#fbedea",
-        "aantal": 4
-      },
-      {
-        "waarde": "#fbf8f5",
-        "aantal": 4
-      },
-      {
-        "waarde": "#fff3d9",
         "aantal": 4
       },
       {
@@ -218,10 +114,6 @@
       },
       {
         "waarde": "#0b4ea8",
-        "aantal": 3
-      },
-      {
-        "waarde": "#2286c7",
         "aantal": 3
       },
       {
@@ -245,63 +137,11 @@
         "aantal": 3
       },
       {
-        "waarde": "#b03a2e",
-        "aantal": 3
-      },
-      {
         "waarde": "#bfe6cc",
         "aantal": 3
       },
       {
         "waarde": "#c3b9ae",
-        "aantal": 3
-      },
-      {
-        "waarde": "#dcf5e3",
-        "aantal": 3
-      },
-      {
-        "waarde": "#e5edff",
-        "aantal": 3
-      },
-      {
-        "waarde": "#e6f4ea",
-        "aantal": 3
-      },
-      {
-        "waarde": "#e6f6ec",
-        "aantal": 3
-      },
-      {
-        "waarde": "#e8f0f7",
-        "aantal": 3
-      },
-      {
-        "waarde": "#ececec",
-        "aantal": 3
-      },
-      {
-        "waarde": "#eef8ee",
-        "aantal": 3
-      },
-      {
-        "waarde": "#f3efeb",
-        "aantal": 3
-      },
-      {
-        "waarde": "#f6f1ec",
-        "aantal": 3
-      },
-      {
-        "waarde": "#fdeee7",
-        "aantal": 3
-      },
-      {
-        "waarde": "#fdf3f2",
-        "aantal": 3
-      },
-      {
-        "waarde": "#fff6f1",
         "aantal": 3
       },
       {
@@ -341,10 +181,6 @@
         "aantal": 2
       },
       {
-        "waarde": "#1e7e34",
-        "aantal": 2
-      },
-      {
         "waarde": "#1e9a4a",
         "aantal": 2
       },
@@ -362,10 +198,6 @@
       },
       {
         "waarde": "#555",
-        "aantal": 2
-      },
-      {
-        "waarde": "#5e6063",
         "aantal": 2
       },
       {
@@ -389,14 +221,6 @@
         "aantal": 2
       },
       {
-        "waarde": "#c33",
-        "aantal": 2
-      },
-      {
-        "waarde": "#c8442c",
-        "aantal": 2
-      },
-      {
         "waarde": "#cfe8da",
         "aantal": 2
       },
@@ -405,59 +229,11 @@
         "aantal": 2
       },
       {
-        "waarde": "#e0f2fe",
-        "aantal": 2
-      },
-      {
-        "waarde": "#e2f1e2",
-        "aantal": 2
-      },
-      {
-        "waarde": "#e6e6e6",
-        "aantal": 2
-      },
-      {
-        "waarde": "#e7f1fa",
-        "aantal": 2
-      },
-      {
-        "waarde": "#e7f6e7",
-        "aantal": 2
-      },
-      {
-        "waarde": "#e8f0fe",
-        "aantal": 2
-      },
-      {
-        "waarde": "#e8f5ec",
-        "aantal": 2
-      },
-      {
-        "waarde": "#eaf4fb",
-        "aantal": 2
-      },
-      {
-        "waarde": "#eef0f2",
-        "aantal": 2
-      },
-      {
-        "waarde": "#eef0fa",
-        "aantal": 2
-      },
-      {
-        "waarde": "#efe8e1",
-        "aantal": 2
-      },
-      {
         "waarde": "#f0b9b4",
         "aantal": 2
       },
       {
         "waarde": "#f0c7c3",
-        "aantal": 2
-      },
-      {
-        "waarde": "#f1f8f3",
         "aantal": 2
       },
       {
@@ -473,75 +249,11 @@
         "aantal": 2
       },
       {
-        "waarde": "#f3d3b0",
-        "aantal": 2
-      },
-      {
-        "waarde": "#f4faf5",
-        "aantal": 2
-      },
-      {
         "waarde": "#f5c6c0",
         "aantal": 2
       },
       {
-        "waarde": "#f6d8c8",
-        "aantal": 2
-      },
-      {
-        "waarde": "#f6fbf7",
-        "aantal": 2
-      },
-      {
-        "waarde": "#f7f7f7",
-        "aantal": 2
-      },
-      {
-        "waarde": "#f8e7e7",
-        "aantal": 2
-      },
-      {
-        "waarde": "#faf8f6",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fcf2f2",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fdeceb",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fdf1ea",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fdf4e3",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fdf6e7",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fef7f6",
-        "aantal": 2
-      },
-      {
         "waarde": "#fff2cc",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fff3e0",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fff8f3",
-        "aantal": 2
-      },
-      {
-        "waarde": "#fffdfc",
         "aantal": 2
       },
       {
@@ -585,10 +297,6 @@
         "aantal": 2
       },
       {
-        "waarde": "#12a9c6",
-        "aantal": 1
-      },
-      {
         "waarde": "#16803c",
         "aantal": 1
       },
@@ -602,14 +310,6 @@
       },
       {
         "waarde": "#1f6b3a",
-        "aantal": 1
-      },
-      {
-        "waarde": "#222",
-        "aantal": 1
-      },
-      {
-        "waarde": "#23211f",
         "aantal": 1
       },
       {
@@ -629,26 +329,6 @@
         "aantal": 1
       },
       {
-        "waarde": "#2f2f31",
-        "aantal": 1
-      },
-      {
-        "waarde": "#333",
-        "aantal": 1
-      },
-      {
-        "waarde": "#45484c",
-        "aantal": 1
-      },
-      {
-        "waarde": "#555a5f",
-        "aantal": 1
-      },
-      {
-        "waarde": "#5b5b5d",
-        "aantal": 1
-      },
-      {
         "waarde": "#6b46c1",
         "aantal": 1
       },
@@ -661,19 +341,7 @@
         "aantal": 1
       },
       {
-        "waarde": "#7a6a5c",
-        "aantal": 1
-      },
-      {
         "waarde": "#7b241c",
-        "aantal": 1
-      },
-      {
-        "waarde": "#7c7268",
-        "aantal": 1
-      },
-      {
-        "waarde": "#7d7871",
         "aantal": 1
       },
       {
@@ -761,10 +429,6 @@
         "aantal": 1
       },
       {
-        "waarde": "#c95e28",
-        "aantal": 1
-      },
-      {
         "waarde": "#ccefd8",
         "aantal": 1
       },
@@ -785,10 +449,6 @@
         "aantal": 1
       },
       {
-        "waarde": "#d8d8dc",
-        "aantal": 1
-      },
-      {
         "waarde": "#d97316",
         "aantal": 1
       },
@@ -805,27 +465,7 @@
         "aantal": 1
       },
       {
-        "waarde": "#e0dcd7",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e2f2e5",
-        "aantal": 1
-      },
-      {
         "waarde": "#e3b4ae",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e3e3e3",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e4e4e7",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e4ebf3",
         "aantal": 1
       },
       {
@@ -833,67 +473,7 @@
         "aantal": 1
       },
       {
-        "waarde": "#e6e0da",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e6f0fa",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e6f2ec",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e7eef7",
-        "aantal": 1
-      },
-      {
-        "waarde": "#e7f5ec",
-        "aantal": 1
-      },
-      {
         "waarde": "#eadb9a",
-        "aantal": 1
-      },
-      {
-        "waarde": "#eae7e2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#eaf8ef",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ece7e2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ecf7ee",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ede7e1",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ede7fb",
-        "aantal": 1
-      },
-      {
-        "waarde": "#eeeeee",
-        "aantal": 1
-      },
-      {
-        "waarde": "#eef2f7",
-        "aantal": 1
-      },
-      {
-        "waarde": "#eef8f1",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ef9385",
         "aantal": 1
       },
       {
@@ -901,43 +481,7 @@
         "aantal": 1
       },
       {
-        "waarde": "#efdfb8",
-        "aantal": 1
-      },
-      {
-        "waarde": "#efe9e2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#efedea",
-        "aantal": 1
-      },
-      {
         "waarde": "#f0d9c8",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f0e4d8",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f0f0f0",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f0faf3",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f1f1ef",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f1f8f1",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f1f8f2",
         "aantal": 1
       },
       {
@@ -957,39 +501,7 @@
         "aantal": 1
       },
       {
-        "waarde": "#f4d9c9",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f4f4f5",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f4f8fb",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f4f9fd",
-        "aantal": 1
-      },
-      {
         "waarde": "#f5c6c6",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f5f1ed",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f5f4f2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f5f5f6",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f5f6fc",
         "aantal": 1
       },
       {
@@ -997,151 +509,11 @@
         "aantal": 1
       },
       {
-        "waarde": "#f6dcc8",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f6f6f6",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f7f3ef",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f8f5f1",
-        "aantal": 1
-      },
-      {
-        "waarde": "#f8f7f4",
-        "aantal": 1
-      },
-      {
         "waarde": "#f9c89b",
         "aantal": 1
       },
       {
-        "waarde": "#faf9f7",
-        "aantal": 1
-      },
-      {
-        "waarde": "#faf9f8",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fbe0c7",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fbfbfa",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fceeeb",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fdece1",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fdefe7",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fdefe9",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fdf1f1",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fdf7f2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fdf9ee",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ffe0b8",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ffe0d2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ffe9dc",
-        "aantal": 1
-      },
-      {
-        "waarde": "#ffece2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff1e2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff1e8",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff2e9",
-        "aantal": 1
-      },
-      {
         "waarde": "#fff3c4",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff3ec",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff4e5",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff6ec",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff7e6",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff8ec",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff8ef",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff8f2",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff9e6",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fff9f5",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fffaf6",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fffbf0",
-        "aantal": 1
-      },
-      {
-        "waarde": "#fffbf8",
         "aantal": 1
       },
       {
@@ -2662,13 +2034,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#6f645a",
-      "aantal": 29,
-      "dichtst": "--gray",
-      "afstand": 25,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#1e824c",
       "aantal": 27,
       "dichtst": "--good",
@@ -2676,67 +2041,11 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#f15829",
-      "aantal": 27,
-      "dichtst": "--accent",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#c62828",
-      "aantal": 20,
-      "dichtst": "--bad",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#e5ded6",
-      "aantal": 16,
-      "dichtst": "--border",
-      "afstand": 17,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fffdfb",
-      "aantal": 13,
-      "dichtst": "--white",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdecea",
-      "aantal": 12,
-      "dichtst": "--red-light",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#c0392b",
-      "aantal": 10,
-      "dichtst": "--danger",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#8a7a6c",
-      "aantal": 9,
-      "dichtst": "--brand-taupe",
-      "afstand": 28,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#fff",
       "aantal": 9,
       "dichtst": "--white",
       "afstand": 0,
       "stapel": "gelijk"
-    },
-    {
-      "waarde": "#2b2b2b",
-      "aantal": 8,
-      "dichtst": "--brand-charcoal",
-      "afstand": 16,
-      "stapel": "bijna"
     },
     {
       "waarde": "#8a5a00",
@@ -2765,27 +2074,6 @@
       "dichtst": "--card-border",
       "afstand": 31,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#eaf5ee",
-      "aantal": 6,
-      "dichtst": "--good-light",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eaf6ef",
-      "aantal": 6,
-      "dichtst": "--good-light",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdecec",
-      "aantal": 6,
-      "dichtst": "--red-light",
-      "afstand": 5,
-      "stapel": "bijna"
     },
     {
       "waarde": "rgba(0,0,0,0.25)",
@@ -2823,13 +2111,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#1f1f1f",
-      "aantal": 5,
-      "dichtst": "--dark",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#6b7280",
       "aantal": 5,
       "dichtst": "--text-secondary",
@@ -2851,45 +2132,10 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#e7f4e8",
-      "aantal": 5,
-      "dichtst": "--good-light",
-      "afstand": 5,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e8f5e9",
-      "aantal": 5,
-      "dichtst": "--good-light",
-      "afstand": 3,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#f0ebe5",
-      "aantal": 5,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#f1e9db",
       "aantal": 5,
       "dichtst": "--card-border",
       "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fafafa",
-      "aantal": 5,
-      "dichtst": "--app-bg",
-      "afstand": 12,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fffaf7",
-      "aantal": 5,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 13,
       "stapel": "bijna"
     },
     {
@@ -2942,67 +2188,11 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#e7f6ec",
-      "aantal": 4,
-      "dichtst": "--good-light",
-      "afstand": 3,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#ede9fe",
-      "aantal": 4,
-      "dichtst": "--brand-blue-light",
-      "afstand": 20,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eef7ee",
-      "aantal": 4,
-      "dichtst": "--good-light",
-      "afstand": 13,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#f0c8c8",
       "aantal": 4,
       "dichtst": "--grad-perzik",
       "afstand": 42,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#f0f1f3",
-      "aantal": 4,
-      "dichtst": "--gray-light",
-      "afstand": 12,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f3e9e1",
-      "aantal": 4,
-      "dichtst": "--card-border",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fbedea",
-      "aantal": 4,
-      "dichtst": "--red-light",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fbf8f5",
-      "aantal": 4,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff3d9",
-      "aantal": 4,
-      "dichtst": "--highlight-manual",
-      "afstand": 18,
-      "stapel": "bijna"
     },
     {
       "waarde": "rgba(231, 119, 63, 0.12)",
@@ -3017,13 +2207,6 @@
       "dichtst": "--link",
       "afstand": 102,
       "stapel": "anders"
-    },
-    {
-      "waarde": "#2286c7",
-      "aantal": 3,
-      "dichtst": "--brand-blue",
-      "afstand": 0,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#2a4bad",
@@ -3061,13 +2244,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#b03a2e",
-      "aantal": 3,
-      "dichtst": "--danger",
-      "afstand": 27,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#bfe6cc",
       "aantal": 3,
       "dichtst": "--grad-blauw",
@@ -3080,90 +2256,6 @@
       "dichtst": "--grad-perzik",
       "afstand": 113,
       "stapel": "anders"
-    },
-    {
-      "waarde": "#dcf5e3",
-      "aantal": 3,
-      "dichtst": "--good-light",
-      "afstand": 21,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e5edff",
-      "aantal": 3,
-      "dichtst": "--brand-blue-light",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e6f4ea",
-      "aantal": 3,
-      "dichtst": "--good-light",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e6f6ec",
-      "aantal": 3,
-      "dichtst": "--good-light",
-      "afstand": 3,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e8f0f7",
-      "aantal": 3,
-      "dichtst": "--brand-blue-light",
-      "afstand": 5,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ececec",
-      "aantal": 3,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eef8ee",
-      "aantal": 3,
-      "dichtst": "--good-light",
-      "afstand": 14,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f3efeb",
-      "aantal": 3,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f6f1ec",
-      "aantal": 3,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdeee7",
-      "aantal": 3,
-      "dichtst": "--red-light",
-      "afstand": 12,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdf3f2",
-      "aantal": 3,
-      "dichtst": "--orange-light",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff6f1",
-      "aantal": 3,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 1,
-      "stapel": "gelijk"
     },
     {
       "waarde": "rgba(0,0,0,0.16)",
@@ -3229,13 +2321,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#1e7e34",
-      "aantal": 2,
-      "dichtst": "--good",
-      "afstand": 24,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#1e9a4a",
       "aantal": 2,
       "dichtst": "--good",
@@ -3269,13 +2354,6 @@
       "dichtst": "--gray",
       "afstand": 36,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#5e6063",
-      "aantal": 2,
-      "dichtst": "--gray",
-      "afstand": 6,
-      "stapel": "bijna"
     },
     {
       "waarde": "#8a5000",
@@ -3313,20 +2391,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#c33",
-      "aantal": 2,
-      "dichtst": "--red",
-      "afstand": 15,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#c8442c",
-      "aantal": 2,
-      "dichtst": "--danger",
-      "afstand": 26,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#cfe8da",
       "aantal": 2,
       "dichtst": "--grad-blauw",
@@ -3341,83 +2405,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#e0f2fe",
-      "aantal": 2,
-      "dichtst": "--brand-teal-light",
-      "afstand": 12,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e2f1e2",
-      "aantal": 2,
-      "dichtst": "--good-light",
-      "afstand": 18,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e6e6e6",
-      "aantal": 2,
-      "dichtst": "--border",
-      "afstand": 18,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e7f1fa",
-      "aantal": 2,
-      "dichtst": "--brand-blue-light",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#e7f6e7",
-      "aantal": 2,
-      "dichtst": "--good-light",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e8f0fe",
-      "aantal": 2,
-      "dichtst": "--brand-blue-light",
-      "afstand": 6,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e8f5ec",
-      "aantal": 2,
-      "dichtst": "--good-light",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eaf4fb",
-      "aantal": 2,
-      "dichtst": "--brand-blue-light",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eef0f2",
-      "aantal": 2,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 12,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eef0fa",
-      "aantal": 2,
-      "dichtst": "--brand-blue-light",
-      "afstand": 12,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#efe8e1",
-      "aantal": 2,
-      "dichtst": "--card-border",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#f0b9b4",
       "aantal": 2,
       "dichtst": "--grad-perzik",
@@ -3430,13 +2417,6 @@
       "dichtst": "--grad-perzik",
       "afstand": 42,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#f1f8f3",
-      "aantal": 2,
-      "dichtst": "--gray-light",
-      "afstand": 10,
-      "stapel": "bijna"
     },
     {
       "waarde": "#f2c4c2",
@@ -3460,20 +2440,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#f3d3b0",
-      "aantal": 2,
-      "dichtst": "--grad-perzik",
-      "afstand": 24,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f4faf5",
-      "aantal": 2,
-      "dichtst": "--gray-light",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#f5c6c0",
       "aantal": 2,
       "dichtst": "--grad-perzik",
@@ -3481,109 +2447,11 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#f6d8c8",
-      "aantal": 2,
-      "dichtst": "--grad-perzik",
-      "afstand": 18,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f6fbf7",
-      "aantal": 2,
-      "dichtst": "--app-bg",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f7f7f7",
-      "aantal": 2,
-      "dichtst": "--app-bg",
-      "afstand": 6,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f8e7e7",
-      "aantal": 2,
-      "dichtst": "--red-light",
-      "afstand": 18,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#faf8f6",
-      "aantal": 2,
-      "dichtst": "--gray-light",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fcf2f2",
-      "aantal": 2,
-      "dichtst": "--orange-light",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdeceb",
-      "aantal": 2,
-      "dichtst": "--red-light",
-      "afstand": 6,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdf1ea",
-      "aantal": 2,
-      "dichtst": "--orange-light",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdf4e3",
-      "aantal": 2,
-      "dichtst": "--highlight-manual",
-      "afstand": 6,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdf6e7",
-      "aantal": 2,
-      "dichtst": "--highlight-manual",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fef7f6",
-      "aantal": 2,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#fff2cc",
       "aantal": 2,
       "dichtst": "--brand-orange-soft",
       "afstand": 30,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#fff3e0",
-      "aantal": 2,
-      "dichtst": "--highlight-manual",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff8f3",
-      "aantal": 2,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 6,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fffdfc",
-      "aantal": 2,
-      "dichtst": "--white",
-      "afstand": 6,
-      "stapel": "bijna"
     },
     {
       "waarde": "rgba(0,0,0,0.18)",
@@ -3656,13 +2524,6 @@
       "stapel": "doorzichtig"
     },
     {
-      "waarde": "#12a9c6",
-      "aantal": 1,
-      "dichtst": "--brand-teal",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#16803c",
       "aantal": 1,
       "dichtst": "--good",
@@ -3689,20 +2550,6 @@
       "dichtst": "--good",
       "afstand": 44,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#222",
-      "aantal": 1,
-      "dichtst": "--dark",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#23211f",
-      "aantal": 1,
-      "dichtst": "--dark",
-      "afstand": 6,
-      "stapel": "bijna"
     },
     {
       "waarde": "#245b38",
@@ -3733,41 +2580,6 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#2f2f31",
-      "aantal": 1,
-      "dichtst": "--brand-charcoal",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#333",
-      "aantal": 1,
-      "dichtst": "--brand-charcoal",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#45484c",
-      "aantal": 1,
-      "dichtst": "--muted",
-      "afstand": 16,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#555a5f",
-      "aantal": 1,
-      "dichtst": "--gray",
-      "afstand": 23,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#5b5b5d",
-      "aantal": 1,
-      "dichtst": "--gray",
-      "afstand": 16,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#6b46c1",
       "aantal": 1,
       "dichtst": "--text-secondary",
@@ -3789,32 +2601,11 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#7a6a5c",
-      "aantal": 1,
-      "dichtst": "--brand-taupe",
-      "afstand": 25,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#7b241c",
       "aantal": 1,
       "dichtst": "--bad-deep",
       "afstand": 94,
       "stapel": "anders"
-    },
-    {
-      "waarde": "#7c7268",
-      "aantal": 1,
-      "dichtst": "--brand-taupe",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#7d7871",
-      "aantal": 1,
-      "dichtst": "--brand-taupe",
-      "afstand": 19,
-      "stapel": "bijna"
     },
     {
       "waarde": "#8a2a20",
@@ -3964,13 +2755,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#c95e28",
-      "aantal": 1,
-      "dichtst": "--orange-dark",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "#ccefd8",
       "aantal": 1,
       "dichtst": "--grad-blauw",
@@ -4006,13 +2790,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#d8d8dc",
-      "aantal": 1,
-      "dichtst": "--border",
-      "afstand": 22,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#d97316",
       "aantal": 1,
       "dichtst": "--accent-warm",
@@ -4041,46 +2818,11 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#e0dcd7",
-      "aantal": 1,
-      "dichtst": "--border",
-      "afstand": 15,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e2f2e5",
-      "aantal": 1,
-      "dichtst": "--good-light",
-      "afstand": 14,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#e3b4ae",
       "aantal": 1,
       "dichtst": "--grad-perzik",
       "afstand": 86,
       "stapel": "anders"
-    },
-    {
-      "waarde": "#e3e3e3",
-      "aantal": 1,
-      "dichtst": "--border",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e4e4e7",
-      "aantal": 1,
-      "dichtst": "--border",
-      "afstand": 15,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e4ebf3",
-      "aantal": 1,
-      "dichtst": "--brand-blue-light",
-      "afstand": 17,
-      "stapel": "bijna"
     },
     {
       "waarde": "#e65100",
@@ -4090,116 +2832,11 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#e6e0da",
-      "aantal": 1,
-      "dichtst": "--border",
-      "afstand": 13,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e6f0fa",
-      "aantal": 1,
-      "dichtst": "--brand-blue-light",
-      "afstand": 3,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#e6f2ec",
-      "aantal": 1,
-      "dichtst": "--good-light",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e7eef7",
-      "aantal": 1,
-      "dichtst": "--brand-blue-light",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#e7f5ec",
-      "aantal": 1,
-      "dichtst": "--good-light",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#eadb9a",
       "aantal": 1,
       "dichtst": "--grad-perzik",
       "afstand": 54,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#eae7e2",
-      "aantal": 1,
-      "dichtst": "--card-border",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eaf8ef",
-      "aantal": 1,
-      "dichtst": "--good-light",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ece7e2",
-      "aantal": 1,
-      "dichtst": "--card-border",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ecf7ee",
-      "aantal": 1,
-      "dichtst": "--good-light",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ede7e1",
-      "aantal": 1,
-      "dichtst": "--card-border",
-      "afstand": 6,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ede7fb",
-      "aantal": 1,
-      "dichtst": "--brand-blue-light",
-      "afstand": 23,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eeeeee",
-      "aantal": 1,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eef2f7",
-      "aantal": 1,
-      "dichtst": "--brand-blue-light",
-      "afstand": 13,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#eef8f1",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 15,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ef9385",
-      "aantal": 1,
-      "dichtst": "--brand-salmon",
-      "afstand": 0,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#efc7b4",
@@ -4209,73 +2846,10 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#efdfb8",
-      "aantal": 1,
-      "dichtst": "--grad-perzik",
-      "afstand": 19,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#efe9e2",
-      "aantal": 1,
-      "dichtst": "--card-border",
-      "afstand": 6,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#efedea",
-      "aantal": 1,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#f0d9c8",
       "aantal": 1,
       "dichtst": "--grad-perzik",
       "afstand": 22,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f0e4d8",
-      "aantal": 1,
-      "dichtst": "--card-border",
-      "afstand": 12,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f0f0f0",
-      "aantal": 1,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f0faf3",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 13,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f1f1ef",
-      "aantal": 1,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f1f8f1",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f1f8f2",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 10,
       "stapel": "bijna"
     },
     {
@@ -4307,67 +2881,11 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#f4d9c9",
-      "aantal": 1,
-      "dichtst": "--grad-perzik",
-      "afstand": 20,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f4f4f5",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 3,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#f4f8fb",
-      "aantal": 1,
-      "dichtst": "--app-bg",
-      "afstand": 5,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f4f9fd",
-      "aantal": 1,
-      "dichtst": "--app-bg",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#f5c6c6",
       "aantal": 1,
       "dichtst": "--grad-perzik",
       "afstand": 43,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#f5f1ed",
-      "aantal": 1,
-      "dichtst": "--brand-taupe-light",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f5f4f2",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 5,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f5f5f6",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 1,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#f5f6fc",
-      "aantal": 1,
-      "dichtst": "--app-bg",
-      "afstand": 3,
-      "stapel": "gelijk"
     },
     {
       "waarde": "#f6712c",
@@ -4377,41 +2895,6 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#f6dcc8",
-      "aantal": 1,
-      "dichtst": "--grad-perzik",
-      "afstand": 18,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f6f6f6",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 3,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#f7f3ef",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f8f5f1",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#f8f7f4",
-      "aantal": 1,
-      "dichtst": "--gray-light",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#f9c89b",
       "aantal": 1,
       "dichtst": "--grad-perzik",
@@ -4419,221 +2902,11 @@
       "stapel": "familie"
     },
     {
-      "waarde": "#faf9f7",
-      "aantal": 1,
-      "dichtst": "--app-bg",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#faf9f8",
-      "aantal": 1,
-      "dichtst": "--app-bg",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fbe0c7",
-      "aantal": 1,
-      "dichtst": "--grad-perzik",
-      "afstand": 20,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fbfbfa",
-      "aantal": 1,
-      "dichtst": "--white",
-      "afstand": 13,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fceeeb",
-      "aantal": 1,
-      "dichtst": "--red-light",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdece1",
-      "aantal": 1,
-      "dichtst": "--brand-orange-soft",
-      "afstand": 15,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdefe7",
-      "aantal": 1,
-      "dichtst": "--red-light",
-      "afstand": 13,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdefe9",
-      "aantal": 1,
-      "dichtst": "--red-light",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdf1f1",
-      "aantal": 1,
-      "dichtst": "--orange-light",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdf7f2",
-      "aantal": 1,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 5,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fdf9ee",
-      "aantal": 1,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ffe0b8",
-      "aantal": 1,
-      "dichtst": "--grad-perzik",
-      "afstand": 18,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ffe0d2",
-      "aantal": 1,
-      "dichtst": "--brand-orange-soft",
-      "afstand": 19,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ffe9dc",
-      "aantal": 1,
-      "dichtst": "--brand-orange-soft",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#ffece2",
-      "aantal": 1,
-      "dichtst": "--brand-orange-soft",
-      "afstand": 17,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff1e2",
-      "aantal": 1,
-      "dichtst": "--highlight-manual",
-      "afstand": 11,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff1e8",
-      "aantal": 1,
-      "dichtst": "--orange-light",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff2e9",
-      "aantal": 1,
-      "dichtst": "--orange-light",
-      "afstand": 8,
-      "stapel": "bijna"
-    },
-    {
       "waarde": "#fff3c4",
       "aantal": 1,
       "dichtst": "--brand-orange-soft",
       "afstand": 40,
       "stapel": "familie"
-    },
-    {
-      "waarde": "#fff3ec",
-      "aantal": 1,
-      "dichtst": "--orange-light",
-      "afstand": 3,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff4e5",
-      "aantal": 1,
-      "dichtst": "--highlight-manual",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff6ec",
-      "aantal": 1,
-      "dichtst": "--orange-light",
-      "afstand": 5,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff7e6",
-      "aantal": 1,
-      "dichtst": "--highlight-manual",
-      "afstand": 2,
-      "stapel": "gelijk"
-    },
-    {
-      "waarde": "#fff8ec",
-      "aantal": 1,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 7,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff8ef",
-      "aantal": 1,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 4,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff8f2",
-      "aantal": 1,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 5,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff9e6",
-      "aantal": 1,
-      "dichtst": "--highlight-manual",
-      "afstand": 6,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fff9f5",
-      "aantal": 1,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 9,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fffaf6",
-      "aantal": 1,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 12,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fffbf0",
-      "aantal": 1,
-      "dichtst": "--brand-orange-faint",
-      "afstand": 10,
-      "stapel": "bijna"
-    },
-    {
-      "waarde": "#fffbf8",
-      "aantal": 1,
-      "dichtst": "--white",
-      "afstand": 13,
-      "stapel": "bijna"
     },
     {
       "waarde": "rgba(0, 0, 0, 0.03)",
@@ -5598,7 +3871,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 6089,
-    "schaalGebruik": 1138
+    "gebruik": 6359,
+    "schaalGebruik": 1283
   }
 }
