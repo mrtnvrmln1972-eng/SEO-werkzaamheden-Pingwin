@@ -309,7 +309,7 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
                     </div>
                   </td>}
                   <td className="opr-reden">
-                    <button type="button" className="opr-meer" onClick={() => setOpen((o) => ({ ...o, [v]: !o[v] }))}>
+                    <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen((o) => ({ ...o, [v]: !o[v] }))}>
                       {open[v] ? "▾" : "▸"} {open[v] ? "minder" : "reden"}
                     </button>
                     {/* Elke regel krijgt hetzelfde verhaal: wat er aan de hand is, en

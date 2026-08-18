@@ -290,7 +290,7 @@ export default function MailVenster({
         {overgenomen && (
           <div className="wp-mail-bron muted">
             Overgenomen uit het gesprek
-            <button type="button" className="wp-mail-leeg" onClick={leegmaken}>leegmaken</button>
+            <button type="button" className="btn btn-quiet btn-klein" onClick={leegmaken}>leegmaken</button>
           </div>
         )}
         {blokMd && blokAan && <div className="wp-mail-bron muted">Jouw tekst komt bovenaan; het blok hieronder gaat er opgemaakt onder.</div>}
@@ -307,7 +307,7 @@ export default function MailVenster({
             <div className="wp-mail-blok">
               <div className="wp-mail-blok-kop">
                 <span>Dit blok gaat mee &middot; je kunt erin typen en schrappen</span>
-                <button type="button" className="wp-mail-leeg" onClick={() => setBlokAan(false)}>blok weglaten</button>
+                <button type="button" className="btn btn-quiet btn-klein" onClick={() => setBlokAan(false)}>blok weglaten</button>
               </div>
               <div
                 className="wp-mail-blok-body md"
@@ -320,7 +320,7 @@ export default function MailVenster({
           ) : (
             <div className="wp-mail-bron muted">
               Het blok gaat niet mee.
-              <button type="button" className="wp-mail-leeg" onClick={() => setBlokAan(true)}>toch meesturen</button>
+              <button type="button" className="btn btn-quiet btn-klein" onClick={() => setBlokAan(true)}>toch meesturen</button>
             </div>
           )
         )}

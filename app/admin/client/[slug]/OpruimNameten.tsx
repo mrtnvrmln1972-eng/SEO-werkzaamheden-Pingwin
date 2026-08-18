@@ -78,7 +78,7 @@ export default function OpruimNameten({ rijen, tekst, domain }: {
                   </td>
                   <td><span className={`opr-chip ${CHIP[r.richting]}`}>{LABEL[r.richting]}</span></td>
                   <td className="opr-reden">
-                    <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [r.van]: !m[r.van] }))}>
+                    <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen((m) => ({ ...m, [r.van]: !m[r.van] }))}>
                       {open[r.van] ? "▾ minder" : "▸ uitleg"}
                     </button>
                     {open[r.van] && (

@@ -678,7 +678,7 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
                       {r.reden}
                       {r.onderbouwing.length > 0 && (
                         <div>
-                          <button type="button" className="opr-meer" onClick={() => setUitleg((m) => ({ ...m, [r.pad]: !m[r.pad] }))}>
+                          <button type="button" className="btn btn-quiet btn-klein" onClick={() => setUitleg((m) => ({ ...m, [r.pad]: !m[r.pad] }))}>
                             {uitleg[r.pad] ? "▾ minder" : "▸ volledige onderbouwing"}
                           </button>
                         </div>
@@ -728,7 +728,7 @@ export default function OpruimEenLijst({ slug, domain, token, alleenLezen, titel
             </table>
           </div>
           {lijst.length > 15 && (
-            <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [naam]: !m[naam] }))}>
+            <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen((m) => ({ ...m, [naam]: !m[naam] }))}>
               {open[naam] ? "▾ minder" : `▸ nog ${lijst.length - 15} pagina's`}
             </button>
           )}

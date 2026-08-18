@@ -112,7 +112,7 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
           <div className="compose-modal">
             <div className="compose-head">
               <div className="compose-title">Geselecteerde tekst mailen</div>
-              <button type="button" className="pch-msg-btn" aria-label="Sluiten" onClick={() => setComposeOpen(false)} style={{ fontSize: "var(--fs-lg)" }}>×</button>
+              <button type="button" className="btn btn-klein" aria-label="Sluiten" onClick={() => setComposeOpen(false)} style={{ fontSize: "var(--fs-lg)" }}>×</button>
             </div>
             <div className="compose-body" style={{ padding: "var(--s-4)", overflowY: "auto" }}>
               <div className="field" style={{ marginBottom: "var(--s-3)", position: "relative" }}>

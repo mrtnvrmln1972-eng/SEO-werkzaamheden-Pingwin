@@ -228,7 +228,7 @@ export default function PaginaDossier({ slug, url, compact = false, zonderStand 
           <strong>Deze kaart loopt achter.</strong>{" "}
           {nieuwer.aantal === 1 ? "Er kwam 1 mail binnen" : `Er kwamen ${nieuwer.aantal} mails binnen`}
           {nieuwer.van.length ? ` (${nieuwer.van.join(", ")})` : ""} na wat er in de kaarttekst staat.
-          <button type="button" className="pd-ververs" disabled={bezig} onClick={() => void ververs()}
+          <button type="button" className="btn btn-ghost btn-klein" disabled={bezig} onClick={() => void ververs()}
             title="Lees de nieuwe mail en schrijf de stand van deze pagina opnieuw">
             {bezig ? "Bezig…" : "Werk bij"}
           </button>
@@ -261,12 +261,12 @@ export default function PaginaDossier({ slug, url, compact = false, zonderStand 
       )}
       {!compact && (
         <div className="pd-voet">
-          <button type="button" className="pd-ververs" disabled={bezig}
+          <button type="button" className="btn btn-ghost btn-klein" disabled={bezig}
             onClick={() => { setKiesOpen((o) => !o); if (!kiesOpen) void haalMailKeuze(); }}
             title="Hang zelf een mail aan deze pagina, als de automaat hem niet gevonden heeft">
             {kiesOpen ? "Annuleren" : "Mail erbij zoeken"}
           </button>
-          <button type="button" className="pd-ververs" disabled={bezig} onClick={() => void ververs()}
+          <button type="button" className="btn btn-ghost btn-klein" disabled={bezig} onClick={() => void ververs()}
             title="Zoek opnieuw naar mail en schrijf de samenvatting opnieuw">
             {bezig ? "Bezig…" : "Ververs"}
           </button>

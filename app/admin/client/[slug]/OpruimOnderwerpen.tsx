@@ -196,7 +196,7 @@ export default function OpruimOnderwerpen({ slug, domain, rijen, clientName, cli
             </div>
           )}
 
-          <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [o.sleutel]: !m[o.sleutel] }))}>
+          <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen((m) => ({ ...m, [o.sleutel]: !m[o.sleutel] }))}>
             {open[o.sleutel] ? "▾ minder" : "▸ waarom dit één pagina moet worden"}
           </button>
           {open[o.sleutel] && (

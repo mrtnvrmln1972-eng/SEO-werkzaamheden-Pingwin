@@ -46,8 +46,8 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
         {chatOpen && msgs.length > 0 && (wegVraag === "chat" ? (
           <span className="wp-weg-vraag wp-weg-naast">
             Hele chat weggooien?
-            <button type="button" className="wp-weg-ja" onClick={() => void chat.wisChat()}>ja</button>
-            <button type="button" className="wp-weg-nee" onClick={() => setWegVraag(null)}>nee</button>
+            <button type="button" className="btn btn-danger btn-klein" onClick={() => void chat.wisChat()}>ja</button>
+            <button type="button" className="btn btn-klein" onClick={() => setWegVraag(null)}>nee</button>
           </span>
         ) : (
           <button type="button" className="wp-chat-wis" title="Dit hele gesprek weggooien" onClick={() => setWegVraag("chat")}>&times;</button>
@@ -74,8 +74,8 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
                 {wegVraag === i ? (
                   <span className="wp-weg-vraag">
                     Weghalen?
-                    <button type="button" className="wp-weg-ja" onClick={() => void chat.verwijderChatBericht(i)}>ja</button>
-                    <button type="button" className="wp-weg-nee" onClick={() => setWegVraag(null)}>nee</button>
+                    <button type="button" className="btn btn-danger btn-klein" onClick={() => void chat.verwijderChatBericht(i)}>ja</button>
+                    <button type="button" className="btn btn-klein" onClick={() => setWegVraag(null)}>nee</button>
                   </span>
                 ) : (
                   <button type="button" className="wp-chat-del" title="Dit bericht weghalen" onClick={() => setWegVraag(i)}>×</button>

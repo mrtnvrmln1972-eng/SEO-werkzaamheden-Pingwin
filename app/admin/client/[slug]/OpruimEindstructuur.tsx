@@ -118,7 +118,7 @@ export default function OpruimEindstructuur({ slug, domain, data }: {
               ))}
             </ul>
             {t.kinderen.length > 8 && (
-              <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [t.sleutel]: !m[t.sleutel] }))}>
+              <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen((m) => ({ ...m, [t.sleutel]: !m[t.sleutel] }))}>
                 {open[t.sleutel] ? "▾ minder" : `▸ nog ${t.kinderen.length - 8} pagina's in deze tak`}
               </button>
             )}

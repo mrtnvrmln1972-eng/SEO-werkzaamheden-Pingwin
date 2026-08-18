@@ -107,8 +107,8 @@ export default function Notities({ slug, domain }: { slug: string; domain?: stri
               {wegId === n.id ? (
                 <span className="nt-weg-vraag">
                   Weggooien?
-                  <button type="button" className="wp-weg-ja" onClick={() => void weg(n.id)}>ja</button>
-                  <button type="button" className="wp-weg-nee" onClick={() => setWegId(null)}>nee</button>
+                  <button type="button" className="btn btn-danger btn-klein" onClick={() => void weg(n.id)}>ja</button>
+                  <button type="button" className="btn btn-klein" onClick={() => setWegId(null)}>nee</button>
                 </span>
               ) : (
                 <button type="button" className="wp-icon wp-del" title="Notitie weggooien" onClick={() => setWegId(n.id)}>×</button>

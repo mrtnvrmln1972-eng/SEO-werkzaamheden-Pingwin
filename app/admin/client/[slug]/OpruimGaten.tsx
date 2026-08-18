@@ -143,7 +143,7 @@ export default function OpruimGaten({ slug, domain, rijen, clientName, clientEma
                   </td>
                 )}
                 <td className="opr-reden">
-                  <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [g.term]: !m[g.term] }))}>
+                  <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen((m) => ({ ...m, [g.term]: !m[g.term] }))}>
                     {open[g.term] ? "▾ minder" : "▸ reden"}
                   </button>
                 </td>

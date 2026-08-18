@@ -183,7 +183,7 @@ export default function OpruimPlaatsen({ slug, domain, data, clientName, clientE
                   ))}
                 </td>
                 <td className="opr-reden">
-                  <button type="button" className="opr-meer" onClick={() => setOpen((m) => ({ ...m, [a.plaats]: !m[a.plaats] }))}>
+                  <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen((m) => ({ ...m, [a.plaats]: !m[a.plaats] }))}>
                     {open[a.plaats] ? "▾ minder" : "▸ reden"}
                   </button>
                 </td>

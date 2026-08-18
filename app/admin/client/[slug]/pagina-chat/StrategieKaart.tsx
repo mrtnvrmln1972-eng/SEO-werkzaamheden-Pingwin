@@ -82,13 +82,13 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
                   {wegIdx === i ? (
                     <span className="pch-weg-vraag">
                       Weghalen?
-                      <button type="button" className="pch-weg-ja" onClick={() => deleteMsg(i)}>ja</button>
-                      <button type="button" className="pch-weg-nee" onClick={() => setWegIdx(null)}>nee</button>
+                      <button type="button" className="btn btn-danger btn-klein" onClick={() => deleteMsg(i)}>ja</button>
+                      <button type="button" className="btn btn-klein" onClick={() => setWegIdx(null)}>nee</button>
                     </span>
                   ) : (
                     <>
-                      {m.role === "assistant" && !dicht && <button type="button" className="pch-msg-btn" title="Bewerken" onClick={() => setEditIdx(i)}>✎</button>}
-                      <button type="button" className="pch-msg-btn" title="Dit bericht weghalen" onClick={() => setWegIdx(i)}>×</button>
+                      {m.role === "assistant" && !dicht && <button type="button" className="btn btn-klein" title="Bewerken" onClick={() => setEditIdx(i)}>✎</button>}
+                      <button type="button" className="btn btn-klein" title="Dit bericht weghalen" onClick={() => setWegIdx(i)}>×</button>
                     </>
                   )}
                 </div>
@@ -175,8 +175,8 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
                 {wegChat === "nieuw" ? (
                   <span className="pch-weg-vraag" onClick={(e) => e.stopPropagation()}>
                     Weggooien?
-                    <button type="button" className="pch-weg-ja" onClick={() => { setWegChat(null); newChat(); }}>ja</button>
-                    <button type="button" className="pch-weg-nee" onClick={() => setWegChat(null)}>nee</button>
+                    <button type="button" className="btn btn-danger btn-klein" onClick={() => { setWegChat(null); newChat(); }}>ja</button>
+                    <button type="button" className="btn btn-klein" onClick={() => setWegChat(null)}>nee</button>
                   </span>
                 ) : (
                   <button type="button" className="pch-del" title="Deze chat weggooien" onClick={(e) => { e.stopPropagation(); setWegChat("nieuw"); }}>&times;</button>
@@ -197,8 +197,8 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
                   {wegChat === c.id ? (
                     <span className="pch-weg-vraag" onClick={(e) => e.stopPropagation()}>
                       Weggooien?
-                      <button type="button" className="pch-weg-ja" onClick={() => void removeChat(c.id)}>ja</button>
-                      <button type="button" className="pch-weg-nee" onClick={() => setWegChat(null)}>nee</button>
+                      <button type="button" className="btn btn-danger btn-klein" onClick={() => void removeChat(c.id)}>ja</button>
+                      <button type="button" className="btn btn-klein" onClick={() => setWegChat(null)}>nee</button>
                     </span>
                   ) : (
                     <button type="button" className="pch-del" title="Deze chat weggooien" onClick={(e) => { e.stopPropagation(); setWegChat(c.id); }}>&times;</button>
