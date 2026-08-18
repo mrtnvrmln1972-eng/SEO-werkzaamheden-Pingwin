@@ -1,0 +1,226 @@
+// ═══════════════════════════════════════════════════════════
+// DE BRUG NAAR EEN PAGINA BUITEN DIT DOMEIN (eerste steen van het Pagina-lab)
+// ═══════════════════════════════════════════════════════════
+// Waarom dit bestaat: de Claude-omgeving mag alleen met dit dashboard praten.
+// Elke andere website geeft daar geen verbinding, dus een klantpagina kan van
+// daaruit niet gelezen en niet bekeken worden. Precies dezelfde muur stond er
+// bij het dashboard zelf, en die is opgelost door het van de andere kant te
+// doen: deze server kan wél overal bij, en draait al een browser.
+//
+// `lib/render-page.ts` haalde die HTML al op voor de metingen, maar alleen
+// binnenin. Hier komt daar één ding bij dat het verschil maakt: een FOTO. Een
+// oordeel over vormgeving, over wat er boven de vouw staat, over de rust op een
+// scherm, kun je niet uit HTML halen. Dat moet je zien.
+//
+// Deze laag MEET en KIJKT, hij oordeelt niet. Wat hier uitkomt is wat er staat,
+// zonder mening erover. Datzelfde onderscheid staat in `lib/site-controle.ts`
+// en het is er om dezelfde reden: een model dat een plausibel verhaal kan
+// vertellen doet dat ook als de meting ontbreekt.
+//
+// EN HIJ SCHRIJFT NIETS. Geen tabel, geen taak, geen werklijst. Het Pagina-lab
+// leest mee met alles wat er al is en laat het SEO-werk met rust.
+//
+// De grens die hier hard is: geen enkel adres binnen een netwerk. Deze route
+// haalt op verzoek een willekeurige URL op, en zonder die grens zou je hem
+// kunnen laten kijken naar wat er náást deze server draait. Daarom wordt elke
+// naam eerst opgezocht en elk gevonden adres gecontroleerd, en na afloop nog
+// een keer, want een omleiding kan alsnog ergens anders uitkomen.
+// ═══════════════════════════════════════════════════════════
+
+import dns from "dns/promises";
+import { metBrowser } from "../browser";
+import { BEZOEKER_UA } from "../render-page";
+
+export type Apparaat = "mobiel" | "desktop";
+
+const APPARATEN: Record<Apparaat, { breedte: number; hoogte: number; mobiel: boolean }> = {
+  // Een gangbaar laptopscherm en een gangbare telefoon. Niet de uitersten: het
+  // gaat erom wat de meeste bezoekers zien.
+  desktop: { breedte: 1440, hoogte: 900, mobiel: false },
+  mobiel: { breedte: 390, hoogte: 844, mobiel: true },
+};
+
+export type Kop = { niveau: number; tekst: string };
+export type Verwijzing = { pad: string; tekst: string; extern: boolean };
+export type Beeld = { bron: string; alt: string; breedte: number; hoogte: number };
+
+export type PaginaBron = {
+  url: string;
+  eindUrl: string;
+  status: number | null;
+  titel: string;
+  omschrijving: string;
+  canoniek: string;
+  robots: string;
+  taal: string;
+  koppen: Kop[];
+  tekst: string;
+  woorden: number;
+  links: Verwijzing[];
+  beelden: Beeld[];
+  formulierVelden: number;
+  knoppen: string[];
+  hoogte: number;
+};
+
+/** Een adres binnen een netwerk, dus nooit iets om vanaf deze server op te halen. */
+function priveAdres(ip: string): boolean {
+  const schoon = ip.replace(/^::ffff:/i, "");
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(schoon)) {
+    const [a, b] = schoon.split(".").map(Number);
+    if (a === 10 || a === 127 || a === 0) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 169 && b === 254) return true; // waar cloud-servers hun eigen gegevens ophalen
+    if (a === 100 && b >= 64 && b <= 127) return true;
+    return false;
+  }
+  const laag = schoon.toLowerCase();
+  if (laag === "::" || laag === "::1") return true;
+  if (/^f[cd]/.test(laag)) return true; // uniek-lokaal
+  if (/^fe[89ab]/.test(laag)) return true; // link-lokaal
+  return false;
+}
+
+/** De reden dat deze URL niet opgehaald mag worden, of null als hij mag. */
+export async function waaromNiet(ruw: string): Promise<string | null> {
+  let u: URL;
+  try {
+    u = new URL(ruw);
+  } catch {
+    return "Dat is geen geldig webadres. Begin met https://";
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return "Alleen een http- of https-adres.";
+  const host = u.hostname.toLowerCase().replace(/\.$/, "");
+  if (!host) return "Er staat geen domein in dat adres.";
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local") || host.endsWith(".internal")) {
+    return "Een adres binnen een netwerk kan niet opgehaald worden.";
+  }
+  let adressen: { address: string }[];
+  try {
+    adressen = await dns.lookup(host, { all: true });
+  } catch {
+    return "Dat domein bestaat niet, of is nu niet bereikbaar.";
+  }
+  if (!adressen.length) return "Dat domein levert geen adres op.";
+  if (adressen.some((a) => priveAdres(a.address))) {
+    return "Een adres binnen een netwerk kan niet opgehaald worden.";
+  }
+  return null;
+}
+
+/**
+ * Wat er op die pagina staat: de tekst, de structuur, de links, de beelden.
+ * Met een echte browser, dus inclusief alles wat JavaScript nabezorgt, want dat
+ * is ook wat een bezoeker ziet.
+ */
+export async function leesPagina(url: string, apparaat: Apparaat = "desktop"): Promise<PaginaBron | null> {
+  const scherm = APPARATEN[apparaat];
+  return await metBrowser(async (page) => {
+    await page.setViewport({ width: scherm.breedte, height: scherm.hoogte, isMobile: scherm.mobiel, hasTouch: scherm.mobiel });
+    await page.setUserAgent(BEZOEKER_UA);
+    const resp = await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    await new Promise((r) => setTimeout(r, 900));
+    const eindUrl: string = page.url();
+    const fout = await waaromNiet(eindUrl);
+    if (fout) throw new Error(`De pagina stuurde door naar een adres dat niet opgehaald mag worden.`);
+    const gelezen = await page.evaluate(() => {
+      const tekstVan = (el: Element | null): string => (el?.textContent || "").replace(/\s+/g, " ").trim();
+      const meta = (naam: string): string =>
+        (document.querySelector(`meta[name="${naam}"]`) as HTMLMetaElement | null)?.content?.trim() || "";
+      const koppen = Array.from(document.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+        .map((h) => ({ niveau: Number(h.tagName.slice(1)), tekst: tekstVan(h) }))
+        .filter((k) => k.tekst.length > 0);
+      const hier = location.origin;
+      const links = Array.from(document.querySelectorAll("a[href]"))
+        .map((a) => {
+          const el = a as HTMLAnchorElement;
+          const href = el.href || "";
+          let pad = href;
+          let extern = true;
+          try {
+            const u = new URL(href);
+            extern = u.origin !== hier;
+            pad = extern ? href : u.pathname + u.search;
+          } catch { /* mailto, tel, javascript: blijven zoals ze zijn */ }
+          return { pad, tekst: tekstVan(el), extern };
+        })
+        .filter((l) => l.pad && !l.pad.startsWith("javascript:"));
+      const beelden = Array.from(document.querySelectorAll("img")).map((i) => {
+        const el = i as HTMLImageElement;
+        return { bron: el.currentSrc || el.src || "", alt: el.getAttribute("alt") ?? "", breedte: el.naturalWidth || 0, hoogte: el.naturalHeight || 0 };
+      });
+      const knoppen = Array.from(document.querySelectorAll("button, a.button, a.btn, [role=button], input[type=submit]"))
+        .map((b) => tekstVan(b) || (b as HTMLInputElement).value || "")
+        .filter((t) => t.length > 0);
+      const velden = document.querySelectorAll("form input:not([type=hidden]):not([type=submit]), form select, form textarea").length;
+      const body = document.body ? (document.body.innerText || "") : "";
+      return {
+        titel: document.title || "",
+        omschrijving: meta("description"),
+        canoniek: (document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null)?.href || "",
+        robots: meta("robots"),
+        taal: document.documentElement.getAttribute("lang") || "",
+        koppen,
+        tekst: body.replace(/\n{3,}/g, "\n\n").trim(),
+        links,
+        beelden,
+        knoppen,
+        formulierVelden: velden,
+        hoogte: Math.round(document.documentElement.scrollHeight || 0),
+      };
+    });
+    return {
+      url,
+      eindUrl,
+      status: resp ? resp.status() : null,
+      ...gelezen,
+      woorden: gelezen.tekst.split(/\s+/).filter(Boolean).length,
+    } as PaginaBron;
+  });
+}
+
+export type FotoOpties = {
+  apparaat?: Apparaat;
+  /** De hele pagina van boven tot onder, in plaats van alleen het eerste scherm. */
+  heel?: boolean;
+  /** Een strook uit een lange pagina: vanaf deze hoogte, zoveel pixels hoog. */
+  vanaf?: number;
+  hoogte?: number;
+  /** Extra wachttijd ná het laden, voor pagina's die hun beeld nabezorgen. */
+  wachtMs?: number;
+};
+
+/** Een foto van die pagina, zoals een bezoeker hem ziet. */
+export async function fotografeerPagina(url: string, opties: FotoOpties = {}): Promise<Buffer | null> {
+  const scherm = APPARATEN[opties.apparaat || "desktop"];
+  const wacht = Math.max(0, Math.min(20000, opties.wachtMs ?? 1200));
+  return await metBrowser(async (page) => {
+    await page.setViewport({ width: scherm.breedte, height: scherm.hoogte, isMobile: scherm.mobiel, hasTouch: scherm.mobiel });
+    await page.setUserAgent(BEZOEKER_UA);
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+    const fout = await waaromNiet(page.url());
+    if (fout) throw new Error("De pagina stuurde door naar een adres dat niet opgehaald mag worden.");
+    // Eerst helemaal naar beneden en terug: anders staat alles wat pas bij het
+    // scrollen inlaadt nog als leeg vlak op de foto, en dat is precies het soort
+    // vals oordeel dat we hier niet willen.
+    await page.evaluate(async () => {
+      const stap = window.innerHeight;
+      const eind = document.body ? document.body.scrollHeight : 0;
+      for (let y = 0; y < eind; y += stap) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      window.scrollTo(0, 0);
+    });
+    await new Promise((r) => setTimeout(r, wacht));
+    if (opties.vanaf !== undefined || opties.hoogte !== undefined) {
+      const vanaf = Math.max(0, opties.vanaf || 0);
+      const hoog = Math.max(50, Math.min(4000, opties.hoogte || scherm.hoogte));
+      const shot = await page.screenshot({ type: "png", captureBeyondViewport: true, clip: { x: 0, y: vanaf, width: scherm.breedte, height: hoog } });
+      return shot as Buffer;
+    }
+    const shot = await page.screenshot({ type: "png", fullPage: !!opties.heel });
+    return shot as Buffer;
+  });
+}
