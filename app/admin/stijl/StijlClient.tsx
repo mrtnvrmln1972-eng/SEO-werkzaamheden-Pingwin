@@ -39,6 +39,21 @@ const METERS: { sleutel: string; naam: string; uitleg: string; losseWerklijst?: 
  * het alsof er niets gebeurt, of erger, alsof er iets aan het ontwerp veranderd
  * is terwijl dat niet zo is.
  */
+// Wat er sinds 17-08-2026 is samengetrokken. De rechterkolom komt uit dezelfde
+// meting die de meters verderop voedt (lib/stijl-inventaris.json), de linker is
+// de stand van vóór de verbouwing. Bewust met de hand, want die stand bestaat
+// alleen nog in de git-geschiedenis; hij verandert ook nooit meer.
+const VERANDERD: { wat: string; was: string; is: string }[] = [
+  { wat: "Kleuren in de opmaak", was: "325 verschillende", is: "129" },
+  { wat: "Lettergroottes buiten de schaal", was: "21", is: "0" },
+  { wat: "Afstanden buiten de schaal", was: "21", is: "2" },
+  { wat: "Hoekrondingen", was: "19", is: "4" },
+  { wat: "Schaduwen", was: "45", is: "26" },
+  { wat: "Namen voor dezelfde soort knop", was: "5", is: "1" },
+  { wat: "Lettertypes voor code", was: "6 varianten", is: "1" },
+  { wat: "Plekken die uit de betekenislaag lezen", was: "geen", is: "ruim 8.300" },
+];
+
 const STAPPEN: { nr: number; titel: string; wat: string; stand: "af" | "bezig" | "open" }[] = [
   {
     nr: 1, stand: "af", titel: "Tellen wat er is",
@@ -145,6 +160,41 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
               </li>
             ))}
           </ol>
+        </div>
+
+        {/* ── Wat er is veranderd, in beeld ── */}
+        {/* Erbij gezet op 18-08-2026, na: "ik heb geen beeld van wat er precies
+            gebeurt achter de schermen". De meters hieronder tellen wél, maar een
+            getal dat van 325 naar 129 gaat laat niet zien hoe iets eruitziet.
+            Deze foto wel. Links is de opmaak van 17 augustus, rechts die van nu,
+            met exact dezelfde onderdelen ernaast gelegd. */}
+        <div className="card section">
+          <h2 className="stijl-h2">Wat er is veranderd</h2>
+          <p className="stijl-p">
+            Dezelfde vijf knoppen, dezelfde kaart, dezelfde tabel: links zoals ze eruitzagen
+            vóór de verbouwing, rechts zoals ze er nu uitzien. Het verschil zit vooral in de
+            knoppen. Die hadden vier verschillende hoogtes, vier tekstgroottes en drie soorten
+            afronding, want er waren vier knopnamen naast elkaar gegroeid. Nu is er één.
+          </p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="stijl-voorna" src="/stijl-voor-na.png" alt="De opmaak van 17 augustus naast die van vandaag" />
+          <table className="stijl-tabel">
+            <thead><tr><th>Wat</th><th>Was</th><th>Is</th></tr></thead>
+            <tbody>
+              {VERANDERD.map((r) => (
+                <tr key={r.wat}>
+                  <td>{r.wat}</td>
+                  <td className="stijl-tabel-was">{r.was}</td>
+                  <td className="stijl-tabel-is">{r.is}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="stijl-p stijl-p-klein">
+            Elk van die getallen wordt bij elke bouw opnieuw geteld en mag alleen dalen; komt er
+            een kleur, maat of schaduw bij die niet uit de schaal komt, dan mislukt de bouw en
+            komt het niet live.
+          </p>
         </div>
 
         <Speelruimte />

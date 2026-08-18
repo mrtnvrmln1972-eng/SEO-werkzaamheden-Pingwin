@@ -235,6 +235,13 @@
      even breed moeten zijn. Stond in zes verschillende stapels door het
      bestand (ui-monospace/Menlo/Consolas in wisselende volgorde, en twee keer
      kaal 'monospace'), dus zes plekken waar hetzelfde net iets anders oogde. */
+  /* De compacte knopmaat, één keer. Twee regels hebben hem nodig (.btn-klein en
+     de uitzondering .btn.btn-ghost.btn-klein hieronder), en die liepen uit elkaar
+     zodra er één veranderde: de ghost-knop bleef op 40px staan terwijl de rest
+     naar 26px ging. Eén naam, twee lezers. */
+  --knop-klein-tekst: var(--type-label);
+  --knop-klein-regel: var(--regel-label);
+  --knop-klein-ruimte: var(--ruimte-krap) var(--ruimte-regel);
   --letter-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -6434,7 +6441,7 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
    van, want de oude tabelknoppen waren krapper dan .btn-klein. Eén systeem mag
    geen dichtheid kosten, dus is de maat hier aangepast in plaats van dat er een
    uitzondering per tabel bij kwam. */
-.btn-klein { padding: var(--ruimte-krap) var(--ruimte-regel); font-size: var(--type-label); line-height: var(--regel-label); align-self: flex-start; }
+.btn-klein { padding: var(--knop-klein-ruimte); font-size: var(--knop-klein-tekst); line-height: var(--knop-klein-regel); align-self: flex-start; }
 
 /* ── De volledige beschrijving, bij het punt zelf ─────────────────
    Stond eerst als link naar /uitleg#agenda, en dan zocht je in een lang
@@ -6885,7 +6892,7 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
    (hogere specificiteit dan de losse .btn-ghost hierboven), dus .btn-ghost gedraagt
    zich voortaan ook echt als kleurmodifier zodra hij samen met .btn staat. */
 .btn.btn-ghost { font-size: var(--type-lopend); line-height: var(--regel-lopend); padding: var(--ruimte-naast) var(--ruimte-groep); border-radius: var(--ronding-knop); }
-.btn.btn-ghost.btn-klein { font-size: var(--type-bijschrift); padding: var(--ruimte-naast) var(--ruimte-regel); }
+.btn.btn-ghost.btn-klein { font-size: var(--knop-klein-tekst); line-height: var(--knop-klein-regel); padding: var(--knop-klein-ruimte); }
 
 /* De uitzonderingen die moeten blijven winnen. */
 .wp-fase-btn.wp-fase-btn-primair { background: var(--kleur-accent); border-color: var(--kleur-rand-accent); color: var(--kleur-tekst-op-vlak); }
@@ -8586,6 +8593,26 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 
 /* De vier stappen van de verbouwing, bovenaan /admin/stijl. Staat er omdat het
    verhaal anders alleen in losse chats leeft, en dat scroll je kwijt. */
+/* De voor/na-foto en het tabelletje eronder: wat er samengetrokken is, in beeld
+   in plaats van in een getal. De foto is breder dan de kaart en mag zelf schuiven
+   op een smal scherm; hij afsnijden zou precies de vergelijking kapotmaken. */
+.stijl-voorna {
+  display: block; width: 100%; height: auto; margin-top: var(--ruimte-groep);
+  border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-kaart);
+}
+.stijl-tabel { width: 100%; border-collapse: collapse; margin-top: var(--ruimte-groep); }
+.stijl-tabel th {
+  text-align: left; font-size: var(--type-label); line-height: var(--regel-label);
+  text-transform: uppercase; letter-spacing: 0.5px; color: var(--kleur-tekst-stil);
+  padding: var(--ruimte-naast) var(--ruimte-regel); border-bottom: 1px solid var(--kleur-rand);
+}
+.stijl-tabel td {
+  font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
+  padding: var(--ruimte-naast) var(--ruimte-regel); border-bottom: 1px solid var(--kleur-rand-zacht);
+}
+.stijl-tabel-was { color: var(--kleur-tekst-stil); text-decoration: line-through; }
+.stijl-tabel-is { color: var(--kleur-accent-diep); font-weight: 700; }
+
 .stijl-stappen { list-style: none; display: flex; flex-direction: column; gap: var(--ruimte-regel); margin-top: var(--ruimte-groep); }
 .stijl-stap { display: flex; gap: var(--ruimte-regel); align-items: flex-start; }
 .stijl-stap-nr {

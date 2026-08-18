@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8680,
-    "stijlregels": 4414,
-    "classnamen": 2946
+    "regels": 8707,
+    "stijlregels": 4420,
+    "classnamen": 2950
   },
   "kleuren": {
     "verschillend": 129,
@@ -829,7 +829,7 @@
     },
     {
       "naam": "Tabellen",
-      "aantal": 19,
+      "aantal": 20,
       "namen": [
         "chat-table",
         "dev-afgerond-tabel",
@@ -847,6 +847,7 @@
         "pch-msg-editable",
         "prio-tabel",
         "res-table",
+        "stijl-tabel",
         "task-table",
         "uk-tabel",
         "wz-kw-table"
@@ -1611,6 +1612,18 @@
     {
       "naam": "--letter",
       "waarde": "'Montserrat', system-ui, 'Segoe UI Symbol', 'Apple Symbols',\n    'Noto Sans Symbols 2', 'Noto Sans Symbols', sans-serif"
+    },
+    {
+      "naam": "--knop-klein-tekst",
+      "waarde": "var(--type-label)"
+    },
+    {
+      "naam": "--knop-klein-regel",
+      "waarde": "var(--regel-label)"
+    },
+    {
+      "naam": "--knop-klein-ruimte",
+      "waarde": "var(--ruimte-krap) var(--ruimte-regel)"
     },
     {
       "naam": "--letter-code",
@@ -2839,7 +2852,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8336,
-    "schaalGebruik": 1484
+    "gebruik": 8346,
+    "schaalGebruik": 1490
   }
 }
