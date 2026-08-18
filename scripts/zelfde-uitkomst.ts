@@ -20,11 +20,20 @@
 //    bleek te komen doordat een teller pas ná een netwerkvraag verschijnt en de
 //    wachttijd te kort stond. Een half uur zoeken naar een fout die er niet was.
 //
-// Deze controle is deterministisch en dekt het hele bestand. Voor élke regel die
-// veranderde: los alle var(--…) op tot een letterlijke waarde, aan beide kanten,
-// en vergelijk. Komt er ergens iets anders uit, dan noemt hij regel en
-// eigenschap. Nul verschil betekent: geen enkele pixel kán anders zijn, ook niet
-// in een toestand die je nooit gefotografeerd hebt.
+// Deze controle is deterministisch en dekt het hele bestand. Hij leest beide
+// versies uit als "wat doet elke selector uiteindelijk": per selector elke
+// eigenschap, met alle var(--…) opgelost tot een letterlijke waarde, en met een
+// tweede regel die de eerste overschrijft zoals een browser dat doet. Daarna
+// legt hij die twee naast elkaar. Nul verschil betekent: geen enkele pixel kán
+// anders zijn, ook niet in een toestand die je nooit gefotografeerd hebt.
+//
+// Per selector en niet per regel, en dat is een les: de eerste versie
+// vergeleek regel voor regel, en die weigerde dienst zodra er een token
+// bíjkwam. Dat gebeurt elke ronde waarin een rol blijkt te ontbreken, dus
+// precies op het moment dat je het bewijs nodig hebt.
+//
+// Getest met een opzettelijke fout voordat hij vertrouwd werd: een controle die
+// altijd groen zegt is erger dan geen controle.
 //
 // Bewust GEEN proef in `proeven/`: dit is gereedschap voor tijdens een
 // omzettingsronde, geen regel die altijd moet gelden. Latere ronden veranderen
@@ -82,39 +91,72 @@ function norm(tekst: string): string {
 
 const tv = tokens(voor);
 const tn = tokens(na);
-const rv = voor.split("\n");
-const rn = na.split("\n");
 
-if (rv.length !== rn.length) {
-  console.error(
-    `Het aantal regels verschilt (${rv.length} tegen ${rn.length}). Deze controle vergelijkt regel voor regel,\n` +
-    `dus hij werkt alleen op een ronde die alléén waarden omzet. Is er opmaak bij- of weggekomen, gebruik dan een foto.`
-  );
-  process.exit(1);
+/**
+ * Zet een stylesheet om in "wat elke selector uiteindelijk doet": per selector
+ * de eigenschappen met hun opgeloste waarde.
+ *
+ * WAAROM NIET REGEL VOOR REGEL (les van 18-08-2026)
+ * ─────────────────────────────────────────────────
+ * De eerste versie vergeleek regel voor regel, en dat werkt precies zolang een
+ * ronde alleen waarden vervangt. Zodra er een token bíjkomt (en dat gebeurt
+ * elke keer dat er een rol ontbreekt, zoals --ruimte-groep en --type-cijfer)
+ * schuiven alle regelnummers een plek op en weigert de controle dienst. Dan
+ * heb je geen bewijs meer op het moment dat je het nodig hebt.
+ *
+ * Per selector vergelijken heeft dat probleem niet, en het is bovendien wat je
+ * echt wilt weten: doet .opr-kop nog exact hetzelfde? Een regel die verplaatst
+ * is doet niet mee, een selector die iets anders doet valt meteen op.
+ *
+ * Een selector die twee keer voorkomt (een tweede regel die de eerste
+ * overschrijft) wordt samengevoegd in bronvolgorde, net als in een browser.
+ */
+function gedrag(css: string, tok: Record<string, string>): Map<string, Record<string, string>> {
+  const uit = new Map<string, Record<string, string>>();
+  const stapel: string[] = [];
+  for (const regel of css.split("\n")) {
+    const onder = [...stapel].reverse().find((s) => !s.startsWith("@")) ?? "";
+    const eigen = regel.includes("{") ? regel.split("{")[0] : "";
+    const selector = regel.includes("{") && !eigen.trim().startsWith("@") ? eigen.trim() : onder;
+    if (selector && selector !== ":root") {
+      const bestaand = uit.get(selector) ?? {};
+      for (const m of regel.matchAll(/([a-z-]+)\s*:\s*([^;{}]+)/g)) {
+        // De selector zelf staat vóór de accolade; alleen wat erná komt is een
+        // declaratie. Zonder dit telt "a:hover" als eigenschap "a".
+        const na = regel.includes("{") ? regel.slice(regel.indexOf("{")) : regel;
+        if (!na.includes(m[0])) continue;
+        bestaand[m[1]] = norm(los(m[2], tok));
+      }
+      if (Object.keys(bestaand).length) uit.set(selector, bestaand);
+    }
+    for (const teken of regel) {
+      if (teken === "{") stapel.push(eigen.trim() || onder);
+      else if (teken === "}") stapel.pop();
+    }
+  }
+  return uit;
 }
+
+const gv = gedrag(voor, tv);
+const gn = gedrag(na, tn);
 
 const verschillen: string[] = [];
-let gewijzigd = 0;
-for (let i = 0; i < rv.length; i++) {
-  if (rv[i] === rn[i]) continue;
-  gewijzigd++;
-  const declaraties = (regel: string) => {
-    const uit: Record<string, string> = {};
-    for (const m of regel.matchAll(/([a-z-]+)\s*:\s*([^;{}]+)/g)) uit[m[1]] = m[2];
-    return uit;
-  };
-  const da = declaraties(rv[i]);
-  const db = declaraties(rn[i]);
-  for (const eig of new Set([...Object.keys(da), ...Object.keys(db)])) {
-    const a = norm(los(da[eig] ?? "", tv));
-    const b = norm(los(db[eig] ?? "", tn));
-    if (a !== b) verschillen.push(`  regel ${i + 1} | ${eig}: ${a || "(weg)"} → ${b || "(weg)"}`);
+let bekeken = 0;
+for (const [selector, voorheen] of gv) {
+  const nu = gn.get(selector);
+  if (!nu) { verschillen.push(`  ${selector}: bestaat niet meer`); continue; }
+  for (const eig of new Set([...Object.keys(voorheen), ...Object.keys(nu)])) {
+    bekeken++;
+    if (voorheen[eig] !== nu[eig]) {
+      verschillen.push(`  ${selector} | ${eig}: ${voorheen[eig] ?? "(niets)"} → ${nu[eig] ?? "(weg)"}`);
+    }
   }
 }
+for (const selector of gn.keys()) if (!gv.has(selector)) verschillen.push(`  ${selector}: is nieuw`);
 
-console.log(`${gewijzigd} regels gewijzigd sinds ${ref}.`);
+console.log(`${gv.size} selectors vergeleken sinds ${ref}, ${bekeken} eigenschappen.`);
 if (verschillen.length === 0) {
-  console.log("Nul regels waar de uitkomst verandert: deze omzetting is aantoonbaar onzichtbaar.\n");
+  console.log("Nul plekken waar de uitkomst verandert: deze omzetting is aantoonbaar onzichtbaar.\n");
   process.exit(0);
 }
 console.log(`\n${verschillen.length} plek(ken) waar de uitkomst WEL verandert:`);
