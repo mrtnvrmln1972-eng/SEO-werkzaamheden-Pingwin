@@ -68,6 +68,7 @@ export const SCHERMEN: { pad: string; naam: string; waarvoor: string; groep: Gro
   { pad: "/admin/agenda", naam: "Agenda", waarvoor: "Maartens eigen weekagenda: tijdblokken en taken, los van klantwerk.", groep: "Dagelijks werk" },
   { pad: "/admin/schermafbeeldingen", naam: "Schermafbeeldingen", waarvoor: "De beelden die /uitleg gebruikt: het dashboard fotografeert zichzelf, anoniem.", groep: "Beheer en controle" },
   { pad: "/admin/veld-herstel", naam: "Veld terugzetten", waarvoor: "Eerdere versies van 'Overzicht' en 'Top Prio's', met één klik terug te zetten.", groep: "Beheer en controle" },
+  { pad: "/admin/verhuizen", naam: "Verhuizen", waarvoor: "Een klant met alles erin uit een losse omgeving hierheen halen, of andersom.", groep: "Beheer en controle" },
   { pad: "/admin/claude-werkwijze", naam: "Claude-werkwijze", waarvoor: "Geheugensteun voor het werken met Claude zelf: repo's aanhaken, model en denkstand, traagheid herkennen, kosten laag houden.", groep: "Ontwikkeling van het dashboard" },
 ];
 

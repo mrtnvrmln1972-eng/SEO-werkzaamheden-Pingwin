@@ -45,4 +45,21 @@ export const BLOKKEN: Uitklapper[] = [
         "zijn eigen database en zijn eigen sleutels, terwijl de motor voor iedereen dezelfde blijft en dus " +
         "voor iedereen tegelijk beter wordt.",
     },
+    {
+      titel: "Een klant verhuizen tussen omgevingen",
+      kern: "Alles gaat mee, in één keer, zonder lijst die veroudert.",
+      tekst:
+        "Draait een klant nog in een eigen, losse omgeving, dan haalt één scherm hem hierheen: taken, chats, " +
+        "pagina's en alles wat er verder aan die klant hangt. De klantkaart ontstaat vanzelf mee, zonder inlog " +
+        "en zonder bedragen.\n\n" +
+        "Het bijzondere zit in wat er níet gebeurt: er is geen lijst met soorten gegevens die iemand moet " +
+        "bijhouden. De verhuizing kijkt in de database zelf welke tabellen aan een klant hangen, dus wat er " +
+        "later bijkomt gaat vanzelf mee. Een eerdere koppeling kende acht soorten, terwijl er vierenzeventig " +
+        "aan een klant hangen; alles daarbuiten bleef stil achter.\n\n" +
+        "Het inlezen gebeurt van server naar server, dus zonder ingelogde gebruiker. Het slot daarop is een " +
+        "code die de ontvangende kant zelf maakt: een uur geldig, gebonden aan één klant, versleuteld " +
+        "opgeslagen en met één klik in te trekken. Zonder geldige code bestaat die deur niet. Verhuizen kan " +
+        "bovendien alleen naar een Pingwin-omgeving, en twee keer verhuizen levert geen dubbele taken op: de " +
+        "eerste hap van een soort vervangt wat er stond.",
+    },
 ];
