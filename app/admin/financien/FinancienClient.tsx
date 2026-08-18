@@ -23,9 +23,9 @@ const STATE_LABEL: Record<string, string> = {
   saved: "geboekt", new: "nieuw", pending_payment: "betaling onderweg", uncollectible: "oninbaar",
 };
 
-const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: 12, background: "#fff", padding: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.04)", marginBottom: 18 };
-const rowBtn: React.CSSProperties = { display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", padding: "9px 4px", cursor: "pointer", fontSize: 14, color: "var(--kleur-kop)", textAlign: "left", borderBottom: "1px solid var(--kleur-rand-zacht)" };
-const caret: React.CSSProperties = { width: 14, color: "var(--accent-warm)", flex: "0 0 auto", fontSize: 12 };
+const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: "var(--r-md)", background: "#fff", padding: "var(--s-4)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)", marginBottom: "var(--s-4)" };
+const rowBtn: React.CSSProperties = { display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-2) var(--s-1)", cursor: "pointer", fontSize: "var(--fs-base)", color: "var(--kleur-kop)", textAlign: "left", borderBottom: "1px solid var(--kleur-rand-zacht)" };
+const caret: React.CSSProperties = { width: 14, color: "var(--accent-warm)", flex: "0 0 auto", fontSize: "var(--fs-sm)" };
 const amountRight: React.CSSProperties = { marginLeft: "auto", fontVariantNumeric: "tabular-nums", fontWeight: 600 };
 
 type Props = {

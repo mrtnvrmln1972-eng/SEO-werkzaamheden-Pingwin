@@ -203,6 +203,55 @@ Twee regels die dat document eerlijk houden:
   gaten, de risico's en de verbeterpunten. Zo blijft het één document in plaats van een
   verkoopversie en een interne versie die uit elkaar lopen.
 
+## 0b-bis. OPMAAKWERK GAAT DOOR ZONDER TE VRAGEN, WANT HET WORDT GEFOTOGRAFEERD (vaste regel, 18-08-2026)
+
+Het strak trekken van de opmaak duurde te lang, en de oorzaak was niet het werk maar de
+werkwijze: na élke ronde moest Maarten kijken of het er nog goed uitzag, want dat kon niemand
+anders vaststellen. Elke ronde was daardoor een halve dag wachten op een oordeel dat vrijwel
+altijd "ja hoor" was. Zijn woorden op 18-08-2026: "ik zie niks gebeuren, het duurt veel te lang
+en ik ben er een beetje klaar mee". Terecht, en het is opgelost door de sluis weg te halen, niet
+door harder te werken.
+
+**`scripts/fotoproef.py` vervangt dat oordeel voor het deel dat te meten is.** Hij fotografeert
+tien schermen via `/api/admin/kijkbeeld` en vergelijkt ze met de vorige set:
+
+```bash
+python3 scripts/fotoproef.py voor     # nulmeting, vóór je iets aanraakt
+# ... werken, pushen, scripts/wacht-op-deploy.sh ...
+python3 scripts/fotoproef.py na       # nieuwe foto's plus het verschil
+```
+
+Hij geeft twee getallen en het tweede is het belangrijkste. **"Anders"** telt de pixels die niet
+gelijk zijn, en dat getal is onbruikbaar zodra er data bij komt of afgaat: dan schuift alles op en
+staat een scherm op 12% zonder dat de opmaak veranderd is (dat gebeurde meteen bij de eerste
+meting, op de klantenlijst). **"Kleur"** vergelijkt hoevéél van elke kleur er staat, niet wáár, en
+is daardoor blind voor verschoven inhoud maar gevoelig voor een rand, een schaduw of een tint die
+verandert. Dus:
+
+| Kleurverschil | Wat er gebeurt |
+|---|---|
+| onder 0,5% | doorvoeren, niet melden onderweg, geen vraag |
+| 0,5% tot 3% | doorvoeren mét een foto in de terugkoppeling |
+| boven 3% | eerst laten zien, dit verandert het gezicht van een scherm |
+
+**Wat dit voor de werkwijze betekent, en dit is de kern:**
+
+- **Eén opdracht is meerdere rondes, niet één.** Kleuren, schaduwen, inline opmaak en knopnamen
+  gaan achter elkaar door in dezelfde sessie. Niet terugkoppelen tussendoor; één terugkoppeling
+  aan het eind, over het geheel.
+- **Niet elke ronde pushen.** Wachten op een deploy kost drie tot vijf minuten en dat is per ronde
+  meer dan het werk zelf. Werk lokaal door, push als het blok af is.
+- **Bij twijfel niet vragen maar meten.** De fotoproef is er om een oordeel te geven, dus een
+  ronde overslaan "omdat je niet zeker weet of het opvalt" is geen voorzichtigheid meer maar
+  uitstel. Meet het.
+- **`scripts/zelfde-uitkomst.ts` blijft ernaast staan** voor wijzigingen die per definitie niets
+  mogen veranderen (een naam die een andere naam wordt). Die is exact en heeft geen deploy nodig;
+  de fotoproef is voor wijzigingen die wél iets doen.
+
+Wat NIET verandert: een nieuw ontwerp, een andere indeling of een scherm dat op de schop gaat,
+blijft iets dat Maarten eerst ziet. Deze regel gaat over strak trekken binnen de stijl die er is,
+niet over het gezicht van het dashboard.
+
 ## 0c. DE ROUTEKAART EN HOE JE EEN ONTWIKKELPUNT OPPAKT (vaste stap, 06-08-2026)
 
 De ontwikkeling van dit dashboard loopt via **losse chats, één ontwikkelpunt per chat**. Maarten

@@ -62,8 +62,8 @@ function Hint({ text }: { text: string }) {
       style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: 16, height: 16, borderRadius: "50%", background: "var(--kleur-rand-zacht)",
-        color: "var(--label-muted)", fontSize: 11, fontWeight: 700, cursor: "help",
-        marginLeft: 6, verticalAlign: "text-bottom", flex: "0 0 auto",
+        color: "var(--label-muted)", fontSize: "var(--fs-xs)", fontWeight: 700, cursor: "help",
+        marginLeft: "var(--s-1)", verticalAlign: "text-bottom", flex: "0 0 auto",
       }}
     >
       ?
@@ -155,18 +155,18 @@ export default async function UsagePage({ searchParams }: { searchParams: { peri
   }
   const ahrefsTotals = byService.get("ahrefs");
 
-  const wrap: React.CSSProperties = { maxWidth: 1320, margin: "0 auto", padding: "26px 24px 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "var(--kleur-kop)" };
-  const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: 12, background: "#fff", padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
+  const wrap: React.CSSProperties = { maxWidth: 1320, margin: "0 auto", padding: "var(--s-6) var(--s-6) 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "var(--kleur-kop)" };
+  const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: "var(--r-md)", background: "#fff", padding: "var(--s-5)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
   // Let op: de globale stylesheet geeft thead th een donkere achtergrond; de
   // koptekst moet dus wit zijn. Nooit laten omvallen: nowrap op koppen en cijfers.
-  const th: React.CSSProperties = { textAlign: "left", padding: "8px 12px", fontSize: 12, color: "#fff", fontWeight: 700, whiteSpace: "nowrap" };
+  const th: React.CSSProperties = { textAlign: "left", padding: "var(--s-2) var(--s-3)", fontSize: "var(--fs-sm)", color: "#fff", fontWeight: 700, whiteSpace: "nowrap" };
   const thNum: React.CSSProperties = { ...th, textAlign: "right" };
-  const td: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid var(--kleur-rand-zacht)", fontSize: 13.5 };
+  const td: React.CSSProperties = { padding: "var(--s-2) var(--s-3)", borderBottom: "1px solid var(--kleur-rand-zacht)", fontSize: "var(--fs-base)" };
   const tdNowrap: React.CSSProperties = { ...td, whiteSpace: "nowrap" };
   const numTd: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
-  const tileLabel: React.CSSProperties = { fontSize: 11.5, color: "var(--label-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, display: "flex", alignItems: "center" };
-  const blockTitle: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: "var(--kleur-kop)", margin: 0, display: "flex", alignItems: "center" };
-  const blockSub: React.CSSProperties = { fontSize: 13, color: "var(--text-secondary)", margin: "4px 0 14px", lineHeight: 1.5 };
+  const tileLabel: React.CSSProperties = { fontSize: "var(--fs-xs)", color: "var(--label-muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, display: "flex", alignItems: "center" };
+  const blockTitle: React.CSSProperties = { fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--kleur-kop)", margin: 0, display: "flex", alignItems: "center" };
+  const blockSub: React.CSSProperties = { fontSize: "var(--fs-sm)", color: "var(--text-secondary)", margin: "var(--s-1) 0 var(--s-3)", lineHeight: 1.5 };
 
   return (
     <>

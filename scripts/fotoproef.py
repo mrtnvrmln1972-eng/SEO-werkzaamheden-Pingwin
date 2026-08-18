@@ -20,11 +20,26 @@ zelf al gebruikt, plus de stijlpagina), en vergelijkt de nieuwe foto's met de
 oude, pixel voor pixel. De uitkomst is een percentage per scherm plus de banden
 waar het verschil zit, zodat er niet naar "voelt anders" hoeft te worden gegist.
 
-WAT DE UITSLAG BETEKENT
-═══════════════════════
-    onder 0,5%   niets aan de hand, dit gaat door zonder iemand lastig te vallen
-    0,5% tot 5%  zichtbaar maar klein; gaat door mét een foto in de terugkoppeling
-    boven 5%     eerst laten zien, dit verandert het gezicht van een scherm
+TWEE GETALLEN, EN HET TWEEDE IS HET BELANGRIJKSTE
+═════════════════════════════════════════════════
+"Anders" telt de pixels die niet gelijk zijn. Dat getal is onbruikbaar zodra er
+een rij bij komt of afgaat, want dan schuift alles eronder op en is de halve
+pagina "anders" zonder dat de opmaak veranderd is. Precies dat gebeurde bij de
+eerste meting: de klantenlijst stond op 12% omdat er ondertussen klanten waren
+bijgewerkt.
+
+"Kleur" vergelijkt hoevéél van elke kleur er op het scherm staat, niet wáár.
+Schuift de inhoud op, dan blijft dat getal gelijk; verandert er een kleur, een
+rand of een schaduw, dan beweegt het meteen. Dat is dus het getal dat over de
+opmaak gaat, en het getal waarop besloten wordt:
+
+    kleur onder 0,5%   niets aan de hand, doorvoeren zonder iemand lastig te vallen
+    kleur 0,5% tot 3%  zichtbaar maar klein; doorvoeren mét een foto erbij
+    kleur boven 3%     eerst laten zien, dit verandert het gezicht van een scherm
+
+"Anders" blijft er wél bij staan, als kijkwijzer: het noemt de banden waar het
+verschil zit, zodat er naar de juiste plek gekeken wordt in plaats van naar een
+hele pagina.
 
 Let op wat het NIET is: een oordeel over of iets mooier is geworden. Het meet
 alleen of er iets veranderd is en hoeveel. Mooi blijft mensenwerk.
@@ -111,12 +126,16 @@ def vergelijk():
     for label, _pad in schermen():
         naam = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")
         a, b = MAP / "voor" / f"{naam}.png", MAP / "na" / f"{naam}.png"
-        if not a.exists() or not b.exists():
-            regels.append((label, None, "geen paar foto's"))
+        # Een mislukte foto is een foutmelding van een paar tientallen bytes, geen
+        # plaatje. Dat mag de hele proef niet laten omvallen: dan verdwijnt ook de
+        # uitslag van de negen schermen die wél gelukt zijn.
+        try:
+            va, vb = Image.open(a).convert("RGB"), Image.open(b).convert("RGB")
+        except (FileNotFoundError, OSError):
+            regels.append((label, None, None, "geen bruikbaar paar foto's"))
             continue
-        va, vb = Image.open(a).convert("RGB"), Image.open(b).convert("RGB")
         if va.width != vb.width:
-            regels.append((label, None, f"andere breedte ({va.width} → {vb.width})"))
+            regels.append((label, None, None, f"andere breedte ({va.width} → {vb.width})"))
             continue
 
         hoogteverschil = vb.height - va.height
@@ -138,28 +157,54 @@ def vergelijk():
                 banden.append((n, y))
         banden.sort(reverse=True)
         plek = ", ".join(f"y{y}-{y + 100}" for _n, y in banden[:3]) if banden else "nergens"
-        extra = f", {hoogteverschil:+d}px hoger" if hoogteverschil else ""
-        regels.append((label, pct, f"{plek}{extra}"))
+        extra = f", {hoogteverschil:+d}px" if hoogteverschil else ""
+        regels.append((label, kleurverschil(va, vb), pct, f"{plek}{extra}"))
 
-    print(f"\n{'scherm':40} {'anders':>8}   waar")
-    print("─" * 78)
+    print(f"\n{'scherm':38} {'kleur':>7} {'anders':>8}   waar")
+    print("─" * 84)
     zwaarste = 0.0
-    for label, pct, waar in regels:
+    for label, kleur, pct, waar in regels:
         if pct is None:
-            print(f"{label:40} {'?':>8}   {waar}")
+            print(f"{label:38} {'?':>7} {'?':>8}   {waar}")
             continue
-        zwaarste = max(zwaarste, pct)
-        print(f"{label:40} {pct:7.2f}%   {waar}")
+        zwaarste = max(zwaarste, kleur)
+        print(f"{label:38} {kleur:6.2f}% {pct:7.2f}%   {waar}")
 
     print()
     if zwaarste < 0.5:
-        print(f"Grootste verschil {zwaarste:.2f}%: niets zichtbaars. Doorvoeren.")
+        print(f"Grootste kleurverschil {zwaarste:.2f}%: niets zichtbaars aan de opmaak. Doorvoeren.")
         return 0
-    if zwaarste < 5:
-        print(f"Grootste verschil {zwaarste:.2f}%: klein maar zichtbaar. Doorvoeren mét een foto erbij.")
+    if zwaarste < 3:
+        print(f"Grootste kleurverschil {zwaarste:.2f}%: klein maar zichtbaar. Doorvoeren mét een foto erbij.")
         return 0
-    print(f"Grootste verschil {zwaarste:.2f}%: dit verandert het gezicht van een scherm. Eerst laten zien.")
+    print(f"Grootste kleurverschil {zwaarste:.2f}%: dit verandert het gezicht van een scherm. Eerst laten zien.")
     return 1
+
+
+def kleurverschil(va: "Image.Image", vb: "Image.Image") -> float:
+    """Hoeveel van het scherm heeft een andere kleur gekregen, waar dan ook.
+
+    Vergelijkt hoevéél er van elke kleur op het scherm staat in plaats van waar.
+    Daardoor telt een rij die erbij komt niet mee (dezelfde kleuren, alleen meer
+    of minder), maar een rand die van beige naar grijs gaat wél. Dat is precies
+    het onderscheid tussen "de data is bijgewerkt" en "de opmaak is veranderd".
+
+    De kanalen worden in stapjes van vier bij elkaar geveegd: het verschil tussen
+    twee naast elkaar liggende tinten is geen verandering maar de afronding van
+    tekstverfijning.
+    """
+    def verdeling(v):
+        h = v.convert("RGB").histogram()
+        n = v.width * v.height
+        uit = []
+        for kanaal in range(3):
+            bak = h[kanaal * 256:(kanaal + 1) * 256]
+            uit += [sum(bak[i:i + 4]) / n for i in range(0, 256, 4)]
+        return uit
+
+    a, b = verdeling(va), verdeling(vb)
+    # Gedeeld door 3 (drie kanalen) en door 2 (elk verschil telt aan beide kanten).
+    return sum(abs(x - y) for x, y in zip(a, b)) / 6 * 100
 
 
 if __name__ == "__main__":

@@ -96,16 +96,16 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
     ? `${MONTH_NAMES[Number(p.slice(4, 6)) - 1]} ${year}`
     : `heel ${year}`;
 
-  const wrap: React.CSSProperties = { maxWidth: 1080, margin: "0 auto", padding: "28px 20px 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "var(--kleur-kop)" };
-  const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: 12, background: "#fff", padding: 18, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
+  const wrap: React.CSSProperties = { maxWidth: 1080, margin: "0 auto", padding: "28px var(--s-5) 60px", fontFamily: "system-ui, -apple-system, sans-serif", color: "var(--kleur-kop)" };
+  const card: React.CSSProperties = { border: "1px solid var(--kleur-rand-zacht)", borderRadius: "var(--r-md)", background: "#fff", padding: "var(--s-4)", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" };
   const pill = (active: boolean): React.CSSProperties => ({
-    padding: "6px 14px", borderRadius: 999, fontSize: 14, textDecoration: "none",
+    padding: "var(--s-1) var(--s-3)", borderRadius: "var(--r-full)", fontSize: "var(--fs-base)", textDecoration: "none",
     border: "1px solid " + (active ? "var(--accent-warm)" : "var(--kleur-rand-zacht)"),
     background: active ? "var(--accent-warm)" : "#fff",
     color: active ? "#fff" : "var(--text-secondary)",
   });
-  const th: React.CSSProperties = { textAlign: "right", padding: "8px 10px", borderBottom: "2px solid var(--kleur-rand-zacht)", fontSize: 13, color: "var(--label-muted)", fontWeight: 600 };
-  const td: React.CSSProperties = { padding: "8px 10px", borderBottom: "1px solid var(--kleur-rand-zacht)", fontSize: 14, textAlign: "right", fontVariantNumeric: "tabular-nums" };
+  const th: React.CSSProperties = { textAlign: "right", padding: "var(--s-2) var(--s-2)", borderBottom: "2px solid var(--kleur-rand-zacht)", fontSize: "var(--fs-sm)", color: "var(--label-muted)", fontWeight: 600 };
+  const td: React.CSSProperties = { padding: "var(--s-2) var(--s-2)", borderBottom: "1px solid var(--kleur-rand-zacht)", fontSize: "var(--fs-base)", textAlign: "right", fontVariantNumeric: "tabular-nums" };
 
   return (
     <>
