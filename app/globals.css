@@ -224,7 +224,13 @@
   /* Stond 48 keer los uitgeschreven in dit bestand, dus een ander lettertype
      proberen betekende 48 plekken langslopen. Nu één naam. Montserrat blijft
      de huisstijl; deze naam maakt alleen dat je hem op één plek kunt wisselen. */
-  --letter: 'Montserrat', sans-serif;
+  /* De stapel achter Montserrat is geen opvulling maar de reparatie van de
+     tofu-blokjes: Montserrat heeft geen pijltjes, vinkjes of driehoekjes, en die
+     worden overal als icoon gebruikt. Zonder een font dat ze wél heeft, valt de
+     browser terug op iets willekeurigs of tekent hij een leeg vierkantje. Zet
+     hier nooit alleen 'Montserrat', sans-serif neer; dat was de oude stand. */
+  --letter: 'Montserrat', system-ui, 'Segoe UI Symbol', 'Apple Symbols',
+    'Noto Sans Symbols 2', 'Noto Sans Symbols', sans-serif;
   /* Het lettertype voor code, een pad of een sleutel: alles waar de tekens
      even breed moeten zijn. Stond in zes verschillende stapels door het
      bestand (ui-monospace/Menlo/Consolas in wisselende volgorde, en twee keer

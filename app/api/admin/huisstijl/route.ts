@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // ongeldig maken en dan valt de stijl van het dashboard om.
   if (thema !== null) {
     const kleurOk = typeof thema.accent === "string" && /^#[0-9a-fA-F]{6}$/.test(thema.accent);
-    const letterOk = typeof thema.letter === "string" && thema.letter.length < 120 && !/[{};<]/.test(thema.letter);
+    const letterOk = typeof thema.letter === "string" && thema.letter.length < 200 && !/[{};<]/.test(thema.letter);
     const getalOk = (n: unknown, min: number, max: number) =>
       typeof n === "number" && Number.isFinite(n) && n >= min && n <= max;
     const rondingOk = Array.isArray(thema.ronding) && thema.ronding.length === 3

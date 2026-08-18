@@ -1,6 +1,6 @@
 {
   "css": {
-    "regels": 8704,
+    "regels": 8710,
     "stijlregels": 4438,
     "classnamen": 2947
   },
@@ -1610,7 +1610,7 @@
     },
     {
       "naam": "--letter",
-      "waarde": "'Montserrat', sans-serif"
+      "waarde": "'Montserrat', system-ui, 'Segoe UI Symbol', 'Apple Symbols',\n    'Noto Sans Symbols 2', 'Noto Sans Symbols', sans-serif"
     },
     {
       "naam": "--letter-code",

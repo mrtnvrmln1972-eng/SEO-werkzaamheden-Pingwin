@@ -48,7 +48,7 @@ export type Thema = {
 export const BASIS: Thema = {
   naam: "Zoals het nu is",
   accent: "#E7773F",
-  letter: "'Montserrat', sans-serif",
+  letter: "'Montserrat', system-ui, 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', sans-serif",
   ruimte: 1,
   tekst: 1,
   ronding: [6, 10, 14],
@@ -79,10 +79,10 @@ export const RICHTINGEN: { wat: string; thema: Thema }[] = [
 ];
 
 export const LETTERTYPES: { naam: string; waarde: string }[] = [
-  { naam: "Montserrat (huisstijl)", waarde: "'Montserrat', sans-serif" },
-  { naam: "Systeem", waarde: "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" },
-  { naam: "Schreefloos klassiek", waarde: "Helvetica, Arial, sans-serif" },
-  { naam: "Met schreef", waarde: "Georgia, 'Times New Roman', serif" },
+  { naam: "Montserrat (huisstijl)", waarde: "'Montserrat', system-ui, 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', sans-serif" },
+  { naam: "Systeem", waarde: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Segoe UI Symbol', sans-serif" },
+  { naam: "Schreefloos klassiek", waarde: "Helvetica, Arial, 'Segoe UI Symbol', 'Apple Symbols', sans-serif" },
+  { naam: "Met schreef", waarde: "Georgia, 'Times New Roman', 'Segoe UI Symbol', 'Apple Symbols', serif" },
 ];
 
 export const OPSLAGSLEUTEL = "pingwin-proefstijl";
