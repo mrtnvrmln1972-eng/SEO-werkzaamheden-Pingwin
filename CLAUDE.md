@@ -252,6 +252,12 @@ Wat NIET verandert: een nieuw ontwerp, een andere indeling of een scherm dat op 
 blijft iets dat Maarten eerst ziet. Deze regel gaat over strak trekken binnen de stijl die er is,
 niet over het gezicht van het dashboard.
 
+**En de terugkoppeling is hier maximaal vijf regels, geen tien (18-08-2026).** Zijn woorden:
+"ik heb veel te veel tekst waar ik doorheen moet lezen om jouw terugkoppeling te controleren".
+Bij opmaakwerk hoort dus alleen: wat je nu ziet dat er eerst niet was, de link, en wat er nog
+open staat. Geen uitleg van de oorzaak, geen verantwoording van de methode, geen opsomming van
+tellers die van X naar Y gingen. Wil hij weten waaróm iets kapot was, dan vraagt hij het.
+
 ## 0c. DE ROUTEKAART EN HOE JE EEN ONTWIKKELPUNT OPPAKT (vaste stap, 06-08-2026)
 
 De ontwikkeling van dit dashboard loopt via **losse chats, één ontwikkelpunt per chat**. Maarten
