@@ -19,8 +19,8 @@ export default function ViewAsBanner({ label }: { label: string }) {
   return (
     <div
       style={{
-        background: "#1e293b",
-        color: "#fff",
+        background: "var(--kleur-balk)",
+        color: "var(--kleur-balk-tekst)",
         padding: "var(--s-2) var(--s-5)",
         display: "flex",
         alignItems: "center",
@@ -40,8 +40,8 @@ export default function ViewAsBanner({ label }: { label: string }) {
         onClick={exit}
         disabled={busy}
         style={{
-          background: "#fff",
-          color: "#1e293b",
+          background: "var(--kleur-balk-tekst)",
+          color: "var(--kleur-balk)",
           border: "none",
           borderRadius: "var(--r-sm)",
           padding: "var(--s-1) var(--s-3)",

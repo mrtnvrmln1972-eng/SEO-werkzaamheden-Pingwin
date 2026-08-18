@@ -529,7 +529,7 @@ export default function ClientCockpit({
     <>
       {switchingTo && (
         <div style={{ position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 10001, background: "var(--dark, var(--kleur-kop))", color: "var(--white)", borderRadius: "var(--r-full)", padding: "var(--s-2) var(--s-5)", fontSize: "var(--fs-sm)", fontWeight: 600, boxShadow: "var(--shadow-lg)", display: "flex", alignItems: "center", gap: "var(--s-2)" }}>
-          <span style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
+          <span style={{ width: 12, height: 12, border: "2px solid color-mix(in srgb, var(--kleur-kaart) 35%, transparent)", borderTopColor: "var(--kleur-kaart)", borderRadius: "50%", display: "inline-block", animation: "spin 0.8s linear infinite" }} />
           {switchingTo} laden…
         </div>
       )}

@@ -60,10 +60,10 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
           return (
             <div key={i}>
               {i === 0 && m.role === "user" && (
-                <div className="muted" style={{ fontSize: "var(--fs-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "var(--s-1)" }}>Oorspronkelijke vraag</div>
+                <div className="muted" style={{ fontSize: "var(--fs-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "var(--spatie-label)", marginBottom: "var(--s-1)" }}>Oorspronkelijke vraag</div>
               )}
               {lastAIdx > 1 && i === lastAIdx && (
-                <div className="muted" style={{ fontSize: "var(--fs-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", margin: "var(--s-3) 0 var(--s-1)" }}>Eindconclusie</div>
+                <div className="muted" style={{ fontSize: "var(--fs-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "var(--spatie-label)", margin: "var(--s-3) 0 var(--s-1)" }}>Eindconclusie</div>
               )}
               <div className={"pch-msg-wrap " + m.role}>
                 {inklapbaar && (

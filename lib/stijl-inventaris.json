@@ -1,11 +1,11 @@
 {
   "css": {
-    "regels": 8695,
+    "regels": 8704,
     "stijlregels": 4392,
     "classnamen": 2944
   },
   "kleuren": {
-    "verschillend": 66,
+    "verschillend": 64,
     "benoemd": 50,
     "los": [
       {
@@ -21,19 +21,11 @@
         "aantal": 3
       },
       {
-        "waarde": "#fff",
-        "aantal": 3
-      },
-      {
         "waarde": "rgba(0,0,0,0.06)",
         "aantal": 3
       },
       {
         "waarde": "#000",
-        "aantal": 2
-      },
-      {
-        "waarde": "#1e293b",
         "aantal": 2
       },
       {
@@ -46,10 +38,6 @@
       },
       {
         "waarde": "rgba(255, 255, 255, 0.45)",
-        "aantal": 2
-      },
-      {
-        "waarde": "rgba(255,255,255,0.35)",
         "aantal": 2
       },
       {
@@ -214,6 +202,10 @@
       },
       {
         "waarde": "rgba(255, 255, 255, 0.85)",
+        "aantal": 1
+      },
+      {
+        "waarde": "rgba(255,255,255,0.35)",
         "aantal": 1
       },
       {
@@ -706,65 +698,8 @@
   ],
   "inline": {
     "totaal": 623,
-    "metVasteWaarde": 30,
-    "perBestand": [
-      {
-        "bestand": "app/admin/client/[slug]/MetaCtrPanel.tsx",
-        "aantal": 4
-      },
-      {
-        "bestand": "app/admin/financien/FinancienClient.tsx",
-        "aantal": 4
-      },
-      {
-        "bestand": "app/admin/financien/page.tsx",
-        "aantal": 4
-      },
-      {
-        "bestand": "app/admin/usage/page.tsx",
-        "aantal": 4
-      },
-      {
-        "bestand": "app/admin/ViewAsBanner.tsx",
-        "aantal": 2
-      },
-      {
-        "bestand": "app/admin/client/[slug]/PagesPanel.tsx",
-        "aantal": 2
-      },
-      {
-        "bestand": "app/admin/client/[slug]/pagina-chat/StrategieKaart.tsx",
-        "aantal": 2
-      },
-      {
-        "bestand": "app/admin/fundament/FundamentClient.tsx",
-        "aantal": 2
-      },
-      {
-        "bestand": "app/admin/beheer/BeheerClient.tsx",
-        "aantal": 1
-      },
-      {
-        "bestand": "app/admin/client/[slug]/ClientCockpit.tsx",
-        "aantal": 1
-      },
-      {
-        "bestand": "app/admin/client/[slug]/SelectionActions.tsx",
-        "aantal": 1
-      },
-      {
-        "bestand": "app/admin/client/[slug]/pagina-chat/AfwijsVenster.tsx",
-        "aantal": 1
-      },
-      {
-        "bestand": "app/admin/fundament/page.tsx",
-        "aantal": 1
-      },
-      {
-        "bestand": "app/proefveld/page.tsx",
-        "aantal": 1
-      }
-    ]
+    "metVasteWaarde": 0,
+    "perBestand": []
   },
   "tokens": [
     {
@@ -1188,6 +1123,22 @@
       "waarde": "var(--blue-deep)"
     },
     {
+      "naam": "--kleur-balk",
+      "waarde": "var(--brand-charcoal)"
+    },
+    {
+      "naam": "--kleur-balk-tekst",
+      "waarde": "var(--kleur-kaart)"
+    },
+    {
+      "naam": "--spatie-label",
+      "waarde": "0.5px"
+    },
+    {
+      "naam": "--streep-accent",
+      "waarde": "3px"
+    },
+    {
       "naam": "--type-paginakop",
       "waarde": "var(--fs-xl)"
     },
@@ -1363,13 +1314,6 @@
       "stapel": "anders"
     },
     {
-      "waarde": "#fff",
-      "aantal": 3,
-      "dichtst": "--white",
-      "afstand": 0,
-      "stapel": "gelijk"
-    },
-    {
       "waarde": "rgba(0,0,0,0.06)",
       "aantal": 3,
       "dichtst": null,
@@ -1382,13 +1326,6 @@
       "dichtst": "--body-text",
       "afstand": 72,
       "stapel": "anders"
-    },
-    {
-      "waarde": "#1e293b",
-      "aantal": 2,
-      "dichtst": "--brand-charcoal",
-      "afstand": 40,
-      "stapel": "familie"
     },
     {
       "waarde": "rgba(0,0,0,0.28)",
@@ -1406,13 +1343,6 @@
     },
     {
       "waarde": "rgba(255, 255, 255, 0.45)",
-      "aantal": 2,
-      "dichtst": null,
-      "afstand": 0,
-      "stapel": "doorzichtig"
-    },
-    {
-      "waarde": "rgba(255,255,255,0.35)",
       "aantal": 2,
       "dichtst": null,
       "afstand": 0,
@@ -1706,6 +1636,13 @@
       "stapel": "doorzichtig"
     },
     {
+      "waarde": "rgba(255,255,255,0.35)",
+      "aantal": 1,
+      "dichtst": null,
+      "afstand": 0,
+      "stapel": "doorzichtig"
+    },
+    {
       "waarde": "rgba(255,255,255,0.5)",
       "aantal": 1,
       "dichtst": null,
@@ -1990,6 +1927,16 @@
         "groep": "Kleur"
       },
       {
+        "naam": "--kleur-balk",
+        "wijstNaar": "var(--brand-charcoal)",
+        "groep": "Kleur"
+      },
+      {
+        "naam": "--kleur-balk-tekst",
+        "wijstNaar": "var(--kleur-kaart)",
+        "groep": "Kleur"
+      },
+      {
         "naam": "--type-paginakop",
         "wijstNaar": "var(--fs-xl)",
         "groep": "Tekstmaat"
@@ -2157,6 +2104,6 @@
     ],
     "eigenWaarde": [],
     "gebruik": 8444,
-    "schaalGebruik": 1480
+    "schaalGebruik": 1524
   }
 }

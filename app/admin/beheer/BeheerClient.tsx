@@ -720,7 +720,7 @@ function ClientPicker({
 }) {
   return (
     <div className="field-wide">
-      <label style={{ fontWeight: 600, fontSize: "var(--fs-sm)", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--gray)", marginBottom: "var(--s-2)", display: "block" }}>
+      <label style={{ fontWeight: 600, fontSize: "var(--fs-sm)", textTransform: "uppercase", letterSpacing: "var(--spatie-label)", color: "var(--gray)", marginBottom: "var(--s-2)", display: "block" }}>
         Toegang tot klanten
       </label>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--s-2)" }}>

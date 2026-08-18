@@ -443,8 +443,11 @@ export function meet(): Meting {
       // hoogte of een flex-basis is een indelingsmaat: die hoort in het scherm en
       // niet op de schaal, en meetellen maakte de meter een lijst die nooit nul kan
       // worden. Dan is hij geen werklijst meer maar ruis.
-      const zonderLayout = stuk.replace(
-        /\b(width|minWidth|maxWidth|height|minHeight|maxHeight|flex|flexBasis|top|left|right|bottom|transform|gridTemplateColumns)\s*:\s*[^,}]+/g, "");
+      const zonderLayout = stuk
+        .replace(/\b(width|minWidth|maxWidth|height|minHeight|maxHeight|flex|flexBasis|top|left|right|bottom|transform|gridTemplateColumns)\s*:\s*("[^"]*"|`[^`]*`|[^,}]+)/g, "")
+        // Een rand van 1 of 2 pixels is een lijn, geen maat op de schaal. Dezelfde
+        // vrijstelling die de opmaak-proef al hanteert ("een randje van 1px mag").
+        .replace(/\b(border|borderTop|borderRight|borderBottom|borderLeft|outline)\s*:\s*"[12]px\s[^"]*"/g, "");
       const heeftVast = /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\d+(\.\d+)?px/.test(zonderLayout);
       if (heeftVast) { vastHier++; inlineVast++; }
       inlineKleuren.push(...kleurenIn(stuk));

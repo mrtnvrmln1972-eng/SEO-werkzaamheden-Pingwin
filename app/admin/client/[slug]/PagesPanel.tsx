@@ -893,7 +893,7 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
                 planSlot={
                   // De vastgelegde strategie (het plan) hoort bij stap 1 en staat
                   // bovenin het strategie-blok; de chat eronder werkt ernaartoe.
-                  <div className={"pages-plan-inline" + ((plan || "").trim() ? " done" : "")} style={{ border: "1px solid var(--border)", borderLeft: "3px solid var(--orange)", borderRadius: "var(--r-md)", padding: "var(--s-3) var(--s-4)", marginBottom: "var(--s-3)", background: "var(--white)" }}>
+                  <div className={"pages-plan-inline" + ((plan || "").trim() ? " done" : "")} style={{ border: "1px solid var(--border)", borderLeft: "var(--streep-accent) solid var(--kleur-accent)", borderRadius: "var(--r-md)", padding: "var(--s-3) var(--s-4)", marginBottom: "var(--s-3)", background: "var(--white)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", flexWrap: "wrap", marginBottom: "var(--s-2)" }}>
                       <strong style={{ fontSize: "var(--fs-sm)" }}>Vastgelegde strategie (de conclusie van deze stap)</strong>
                       {!(plan || "").trim() && <span className="plan-chip">nog geen strategie</span>}
