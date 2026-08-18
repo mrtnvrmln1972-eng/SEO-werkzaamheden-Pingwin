@@ -1,5 +1,10 @@
 # Tweede wereld opzetten (eigen omgeving voor NOC)
 
+> **Let op (18-08-2026): achterhaald op één punt.** Wereld 2 krijgt géén eigen database
+> meer, maar wordt een afgeschermde voordeur op het Pingwin-dashboard. Zie
+> `NOC-NAAR-PINGWIN.md`. De stappen hieronder blijven staan als geschiedenis van hoe
+> wereld 2 is opgezet.
+
 Dit is de enige stap waar jij zelf iets moet doen. Alles hieronder gebeurt in je
 eigen Vercel-account en Google Cloud. Reken op 20 tot 30 minuten. Volg de stappen
 op volgorde, één voor één.
