@@ -34,8 +34,10 @@ function doelOk(doel: string): boolean {
 
 export async function GET(req: NextRequest) {
   const slug = (req.nextUrl.searchParams.get("slug") || "").trim().toLowerCase();
+  // Kijken mag iedereen die bij deze klant mag (ook de meekijk-sessie): dit is
+  // een telling, er verandert niets. Alleen het verhuizen zelf, en het maken van
+  // een code, is eigenaar-werk; dat zit in POST hieronder.
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  if (!g.scope.isOwner) return NextResponse.json({ ok: false, error: "Alleen de eigenaar mag verhuizen." }, { status: 403 });
 
   return NextResponse.json({
     ok: true,
