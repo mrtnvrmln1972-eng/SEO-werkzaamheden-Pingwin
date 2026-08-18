@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import AdminKop from "../AdminKop";
+import Speelruimte from "./Speelruimte";
 import type { Meting, Soort, Stapel } from "../../../lib/stijl-meting";
 
 // ═══════════════════════════════════════════════════════════
@@ -145,6 +146,8 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
             ))}
           </ol>
         </div>
+
+        <Speelruimte tokens={meting.tokens} />
 
         {/* ── Waarom je hier kijkt ── */}
         <div className="card section">

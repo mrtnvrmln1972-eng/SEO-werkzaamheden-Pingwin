@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8500,
-    "stijlregels": 4389,
-    "classnamen": 2907
+    "regels": 8566,
+    "stijlregels": 4402,
+    "classnamen": 2920
   },
   "kleuren": {
     "verschillend": 325,
@@ -1737,7 +1737,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 62,
+      "aantal": 64,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -1784,6 +1784,8 @@
         "prio-knoppen",
         "prio-waarom-knop",
         "profile-gen-buttons",
+        "stijl-knop",
+        "stijl-knoppen",
         "strategy-verwerkt-btn",
         "tv-lijst-btn",
         "tw-knop",
@@ -2419,6 +2421,10 @@
       "waarde": "999px"
     },
     {
+      "naam": "--hint-vertraging",
+      "waarde": "700ms"
+    },
+    {
       "naam": "--shadow-sm",
       "waarde": "0 1px 3px rgba(51, 48, 46, 0.06)"
     },
@@ -2633,6 +2639,10 @@
     {
       "naam": "--diepte-zwevend",
       "waarde": "var(--shadow-lg)"
+    },
+    {
+      "naam": "--letter",
+      "waarde": "'Montserrat', sans-serif"
     }
   ],
   "kleurNaastToken": [
@@ -5587,7 +5597,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 6009,
-    "schaalGebruik": 1088
+    "gebruik": 6047,
+    "schaalGebruik": 1138
   }
 }

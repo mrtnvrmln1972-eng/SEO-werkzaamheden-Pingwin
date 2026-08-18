@@ -79,6 +79,13 @@ export const BLOKKEN: Uitklapper[] = [
         "in de code staan. Elke losse kleur wordt daar naast de kleur gelegd die al een naam heeft, want dat " +
         "maakt het verschil tussen ontwerpwerk en opruimwerk: verreweg de meeste zijn een kleur die al " +
         "bestaat, alleen anders opgeschreven of een tint ernaast. Dat is zoeken en vervangen, geen smaak.\n\n" +
+        "En sinds 18-08-2026 kan het waar het allemaal voor was: op **/admin/stijl** staat een " +
+        "speelruimte. Je kiest een richting (strak en zakelijk, zacht en luchtig, rustig en datadicht) " +
+        "of je draait zelf aan de accentkleur, het lettertype, de ruimte, de tekstgrootte, de ronding en " +
+        "de diepte, en het hele scherm verandert mee terwijl je kijkt. Niet in een voorbeeldblokje, maar " +
+        "in de echte kopbalk, kaarten, knoppen en tabellen, want dat zijn dezelfde bouwstenen als " +
+        "overal. Het legt niets vast: je speelt in je eigen browser, en pas als een richting bevalt gaat " +
+        "hij via de code echt door voor het hele dashboard.\n\n" +
         "Waarom dat scherm er nu al is en niet pas als alles klopt: zodra alles uit de schalen leest, is een " +
         "ander ontwerp kiezen niets meer dan die schalen veranderen, en zie je op dezelfde plek in één blik " +
         "wat dat met alle bouwstenen tegelijk doet. Het strak trekken en de speelruimte bouwen zijn niet " +
