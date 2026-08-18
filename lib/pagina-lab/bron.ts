@@ -65,6 +65,59 @@ async function gaNaar(page: any, url: string): Promise<any> {
   }
 }
 
+// De vaste knoppen van de gangbare cookiemelders. Op naam, want die zijn
+// betrouwbaar; de tekstterugval hieronder is een net minder zeker middel.
+const COOKIE_KNOPPEN = [
+  "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+  "#CybotCookiebotDialogBodyButtonAccept",
+  "#onetrust-accept-btn-handler",
+  ".cky-btn-accept",
+  ".cmplz-accept",
+  "#cmpwelcomebtnyes",
+  ".cc-allow",
+  ".js-cookie-consent-agree",
+  "[data-cky-tag=accept-button]",
+  "[aria-label='Alles accepteren']",
+];
+
+/**
+ * De cookiemelding wegklikken vóór de foto.
+ *
+ * Zonder dit fotografeer je op de meeste sites een cookiemelding in plaats van
+ * een pagina. Dat is precies wat er bij de eerste meting gebeurde: het hele
+ * eerste scherm van de lensimplantatie-pagina ging schuil achter Cookiebot, en
+ * juist dat eerste scherm is waar het oordeel over gaat.
+ *
+ * Er wordt op "accepteren" geklikt, niet op "weigeren", want dat is wat de
+ * meeste bezoekers doen en dus wat de meeste bezoekers zien. Aan de site
+ * verandert er niets; het geldt alleen voor deze ene browsersessie.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function klikCookieWeg(page: any): Promise<boolean> {
+  const gelukt = await page.evaluate((namen: string[]) => {
+    for (const naam of namen) {
+      const el = document.querySelector(naam) as HTMLElement | null;
+      if (el && el.offsetParent !== null) { el.click(); return true; }
+    }
+    // Terugval op de tekst, maar alleen binnen iets dat er als een melding
+    // uitziet. Anders klik je zo op een "Akkoord"-knop in een formulier.
+    const bakken = Array.from(
+      document.querySelectorAll('[id*="cookie" i], [class*="cookie" i], [id*="consent" i], [class*="consent" i], [class*="cmp" i], dialog'),
+    );
+    const woorden = /^(accepteer|accepteren|alles accepteren|alle cookies|akkoord|ok, akkoord|ik ga akkoord|alles toestaan|accept all|accept|allow all|toestaan)$/i;
+    for (const bak of bakken) {
+      const knoppen = Array.from(bak.querySelectorAll('button, a, input[type=button], input[type=submit], [role=button]'));
+      for (const k of knoppen) {
+        const tekst = ((k.textContent || (k as HTMLInputElement).value || "").replace(/\s+/g, " ").trim());
+        if (woorden.test(tekst) && (k as HTMLElement).offsetParent !== null) { (k as HTMLElement).click(); return true; }
+      }
+    }
+    return false;
+  }, COOKIE_KNOPPEN);
+  if (gelukt) await new Promise((r) => setTimeout(r, 700));
+  return gelukt;
+}
+
 export type Kop = { niveau: number; tekst: string };
 export type Verwijzing = { pad: string; tekst: string; extern: boolean };
 export type Beeld = { bron: string; alt: string; breedte: number; hoogte: number };
@@ -214,6 +267,8 @@ export type FotoOpties = {
   hoogte?: number;
   /** Extra wachttijd ná het laden, voor pagina's die hun beeld nabezorgen. */
   wachtMs?: number;
+  /** De cookiemelding laten staan, bijvoorbeeld om die zélf te beoordelen. */
+  laatCookies?: boolean;
 };
 
 /** Een foto van die pagina, zoals een bezoeker hem ziet. */
@@ -226,6 +281,7 @@ export async function fotografeerPagina(url: string, opties: FotoOpties = {}): P
     await gaNaar(page, url);
     const fout = await waaromNiet(page.url());
     if (fout) throw new Error("De pagina stuurde door naar een adres dat niet opgehaald mag worden.");
+    if (!opties.laatCookies) await klikCookieWeg(page);
     // Eerst helemaal naar beneden en terug: anders staat alles wat pas bij het
     // scrollen inlaadt nog als leeg vlak op de foto, en dat is precies het soort
     // vals oordeel dat we hier niet willen. Wel begrensd: een pagina van twintig

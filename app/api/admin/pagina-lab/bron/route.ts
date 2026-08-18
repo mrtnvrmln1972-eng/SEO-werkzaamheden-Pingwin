@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
+import { vensterPoort } from "../../../../../lib/klantvenster";
 import { fotografeerPagina, leesPagina, waaromNiet, type Apparaat } from "../../../../../lib/pagina-lab/bron";
 
 export const runtime = "nodejs";
@@ -25,6 +26,9 @@ export const maxDuration = 300;
 //   vanaf      een strook uit een lange pagina: vanaf deze hoogte in pixels
 //   hoogte     hoe hoog die strook is (standaard de schermhoogte)
 //   wacht      extra wachttijd in milliseconden vóór de foto
+//   cookies    "laat" om de cookiemelding te laten staan; standaard wordt hij
+//              weggeklikt, want anders fotografeer je die melding in plaats van
+//              het eerste scherm waar het oordeel over gaat
 //   max        hoeveel tekens tekst er hoogstens terugkomen (standaard 30.000)
 //
 // De grenzen staan in lib/pagina-lab/bron.ts en zijn hard: een adminsessie
@@ -36,6 +40,11 @@ export async function GET(req: NextRequest) {
   if (!verifyAdminSession(req.cookies.get(ADMIN_COOKIE)?.value)) {
     return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   }
+  // In een omgeving die maar één klant toont bestaat deze route niet. Hij haalt
+  // een willekeurig adres op, en dat hoort niet te kunnen achter een voordeur
+  // die je met iemand van buiten deelt. Het Pagina-lab is werk van het bureau.
+  const weg = vensterPoort();
+  if (weg) return weg;
   const p = req.nextUrl.searchParams;
   const url = (p.get("url") || "").trim();
   if (!url) {
@@ -55,6 +64,7 @@ export async function GET(req: NextRequest) {
         vanaf: p.get("vanaf") ? Number(p.get("vanaf")) : undefined,
         hoogte: p.get("hoogte") ? Number(p.get("hoogte")) : undefined,
         wachtMs: p.get("wacht") ? Number(p.get("wacht")) : undefined,
+        laatCookies: p.get("cookies") === "laat",
       });
       if (!png) {
         return NextResponse.json({ ok: false, error: "De browser kon niet starten op deze server." }, { status: 500 });
