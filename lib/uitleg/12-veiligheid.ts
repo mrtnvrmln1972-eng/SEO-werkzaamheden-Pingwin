@@ -50,7 +50,16 @@ export const HOOFDSTUK: Hoofdstuk = {
         "houdt ook de eigenaar tegen. De automatische ronden draaien er niet, zodat nachtwerk niet dubbel " +
         "gebeurt op dezelfde gegevens.\n\n" +
         "Een proef rekent bij elke bouw na dat elke route aan de beheerkant een poort heeft; een nieuw scherm " +
-        "is daarmee vanzelf dicht op zo'n voordeur.",
+        "is daarmee vanzelf dicht op zo'n voordeur. Ook de kopbalk weet ervan: het menu toont daar alleen de " +
+        "schermen die er bestaan, en de meters over het hele bureau (het Ahrefs-tegoed, de kosten, de " +
+        "meldingen) zijn er weg.\n\n" +
+        "Zo'n voordeur hoort naar dezelfde gegevens te kijken als het dashboard, want anders zijn het twee " +
+        "administraties die uit elkaar lopen. Dat is aan het scherm niet te zien: een voordeur op een oude " +
+        "database toont dezelfde klant met de gegevens van gisteren. Daarom kan het dashboard het aan de " +
+        "voordeur zelf vragen. Elke omgeving vertelt op een vast adres welke klant hij toont en een kort, " +
+        "onomkeerbaar kenmerk van zijn database; gelijk kenmerk betekent dezelfde gegevens. Op het " +
+        "verhuisscherm zit daar één knop op, met in gewone taal wat er nog moet als het niet klopt. " +
+        "Diezelfde vergelijking weigert ook een verhuizing naar een omgeving die dezelfde gegevens al heeft.",
     },
     {
       titel: "Twee poorten in plaats van één",

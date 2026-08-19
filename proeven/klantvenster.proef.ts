@@ -99,6 +99,50 @@ proef("de foto-route gebruikt hetzelfde pad-slot",
   lees("app", "api", "admin", "kijkbeeld", "route.ts").includes("magVensterPad"),
   "Anders haal je via een schermfoto alsnog een blik op een andere klant.");
 
+// ── 3b. De kopbalk stelt dezelfde vraag als de poort ────────
+// De voordeur toonde anders vijftien links naar schermen die daar niet bestaan.
+// Dat mag nooit opgelost worden met een eigen lijstje in het menu: dat loopt uit
+// elkaar zodra er een scherm bijkomt, en dan is het weer raden welke waar geldt.
+
+const padRegel = require(join(wortel, "lib", "venster-pad.ts")) as typeof import("../lib/venster-pad");
+
+proef("de padregel staat op één plek, en het slot leest daaruit",
+  lees("lib", "klantvenster.ts").includes('from "./venster-pad"')
+  && !/export function padHoortBijVenster/.test(lees("lib", "klantvenster.ts")),
+  "Schrijf de regel niet twee keer uit; lib/venster-pad.ts is de bron.");
+
+proef("de regel in de browser geeft hetzelfde antwoord als het slot",
+  magWel.every((p) => padRegel.padHoortBijVenster(p, "noc"))
+  && magNiet.every((p) => !padRegel.padHoortBijVenster(p, "noc"))
+  && padRegel.padHoortBijVenster("/admin/financien", null),
+  "De gedeelde regel wijkt af van de poort; dan klopt het menu niet met wat er opent.");
+
+proef("de bron van de padregel blijft vrij van server-code",
+  !/^\s*import /m.test(lees("lib", "venster-pad.ts")),
+  "Eén import van next/server hierin en elke pagina die dit in de browser gebruikt, breekt.");
+
+proef("het menu in de kopbalk gebruikt die regel en verzint niets zelf",
+  lees("app", "admin", "OntwikkelMenu.tsx").includes("padHoortBijVenster"),
+  "Zonder dit staan er op de voordeur links naar schermen die daar niet bestaan.");
+
+// ── 3c. Te zien of twee omgevingen dezelfde gegevens hebben ─
+// Een voordeur op een oude database toont dezelfde klant met de gegevens van
+// gisteren. Dat is aan het scherm niet te zien, dus moet het te vragen zijn.
+
+const versie = lees("app", "api", "versie", "route.ts");
+proef("een omgeving vertelt welk venster en welke gegevens hij heeft",
+  versie.includes("omgevingStand") && versie.includes("venster") && versie.includes("gegevens"),
+  "Zonder dit kan het dashboard de voordeur niet controleren en moet Maarten het gokken.");
+
+const omgeving = lees("lib", "omgeving.ts");
+proef("de vingerafdruk is een hash, geen verbindingsgegeven",
+  omgeving.includes("createHash") && /digest\("hex"\)\.slice\(/.test(omgeving),
+  "Een hostnaam of databasenaam hoort nooit uit een openbaar adres te komen.");
+
+proef("verhuizen naar dezelfde gegevens wordt geweigerd",
+  lees("app", "api", "admin", "verhuizing", "route.ts").includes("gegevensVingerafdruk"),
+  "Zonder deze controle kun je een klant naar zichzelf verhuizen; dat leest en overschrijft dezelfde rijen.");
+
 // ── 4. Elke route aan de beheerkant heeft een poort ─────────
 
 // Bewuste uitzonderingen, met reden. Deze lijst mag alleen korter worden.

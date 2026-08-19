@@ -92,8 +92,11 @@ proef("een code vervalt vanzelf en is in te trekken",
   "Een sleutel die eeuwig geldig is, is geen sleutel.");
 
 const bediening = lees("app", "api", "admin", "verhuizing", "route.ts");
+const adresRegel = lees("lib", "omgeving.ts");
 proef("er kan alleen naar een Pingwin-omgeving gestuurd worden",
-  bediening.includes("doelOk") && bediening.includes("https:") && bediening.includes(".vercel.app"),
+  bediening.includes("pingwinAdresOk")
+  && /export function pingwinAdresOk/.test(adresRegel)
+  && adresRegel.includes("https:") && adresRegel.includes(".vercel.app"),
   "Zonder grens wordt deze route een middel om vanaf deze server een willekeurig adres aan te roepen.");
 
 proef("alleen de eigenaar mag verhuizen",

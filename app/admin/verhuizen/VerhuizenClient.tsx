@@ -2,8 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AdminKop from "../AdminKop";
+import Kopieer from "../Kopieer";
+import { Signaal, Signalen } from "../../_ui/Uitkomst";
 
 type Telling = { tabel: string; rijen: number };
+type Voordeur = {
+  bereikbaar: boolean;
+  venster: string | null;
+  gegevens: string | null;
+  versie: string | null;
+  zelfdeGegevens: boolean;
+  vensterGoed: boolean;
+  klaar: boolean;
+  teDoen: string[];
+};
 type Kaart = { slug: string; naam: string; domein: string; ahrefsProjectId: string; fase: string; seoProfiel: string };
 type CodeStand = { actief: boolean; slug: string; vervalt: string | null };
 type Leescontrole = { tabel: string; kolommen: number; gelukt: boolean } | null;
@@ -63,6 +75,9 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
   const [regels, setRegels] = useState<Regel[]>([]);
   const [melding, setMelding] = useState("");
   const [fout, setFout] = useState("");
+  const [voordeur, setVoordeur] = useState("");
+  const [voordeurUit, setVoordeurUit] = useState<Voordeur | null>(null);
+  const [voordeurBezig, setVoordeurBezig] = useState(false);
 
   const haalOp = useCallback(async (s: string) => {
     setLaden(true); setFout(""); setMelding("");
@@ -75,10 +90,31 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
   }, []);
 
   useEffect(() => {
-    if (!slug) { setTelling(null); setKaart(null); setCodeStand(null); return; }
-    setNieuweCode(""); setRegels([]);
+    if (!slug) { setTelling(null); setKaart(null); setCodeStand(null); setVoordeur(""); setVoordeurUit(null); return; }
+    setNieuweCode(""); setRegels([]); setVoordeurUit(null);
     void haalOp(slug);
+    fetch(`/api/admin/voordeur?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d?.ok) setVoordeur(String(d.adres || "")); })
+      .catch(() => {});
   }, [slug, haalOp]);
+
+  // Bewaart het adres en vraagt de voordeur meteen wie hij is. Eén knop, want
+  // een adres bewaren zonder te weten of het klopt heeft geen waarde.
+  async function controleerVoordeur() {
+    setVoordeurBezig(true); setFout(""); setMelding(""); setVoordeurUit(null);
+    try {
+      const d = await fetch("/api/admin/voordeur", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, adres: voordeur.trim() }),
+      }).then((r) => r.json());
+      if (!d?.ok) throw new Error(d?.error || "De controle mislukte.");
+      setVoordeur(String(d.adres || ""));
+      setVoordeurUit((d.uitkomst as Voordeur) || null);
+    } catch (e) { setFout((e as Error).message); }
+    finally { setVoordeurBezig(false); }
+  }
 
   async function stuur(body: Record<string, unknown>) {
     const d = await fetch("/api/admin/verhuizing", {
@@ -235,10 +271,15 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
               )}
             </div>
             {nieuweCode && (
-              <p className="beheer-uitleg">
-                <strong>Je code:</strong> <code>{nieuweCode}</code><br />
-                Kopieer hem nu; hij is hierna niet meer terug te lezen.
-              </p>
+              <>
+                <p className="beheer-uitleg">
+                  <strong>Je code:</strong> <code>{nieuweCode}</code><br />
+                  Kopieer hem nu; hij is hierna niet meer terug te lezen.
+                </p>
+                <div className="pnl-acties-groep">
+                  <Kopieer tekst={nieuweCode} label="Kopieer de code" primair klein />
+                </div>
+              </>
             )}
             {!nieuweCode && codeStand?.actief && (
               <p className="beheer-uitleg">Er staat een code open, geldig tot {tijd(codeStand.vervalt)}.</p>
@@ -293,6 +334,55 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+        )}
+
+        {slug && (
+          <div className="beheer-blok">
+            <h2 className="beheer-h2">De eigen voordeur van deze klant</h2>
+            <p className="beheer-uitleg">
+              Een klant kan een eigen adres hebben waar alleen hij bestaat: geen klantenlijst, geen andere
+              klanten, geen financiën. Dat adres hoort naar dezelfde gegevens te kijken als dit dashboard,
+              anders zijn het weer twee administraties. Dat is aan het scherm niet te zien, want een voordeur
+              op een oude database toont dezelfde klant met de gegevens van gisteren. Deze knop vraagt het aan
+              de voordeur zelf.
+            </p>
+            <p className="beheer-klein">Adres van de voordeur (leeg laten als deze klant er geen heeft)</p>
+            <input
+              id="voordeur-adres"
+              className="wp-docdrop-input"
+              value={voordeur}
+              onChange={(e) => setVoordeur(e.target.value)}
+              placeholder="https://…"
+            />
+            <div className="pnl-acties-groep">
+              <button type="button" className="btn btn-primary btn-klein" onClick={controleerVoordeur} disabled={voordeurBezig}>
+                {voordeurBezig ? "Bezig met kijken…" : "Bewaar en controleer"}
+              </button>
+              {voordeur.trim() && (
+                <a className="btn btn-quiet btn-klein pnl-acties-info" href={voordeur.trim()} target="_blank" rel="noreferrer">
+                  Voordeur openen
+                </a>
+              )}
+            </div>
+
+            {voordeurUit?.klaar && (
+              <Signaal soort="goed">
+                {`De voordeur staat goed: hij toont alleen ${slug} en kijkt naar dezelfde gegevens als dit dashboard.`
+                  + (voordeurUit.versie ? ` Draaiende versie daar: ${voordeurUit.versie}.` : "")}
+              </Signaal>
+            )}
+            {voordeurUit && !voordeurUit.klaar && (
+              <>
+                <Signalen regels={voordeurUit.teDoen} soort="let-op" />
+                {voordeurUit.bereikbaar && (
+                  <Signaal soort="notitie">
+                    Zo lang dit niet klopt, is de omzetting niet af. Verander de instellingen bij het
+                    Vercel-project van die voordeur en druk hier daarna opnieuw op de knop.
+                  </Signaal>
+                )}
+              </>
             )}
           </div>
         )}

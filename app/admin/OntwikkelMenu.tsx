@@ -23,9 +23,17 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import Kopieer from "./Kopieer";
+import { padHoortBijVenster } from "../../lib/venster-pad";
 
 type Advies = { code: string; titel: string; prompt: string };
 type Data = {
+  /**
+   * De klant waar deze omgeving toe beperkt is (de voordeur), of null bij het
+   * gewone dashboard. Komt van de server mee, want een instelling van de
+   * omgeving is in de browser niet te lezen. Zonder dit toonde de voordeur
+   * vijftien links naar schermen die daar niet bestaan.
+   */
+  venster: string | null;
   advies: Advies | null;
   /** Waarom er niets wordt aangeraden: alles wacht, of alles botst met wat er loopt. */
   reden: "leeg" | "botst" | null;
@@ -105,6 +113,12 @@ export default function OntwikkelMenu() {
 
   if (!data) return null;
 
+  // Op een klantvoordeur bestaat alleen wat door dezelfde poort komt als de rest
+  // van die omgeving; de vraag wordt hier dus met exact dezelfde functie gesteld
+  // als door de middleware. Blijft er niets over, dan is er ook geen menu.
+  const schermen = SCHERMEN.filter((s) => padHoortBijVenster(s.pad, data.venster));
+  const ontwikkeling = !data.venster;
+
   return (
     <div className="hm-wrap om-wrap" ref={wrapRef}>
       <button
@@ -124,7 +138,7 @@ export default function OntwikkelMenu() {
 
       {open && (
         <div className="hm-paneel om-paneel" role="menu" aria-label="Ontwikkeling">
-          {data.advies ? (
+          {ontwikkeling && (data.advies ? (
             <div className="om-volgende">
               <div className="om-label">Volgende taak</div>
               <div className="om-titel">
@@ -142,7 +156,7 @@ export default function OntwikkelMenu() {
                   : "Er staat niets open dat nu kan beginnen. Kijk op de routekaart wat er nog wacht."}
               </div>
             </div>
-          )}
+          ))}
 
           {data.lopend.length > 0 && (
             <div className="om-lopend">
@@ -159,17 +173,21 @@ export default function OntwikkelMenu() {
             betekent nog steeds één regel in SCHERMEN, nu met zijn groep erbij;
             `proeven/opmaak.proef.ts` wordt rood als een scherm hier ontbreekt.
           */}
-          {GROEPEN.map((groep) => (
-            <Fragment key={groep}>
-              <div className="om-kop">{groep}</div>
-              {SCHERMEN.filter((x) => x.groep === groep).map((s) => (
-                <a role="menuitem" className="hm-item" key={s.pad} href={s.pad}>
-                  <span className="hm-item-label">{s.naam}</span>
-                  <span className="hm-item-hint">{s.waarvoor}</span>
-                </a>
-              ))}
-            </Fragment>
-          ))}
+          {GROEPEN.map((groep) => {
+            const inGroep = schermen.filter((x) => x.groep === groep);
+            if (inGroep.length === 0) return null;
+            return (
+              <Fragment key={groep}>
+                <div className="om-kop">{groep}</div>
+                {inGroep.map((s) => (
+                  <a role="menuitem" className="hm-item" key={s.pad} href={s.pad}>
+                    <span className="hm-item-label">{s.naam}</span>
+                    <span className="hm-item-hint">{s.waarvoor}</span>
+                  </a>
+                ))}
+              </Fragment>
+            );
+          })}
 
           <div className="om-kop">Uitleg</div>
           <a role="menuitem" className="hm-item" href="/uitleg">

@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { padHoortBijVenster } from "./venster-pad";
+
+export { padHoortBijVenster };
 
 // ═══════════════════════════════════════════════════════════
 // HET KLANTVENSTER: één omgeving die maar één klant kan tonen
@@ -38,17 +41,12 @@ export function magVensterSlug(slug: string | null | undefined): boolean {
 // Mag dit pad geopend worden in deze omgeving? Alleen de inlogroutes, de cockpit
 // van de vensterklant, zijn voorbeeldweergave, en het developer-overzicht (dat
 // zichzelf op de vensterklant filtert). Al het andere is dicht.
+//
+// De regel zelf staat in lib/venster-pad.ts, zonder imports, omdat de kopbalk in
+// de browser hem ook stelt (die krijgt het venster van de server mee). Zo is het
+// één regel in plaats van twee die uit elkaar gaan lopen.
 export function magVensterPad(pad: string): boolean {
-  const venster = vensterKlant();
-  if (!venster) return true;
-  const kaal = (pad.split("?")[0] || "/").replace(/\/+$/, "") || "/";
-  if (!kaal.startsWith("/admin")) return true;
-  if (kaal === "/admin/login" || kaal === "/admin/enter" || kaal === "/admin/logout") return true;
-  if (kaal === "/admin/developer" || kaal.startsWith("/admin/developer/")) return true;
-  for (const basis of [`/admin/client/${venster}`, `/admin/preview/${venster}`]) {
-    if (kaal === basis || kaal.startsWith(basis + "/")) return true;
-  }
-  return false;
+  return padHoortBijVenster(pad, vensterKlant());
 }
 
 // Waar deze omgeving naartoe wijst als iemand ergens anders belandt.

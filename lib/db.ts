@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "kern-39d2cd61";
+export const KERN_SCHEMA_VERSIE = "kern-c95569e7";
 
 async function init(): Promise<void> {
   await sql`
@@ -98,6 +98,10 @@ async function init(): Promise<void> {
   // Eigen volgorde in de klanten-/leadlijst op /admin (los van alfabetisch).
   // Leeg = nog niet gesleept, valt terug op de naam.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS sort_order INTEGER`;
+  // Het eigen adres van deze klant: een tweede voordeur op dezelfde gegevens,
+  // waar alleen deze klant bestaat (zie lib/klantvenster.ts). Leeg = deze klant
+  // heeft geen eigen voordeur, en dat is voor de meeste klanten normaal.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS voordeur_url TEXT`;
 
   // Doorgevoerde 301-redirects per pagina (uit de cannibalisatie-analyse): welke
   // redirect is wanneer in de website gezet en is hij live geverifieerd (echte 301

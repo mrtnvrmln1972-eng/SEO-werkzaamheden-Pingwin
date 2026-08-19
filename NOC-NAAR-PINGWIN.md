@@ -84,22 +84,46 @@ en Strandtuin ook vindt.
 bovenop te zetten, dus twee keer klikken geeft geen dubbele taken. En de NOC-cockpit blijft
 intussen gewoon staan zoals hij was.
 
-## Stap 3: de voordeur omzetten
+## Stap 3: de voordeur omzetten (klaar aan mijn kant, 19-08-2026)
 
 **Wat er gebeurt.** Het NOC-adres gaat aan dezelfde gegevens hangen als het Pingwin-dashboard, en
 het slot uit stap 1 gaat daar aan. Vanaf dat moment kijken beide adressen naar dezelfde
 werkelijkheid en hoeft er nooit meer iets gesynchroniseerd te worden.
 
-**Wat jij doet.** Eén handeling in Vercel om het NOC-project aan de database van het
-Pingwin-dashboard te koppelen. Ik zoek eerst uit of ik dat zelf kan doen; kan het, dan hoef jij
-niets. Mogelijk moet de Google-koppeling daar één keer opnieuw gelegd worden.
+**Wat er nu ligt.** De voordeur gedraagt zich als een voordeur zodra het slot erop staat: het
+menu "Intern" toont daar alleen nog wat er bestaat in plaats van vijftien links die terugkaatsen,
+en de meters over het hele bureau (Ahrefs-tegoed, Claude-kosten, je meldingen) zijn er weg. En er
+is een controle bijgekomen, want dit is precies het soort omzetting waarvan je aan het scherm niet
+kunt zien of hij gelukt is: een voordeur die nog aan zijn oude database hangt, toont dezelfde
+klant met de gegevens van gisteren. Op **Intern, Verhuizen** staat daarom onderaan het blok
+"De eigen voordeur van deze klant". Je vult het adres in, drukt op de knop, en het dashboard
+vraagt het aan de voordeur zelf: kijkt hij naar dezelfde gegevens, en staat het slot op deze
+klant. Groen betekent klaar; anders staat er in gewone taal wat er nog moet.
 
-**Wat je daarna ziet.** Precies hetzelfde scherm als nu, op hetzelfde adres. Twee kleine
-verschillen: de doorstapjes naar Pingwin-brede schermen zijn weg (het linkje "alle klanten"
-bijvoorbeeld), en wat je in het Pingwin-dashboard aanpast staat hier meteen ook.
+**Wat jij doet.** Dit stukje kan ik niet zelf doen, want deze omgeving mag alleen bij het
+Pingwin-dashboard en niet bij Vercel. In Vercel, project `noc-seo-cockpit`:
 
-**Als het misgaat.** Terug is één instelling omzetten. De oude NOC-database blijft ongemoeid
-staan als bevroren reservekopie, dus je kunt altijd terug naar de situatie van vandaag.
+1. **Storage:** de eigen NOC-database loskoppelen van dit project, en in plaats daarvan de
+   database van `pingwin-seo-dashboard` eraan koppelen. Vercel zet de sleutels dan zelf goed;
+   je hoeft niets over te typen. De oude NOC-database blijf je gewoon houden, hij hangt alleen
+   nergens meer aan vast.
+2. **Settings, Environment Variables:** `WERELD_KLANT` op `noc` (Production).
+3. **Redeploy** (of wacht op de eerstvolgende push).
+
+Daarna druk je op die controleknop op `/admin/verhuizen`. Zolang hij niet groen is, is de
+omzetting niet af, en zegt hij zelf welk van de twee nog mist.
+
+**Wat je daarna ziet.** Precies hetzelfde scherm als nu, op hetzelfde adres. Twee verschillen: de
+doorstapjes naar Pingwin-brede schermen zijn weg, en wat je in het Pingwin-dashboard aanpast staat
+hier meteen ook.
+
+**Waar je op moet letten.** Zolang alleen de database om is en het slot nog niet, is de voordeur
+het hele dashboard mét alle klanten, en draaien de nachtronden een tweede keer op dezelfde
+gegevens. Dat is de enige echt vervelende tussenstand, en dat is precies wat de controleknop
+opvangt. Mogelijk moet de Google-koppeling daar één keer opnieuw gelegd worden.
+
+**Als het misgaat.** Terug is de oude database weer aankoppelen. Die blijft ongemoeid staan als
+bevroren reservekopie, dus je kunt altijd terug naar de situatie van vandaag.
 
 ## Stap 4: opruimen
 
@@ -136,8 +160,10 @@ aantoonbaar dicht zijn.
 ## Stand
 
 - Stap 1: klaar op 18-08-2026. Het slot staat in de code en slaapt tot het ergens aangezet wordt.
-- Stap 2: gebouwd op 18-08-2026, wacht op de drie klikken hierboven.
-- Stap 3 tot en met 5: nog te doen, in deze volgorde.
+- Stap 2: klaar op 18-08-2026. Nationaal Oogcentrum staat als klant `noc` in het Pingwin-dashboard.
+- Stap 3: gebouwd op 19-08-2026. De voordeur gedraagt zich als voordeur en het dashboard kan hem
+  zelf controleren; wat er nog moet gebeuren is de omzetting in Vercel hierboven.
+- Stap 4 en 5: nog te doen, in deze volgorde.
 
 ## Technisch voetnootje
 
@@ -145,6 +171,10 @@ Vierenzeventig van de negenennegentig tabellen zijn klantgebonden via `client_sl
 verhuizing is daardoor generiek in plaats van een handmatige lijst, met een aparte pas langs de
 tabellen die anders sleutelen (`oauth_tokens`, `page_redirects`, `page_canni_rows`, agenda).
 Het slot is `WERELD_KLANT` in `lib/klantvenster.ts`, aangehaakt op de bestaande scope-poort
-(`lib/admin-scope.ts`) plus de middleware, en bewaakt door `proeven/klantvenster.proef.ts`.
+(`lib/admin-scope.ts`) plus de middleware, en bewaakt door `proeven/klantvenster.proef.ts`. De
+padregel zelf staat importvrij in `lib/venster-pad.ts`, zodat de kopbalk in de browser hem kan
+stellen zonder een tweede kopie. De controle loopt via `lib/omgeving.ts` (venster plus een gehashte
+vingerafdruk van de database, uitgeserveerd op `/api/versie`) en `/api/admin/voordeur`; het adres
+per klant staat in `clients.voordeur_url`.
 De verhuizing zit in `lib/verhuizing.ts` (tabellen uit `information_schema`), `lib/verhuis-code.ts`,
 `/admin/verhuizen` en `/api/verhuis-inlaad`, bewaakt door `proeven/verhuizing.proef.ts`.

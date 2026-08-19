@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardDev } from "../../../../lib/admin-scope";
+import { vensterPoort } from "../../../../lib/klantvenster";
 import { getAhrefsSubscriptionUsage } from "../../../../lib/ahrefs";
 import { getAhrefsEigenVerbruik } from "../../../../lib/usage";
 import { tellerStand } from "../../../../lib/ahrefs-teller";
@@ -22,9 +23,14 @@ export const dynamic = "force-dynamic";
 //
 // Achter guardDev, dezelfde poort als het Intern-menu ernaast: dit is werkvloer,
 // geen klantinformatie. Geen recht = foutcode = het tellertje tekent niets.
+//
+// Op een klantvoordeur bestaat hij niet: het tegoed en het verbruik gaan over
+// het hele Ahrefs-abonnement, dus over alle klanten samen, en die voordeur is er
+// juist om te kunnen delen zonder na te denken.
 // ═══════════════════════════════════════════════════════════
 
 export async function GET(req: NextRequest) {
+  const weg = vensterPoort(); if (weg) return weg;
   const g = await guardDev(req); if (!g.ok) return g.res;
 
   const week = new Date();

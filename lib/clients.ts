@@ -31,6 +31,10 @@ export type ClientCockpit = {
   // een los bewaard linkje (net als positioneringUrl), geen live koppeling.
   huisstijlUrl: string | null;
   adsAccountUrl: string | null;
+  // Het eigen adres van deze klant: een tweede voordeur op dezelfde gegevens,
+  // waar alleen deze klant bestaat. Leeg = geen eigen voordeur (het normale
+  // geval). Zie lib/klantvenster.ts en NOC-NAAR-PINGWIN.md.
+  voordeurUrl: string | null;
   status: string | null;
   lastContact: string | null;
   notes: string | null;
@@ -108,6 +112,7 @@ type ClientRow = {
   results_url: string | null;
   positionering_url: string | null;
   huisstijl_url: string | null;
+  voordeur_url: string | null;
   ads_account_url: string | null;
   status: string | null;
   last_contact: string | null;
@@ -153,6 +158,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
       resultsUrl: r.results_url ?? null,
       positioneringUrl: r.positionering_url ?? null,
       huisstijlUrl: r.huisstijl_url ?? null,
+      voordeurUrl: r.voordeur_url ?? null,
       adsAccountUrl: r.ads_account_url ?? null,
       status: r.status ?? null,
       lastContact: r.last_contact ?? null,
@@ -373,12 +379,21 @@ export async function setAdsAccountUrl(slug: string, url: string): Promise<boole
   return !!rowCount && rowCount > 0;
 }
 
-// Let op: dev_name, positioneringUrl, huisstijlUrl en adsAccountUrl worden hier
-// bewust NIET bijgewerkt. Deze functie overschrijft alle velden die ze
-// meekrijgt, dus zou een opslag vanuit een ander scherm die vier anders wissen.
-// Daarvoor zijn setClientDevName, setPositioneringUrl, setHuisstijlUrl en
-// setAdsAccountUrl.
-export async function updateClientCockpit(slug: string, c: Omit<ClientCockpit, "devName" | "positioneringUrl" | "huisstijlUrl" | "adsAccountUrl">): Promise<boolean> {
+// Het adres van de eigen voordeur van deze klant. Zelfde reden als hierboven om
+// er een losse functie van te maken: hij wordt vanaf het verhuisscherm gezet en
+// mag niet gewist worden zodra de cockpit iets anders opslaat.
+export async function setVoordeurUrl(slug: string, url: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await sql`UPDATE clients SET voordeur_url = ${url.trim() || null} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+// Let op: dev_name, positioneringUrl, huisstijlUrl, adsAccountUrl en voordeurUrl
+// worden hier bewust NIET bijgewerkt. Deze functie overschrijft alle velden die
+// ze meekrijgt, dus zou een opslag vanuit een ander scherm die vijf anders
+// wissen. Daarvoor zijn setClientDevName, setPositioneringUrl, setHuisstijlUrl,
+// setAdsAccountUrl en setVoordeurUrl.
+export async function updateClientCockpit(slug: string, c: Omit<ClientCockpit, "devName" | "positioneringUrl" | "huisstijlUrl" | "adsAccountUrl" | "voordeurUrl">): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`
     UPDATE clients SET

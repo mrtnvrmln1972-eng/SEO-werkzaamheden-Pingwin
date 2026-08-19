@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { telling, klantKaart, pakket } from "../../../../lib/verhuizing";
 import { maakCode, trekIn, stand } from "../../../../lib/verhuis-code";
+import { gegevensVingerafdruk, pingwinAdresOk } from "../../../../lib/omgeving";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -20,17 +21,16 @@ export const maxDuration = 60;
 //
 // Waarom het doeladres beperkt is: deze route haalt op verzoek een andere server
 // aan. Zonder grens zou dat een middel worden om vanaf deze server een
-// willekeurig adres te benaderen. Alleen een Pingwin-omgeving mag.
+// willekeurig adres te benaderen. Alleen een Pingwin-omgeving mag; die regel
+// staat in lib/omgeving.ts, want de voordeur-controle trekt dezelfde grens.
+//
+// Sinds 19-08-2026 wordt er ook gekeken of het doel wel een ándere administratie
+// is. Een verhuizing naar jezelf leest en overschrijft dezelfde rijen, en dat is
+// geen verhuizing maar een risico. Het gebeurde bijna: de eerste poging maakte
+// de code in de verkeerde omgeving, en met één adres ernaast was het verzoek
+// vertrokken.
 
 const MAAT = 50;
-
-function doelOk(doel: string): boolean {
-  try {
-    const u = new URL(doel);
-    if (u.protocol !== "https:") return false;
-    return u.hostname.endsWith(".vercel.app") || u.hostname === "pingwin.nl" || u.hostname.endsWith(".pingwin.nl");
-  } catch { return false; }
-}
 
 export async function GET(req: NextRequest) {
   const slug = (req.nextUrl.searchParams.get("slug") || "").trim().toLowerCase();
@@ -83,11 +83,28 @@ export async function POST(req: NextRequest) {
   if (body.actie === "stuur") {
     const doel = String(body.doel || "").trim().replace(/\/+$/, "");
     const code = String(body.code || "").trim();
-    if (!doelOk(doel)) return NextResponse.json({ ok: false, error: "Geef het adres van de andere Pingwin-omgeving, beginnend met https://." }, { status: 400 });
+    if (!pingwinAdresOk(doel)) return NextResponse.json({ ok: false, error: "Geef het adres van de andere Pingwin-omgeving, beginnend met https://." }, { status: 400 });
     if (!code) return NextResponse.json({ ok: false, error: "Vul de verhuiscode in die de andere omgeving heeft gemaakt." }, { status: 400 });
 
     const tabel = String(body.tabel || "").trim();
     const na = Number(body.na) || 0;
+
+    // Naar jezelf verhuizen bestaat niet: dan lees en overschrijf je dezelfde
+    // rijen. Vraag het doel wie hij is en vergelijk de vingerafdruk van de
+    // database met die van hier. Alleen bij de eerste stap (de klantkaart), want
+    // daarna volgen er tientallen happen en die hoeven dit niet opnieuw te vragen.
+    const eigen = gegevensVingerafdruk();
+    if (eigen && !tabel) {
+      try {
+        const wie = await fetch(`${doel}/api/versie`, { cache: "no-store" }).then((r) => (r.ok ? r.json() : null));
+        if (wie?.gegevens && wie.gegevens === eigen) {
+          return NextResponse.json({
+            ok: false,
+            error: "Dat adres kijkt naar dezelfde gegevens als deze omgeving. Verhuizen naar jezelf doet niets goeds; maak de verhuiscode in de omgeving waar de klant naartoe moet.",
+          }, { status: 400 });
+        }
+      } catch { /* onbereikbaar: dat merkt de verzendstap hieronder vanzelf */ }
+    }
 
     // Zonder soort: dit is de eerste stap, de klantkaart zelf.
     const lading = tabel
