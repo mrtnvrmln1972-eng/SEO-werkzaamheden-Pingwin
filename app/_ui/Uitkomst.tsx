@@ -149,6 +149,50 @@ export function Tabel({ kolommen, children }: { kolommen: string[]; children: Re
   );
 }
 
+/**
+ * Eén invulveld, en een rij om er velden en knoppen naast elkaar in te zetten.
+ *
+ * Er bestond geen gedeeld veld, dus schreef elk scherm dat er een nodig had zijn
+ * eigen randje, eigen maat en eigen kleur; er stonden er zeven naast elkaar.
+ * Dit is er één, op de schaal. Een keuzelijst gaat door dezelfde vorm.
+ */
+export function Veld({ waarde, zet, plaatshouder, soort = "text", label }: {
+  waarde: string;
+  zet: (v: string) => void;
+  plaatshouder?: string;
+  soort?: "text" | "url" | "number";
+  /** Voor wie met een schermlezer werkt: zonder label is een veld een raadsel. */
+  label: string;
+}) {
+  return (
+    <input
+      className="uk-veld"
+      type={soort}
+      aria-label={label}
+      placeholder={plaatshouder}
+      value={waarde}
+      onChange={(e) => zet(e.target.value)}
+    />
+  );
+}
+
+export function Keuze({ waarde, zet, opties, label }: {
+  waarde: string;
+  zet: (v: string) => void;
+  opties: { waarde: string; naam: string }[];
+  label: string;
+}) {
+  return (
+    <select className="uk-veld" aria-label={label} value={waarde} onChange={(e) => zet(e.target.value)}>
+      {opties.map((o) => <option key={o.waarde} value={o.waarde}>{o.naam}</option>)}
+    </select>
+  );
+}
+
+export function Veldrij({ children }: { children: ReactNode }) {
+  return <div className="uk-veldrij">{children}</div>;
+}
+
 /** Wat er te zien zou zijn als er iets was. Nooit een leeg scherm zonder uitleg. */
 export function Leeg({ children }: { children: ReactNode }) {
   return <div className="uk-leeg">{children}</div>;

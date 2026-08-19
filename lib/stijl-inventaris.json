@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8845,
-    "stijlregels": 4343,
-    "classnamen": 2949
+    "regels": 8859,
+    "stijlregels": 4347,
+    "classnamen": 2951
   },
   "kleuren": {
     "verschillend": 40,
@@ -529,7 +529,7 @@
     },
     {
       "naam": "Invoervelden",
-      "aantal": 48,
+      "aantal": 50,
       "namen": [
         "add-month-select",
         "ag-checkbox-field",
@@ -575,6 +575,8 @@
         "selection-toast",
         "share-link-input",
         "tw-veld",
+        "uk-veld",
+        "uk-veldrij",
         "wp-chat-input",
         "wp-docdrop-input",
         "wp-mail-toveld",
@@ -1906,7 +1908,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8481,
-    "schaalGebruik": 1468
+    "gebruik": 8492,
+    "schaalGebruik": 1469
   }
 }

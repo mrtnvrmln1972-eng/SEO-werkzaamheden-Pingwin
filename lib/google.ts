@@ -145,6 +145,17 @@ export async function getGoogleAccessToken(): Promise<string | null> {
   return accessTokenFor("google");
 }
 
+// De GA4-property van een klant, voor modules buiten dit bestand (zoals
+// lib/ga4-pagina.ts). Bewust dezelfde weg als alles hierbinnen: eerst wat er
+// opgeslagen staat, anders één keer zoeken op het domein en het antwoord
+// bewaren. Zo bestaat er geen tweede manier om aan een property te komen.
+export async function ga4PropertyVoor(slug: string, domainHint = ""): Promise<string | null> {
+  const token = await accessTokenFor("google");
+  if (!token) return null;
+  await ensureSchema();
+  return ga4PropertyFor(token, slug, domainHint);
+}
+
 // Drive-koppeling: access-token uit de aparte 'google_drive'-rij. Bewust GEEN
 // terugval op de data-rij: de data-koppeling mag nooit Drive-toegang geven.
 export async function getDriveAccessToken(): Promise<string | null> {

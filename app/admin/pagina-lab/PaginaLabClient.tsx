@@ -10,7 +10,9 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import AdminKop from "../AdminKop";
 import { PijlRechts } from "../../_ui/Pijl";
-import { Chip, Chips, Paneel, Signaal, Tekst } from "../../_ui/Uitkomst";
+import { Chip, Chips, Paneel, Signaal, Tekst, Veldrij } from "../../_ui/Uitkomst";
+import GedragPaneel from "./GedragPaneel";
+import type { KlantStand } from "./GedragPaneel";
 import {
   CRITERIA,
   DISCIPLINES,
@@ -89,7 +91,8 @@ function VakoordeelBlok({ v }: { v: Vakoordeel }) {
   );
 }
 
-export default function PaginaLabClient() {
+export default function PaginaLabClient({ klanten, magSchrijven }: { klanten: KlantStand[]; magSchrijven: boolean }) {
+  const [deel, setDeel] = useState<"kennisbank" | "gedrag">("kennisbank");
   const [filter, setFilter] = useState<Discipline | "alles">("alles");
 
   const criteria = filter === "alles" ? CRITERIA : CRITERIA.filter((c) => c.discipline === filter);
@@ -120,6 +123,26 @@ export default function PaginaLabClient() {
     <>
       <AdminKop titel="Pagina-lab" />
       <div className="beheer-container">
+        {/* De twee helften van het lab: waartegen we een pagina houden, en wat
+            bezoekers er werkelijk deden. */}
+        <Veldrij>
+          <button
+            className={"btn btn-klein " + (deel === "kennisbank" ? "btn-primary" : "btn-ghost")}
+            onClick={() => setDeel("kennisbank")}
+          >
+            Kennisbank
+          </button>
+          <button
+            className={"btn btn-klein " + (deel === "gedrag" ? "btn-primary" : "btn-ghost")}
+            onClick={() => setDeel("gedrag")}
+          >
+            Gedrag: Analytics en Clarity
+          </button>
+        </Veldrij>
+
+        {deel === "gedrag" && <GedragPaneel klanten={klanten} magSchrijven={magSchrijven} />}
+        {deel === "kennisbank" && (
+        <>
         <Paneel
           titel="Kennisbank: waartegen het Pagina-lab een pagina houdt"
           uitleg={
@@ -153,6 +176,8 @@ export default function PaginaLabClient() {
             {eigen.map((v) => <VakoordeelBlok key={v.id} v={v} />)}
           </div>
         </Paneel>
+        </>
+        )}
       </div>
     </>
   );

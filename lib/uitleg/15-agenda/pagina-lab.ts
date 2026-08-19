@@ -26,6 +26,29 @@ export const BLOKKEN: Uitklapper[] = [
       "gaat nog geen bevinding of taak uit voort.",
   },
   {
+    titel: "Gedrag: wat bezoekers werkelijk deden, naast wat je ziet",
+    kern: "Analytics telt, Clarity toont wrijving. Zonder die twee is elk oordeel een oordeel over een plaatje.",
+    tekst:
+      "Een pagina kan er goed uitzien en toch niets opleveren. Daarom staat naast de kennisbank een derde bron: " +
+      "wat bezoekers er werkelijk deden.\n\n" +
+      "**Google Analytics** was al gekoppeld voor de site-brede cijfers; daar is nu de stand van één pagina bij " +
+      "gekomen, met de verdeling over mobiel en desktop. Dat laatste verandert vaak het hele oordeel: als acht " +
+      "van de tien bezoekers op een telefoon zitten en juist daar niemand doorklikt, is dat een ander gesprek dan " +
+      "een gemiddelde over alles heen. Het dashboard zoekt de property zelf op bij het domein; lukt dat niet, dan " +
+      "kun je het nummer met de hand vastleggen.\n\n" +
+      "**Microsoft Clarity** is nieuw en meet iets anders: wrijving. Dode klikken (mensen klikken op iets dat geen " +
+      "knop is), woedeklikken, terugspringen naar de vorige pagina, en hoe ver mensen scrollen. Dat zijn precies " +
+      "de dingen die je aan de code van een pagina niet ziet en op een schermfoto ook niet.\n\n" +
+      "Twee grenzen van Clarity bepalen hoe dit gebouwd is: je mag maar tien keer per dag per project cijfers " +
+      "opvragen, en nooit verder terug dan drie dagen. Elke opvraging wordt daarom bewaard, en alles wat daarna " +
+      "kijkt leest die bewaarde meting. Dat archief kan alleen groeien: wat je vandaag niet ophaalt, is over vier " +
+      "dagen niet meer op te halen.\n\n" +
+      "Te vinden op `/admin/pagina-lab` onder Gedrag: per klant of Analytics en Clarity bekend zijn, waar je de " +
+      "Clarity-sleutel plakt, en een veld om één pagina uit te proberen.\n\n" +
+      "**Wat er nog niet is:** een Clarity-account. De koppeling is gebouwd en wacht op de eerste sleutel, dus de " +
+      "cijfers die eruit komen zijn nog niet één keer in het echt gezien.",
+  },
+  {
     titel: "De kennisbank van het lab: twee planken, en dat verschil is de hele waarde",
     kern: "Onderbouwde criteria met bron en datum, en apart daarvan ons eigen vakoordeel.",
     tekst:

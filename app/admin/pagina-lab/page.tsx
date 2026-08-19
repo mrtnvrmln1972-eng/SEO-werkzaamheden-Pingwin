@@ -3,20 +3,25 @@ import { redirect } from "next/navigation";
 import { ADMIN_COOKIE } from "../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
+import { listClients } from "../../../lib/clients";
+import { ga4PropertiesBekend } from "../../../lib/ga4-pagina";
+import { clarityStandAlle } from "../../../lib/clarity";
 import PaginaLabClient from "./PaginaLabClient";
 
 // ═══════════════════════════════════════════════════════════
-// /admin/pagina-lab — de kennisbank van het Pagina-lab
+// /admin/pagina-lab — de werkbank van het Pagina-lab
 // ═══════════════════════════════════════════════════════════
-// Het lab beoordeelt straks pagina's op conversie, bruikbaarheid, vormgeving en
-// interactie. Dit scherm laat zien wáártegen het dat doet: de criteria met hun
-// bron en de datum waarop die bron is nagekeken, en daarnaast, apart, ons eigen
-// vakoordeel zonder bron.
+// Twee dingen op één scherm, want ze horen bij elkaar:
 //
-// Alles komt uit `lib/pagina-lab/kennisbank/`, dus er is niets op te slaan en
-// er wordt niets uit de database gehaald. Dat past bij de belofte van het lab:
-// het leest mee en schrijft niets, bewaakt door
-// `proeven/pagina-lab-schrijft-niet.proef.ts`.
+//  1. De kennisbank: waartegen het lab een pagina houdt, met bron en datum, en
+//     apart daarvan ons eigen vakoordeel. Staat volledig in de code
+//     (`lib/pagina-lab/kennisbank/`), dus er valt niets op te slaan.
+//  2. Gedrag: weten we van deze klant wat bezoekers werkelijk doen? Analytics
+//     vindt zichzelf meestal, Clarity heeft een sleutel per project nodig.
+//
+// De stand per klant wordt hier op de server gelezen, uit wat er al opgeslagen
+// staat. Bewust zonder te gaan zoeken bij Google: dat zou bij dertig klanten
+// dertig keer het hele Analytics-account aflopen bij het openen van een scherm.
 // ═══════════════════════════════════════════════════════════
 
 export const dynamic = "force-dynamic";
@@ -26,5 +31,20 @@ export default async function PaginaLabPage() {
   if (!scope) redirect("/admin/login");
   if (!scope.isOwner && !scope.canDev) redirect("/admin");
 
-  return <PaginaLabClient />;
+  const alle = await listClients();
+  const zichtbaar = scope.allowedSlugs ? alle.filter((c) => scope.allowedSlugs?.includes(c.slug)) : alle;
+  const [properties, clarity] = await Promise.all([
+    ga4PropertiesBekend().catch(() => ({} as Record<string, string>)),
+    clarityStandAlle().catch(() => ({} as Awaited<ReturnType<typeof clarityStandAlle>>)),
+  ]);
+
+  const klanten = zichtbaar.map((c) => ({
+    slug: c.slug,
+    naam: c.name,
+    domein: c.domain || "",
+    ga4: properties[c.slug] || null,
+    clarity: clarity[c.slug] || { gekoppeld: false, laatste: null, vandaag: 0, ruimte: 8, bewaard: 0 },
+  }));
+
+  return <PaginaLabClient klanten={klanten} magSchrijven={scope.isOwner || scope.canEdit} />;
 }

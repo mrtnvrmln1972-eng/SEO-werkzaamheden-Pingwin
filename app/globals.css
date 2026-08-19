@@ -7163,6 +7163,20 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
 .uk-chip.let-op { background: var(--kleur-fout-vlak); color: var(--bad); }
 .uk-chip.uit { background: var(--kleur-rustig); color: var(--kleur-tekst-stil); }
 
+/* Een invulveld in een uitkomst-paneel. Er was geen gedeeld veld: elk scherm
+   dat er een nodig had, schreef zijn eigen randje en zijn eigen maat (zeven
+   varianten inmiddels). Dit is er één, op de schaal, bij `Veld` in
+   app/_ui/Uitkomst.tsx. */
+.uk-veld {
+  flex: 1 1 220px; min-width: 0; font-family: inherit;
+  font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--dark);
+  padding: var(--ruimte-krap) var(--ruimte-regel);
+  border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart);
+}
+.uk-veld:focus { outline: none; border-color: var(--kleur-rand-accent); }
+.uk-veld::placeholder { color: var(--kleur-tekst-stil); }
+.uk-veldrij { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; margin-top: var(--ruimte-regel); }
+
 .uk-tabel-wrap { overflow-x: auto; margin-top: var(--ruimte-groep); }
 .uk-tabel { width: 100%; border-collapse: collapse; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); }
 /* De globale `thead th`-regel geeft deze kop een donkere achtergrond, dus de
