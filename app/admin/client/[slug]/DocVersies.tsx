@@ -161,6 +161,24 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
   const tt = (d: string) => {
     try { return new Date(d).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
   };
+  // Het moment waar de regel op staat: de eigen datum van het document (in de
+  // praktijk meestal "laatst opgeslagen in Drive"), en anders het moment waarop
+  // het hier binnenkwam. Staat er een datum zonder tijd in (een datum die uit de
+  // tékst van het document komt), dan is het tijdstip van binnenkomst het enige
+  // dat twee documenten van dezelfde dag nog uit elkaar houdt.
+  const moment = (v: Versie) => {
+    if (!v.inhoudDatum) return v.createdAt;
+    const d = new Date(v.inhoudDatum);
+    const heeftTijd = !Number.isNaN(d.getTime()) && (d.getHours() || d.getMinutes());
+    return heeftTijd ? v.inhoudDatum : v.createdAt;
+  };
+  // Twee documenten van hetzelfde soort op dezelfde dag zijn op de regel niet uit
+  // elkaar te houden; dan hoort het tijdstip erbij. Dat gold eerst alleen als er
+  // helemaal geen eigen datum was, en juist bij twee stukken die op dezelfde dag
+  // zijn aangeleverd (19-08-2026: twee blogs voor twee verschillende projecten)
+  // stond er twee keer dezelfde "18 aug".
+  const zelfdeDag = (v: Versie) =>
+    versies.some((x) => x.id !== v.id && x.kind === v.kind && dd(moment(x)) === dd(moment(v)));
   const previewUrl = (v: Versie) => {
     const id = driveIdFromUrl(v.driveLink);
     return id ? `https://drive.google.com/file/d/${id}/preview` : "";
@@ -263,8 +281,8 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                 title={v.inhoudDatum
                   ? `${v.datumUitleg}. Hier binnengekomen op ${dd(v.createdAt)} ${tt(v.createdAt)}.`
                   : `Van dit document is geen eigen datum te vinden; dit is het moment waarop het hier binnenkwam (${dd(v.createdAt)} ${tt(v.createdAt)}).`}>
-                {v.inhoudDatum ? dd(v.inhoudDatum) : dd(v.createdAt)}
-                {!v.inhoudDatum && aantalPerSoort[v.kind] > 1 ? ` ${tt(v.createdAt)}` : ""}
+                {dd(moment(v))}
+                {zelfdeDag(v) ? ` ${tt(moment(v))}` : ""}
               </span>
               <span className={"wp-docversie-bron " + (v.source === "klant" ? "wp-bron-klant" : "wp-bron-pingwin")}>
                 {v.source === "klant" ? "Klant" : "Pingwin"}

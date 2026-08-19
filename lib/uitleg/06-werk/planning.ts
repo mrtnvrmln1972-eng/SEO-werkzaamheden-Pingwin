@@ -99,7 +99,11 @@ export const BLOKKEN: Uitklapper[] = [
       "lijst blijft compleet (hernoemen, voorvertonen, weggooien, aanwijzen welke versie geldt), maar hij " +
       "staat dicht. Hij gaat vanzelf open als er meerdere versies van hetzelfde soort liggen en je nog niet " +
       "hebt aangewezen welke geldt, want daar wachten de mail en de sitebouwer op. In dat geval staat het " +
-      "tijdstip erbij, anders zijn drie documenten van dezelfde dag niet uit elkaar te houden.\n\n" +
+      "tijdstip erbij, anders zijn drie documenten van dezelfde dag niet uit elkaar te houden. **De naam van " +
+      "het document wordt sinds 19 augustus 2026 helemaal getoond** in plaats van afgekapt met puntjes, en het " +
+      "tijdstip komt erbij zodra twee documenten van hetzelfde soort dezelfde dag dragen. Reden: liggen er " +
+      "twee stukken copy voor twee verschillende onderwerpen in één taak, dan is juist het staartje van de " +
+      "titel het enige waaraan je ze uit elkaar houdt, en dat viel weg.\n\n" +
       "**De kaart heeft één rij uitklappers en hooguit één open paneel (18 augustus 2026).** " +
       "\"Achtergrond en afspraken\", \"Documenten\" en \"Oude versies van deze kaart\" staan als drie knopjes " +
       "naast elkaar, direct boven je aantekeningen; klik je er een open, dan vult die de hele breedte van de " +

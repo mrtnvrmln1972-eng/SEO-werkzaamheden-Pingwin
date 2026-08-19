@@ -3677,9 +3677,14 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-docrij-geldt { background: var(--kleur-accent-waas); }
 .wp-docrij-datum { color: var(--kleur-tekst-zacht); min-width: 3.5rem; }
 .wp-docrij-kind { color: var(--kleur-tekst-zacht); }
+/* De naam mag omslaan in plaats van afgekapt te worden. Hij stond op één regel
+   met puntjes erachter, en dan lezen twee documenten over verschillende
+   onderwerpen als "Natuurlijke zwemvijver in Zeeu…" en "Strak natuurzwembad in
+   IJssel…": precies het stuk dat je nodig hebt om ze uit elkaar te houden viel
+   weg (19-08-2026). */
 .wp-docrij-naam { border: 0; background: none; padding: 0; font: inherit; color: var(--kleur-tekst);
-  font-weight: 600; text-align: left; cursor: text; flex: 1 1 8rem; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  font-weight: 600; text-align: left; cursor: text; flex: 1 1 12rem; min-width: 0;
+  white-space: normal; overflow-wrap: anywhere; }
 .wp-docrij-naam:hover { text-decoration: underline dotted; }
 .wp-docrij-naaminvoer { flex: 1 1 8rem; min-width: 0; font: inherit; padding: var(--ruimte-krap) var(--ruimte-naast);
   border: 1px solid var(--kleur-accent); border-radius: var(--ronding-klein); }
