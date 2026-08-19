@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { maakSchermafbeelding } from "../../../../lib/schermbeeld";
 import { magVensterPad, vensterGeweigerd } from "../../../../lib/klantvenster";
+import { richtingOpNaam } from "../../../../lib/proefstijl";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -52,8 +53,18 @@ export async function GET(req: NextRequest) {
   // scherm dat zijn lijst zelf nabezorgt: dat staat na het laden nog even op
   // "bezig met opbouwen", en dan fotografeer je de wachtboodschap.
   const wacht = Number(req.nextUrl.searchParams.get("wacht")) || 600;
+  // Optioneel: fotografeer dit scherm in een andere stijlrichting (?stijl=Strak
+  // en zakelijk). Zo kan de speelruimte twee standen náást elkaar leggen, want
+  // in de browser zelf kun je er maar één tegelijk aan hebben staan. Een naam die
+  // niet bestaat is een fout en geen stilzwijgende terugval op de huidige stand:
+  // anders krijg je twee identieke foto's zonder te weten waarom.
+  const stijlNaam = req.nextUrl.searchParams.get("stijl");
+  const thema = stijlNaam ? richtingOpNaam(stijlNaam) : null;
+  if (stijlNaam && !thema) {
+    return NextResponse.json({ ok: false, error: `Onbekende stijlrichting: ${stijlNaam}.` }, { status: 400 });
+  }
   try {
-    const png = await maakSchermafbeelding(pad, basis, wacht);
+    const png = await maakSchermafbeelding(pad, basis, wacht, thema);
     if (!png) {
       return NextResponse.json({ ok: false, error: "De browser kon niet starten op deze server." }, { status: 500 });
     }

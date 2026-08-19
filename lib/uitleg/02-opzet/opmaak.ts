@@ -86,6 +86,14 @@ export const BLOKKEN: Uitklapper[] = [
         "in de echte kopbalk, kaarten, knoppen en tabellen, want dat zijn dezelfde bouwstenen als " +
         "overal. Draaien legt niets vast: je speelt in je eigen browser, met een balkje bovenin dat zegt " +
         "dat je naar een proef kijkt, en niemand anders ziet er iets van.\n\n" +
+        "Wat daar sinds 19-08-2026 bij kan: **twee standen naast elkaar zien, op je eigen schermen**. " +
+        "In je browser staat er altijd maar één richting aan, dus vergelijken kwam neer op heen en weer " +
+        "klikken en het uit je hoofd doen. Nu kies je in de speelruimte een scherm waar je veel zit (de " +
+        "klantenlijst, de takenpagina van een klant, de prioriteitenscan, het financieel overzicht of de " +
+        "agenda) en fotografeert het dashboard dat scherm twee keer: zoals het nu is, en in de richting " +
+        "die je uitprobeert. Geen voorbeeldblokje, maar je eigen scherm met je eigen data erin. De foto " +
+        "in de nieuwe richting is precies wat vastleggen zou opleveren, want hij rekent met dezelfde som " +
+        "als de vastgelegde huisstijl.\n\n" +
         "Bevalt een richting, dan leg je hem vast met één knop onderaan datzelfde paneel. Vanaf dat moment " +
         "is het gewoon hoe het dashboard eruitziet, op elk scherm en voor iedereen die inlogt, klanten in " +
         "hun eigen dashboard inbegrepen. Daar komt geen bouw of programmeerwerk meer aan te pas, en met " +

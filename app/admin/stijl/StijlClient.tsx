@@ -17,6 +17,8 @@ type Props = {
   meting: Meting;
   plafond: Record<string, number>;
   doel: Record<string, number>;
+  /** De eerste klant uit de lijst, zodat de vergelijking ook een klantkaart kan tonen. */
+  klant: { slug: string; naam: string } | null;
 };
 
 /** De zeven meters, in de volgorde waarin ze het meeste zeggen. */
@@ -82,7 +84,7 @@ const STAPEL_TEKST: Record<Stapel, { kop: string; wat: string }> = {
   doorzichtig: { kop: "Doorzichtig", wat: "Schaduwen en waas. Horen bij de schaduw-schaal, niet bij het palet." },
 };
 
-export default function StijlClient({ meting, plafond, doel }: Props) {
+export default function StijlClient({ meting, plafond, doel, klant }: Props) {
   const [alleKleuren, setAlleKleuren] = useState(false);
   const [openStapel, setOpenStapel] = useState<Stapel | null>(null);
   const [openFamilie, setOpenFamilie] = useState<string | null>(null);
@@ -198,7 +200,7 @@ export default function StijlClient({ meting, plafond, doel }: Props) {
           </p>
         </div>
 
-        <Speelruimte />
+        <Speelruimte klant={klant} />
 
         {/* ── Waarom je hier kijkt ── */}
         <div className="card section">

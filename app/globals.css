@@ -8691,6 +8691,33 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   margin-top: var(--ruimte-kaart); padding-top: var(--ruimte-regel);
   border-top: 1px solid var(--kleur-rand-zacht);
 }
+/* Twee standen van hetzelfde scherm naast elkaar. De foto's zijn hele pagina's,
+   dus ze krijgen elk een eigen venster met een grens: anders duwt één lange
+   takenpagina de rest van de speelruimte kilometers naar beneden. */
+.stijl-vergelijk-bediening {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  gap: var(--ruimte-regel); margin-top: var(--ruimte-regel);
+}
+.stijl-vergelijk-bediening .stijl-knop { flex: 1 1 auto; }
+.stijl-vergelijk {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--ruimte-groep); margin-top: var(--ruimte-groep);
+}
+.stijl-vergelijk-vak {
+  display: flex; flex-direction: column; gap: var(--ruimte-naast);
+  margin: 0; min-width: 0;
+}
+.stijl-vergelijk-naam {
+  font-size: var(--type-label); line-height: var(--regel-label);
+  font-weight: 700; color: var(--kleur-kop);
+}
+.stijl-vergelijk-beeld {
+  max-height: 60vh; overflow: auto;
+  border: 1px solid var(--kleur-rand); border-radius: var(--ronding-kaart);
+  background: var(--kleur-kaart);
+}
+.stijl-vergelijk-beeld img { display: block; width: 100%; height: auto; }
+
 .stijl-waardenblok {
   font-family: var(--letter-code);
   font-size: var(--type-label); line-height: var(--regel-bijschrift);

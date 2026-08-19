@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ADMIN_COOKIE } from "../../../lib/admin-auth";
 import { ADMIN_VIEWAS_COOKIE } from "../../../lib/constants";
 import { getScopeFromCookie } from "../../../lib/admin-scope";
+import { listClients } from "../../../lib/clients";
 import inventaris from "../../../lib/stijl-inventaris.json";
 import plafondBestand from "../../../proeven/stijl-plafond.json";
 import StijlClient from "./StijlClient";
@@ -48,11 +49,24 @@ export default async function StijlPage() {
   // developer-overzicht. Een gast zonder ontwikkelrecht hoort hier niet.
   if (!scope.isOwner && !scope.canDev) redirect("/admin");
 
+  // De eerste klant uit de lijst, alleen om de vergelijking een echte klantkaart
+  // te kunnen laten zien. Geen vaste slug in de code: dit dashboard draait ook in
+  // andere werelden, en die hebben deze klanten niet. Valt de lijst weg, dan
+  // blijven de schermen zonder klant over en werkt het scherm gewoon door.
+  let klant: { slug: string; naam: string } | null = null;
+  try {
+    const eerste = (await listClients())[0];
+    if (eerste?.slug) klant = { slug: eerste.slug, naam: eerste.name || eerste.slug };
+  } catch {
+    klant = null;
+  }
+
   return (
     <StijlClient
       meting={inventaris as unknown as Meting}
       plafond={plafondBestand.plafond}
       doel={plafondBestand.doel}
+      klant={klant}
     />
   );
 }

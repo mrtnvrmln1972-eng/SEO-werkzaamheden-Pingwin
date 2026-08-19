@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   BASIS, RICHTINGEN, LETTERTYPES, leesProefstijl, bewaarProefstijl, zelfdeThema, type Thema,
 } from "../../../lib/proefstijl";
+import Vergelijking, { type Scherm } from "./Vergelijking";
 
 // ═══════════════════════════════════════════════════════════
 // DE SPEELRUIMTE: DRAAIEN AAN HET ONTWERP, EN METEEN ZIEN
@@ -35,7 +36,28 @@ import {
 // in dit project al zeven keer is opgeschreven.
 // ═══════════════════════════════════════════════════════════
 
-export default function Speelruimte() {
+/**
+ * De schermen die je naast elkaar kunt leggen: de plekken waar de dag doorgaat.
+ *
+ * Bewust geen vaste klant in de code, want dit dashboard is bedoeld om straks
+ * door een ander bureau gebruikt te worden, en die heeft One Day Clinic niet.
+ * De klantkaart komt binnen als de eerste klant uit de lijst; is er nog geen
+ * klant, dan blijven de schermen zonder klant over.
+ */
+function schermenVoor(klant: { slug: string; naam: string } | null): Scherm[] {
+  const lijst: Scherm[] = [{ naam: "De klantenlijst", pad: "/admin" }];
+  if (klant) {
+    // Deze twee bouwen hun lijst zelf na, dus met de gewone wachttijd fotografeer
+    // je "bezig met opbouwen" in plaats van het scherm.
+    lijst.push({ naam: `Taken en planning (${klant.naam})`, pad: `/admin/client/${klant.slug}?tab=werkzaamheden`, wacht: 6000 });
+    lijst.push({ naam: `De prioriteitenscan (${klant.naam})`, pad: `/admin/client/${klant.slug}?tab=prioriteiten`, wacht: 8000 });
+  }
+  lijst.push({ naam: "Financieel overzicht", pad: "/admin/financien", wacht: 4000 });
+  lijst.push({ naam: "De agenda", pad: "/admin/agenda", wacht: 4000 });
+  return lijst;
+}
+
+export default function Speelruimte({ klant = null }: { klant?: { slug: string; naam: string } | null }) {
   const [thema, setThema] = useState<Thema>(BASIS);
   const [open, setOpen] = useState(false);
   const [vast, setVast] = useState<Thema | null>(null);
@@ -159,6 +181,8 @@ export default function Speelruimte() {
           {open ? "Verberg de waarden" : "Toon de waarden"}
         </button>
       </div>
+      <Vergelijking thema={thema} schermen={schermenVoor(klant)} />
+
       <h3 className="stijl-h3">Deze stijl vastleggen</h3>
       <p className="stijl-p stijl-p-klein">
         {vast

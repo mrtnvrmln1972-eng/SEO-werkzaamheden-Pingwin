@@ -2,6 +2,7 @@ import { metBrowser } from "./browser";
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
 import { ADMIN_COOKIE, makeAdminSession } from "./admin-auth";
+import { themaNaarCss, type Thema } from "./proefstijl";
 
 // ═══════════════════════════════════════════════════════════
 // SCHERMAFBEELDINGEN (R14): HET DASHBOARD FOTOGRAFEERT ZICHZELF
@@ -121,8 +122,17 @@ async function anonimiseerPagina(page: any, vervang: { van: string; naar: string
  *   Een scherm dat zijn lijst zelf nabezorgt (Meta & CTR, de Prioriteitenscan)
  *   staat op dat moment nog op "bezig met opbouwen", en dan fotografeer je de
  *   wachtboodschap in plaats van het scherm. Zet hem dan hoger.
+ * @param thema optioneel: fotografeer het scherm in een andere stijlrichting.
+ *   Waarom dit hier hoort en niet in de browser van Maarten: een proefstijl leeft
+ *   in localStorage, dus je ziet altijd één richting tegelijk en nooit twee naast
+ *   elkaar. Kiezen doe je door te vergelijken, en dat kan pas als een scherm in
+ *   twee standen tegelijk op tafel kan liggen. Deze foto is precies wat er zou
+ *   staan als je die richting vastlegt: dezelfde som (themaNaarCss) als de
+ *   vastgelegde huisstijl gebruikt.
  */
-export async function maakSchermafbeelding(pad: string, baseUrl: string, wachtMs = 600): Promise<Buffer | null> {
+export async function maakSchermafbeelding(
+  pad: string, baseUrl: string, wachtMs = 600, thema?: Thema | null
+): Promise<Buffer | null> {
   const sessie = makeAdminSession();
   const vervang = await haalVervangingenOp();
   const uit = await metBrowser(async (page) => {
@@ -130,6 +140,10 @@ export async function maakSchermafbeelding(pad: string, baseUrl: string, wachtMs
     const url = new URL(pad, baseUrl);
     await page.setCookie({ name: ADMIN_COOKIE, value: sessie, url: url.origin, path: "/" });
     await page.goto(url.toString(), { waitUntil: "networkidle2", timeout: 25000 });
+    // Achteraan in de kop, dus ná het blok van de vastgelegde huisstijl. Bij
+    // gelijke zwaarte wint de laatste, en dat is hier de bedoeling: je wilt de
+    // richting zien die je uitprobeert, niet de stijl die al vaststaat.
+    if (thema) await page.addStyleTag({ content: themaNaarCss(thema) });
     await new Promise((r) => setTimeout(r, Math.max(0, Math.min(20000, wachtMs))));
     await anonimiseerPagina(page, vervang);
     const shot = await page.screenshot({ type: "png", fullPage: true });

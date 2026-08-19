@@ -78,6 +78,21 @@ export const RICHTINGEN: { wat: string; thema: Thema }[] = [
   },
 ];
 
+/**
+ * Een richting opzoeken op zijn naam, voor een foto van een scherm in die stand.
+ *
+ * De naam is het handvat en niet een los nummer, want een nummer verschuift
+ * zodra er een richting bijkomt en dan wijst een bewaarde link ineens naar iets
+ * anders. Hoofdletters, spaties en streepjes doen niet mee, zodat zowel
+ * "Strak en zakelijk" als "strak-en-zakelijk" werkt.
+ */
+export function richtingOpNaam(naam: string): Thema | null {
+  const sleutel = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const gezocht = sleutel(naam);
+  if (!gezocht) return null;
+  return RICHTINGEN.find((r) => sleutel(r.thema.naam) === gezocht)?.thema ?? null;
+}
+
 export const LETTERTYPES: { naam: string; waarde: string }[] = [
   { naam: "Montserrat (huisstijl)", waarde: "'Montserrat', system-ui, 'Segoe UI Symbol', 'Apple Symbols', 'Noto Sans Symbols 2', sans-serif" },
   { naam: "Systeem", waarde: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Segoe UI Symbol', sans-serif" },
