@@ -39,6 +39,35 @@ export const HOOFDSTUK: Hoofdstuk = {
         "Drive, een map, een link naar een ander portaal), dan is dat geen fout meer: het blijft die link.",
     },
     {
+      titel: "HubSpot: de deal komt hierheen, het budget zet je hier",
+      kern: "Fase, verwachte startdatum, eerstvolgend contactmoment en de notities komen vanzelf binnen.",
+      tekst:
+        "Staat de verkoop in HubSpot, dan hoeft niemand meer twee keer te typen. Elk kwartier komen de deals " +
+        "binnen als lead: de fase waarin hij zit, het bedrag, de datum waarop hij naar verwachting klant wordt, " +
+        "het eerstvolgende contactmoment (de eerstvolgende openstaande taak daar), en de notities en " +
+        "gespreksverslagen die erbij horen. Die notities landen in het dossier, dus het gesprek over deze lead " +
+        "weet vanaf dat moment wat er besproken is.\n\n" +
+        "Eén regel houdt dit simpel: elk veld heeft één baas. HubSpot is de baas over de pijplijn en de data. " +
+        "Het dashboard is de baas over het beoogde maandbudget, want een bedrag in HubSpot is meestal het " +
+        "totaal van een traject en de prognose rekent met maandbedragen. Zet je de kans of de startmaand zelf, " +
+        "dan blijft die staan; de koppeling schrijft nooit over een eigen keuze heen.\n\n" +
+        "Andersom gebeurt er bijna niets: het dashboard wijzigt in HubSpot geen fase, geen bedrag en geen datum. " +
+        "Alleen als je het aanzet komt een notitie die je hier typt ook als notitie bij de deal te staan.",
+    },
+    {
+      titel: "De leadkaart, de mailwisseling en de tijdlijn",
+      kern: "Alles wat je voor een gesprek nodig hebt, zonder te zoeken.",
+      tekst:
+        "Bovenaan een lead staat de stand: wanneer je hem weer moet spreken (rood als die dag geweest is), " +
+        "wanneer hij naar verwachting begint, hoe groot de kans is, wat het beoogde maandbudget is, en wanneer " +
+        "je voor het laatst contact had. In de leadlijst zie je diezelfde drie dingen per rij, dus die lijst is " +
+        "een belactielijst in plaats van een lijstje namen.\n\n" +
+        "Daaronder staat de mailwisseling met dat bedrijf, met dezelfde knop om te antwoorden of een nieuwe mail " +
+        "te sturen als bij een klant. Die mail komt uit de mailbox en niet uit het CRM: daar staat de hele draad, " +
+        "ook wat er nooit gelogd is. En er is een tijdlijn waarin alles op datum onder elkaar staat: mails, " +
+        "notities, documenten en metingen. Dat is wat je mist als je na drie weken een lead opent.",
+    },
+    {
       titel: "Klantprofiel automatisch opbouwen",
       kern: "Van een domein naar een volledig profiel, zonder vragenlijst.",
       tekst:

@@ -13,6 +13,24 @@ import { Gebouw, Mensen, Oog, PijlRechts, Vlag } from "../_ui/Pijl";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
+// De stand van één lead in HubSpot, voor de kolommen in de leadlijst.
+type HubspotStand = { slug: string; opvolgDatum: string | null; sluitDatum: string | null; faseNaam: string; hubspotUrl: string };
+
+/** Een datum kort en leesbaar: "3 sep". Leeg blijft een streepje. */
+function dagKort(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try { return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return ""; }
+}
+
+/** Is dit contactmoment geweest, vandaag, of nog niet? Bepaalt de kleur. */
+function opvolgKlasse(datum: string | null | undefined): string {
+  if (!datum) return "";
+  const vandaag = new Date().toISOString().slice(0, 10);
+  if (datum < vandaag) return " lead-datum-verstreken";
+  if (datum === vandaag) return " lead-datum-vandaag";
+  return "";
+}
+
 // ── Claude laten meekijken ──
 // Maarten wil dat Claude standaard kan meekijken in het dashboard, zonder per
 // keer een link te delen. Hier maakt hij daar één keer een sleutel voor aan.
@@ -209,6 +227,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
   const [onb, setOnb] = useState<Record<string, { af: number; totaal: number; mist: string[]; klaar: boolean }>>({});
   // Welke rij wordt op dit moment gesleept, voor de eigen volgorde van de lijst.
   const [sleep, setSleep] = useState<number | null>(null);
+  // Per lead de stand van zijn HubSpot-deal (opvolgdatum, verwachte startdatum).
+  const [hubspot, setHubspot] = useState<Record<string, HubspotStand>>({});
 
   useEffect(() => {
     if (!isOwner) return;
@@ -225,6 +245,25 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         }
         setOverdue(map);
       } catch { /* stil: geen signaal, volgende paginalading opnieuw */ }
+    })();
+    return () => { alive = false; };
+  }, [isOwner]);
+
+  // De stand uit HubSpot per lead: wanneer je hem weer moet spreken en wanneer
+  // hij naar verwachting klant wordt. Wordt ná de lijst opgehaald, dus het
+  // scherm wacht er nooit op; lukt het niet (geen HubSpot, geen eigenaar), dan
+  // blijven die kolommen gewoon leeg.
+  useEffect(() => {
+    if (!isOwner) return;
+    let alive = true;
+    (async () => {
+      try {
+        const d = await fetch("/api/admin/hubspot").then((r) => r.json());
+        if (!d?.ok || !alive || !Array.isArray(d.leads)) return;
+        const map: Record<string, HubspotStand> = {};
+        for (const l of d.leads as HubspotStand[]) map[l.slug] = l;
+        setHubspot(map);
+      } catch { /* stil: geen stand, volgende paginalading opnieuw */ }
     })();
     return () => { alive = false; };
   }, [isOwner]);
@@ -451,11 +490,14 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     <div className="task-table-wrap">
       <table>
         <thead>
-          <tr>{isOwner && <th></th>}<th>Bedrijf</th><th>Website</th><th>E-mail</th><th></th></tr>
+          <tr>
+            {isOwner && <th></th>}<th>Bedrijf</th><th>Website</th>
+            <th>Opvolgen</th><th>Budget p/m</th><th>Verwacht klant</th><th></th>
+          </tr>
         </thead>
         <tbody>
           {leads.length === 0 && (
-            <tr><td colSpan={isOwner ? 5 : 4} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
+            <tr><td colSpan={isOwner ? 7 : 6} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
               Nog geen leads. Maak er een aan met alleen een naam en een website.
             </td></tr>
           )}
@@ -487,7 +529,25 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                   ? <a href={`https://${c.domain}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{c.domain}</a>
                   : <span className="muted">&mdash;</span>}
               </td>
-              <td>{c.email || <span className="muted">&mdash;</span>}</td>
+              {/* De drie dingen waar je een lead op beoordeelt, zonder klikken:
+                  wanneer je hem weer moet spreken, wat het gaat worden, en
+                  wanneer hij begint. De eerste twee komen uit HubSpot, het
+                  budget zet je zelf in de leadomgeving. */}
+              <td className={"lead-kolom-datum" + opvolgKlasse(hubspot[c.slug]?.opvolgDatum)}>
+                {hubspot[c.slug]?.opvolgDatum
+                  ? dagKort(hubspot[c.slug]?.opvolgDatum)
+                  : <span className="muted">&mdash;</span>}
+              </td>
+              <td>
+                {c.budget.maandbudget
+                  ? `€ ${Math.round(c.budget.maandbudget).toLocaleString("nl-NL")}`
+                  : <span className="muted">&mdash;</span>}
+              </td>
+              <td>
+                {hubspot[c.slug]?.sluitDatum
+                  ? dagKort(hubspot[c.slug]?.sluitDatum)
+                  : <span className="muted">&mdash;</span>}
+              </td>
               <td style={{ whiteSpace: "nowrap" }}>
                 {isOwner ? (
                   <>

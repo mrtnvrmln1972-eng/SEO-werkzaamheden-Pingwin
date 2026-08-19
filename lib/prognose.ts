@@ -69,7 +69,7 @@ export function normMaand(v: string | null | undefined): Maand | null {
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "prognose-1ca73d8e";
+const SCHEMA_VERSIE = "prognose-e7e834c8";
 
 function ensureTable(): Promise<void> {
   return eenmalig("prognose", SCHEMA_VERSIE, doEnsure);
@@ -87,6 +87,11 @@ async function doEnsure(): Promise<void> {
       opmerking    TEXT,
       updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // Wie deze regel gezet heeft: "handmatig" (Maarten) of de naam van een
+  // koppeling ("hubspot"). Leeg telt als handmatig, zodat alles wat er vóór deze
+  // kolom al stond met rust gelaten wordt. Een koppeling overschrijft nooit een
+  // handmatige waarde; zie saveRegelUitBron().
+  await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS bron TEXT`;
   // Losse posten die niet aan een klant hangen (een website, een abonnement).
   await sql`
     CREATE TABLE IF NOT EXISTS prognose_post (
@@ -181,6 +186,11 @@ async function getRegelExtras(): Promise<Map<string, RegelExtra>> {
   return map;
 }
 
+/** De prognose-regel van één klant of lead (kans, startmaand), of null. */
+export async function getRegelExtra(slug: string): Promise<RegelExtra | null> {
+  return (await getRegelExtras()).get(slug) || null;
+}
+
 export async function saveRegelExtra(slug: string, p: Partial<RegelExtra>): Promise<void> {
   await ensureTable();
   const huidig = (await getRegelExtras()).get(slug);
@@ -192,11 +202,52 @@ export async function saveRegelExtra(slug: string, p: Partial<RegelExtra>): Prom
     opmerking: p.opmerking !== undefined ? String(p.opmerking).slice(0, 500) : huidig?.opmerking ?? "",
   };
   await sql`
-    INSERT INTO prognose_regel (client_slug, kans, start_maand, eind_maand, extra_kosten, opmerking, updated_at)
-    VALUES (${slug}, ${n.kans}, ${n.startMaand}, ${n.eindMaand}, ${n.extraKosten}, ${n.opmerking || null}, now())
+    INSERT INTO prognose_regel (client_slug, kans, start_maand, eind_maand, extra_kosten, opmerking, bron, updated_at)
+    VALUES (${slug}, ${n.kans}, ${n.startMaand}, ${n.eindMaand}, ${n.extraKosten}, ${n.opmerking || null}, 'handmatig', now())
     ON CONFLICT (client_slug) DO UPDATE SET
       kans = ${n.kans}, start_maand = ${n.startMaand}, eind_maand = ${n.eindMaand},
-      extra_kosten = ${n.extraKosten}, opmerking = ${n.opmerking || null}, updated_at = now()`;
+      extra_kosten = ${n.extraKosten}, opmerking = ${n.opmerking || null}, bron = 'handmatig', updated_at = now()`;
+}
+
+/**
+ * Kans en startmaand die uit een koppeling komen (vandaag: HubSpot).
+ *
+ * De regel is kort: WAT MAARTEN ZELF ZET, BLIJFT STAAN. Bestaat er al een regel
+ * die niet door dezelfde koppeling geschreven is, dan raakt deze functie hem
+ * niet aan. Zo kan een ronde van elk kwartier nooit een oordeel overschrijven,
+ * en hoeft niemand te onthouden welk getal "van hem" was.
+ */
+export async function saveRegelUitBron(
+  slug: string,
+  p: { kans?: number | null; startMaand?: string | null },
+  bron = "hubspot",
+): Promise<boolean> {
+  await ensureTable();
+  const { rows } = await sql<{ bron: string | null }>`
+    SELECT bron FROM prognose_regel WHERE client_slug = ${slug} LIMIT 1`;
+  if (rows.length && (rows[0].bron || "handmatig") !== bron) return false;
+
+  const kans = p.kans === null || p.kans === undefined ? null : Math.min(100, Math.max(0, Math.round(p.kans)));
+  const maand = normMaand(p.startMaand ?? null);
+  if (kans === null && maand === null) return false;
+
+  const huidig = rows.length ? (await getRegelExtras()).get(slug) : undefined;
+  const nieuweKans = kans ?? huidig?.kans ?? 100;
+  const nieuweMaand = maand ?? huidig?.startMaand ?? null;
+  await sql`
+    INSERT INTO prognose_regel (client_slug, kans, start_maand, bron, updated_at)
+    VALUES (${slug}, ${nieuweKans}, ${nieuweMaand}, ${bron}, now())
+    ON CONFLICT (client_slug) DO UPDATE SET
+      kans = ${nieuweKans}, start_maand = ${nieuweMaand}, bron = ${bron}, updated_at = now()`;
+  return true;
+}
+
+/** Wie de prognoseregel van deze klant gezet heeft: "handmatig" of "hubspot". */
+export async function getRegelBron(slug: string): Promise<string> {
+  await ensureTable();
+  const { rows } = await sql<{ bron: string | null }>`
+    SELECT bron FROM prognose_regel WHERE client_slug = ${slug} LIMIT 1`;
+  return rows.length ? (rows[0].bron || "handmatig") : "";
 }
 
 // ── Losse posten ────────────────────────────────────────────

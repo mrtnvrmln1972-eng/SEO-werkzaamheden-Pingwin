@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // apart in lib/bron-gezondheid-controle.ts.
 // ═══════════════════════════════════════════════════════════
 
-export type BronId = "ahrefs" | "google_data" | "google_drive" | "google_profiel" | "microsoft" | "moneybird" | "wordpress";
+export type BronId = "ahrefs" | "google_data" | "google_drive" | "google_profiel" | "hubspot" | "microsoft" | "moneybird" | "wordpress";
 
 export type BronDef = { id: BronId; naam: string; herstelPad?: string; perKlant?: boolean };
 
@@ -30,6 +30,7 @@ export const BRONNEN: BronDef[] = [
   { id: "google_data", naam: "Google (Search Console en Analytics)", herstelPad: "/admin/beheer" },
   { id: "google_drive", naam: "Google Drive (documenten)", herstelPad: "/admin/beheer" },
   { id: "google_profiel", naam: "Google Bedrijfsprofiel (bezoekcijfers, reviews)", herstelPad: "/admin/beheer" },
+  { id: "hubspot", naam: "HubSpot (deals en leads)", herstelPad: "/admin/beheer" },
   { id: "microsoft", naam: "Microsoft 365 (mail en agenda)", herstelPad: "/admin/beheer" },
   { id: "moneybird", naam: "Moneybird (facturen en budget)" },
   { id: "wordpress", naam: "WordPress-koppeling per klant", perKlant: true },

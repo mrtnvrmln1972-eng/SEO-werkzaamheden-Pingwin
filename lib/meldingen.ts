@@ -18,7 +18,7 @@ import { eenmalig } from "./schema-stand";
 // developer_overview en client_tasks; dit is alleen het belletje.
 // ═══════════════════════════════════════════════════════════
 
-export type MeldingSoort = "dev-af" | "dev-terug" | "mail-opvolg";
+export type MeldingSoort = "dev-af" | "dev-terug" | "mail-opvolg" | "lead-opvolg";
 
 export type Melding = {
   id: number;

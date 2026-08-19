@@ -3,6 +3,12 @@
 Plan, 19 augustus 2026. Geschreven in gewone taal, zodat je het kunt beoordelen zonder de code
 te kennen. Onderaan staan twee regels techniek voor de chat die het bouwt.
 
+**Stand: gebouwd op 19 augustus 2026, alle drie de stappen.** Wat hieronder als plan staat, staat
+nu in het dashboard. Het enige dat nog moet gebeuren voordat er iets binnenkomt: de sleutel in
+Vercel (zie "Wat ik van jou nodig heb") en aanvinken welke pijplijnen als lead tellen, op
+`/admin/beheer`. Zolang die sleutel er niet is, doet de koppeling niets en zegt dat ook zo op het
+scherm; er gaat niets stuk en er verandert niets aan de bestaande leads.
+
 ## Waar dit over gaat
 
 In HubSpot staat je verkoop: welke deals lopen, voor hoeveel, wanneer je ze verwacht binnen te
@@ -149,6 +155,30 @@ Als je het niet weet, begin ik met alleen de deals die een sluitingsdatum hebben
    beheren, en dan heb je twee halve CRM's. Het dashboard voegt iets toe wat HubSpot niet kan: het
    weet hoe hun site ervoor staat, wat we kunnen leveren en wat dat oplevert. Dáár moet de
    leadomgeving over gaan.
+
+## Wat er nu precies staat (gebouwd)
+
+- **De koppeling.** Elk kwartier haalt het dashboard op wat er in HubSpot gewijzigd is. Alleen
+  wat gewijzigd is, dus dat zijn een paar verzoeken. Op `/admin/beheer` staat een blok HubSpot
+  met de verbinding, wanneer er voor het laatst opgehaald is, welke pijplijnen als lead tellen,
+  twee schakelaars (mag een onbekende deal vanzelf een lead worden, en mag een notitie terug naar
+  HubSpot) en twee knoppen: nu ophalen, en alles opnieuw ophalen.
+- **De leadkaart** bovenaan elke lead: eerstvolgend contact (rood als die dag geweest is), verwachte
+  startdatum, kans, het bedrag zoals het in HubSpot staat, laatste contact en de contactpersoon.
+  Daaronder vier velden die jij zet (maandbudget, waarvan linkbuilding, kans, vanaf welke maand) en
+  knoppen: bewaren, het HubSpot-bedrag overnemen, een notitie toevoegen, jezelf over vijf dagen
+  laten herinneren, een snelle blik op hun site, en lead wordt klant.
+- **De leadlijst** op `/admin` heeft er drie kolommen bij: opvolgen, budget per maand, verwacht klant.
+- **De mailwisseling** onder elke lead, met dezelfde mailknop als bij een klant.
+- **De tijdlijn**: mails, notities uit HubSpot, documenten en metingen op datum onder elkaar.
+- **De prognose** vult zich met de kans uit de dealfase en de startmaand uit de sluitingsdatum. Zet
+  je er zelf iets, dan wordt dat als "handmatig" gemerkt en komt de koppeling er nooit meer overheen.
+- **Een poort** (`proeven/hubspot.proef.ts`) die de bouw laat mislukken zodra iemand er een tweede
+  schrijfrichting bij bouwt, of zodra een koppeling een handmatige waarde zou kunnen overschrijven.
+
+Twee dingen die de koppeling zelf doet en die je moet weten: een deal die in HubSpot als verloren
+wordt afgesloten zet de lead hier op "niet doorgegaan" (een klant blijft altijd klant), en een deal
+zonder bekend bedrijf in het dashboard wordt vanzelf een nieuwe lead, tenzij je dat op Beheer uitzet.
 
 ## Technisch voetnootje
 

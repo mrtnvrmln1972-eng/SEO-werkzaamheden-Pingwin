@@ -575,7 +575,7 @@ export default function ClientCockpit({
         <SelectionActions slug={client.slug} clientName={client.name} />
 
         {tab === "lead" && (
-          <LeadTab slug={client.slug} naam={client.name} domain={client.domain || ""} />
+          <LeadTab slug={client.slug} naam={client.name} domain={client.domain || ""} email={client.email || ""} />
         )}
 
         {tab === "werkzaamheden" && (

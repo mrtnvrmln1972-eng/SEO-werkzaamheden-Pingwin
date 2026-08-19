@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import LeadChat from "./LeadChat";
+import LeadKaart from "./LeadKaart";
+import LeadMail from "./LeadMail";
+import LeadTijdlijn from "./LeadTijdlijn";
 import { netteHtml } from "../../../../lib/nette-html";
 import { voorvertoningLink } from "../../../../lib/drive-id";
 
@@ -22,7 +25,7 @@ function datum(iso: string): string {
 // De leadomgeving: chat links, dossier en plank rechts. Bewust een eigen scherm,
 // los van de klant-tabbladen, zodat er niets aan de klantkant kan breken en we
 // hier rustig kunnen uitproberen hoe dit moet werken.
-export default function LeadTab({ slug, naam, domain }: { slug: string; naam: string; domain: string }) {
+export default function LeadTab({ slug, naam, domain, email = "" }: { slug: string; naam: string; domain: string; email?: string }) {
   const [items, setItems] = useState<DossierItem[]>([]);
   const [docs, setDocs] = useState<LeadDoc[]>([]);
   const [sjablonen, setSjablonen] = useState<Sjabloon[]>([]);
@@ -131,18 +134,26 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
   }
 
   return (
-    <div className="lead-grid">
+    <>
+      {/* De stand van de deal staat boven alles: dat is waar je mee begint als je
+          een lead opent, en het is ook het enige blok dat over geld en tijd gaat. */}
+      <LeadKaart slug={slug} naam={naam} onVeranderd={laad} />
+
+      <div className="lead-grid">
       <div className="lead-kolom-links">
         <LeadChat slug={slug} naam={naam} domain={domain} onVeranderd={laad} />
+        <LeadTijdlijn slug={slug} items={items} docs={docs} />
       </div>
 
       <div className="lead-kolom-rechts">
+        <LeadMail slug={slug} naam={naam} email={email} />
+
         {melding && (
           <div className={melding.ok ? "saved-msg" : "login-error"} style={{ marginBottom: "var(--s-4)" }}>{melding.text}</div>
         )}
 
         {/* ── Het dossier ── */}
-        <div className="card">
+        <div className="card" style={{ marginTop: "var(--s-6)" }}>
           <div className="lead-blok-kop">
             <div>
               <div className="lead-blok-titel">Dossier</div>
@@ -275,6 +286,7 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import type { TeamUser } from "../../../lib/team-users";
 import OntwikkelMenu from "../OntwikkelMenu";
 import Tellers from "../Tellers";
 import MeldingenMenu from "../MeldingenMenu";
+import HubSpotBlok from "./HubSpotBlok";
 
 type ClientLite = {
   slug: string;
@@ -719,6 +720,9 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
             </tbody>
           </table>
         </div>
+
+        {/* ─────────────── HUBSPOT ─────────────── */}
+        <HubSpotBlok />
 
         <div className="admin-footer" style={{ marginTop: "var(--s-10)", color: "var(--gray)", fontSize: "var(--fs-sm)" }}>
           Pingwin Online Marketing &middot; Beheer

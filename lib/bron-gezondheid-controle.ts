@@ -4,6 +4,7 @@ import { ahrefsConfigured, ahrefsHealthCheck } from "./ahrefs";
 import { googleConfigured, getGoogleAccessToken, getDriveAccessToken, getProfielAccessToken } from "./google";
 import { msConfigured, msHealthCheck } from "./ms-graph";
 import { moneybirdConfigured, moneybirdHealthCheck } from "./moneybird";
+import { hubspotConfigured, hubspotHealthCheck } from "./hubspot";
 import { listClients } from "./clients";
 import { getWpCreds } from "./wp-creds";
 import { testWordpressAuth } from "./wordpress";
@@ -89,17 +90,28 @@ async function statusMoneybird(): Promise<BronStatus> {
   return { id, naam: naamVoor(id), stand: r.ok ? "werkt" : "storing", melding: r.melding, laatstGelukt: laatste };
 }
 
+async function statusHubspot(): Promise<BronStatus> {
+  const id: BronId = "hubspot";
+  if (!hubspotConfigured()) {
+    return { id, naam: naamVoor(id), herstelPad: herstelPadVoor(id), stand: "niet-ingesteld", melding: "Niet ingesteld in deze omgeving (HUBSPOT_TOKEN ontbreekt).", laatstGelukt: null };
+  }
+  const r = await hubspotHealthCheck();
+  const laatste = await laatstGelukt(id);
+  return { id, naam: naamVoor(id), herstelPad: herstelPadVoor(id), stand: r.ok ? "werkt" : "storing", melding: r.melding, laatstGelukt: laatste };
+}
+
 /** Alle koppelingen die niet per klant zijn: één verse controle per bron. */
 export async function controleerAlleBronnen(): Promise<BronStatus[]> {
-  const [ahrefs, googleData, googleDrive, googleProfiel, microsoft, moneybird] = await Promise.all([
+  const [ahrefs, googleData, googleDrive, googleProfiel, hubspot, microsoft, moneybird] = await Promise.all([
     statusAhrefs(),
     statusGoogle("google_data", "google", getGoogleAccessToken),
     statusGoogle("google_drive", "google_drive", getDriveAccessToken),
     statusGoogle("google_profiel", "google_profiel", getProfielAccessToken),
+    statusHubspot(),
     statusMicrosoft(),
     statusMoneybird(),
   ]);
-  return [ahrefs, googleData, googleDrive, googleProfiel, microsoft, moneybird];
+  return [ahrefs, googleData, googleDrive, googleProfiel, hubspot, microsoft, moneybird];
 }
 
 export type WpKlantStatus = { slug: string; naam: string; stand: BronStand; melding: string; laatstGelukt: string | null };

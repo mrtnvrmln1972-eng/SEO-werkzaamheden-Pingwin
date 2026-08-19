@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8886,
-    "stijlregels": 4355,
-    "classnamen": 2962
+    "regels": 8932,
+    "stijlregels": 4376,
+    "classnamen": 2981
   },
   "kleuren": {
     "verschillend": 40,
@@ -228,7 +228,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 65,
+      "aantal": 66,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -253,6 +253,7 @@
         "kk-knop",
         "kmm-knop",
         "ktr-explain-btn",
+        "lead-kaart-knoppen",
         "lead-maak-knoppen",
         "logout-btn",
         "mc-knoppen",
@@ -299,7 +300,7 @@
     },
     {
       "naam": "Kaarten en panelen",
-      "aantal": 72,
+      "aantal": 73,
       "namen": [
         "act-card",
         "ag-datumknop-panel",
@@ -322,6 +323,7 @@
         "kpi-card",
         "kpi-focus-card",
         "kpi-panel",
+        "lead-kaart",
         "link-preview-card",
         "login-card",
         "md-paneel",
@@ -414,7 +416,7 @@
     },
     {
       "naam": "Labels en badges",
-      "aantal": 109,
+      "aantal": 110,
       "namen": [
         "act-edit-label",
         "ag-hour-label",
@@ -454,6 +456,7 @@
         "kpi-label",
         "kpi-site-badge",
         "kpi-tier-badge",
+        "lead-kaart-label",
         "mail-bijlage-chip",
         "mail-live-badge",
         "mc-chip",
@@ -586,7 +589,7 @@
     }
   ],
   "inline": {
-    "totaal": 613,
+    "totaal": 630,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1909,7 +1912,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8509,
+    "gebruik": 8544,
     "schaalGebruik": 1470
   }
 }

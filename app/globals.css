@@ -5660,6 +5660,52 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .lead-item-bijschrift { margin-top: var(--ruimte-naast); font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-zacht); }
 .lead-item-acties { margin-top: var(--ruimte-regel); display: flex; gap: var(--ruimte-naast); flex-wrap: wrap; align-items: center; }
 
+/* De leadkaart (stand van de HubSpot-deal), de mailwisseling en de tijdlijn.
+   Alles op de schaal-tokens; de gedeelde bouwstenen (card, chip, btn) houden
+   overal hetzelfde uiterlijk en krijgen hier alleen ruimte mee. */
+.lead-kaart { margin-bottom: var(--ruimte-blok); }
+.lead-kaart-rij {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--ruimte-regel); margin-top: var(--ruimte-groep);
+}
+.lead-kaart-vak {
+  padding: var(--ruimte-regel); border: 1px solid var(--kleur-rand);
+  border-radius: var(--ronding-knop); background: var(--kleur-rustig); min-width: 0;
+}
+.lead-kaart-vak.is-vandaag { border-color: var(--kleur-let-op-rand); background: var(--kleur-let-op-vlak); }
+.lead-kaart-vak.is-verstreken { border-color: var(--kleur-fout-rand); background: var(--kleur-fout-vlak); }
+.lead-kaart-label {
+  font-size: var(--type-label); line-height: var(--regel-label);
+  color: var(--kleur-tekst-stil); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.lead-kaart-waarde {
+  font-size: var(--type-kaartkop); line-height: var(--regel-kaartkop);
+  font-weight: 700; color: var(--kleur-kop); margin-top: var(--ruimte-krap);
+}
+.lead-kaart-onder {
+  font-size: var(--type-label); line-height: var(--regel-label);
+  color: var(--kleur-tekst-zacht); margin-top: var(--ruimte-krap); overflow-wrap: break-word;
+}
+.lead-kaart-invoer {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--ruimte-regel); margin-top: var(--ruimte-groep);
+}
+.lead-kaart-knoppen { margin-top: var(--ruimte-groep); }
+.lead-kaart-koppel { margin-top: var(--ruimte-groep); }
+.lead-kaart-koppel-rij { display: flex; gap: var(--ruimte-naast); align-items: center; flex-wrap: wrap; margin-top: var(--ruimte-regel); }
+.lead-kaart-koppel-rij input { flex: 1 1 220px; min-width: 0; }
+.lead-mail { margin-bottom: var(--ruimte-blok); }
+.lead-tijdlijn { margin-top: var(--ruimte-blok); }
+.lead-tijdregel {
+  display: flex; gap: var(--ruimte-regel); align-items: flex-start;
+  padding: var(--ruimte-regel) 0; border-bottom: 1px solid var(--kleur-rand);
+}
+.lead-tijdregel:last-child { border-bottom: none; }
+.lead-kolom-datum { white-space: nowrap; }
+.lead-datum-vandaag { color: var(--kleur-let-op); font-weight: 700; }
+.lead-datum-verstreken { color: var(--kleur-fout); font-weight: 700; }
+.lead-tijdregel-tekst { flex: 1; min-width: 0; }
+
 @media (max-width: 1100px) {
   .lead-grid { grid-template-columns: 1fr; }
   .lead-chat-verloop { max-height: 50vh; }
