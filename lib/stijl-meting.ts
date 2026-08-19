@@ -29,6 +29,7 @@
 
 import fs from "fs";
 import path from "path";
+import { TOEGESTAAN } from "./icoontekens";
 
 export const WORTEL = path.join(__dirname, "..");
 
@@ -96,6 +97,12 @@ export type Meting = {
   kleurNaastToken: KleurNaast[];
   /** Maten die niet op een stap van de schaal vallen, met wat ze zouden worden. */
   afrondingen: Afronding[];
+  /**
+   * Tekens die als icoon in beeld staan: hoeveel, hoeveel verschillende, en
+   * hoeveel daarvan geen enkel geladen lettertype kan tekenen (dat laatste hoort
+   * nul te zijn, anders staat er ergens een leeg vierkantje).
+   */
+  icoontekens: { totaal: number; verschillend: number; nietTeTekenen: number; top: { teken: string; aantal: number }[] };
   /** De betekenislaag: namen die zeggen waarvóór een waarde dient. */
   betekenis: {
     namen: { naam: string; wijstNaar: string; groep: string }[];
@@ -342,6 +349,87 @@ function zoekAfrondingen(css: string, tokens: { naam: string; waarde: string }[]
   return [...gevonden.values()].sort((a, b) => b.verschil - a.verschil || b.aantal - a.aantal);
 }
 
+// ── Icoontjes die als letter in beeld staan ────────────────────────────────
+// Hier stond een met de hand ingetypte "0" op /admin/stijl terwijl het er 419
+// waren. Vandaar dat deze meting bestaat: hetzelfde getal, maar geteld.
+//
+// Eén scanner, hier, gebruikt door zowel de meter op het scherm als
+// proeven/icoontekens.proef.ts. Twee keer dezelfde telling uitschrijven is in
+// dit project de vaste manier om twee verschillende antwoorden te krijgen.
+
+export type IcoonVondst = { teken: string; bestand: string; regel: number; context: string };
+
+/**
+ * Wat niet in beeld komt, telt niet mee: commentaar (daar staat een teken in een
+ * uitleg) en een zoekpatroon. Dat tweede is geen muggenzifterij:
+ * `AntwoordBlokken.tsx` zoekt met `.replace(/✅|✔️|✔/g, …)` naar emoji in oude
+ * antwoorden om ze te vervángen door nette stipjes. Dat teken staat er dus juist
+ * omdát het niet in beeld hoort.
+ */
+function zonderNietZichtbaar(tekst: string): string {
+  return tekst
+    .replace(/\/\*[\s\S]*?\*\//g, (blok) => blok.replace(/[^\n]/g, " "))
+    .split("\n")
+    .map((regel) => (/^\s*\/\//.test(regel) ? "" : regel))
+    .map((regel) => regel.replace(/\/(?:[^/\\\n]|\\.)+\/[gimsuy]+/g, ""))
+    .join("\n");
+}
+
+/** Een gewone letter met een accent is geen icoon; Montserrat levert latin-ext mee. */
+const LETTER_MET_ACCENT = /[À-ɏ]/;
+/** Onzichtbare tekens die een emoji in kleur laten tekenen; die horen bij de emoji ernaast. */
+const ONZICHTBAAR = /[︀-️‍]/;
+
+/**
+ * Elk teken dat als icoon op een scherm terechtkomt, met waar het staat.
+ *
+ * Bewust alleen `app/**.tsx` en de `content:`-regels in de opmaak. Een teken in
+ * een opdracht aan de AI (`app/api/…`) gaat naar een taalmodel en niet naar een
+ * scherm; dat meetellen maakt het getal onbruikbaar.
+ */
+export function zoekIcoontekens(): IcoonVondst[] {
+  const uit: IcoonVondst[] = [];
+  const kijk = (bestand: string, tekst: string, alleenContent: boolean) => {
+    zonderNietZichtbaar(tekst).split("\n").forEach((regel, i) => {
+      const stukken = alleenContent
+        ? [...regel.matchAll(/content:\s*("[^"]*"|'[^']*')/g)].map((m) => m[1])
+        : [regel];
+      for (const stuk of stukken) {
+        for (const teken of stuk) {
+          if (teken.codePointAt(0)! < 128) continue;
+          if (LETTER_MET_ACCENT.test(teken) || ONZICHTBAAR.test(teken)) continue;
+          uit.push({
+            teken,
+            bestand: path.relative(WORTEL, bestand),
+            regel: i + 1,
+            context: regel.trim().slice(0, 80),
+          });
+        }
+      }
+    });
+  };
+  for (const bestand of alleSchermen()) kijk(bestand, fs.readFileSync(bestand, "utf8"), false);
+  const cssPad = path.join(WORTEL, "app", "globals.css");
+  kijk(cssPad, fs.readFileSync(cssPad, "utf8"), true);
+  return uit;
+}
+
+/** De telling voor de meter op /admin/stijl. */
+function meetIcoontekens(): Meting["icoontekens"] {
+  const vondsten = zoekIcoontekens();
+  const perTeken = new Map<string, number>();
+  for (const v of vondsten) perTeken.set(v.teken, (perTeken.get(v.teken) ?? 0) + 1);
+  return {
+    totaal: vondsten.length,
+    verschillend: perTeken.size,
+    nietTeTekenen: vondsten.filter((v) => !TOEGESTAAN.includes(v.teken)).length,
+    top: [...perTeken.entries()]
+      .map(([teken, aantal]) => ({ teken, aantal }))
+      .sort((a, b) => b.aantal - a.aantal)
+      .slice(0, 12),
+  };
+}
+
 /** Alle .tsx-schermen onder app/, zonder node_modules. */
 export function alleSchermen(map = path.join(WORTEL, "app")): string[] {
   const uit: string[] = [];
@@ -513,6 +601,7 @@ export function meet(): Meting {
     tokens,
     kleurNaastToken: legNaastTokens(losseKleuren, tokens),
     afrondingen: zoekAfrondingen(rest, tokens),
+    icoontekens: meetIcoontekens(),
     betekenis: meetBetekenislaag(rest, tokens),
   };
 }

@@ -276,9 +276,18 @@
      tofu-blokjes: Montserrat heeft geen pijltjes, vinkjes of driehoekjes, en die
      worden overal als icoon gebruikt. Zonder een font dat ze wél heeft, valt de
      browser terug op iets willekeurigs of tekent hij een leeg vierkantje. Zet
-     hier nooit alleen 'Montserrat', sans-serif neer; dat was de oude stand. */
-  --letter: 'Montserrat', system-ui, 'Segoe UI Symbol', 'Apple Symbols',
-    'Noto Sans Symbols 2', 'Noto Sans Symbols', sans-serif;
+     hier nooit alleen 'Montserrat', sans-serif neer; dat was de oude stand.
+
+     De twee Noto-symbolenfamilies staan sinds 19-08-2026 vóór de fonts van het
+     apparaat, en dat is de hele grap: ze worden nu écht geladen (uitgeknipt tot
+     de tekens die we gebruiken, zie lib/icoontekens.ts en de kop van
+     app/layout.tsx). Daarvóór stonden ze hier ook al, maar had bijna niemand ze
+     geïnstalleerd, dus hing het van het apparaat af hoe een vinkje eruitzag: op
+     een Mac uit Apple Symbols, op Windows uit Segoe UI Symbol, en op de server
+     die de schermfoto's maakt uit niets, dus een leeg vierkantje. Nu is het
+     overal hetzelfde teken. */
+  --letter: 'Montserrat', 'Noto Sans Symbols 2', 'Noto Sans Symbols',
+    system-ui, 'Segoe UI Symbol', 'Apple Symbols', sans-serif;
   /* Het lettertype voor code, een pad of een sleutel: alles waar de tekens
      even breed moeten zijn. Stond in zes verschillende stapels door het
      bestand (ui-monospace/Menlo/Consolas in wisselende volgorde, en twee keer

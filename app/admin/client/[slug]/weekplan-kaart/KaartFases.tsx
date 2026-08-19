@@ -278,14 +278,14 @@ export default function KaartFases({
     }
     if (key === "gelieerde") {
       const kan = p.strategie;
-      return <button type="button" className="btn btn-ghost btn-klein" disabled={!kan || busy === "gelieerde"} title={kan ? "Haal advies voor gelieerde pagina's uit de vastgelegde strategie en zet het bij die pagina's klaar" : "Leg eerst de strategie vast; die is de bron voor het advies"} onClick={() => void startGelieerde()}>{busy === "gelieerde" ? "Bezig…" : p.gelieerde ? "Opnieuw ↻" : "Start ▷"}</button>;
+      return <button type="button" className="btn btn-ghost btn-klein" disabled={!kan || busy === "gelieerde"} title={kan ? "Haal advies voor gelieerde pagina's uit de vastgelegde strategie en zet het bij die pagina's klaar" : "Leg eerst de strategie vast; die is de bron voor het advies"} onClick={() => void startGelieerde()}>{busy === "gelieerde" ? "Bezig…" : p.gelieerde ? "Opnieuw" : "Start ▷"}</button>;
     }
     if (key === "analyse" || key === "blauwdruk" || key === "copy") {
       const geblokkeerd = key === "analyse" ? !p.live : (!p.live && !p.strategie);
       const titel = key === "analyse"
         ? (p.live ? "Analyseer de huidige live pagina (met de kaart-achtergrond als sturing)" : "De pagina is nog niet live; een analyse kan pas daarna")
         : (geblokkeerd ? "Eerst de strategie goedkeuren (nieuwe pagina)" : "Start dit document (met de kaart-achtergrond en chat-conclusie als sturing)");
-      const tekst = key === "analyse" && !p.live ? "Na livegang" : p[key] ? "Opnieuw ↻" : "Start ▷";
+      const tekst = key === "analyse" && !p.live ? "Na livegang" : p[key] ? "Opnieuw" : "Start ▷";
       return <button type="button" className="btn btn-ghost btn-klein" disabled={geblokkeerd || runActive || !!busy} title={titel} onClick={() => void startDocStep([key])}>{tekst}</button>;
     }
     if (key === "bouw") {
@@ -344,7 +344,7 @@ export default function KaartFases({
     if (key === "structured") {
       return (
         <>
-          <button type="button" className="btn btn-ghost btn-klein" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw ↻" : "Start ▷"}</button>
+          <button type="button" className="btn btn-ghost btn-klein" disabled={schemaRunning || !!busy} title={!p.bouw && p.copy ? "Let op: staat de nieuwe copy al live? Anders is de analyse te vroeg." : "Start de structured-data-analyse"} onClick={() => void startSchema()}>{p.structured ? "Opnieuw" : "Start ▷"}</button>
           <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy || schemaRunning} title="Her-fetcht de live pagina en checkt of het geadviseerde schema er nu echt staat (en niet dubbel)." onClick={() => void controleerLive()}>{busy === "verify" ? "Checken…" : "Controleer live"}</button>
         </>
       );

@@ -83,7 +83,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
       <div className="wp-card-grid">
         {/* Alleen dit handvat is sleepbaar; de rest van de kaart blijft selecteerbare tekst.
             Hangt de kaart onder een regel, dan heeft die regel er al een. */}
-        {!inRij && <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⋮⋮</span>}
+        {!inRij && <span className="wp-card-grip" draggable onDragStart={onDragStart} onDragEnd={onDragEnd} title="Sleep de kaart naar een andere week">⠿</span>}
         <div className="wp-card-main">
           <KaartKop slug={slug} t={t} open={open} inRij={inRij}
             onToggleOpen={onToggleOpen} onRemove={onRemove}

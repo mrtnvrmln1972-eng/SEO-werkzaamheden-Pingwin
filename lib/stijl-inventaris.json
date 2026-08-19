@@ -1,6 +1,6 @@
 {
   "css": {
-    "regels": 8738,
+    "regels": 8747,
     "stijlregels": 4363,
     "classnamen": 2951
   },
@@ -1176,7 +1176,7 @@
     },
     {
       "naam": "--letter",
-      "waarde": "'Montserrat', system-ui, 'Segoe UI Symbol', 'Apple Symbols',\n    'Noto Sans Symbols 2', 'Noto Sans Symbols', sans-serif"
+      "waarde": "'Montserrat', 'Noto Sans Symbols 2', 'Noto Sans Symbols',\n    system-ui, 'Segoe UI Symbol', 'Apple Symbols', sans-serif"
     },
     {
       "naam": "--knop-klein-tekst",
@@ -1525,6 +1525,61 @@
       ]
     }
   ],
+  "icoontekens": {
+    "totaal": 873,
+    "verschillend": 37,
+    "nietTeTekenen": 0,
+    "top": [
+      {
+        "teken": "…",
+        "aantal": 294
+      },
+      {
+        "teken": "▾",
+        "aantal": 107
+      },
+      {
+        "teken": "▸",
+        "aantal": 91
+      },
+      {
+        "teken": "·",
+        "aantal": 65
+      },
+      {
+        "teken": "✓",
+        "aantal": 62
+      },
+      {
+        "teken": "—",
+        "aantal": 57
+      },
+      {
+        "teken": "→",
+        "aantal": 45
+      },
+      {
+        "teken": "€",
+        "aantal": 19
+      },
+      {
+        "teken": "“",
+        "aantal": 14
+      },
+      {
+        "teken": "”",
+        "aantal": 14
+      },
+      {
+        "teken": "−",
+        "aantal": 9
+      },
+      {
+        "teken": "⠿",
+        "aantal": 8
+      }
+    ]
+  },
   "betekenis": {
     "namen": [
       {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import HoverHint from "./_ui/HoverHint";
 import { huisstijlCssGecached } from "../lib/huisstijl";
+import { symboolFontUrls } from "../lib/icoontekens";
 
 // Zelfde code, drie werelden: het Vercel-project bepaalt het merk. De NOC-cockpit
 // (project noc-seo-cockpit) krijgt het oog van het Nationaal Oogcentrum als favicon,
@@ -32,6 +33,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        {/* De tekens die Montserrat niet heeft: pijltjes, vinkjes, driehoekjes,
+            sterretjes. Uitgeknipt tot precies die tekens, dus een paar honderd
+            bytes per stuk. Zonder deze twee valt de browser terug op wat het
+            apparaat toevallig heeft, en op een apparaat zonder symbolenlettertype
+            (zoals de server die de schermfoto's maakt) staat er een leeg
+            vierkantje. Welke tekens dit zijn staat in lib/icoontekens.ts. */}
+        {symboolFontUrls().map((href) => <link key={href} href={href} rel="stylesheet" />)}
         {stijl && <style id="huisstijl" dangerouslySetInnerHTML={{ __html: stijl }} />}
       </head>
       <body>

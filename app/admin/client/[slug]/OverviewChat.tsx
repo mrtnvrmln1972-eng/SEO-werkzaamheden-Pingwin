@@ -12,6 +12,7 @@ import { eersteKop } from "../../../../lib/chat-vouw";
 import { bestandMelding } from "../../../../lib/bestand-melding";
 import MailVenster from "./MailVenster";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
+import { Beeld, Blad } from "../../../_ui/Pijl";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst; bronnen?: Bron[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean; updatedAt: string };
@@ -521,7 +522,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                               // de complete samenvatting, nu één regel. De tekst is niet
                               // weg, hij staat één klik verderop.
                               <div className="ovc-bestand">
-                                <span className="cb-icoon" aria-hidden="true">{melding.wat === "Afbeelding" ? "🖼" : "📄"}</span>
+                                <span className="cb-icoon" aria-hidden="true">{melding.wat === "Afbeelding" ? <Beeld /> : <Blad />}</span>
                                 {melding.link
                                   ? <a className="cb-naam" href={melding.link} target="_blank" rel="noreferrer">{melding.naam}</a>
                                   : <span className="cb-naam">{melding.naam}</span>}

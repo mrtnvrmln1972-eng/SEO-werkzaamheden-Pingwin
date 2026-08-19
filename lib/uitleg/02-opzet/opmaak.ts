@@ -68,7 +68,16 @@ export const BLOKKEN: Uitklapper[] = [
         "kiest namelijk per eigenschap, dus de tekst van het teken kwam uit de gedeelde opmaak en het " +
         "bolletje eromheen uit het blok zelf. Alle veertien staan nu op de gedeelde opmaak, en de controle " +
         "telt vanaf nu élk blok na. Eén uitzondering blijft, met reden: een e-mail is bewust simpel, met " +
-        "gewone bullets en blauwe links, want dat is wat een mailprogramma ervan maakt.",
+        "gewone bullets en blauwe links, want dat is wat een mailprogramma ervan maakt.\n\n" +
+        "Datzelfde geldt voor de kleine tekens. Montserrat heeft geen pijltje, vinkje, driehoekje of " +
+        "sterretje, en die worden overal als icoon gebruikt. De browser pakte dan maar iets van het " +
+        "apparaat: op een Mac een ander lettertype dan op Windows, en op de server die de " +
+        "schermfoto's maakt niets, dus een leeg vierkantje. Wélke tekens Montserrat mist is nu " +
+        "nagemeten in de lettertypebestanden zelf; die worden bijgeladen, uitgeknipt tot precies de " +
+        "tekens die we gebruiken. Ze zien er daardoor overal hetzelfde uit, ook in tekst die het " +
+        "dashboard niet zelf schrijft. De tekens die geen enkel lettertype heeft zijn getekende " +
+        "icoontjes geworden, en een controle vóór elke bouw wordt rood zodra er een teken in beeld " +
+        "komt dat niemand kan tekenen.",
     },
     {
       titel: "Meters die maar één kant op kunnen",

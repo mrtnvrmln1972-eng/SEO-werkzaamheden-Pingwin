@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
+import { Beeld, Blad } from "../../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // DE DROPZONE VAN HET GESPREK
@@ -108,7 +109,7 @@ export default function ChatBestanden({ slug, thread }: { slug: string; thread: 
     await fetch(`/api/admin/chat-bestand?slug=${encodeURIComponent(slug)}&id=${id}`, { method: "DELETE" }).catch(() => {});
   }
 
-  const icoon = (s: ChatFile["soort"]) => (s === "afbeelding" ? "🖼" : "📄");
+  const icoon = (s: ChatFile["soort"]) => (s === "afbeelding" ? <Beeld /> : <Blad />);
   const kernVan = files.find((f) => f.id === openKern && f.kern);
 
   return (

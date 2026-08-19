@@ -11,6 +11,7 @@
 // voor hetzelfde soort venster.
 
 import { useEffect, useRef, useState } from "react";
+import { Groter, Kleiner } from "../../../_ui/Pijl";
 
 type Stand = { breedte: number; hoogte: number; x: number; y: number; vol?: boolean };
 
@@ -86,7 +87,7 @@ export default function FloatVenster({ titel, onClose, children }: { titel: stri
         <span className="zp-titel">{titel}</span>
         <span className="zp-kop-knoppen">
           <button type="button" className="btn btn-klein" title={stand.vol ? "Terug naar je eigen maat" : "Zo groot als het scherm toelaat"} onClick={() => bewaar({ ...stand, vol: !stand.vol })}>
-            {stand.vol ? "⇲ kleiner" : "⇱ groter"}
+            {stand.vol ? <><Kleiner /> kleiner</> : <><Groter /> groter</>}
           </button>
           <button type="button" className="wp-icon wp-del" title="Terugzetten in de pagina" onClick={onClose}>×</button>
         </span>

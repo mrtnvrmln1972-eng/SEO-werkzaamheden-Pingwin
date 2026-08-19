@@ -510,7 +510,7 @@ export default function Planning({
               e.dataTransfer.setData("text/plain", sleutel);
               setSleep(t);
             }}
-            onDragEnd={sleepKlaar}>⋮⋮</span>
+            onDragEnd={sleepKlaar}>⠿</span>
           {/* Hier stond een badge SEO/DEV. Weg op 11 augustus 2026: al het werk
               komt langs Maarten, dus "voor wie" zei niets en kostte wel een
               kolom in elke regel. De kolommaat in .wb-rij is meeveranderd. */}

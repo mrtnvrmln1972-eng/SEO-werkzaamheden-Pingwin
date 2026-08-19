@@ -80,6 +80,107 @@ export function Uitklap({ className }: { className?: string }) {
   return <Teken className={className} vulling><path d="M6 4l5 4-5 4z" /></Teken>;
 }
 
+/** Drie stipjes onder elkaar: hier zit een menu achter. */
+export function Kebab({ className }: { className?: string }) {
+  return (
+    <Teken className={className} vulling>
+      <circle cx="8" cy="3.5" r="1.3" /><circle cx="8" cy="8" r="1.3" /><circle cx="8" cy="12.5" r="1.3" />
+    </Teken>
+  );
+}
+
+/** Een rondje met een pijlpunt: opnieuw ophalen. */
+export function Ververs({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M13 8a5 5 0 1 1-1.6-3.7" />
+      <path d="M13.2 2.2v2.9h-2.9" />
+    </Teken>
+  );
+}
+
+/** Een gesloten slot: dit ligt vast. */
+export function Slot({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <rect x="3.2" y="7" width="9.6" height="6.5" rx="1.4" />
+      <path d="M5.6 7V5.2a2.4 2.4 0 0 1 4.8 0V7" />
+    </Teken>
+  );
+}
+
+/** Een blad papier: een document of een bestand. */
+export function Blad({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M4 2.2h5l3 3v8.6H4z" /><path d="M9 2.2v3h3" />
+    </Teken>
+  );
+}
+
+/** Een lijstje met een bergje: een afbeelding. */
+export function Beeld({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <rect x="2.5" y="3.2" width="11" height="9.6" rx="1.4" />
+      <path d="M2.9 11l3.1-3.2 2.2 2.2 2-2 2.9 3" />
+    </Teken>
+  );
+}
+
+/** Een blaadje met dagen: een datum. */
+export function Kalender({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <rect x="2.6" y="3.4" width="10.8" height="10" rx="1.4" />
+      <path d="M2.6 6.4h10.8M5.6 2.2v2.2M10.4 2.2v2.2" />
+    </Teken>
+  );
+}
+
+/** Een belletje: een herinnering. */
+export function Bel({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M4.2 11.2V7.4a3.8 3.8 0 0 1 7.6 0v3.8z" />
+      <path d="M3 11.2h10M6.9 13.2h2.2" />
+    </Teken>
+  );
+}
+
+/** Twee pijlen in een rondje: dit komt terug. */
+export function Herhaal({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M3.2 6.6A4.6 4.6 0 0 1 12.6 6M12.8 9.4A4.6 4.6 0 0 1 3.4 10" />
+      <path d="M11 5.9h1.9V4M5 10.1H3.1V12" />
+    </Teken>
+  );
+}
+
+/** Een driehoekje op zijn kant: het verschil met de vorige periode. */
+export function Verschil({ className }: { className?: string }) {
+  return <Teken className={className}><path d="M8 3.4 13.2 12.6H2.8z" /></Teken>;
+}
+
+/** Twee pijlpunten uit elkaar: maak dit venster groter. */
+export function Groter({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M9.4 2.6h4v4M13.4 2.6 9.2 6.8M6.6 13.4h-4v-4M2.6 13.4l4.2-4.2" />
+    </Teken>
+  );
+}
+
+/** Twee pijlpunten naar elkaar toe: maak dit venster kleiner. */
+export function Kleiner({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M13 3 9.2 6.8M9.2 6.8h3.4M9.2 6.8V3.4M3 13l3.8-3.8M6.8 9.2H3.4M6.8 9.2v3.4" />
+    </Teken>
+  );
+}
+
 /**
  * De gedeelde vorm onder elk teken hierboven.
  *

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Bel, Herhaal, Kalender } from "../../_ui/Pijl";
 
 // Compacte datumknop: een badge die je aanklikt, en die dan een klein
 // zwevend paneel toont met Datum/Duur, Herinnering en Herhalen. Domme schil
@@ -62,7 +63,7 @@ export default function DatumKnop({
   return (
     <div className={`ag-datumknop-wrap${subtiel ? " ag-datumknop-wrap-subtiel" : ""}`}>
       <button ref={btnRef} type="button" className={`ag-datumknop${subtiel ? " ag-datumknop-subtiel" : ""}`} onClick={() => setOpen((o) => !o)}>
-        📅 {label}
+        <Kalender /> {label}
       </button>
       {open && (
         <div
@@ -80,12 +81,12 @@ export default function DatumKnop({
           )}
           <div className="ag-datumknop-tabcontent">{!duurSlot || tab === "datum" ? datumSlot : duurSlot}</div>
           <div className="ag-datumknop-section">
-            <span className="ag-datumknop-section-kop">🔔 Herinnering</span>
+            <span className="ag-datumknop-section-kop"><Bel /> Herinnering</span>
             {reminderSlot}
           </div>
           {herhaalSlot && (
             <div className="ag-datumknop-section">
-              <span className="ag-datumknop-section-kop">🔁 Herhalen</span>
+              <span className="ag-datumknop-section-kop"><Herhaal /> Herhalen</span>
               {herhaalSlot}
             </div>
           )}

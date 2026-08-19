@@ -53,7 +53,9 @@ const VERANDERD: { wat: string; was: string; is: string }[] = [
   { wat: "Schaduwen buiten de schaal", was: "45", is: "2" },
   { wat: "Namen voor dezelfde soort knop", was: "13", is: "1" },
   { wat: "Lettertypes voor code", was: "6 varianten", is: "1" },
-  { wat: "Icoontjes als letter in beeld", was: "18 plekken", is: "0" },
+  // "Icoontjes als letter in beeld" stond hier als "18 plekken → 0". Dat was
+  // getypt, niet geteld, en het waren er 419. Die regel wordt nu bij het
+  // renderen uit de meting gehaald, net als de rest van dit scherm.
   { wat: "Losse opmaak in de schermen zelf", was: "50 plekken", is: "0" },
   { wat: "Plekken die uit de betekenislaag lezen", was: "geen", is: "ruim 8.500" },
 ];
@@ -191,6 +193,16 @@ export default function StijlClient({ meting, plafond, doel, klant }: Props) {
                   <td className="stijl-tabel-is">{r.is}</td>
                 </tr>
               ))}
+              {/* Deze regel komt uit de meting zelf. Hij stond hier tot 19-08-2026
+                  als een getypte "0" terwijl er 419 tekens in beeld stonden en er
+                  vierentwintig als leeg vierkantje werden getekend. */}
+              <tr>
+                <td>Icoontjes als letter in beeld</td>
+                <td className="stijl-tabel-was">419, waarvan 24 onleesbaar</td>
+                <td className="stijl-tabel-is">
+                  {meting.icoontekens.totaal}, waarvan {meting.icoontekens.nietTeTekenen} onleesbaar
+                </td>
+              </tr>
             </tbody>
           </table>
           <p className="stijl-p stijl-p-klein">

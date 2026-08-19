@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ImportItem } from "../../../../lib/analysis-import";
-import { PijlLinks } from "../../../_ui/Pijl";
+import { PijlLinks, Slot } from "../../../_ui/Pijl";
 
 export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string; onClose: () => void; onDone: () => void }) {
   const [step, setStep] = useState<"upload" | "review">("upload");
@@ -103,7 +103,7 @@ export default function ImportAnalysis({ slug, onClose, onDone }: { slug: string
                       <td><input type="checkbox" checked={it.accept} onChange={() => toggle(i)} /></td>
                       <td><span className={"import-flag " + it.flag} title={it.flagReason}>{it.flag === "green" ? "●" : "▲"}</span></td>
                       <td className="import-url">{it.url}{it.stad ? <span className="muted"> · {it.stad}</span> : null}</td>
-                      <td>{it.actie || <span className="muted">&mdash;</span>}{it.task.geblokkeerd && <span className="import-lock" title={it.task.blokkadeReden}> 🔒</span>}</td>
+                      <td>{it.actie || <span className="muted">&mdash;</span>}{it.task.geblokkeerd && <span className="import-lock" title={it.task.blokkadeReden}> <Slot /></span>}</td>
                       <td className="import-taak">{it.task.taak}</td>
                       <td>{it.task.fase ? <span className="import-fase">{it.task.fase}</span> : <span className="muted">&mdash;</span>}</td>
                     </tr>
