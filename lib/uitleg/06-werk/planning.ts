@@ -54,6 +54,13 @@ export const BLOKKEN: Uitklapper[] = [
       "weggeschreven na een korte stilte tijdens het typen, zodra je buiten het veld klikt, op het moment dat " +
       "de taak dichtklapt, en als het tabblad naar de achtergrond gaat. De laatste twee gaan mee met een " +
       "verzoek dat de browser afmaakt ook als het scherm al weg is; anders sneuvelt het precies dán.\n\n" +
+      "**En sinds 19 augustus 2026 zie je dat ook terug.** Het wegschrijven klopte, maar wat je daarna " +
+      "terugzag niet: de takenlijst eromheen hield de tekst vast zoals die bij het laden van de pagina was. " +
+      "Klapte je de taak dicht en weer open, dan stond je aantekening er weer af, en typte je daarop verder, " +
+      "dan ging de goede tekst er alsnog aan. In het overzicht over álle klanten was het nog een slag erger: " +
+      "daar werd de aantekening helemaal niet meegeleverd, dus was het veld daar altijd leeg. Allebei " +
+      "gerepareerd: wat je bewaart komt meteen in de lijst te staan, en een proef bewaakt nu dat een kaart " +
+      "geen veld kan uitlezen dat de vraag aan de database niet ophaalt.\n\n" +
       "**Zelf een taak toevoegen is één regel typen.** Er stonden eerder drie dingen bij: een apart veld voor " +
       "de pagina, een keuze SEO / sitebouwer / klant, en een regel die herhaalde op welke dag hij zou komen. " +
       "Alle drie eruit. De dag zet je zelf met de datumknop op de regel, het werk komt hoe dan ook langs " +

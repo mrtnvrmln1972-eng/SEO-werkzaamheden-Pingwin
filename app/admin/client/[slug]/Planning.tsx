@@ -27,7 +27,7 @@
 // de documenten, de fases en de mailknoppen. Geen tweede, magere versie die kan
 // achterlopen.
 
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { urlKey } from "../../../../lib/url-key";
 import { volgendeFase, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import { weekVanIso } from "../../../../lib/week-datum";
@@ -147,6 +147,26 @@ export default function Planning({
   // Er viel dus niets meer op te ruimen, terwijl de knop wél op elk moment
   // twintig kaarten kon herschrijven zonder dat iemand ernaar keek.
 
+  // ── Aantekeningen die hier zelf bewaard zijn ──
+  // De kaart schrijft een aantekening meteen weg naar de database, maar deze
+  // lijst haalt zijn taken maar af en toe opnieuw op. Stond hier de tekst van
+  // bij het laden, dan kwam een kaart na dichtklappen weer op met de óude
+  // aantekening: het leek alsof er niets bewaard was, en typte je daarop verder
+  // dan overschreef dat de goede tekst. Wat de kaart bewaart, komt daarom
+  // meteen hierin te staan, en een verversing van het bord laat het staan.
+  const verseNotities = useRef<Map<string, string>>(new Map());
+  function metVerseNotities(lijst: Taak[]): Taak[] {
+    if (!verseNotities.current.size) return lijst;
+    return lijst.map((t) => {
+      const vers = verseNotities.current.get(`${t.slug}:${t.id}`);
+      return vers === undefined ? t : { ...t, notitie: vers };
+    });
+  }
+  function notitieBewaard(t: Taak, html: string) {
+    verseNotities.current.set(`${t.slug}:${t.id}`, html);
+    setTaken((lijst) => lijst.map((x) => (x.id === t.id && x.slug === t.slug ? { ...x, notitie: html } : x)));
+  }
+
   // ── Laden ──
   // Twee bronnen, één vorm. De klant-route doet onderweg ook het onderhoud
   // (kaarten per pagina splitsen, fase-standen vastleggen); die blijft dus in
@@ -171,11 +191,11 @@ export default function Planning({
         if (!d?.ok) { setFout(d?.error || "De planning kon niet geladen worden."); return; }
         setFout("");
         if (alleKlanten) {
-          setTaken((d.tasks || []) as Taak[]);
+          setTaken(metVerseNotities((d.tasks || []) as Taak[]));
           setPages((d.pages || {}) as Pages);
         } else {
-          setTaken(((d.tasks || []) as Omit<Taak, "slug" | "klant" | "klantMail">[])
-            .map((t) => ({ ...t, slug, klant: clientName, klantMail: clientEmail || "" })));
+          setTaken(metVerseNotities(((d.tasks || []) as Omit<Taak, "slug" | "klant" | "klantMail">[])
+            .map((t) => ({ ...t, slug, klant: clientName, klantMail: clientEmail || "" }))));
           setPages({ [slug]: (d.pages || {}) as Record<string, WpPageInfo> });
         }
         setCurrent(d.current || null);
@@ -606,6 +626,7 @@ export default function Planning({
               onGoToPage={onGoToPage && t.slug === slug ? onGoToPage : (u) => window.open(`/admin/client/${t.slug}?tab=paginas&page=${encodeURIComponent(u)}`, "_blank")}
               onGoToTab={onGoToTab && t.slug === slug ? onGoToTab : (tab) => window.open(`/admin/client/${t.slug}?tab=${tab}`, "_blank")}
               refreshBoard={() => void laad()}
+              onNotitie={(html) => notitieBewaard(t, html)}
             />
           </div>
         )}

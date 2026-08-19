@@ -81,7 +81,7 @@ export async function getWeekplanAlleKlanten(
   if (slugs && slugs.length === 0) return [];
   const mag = slugs ? new Set(slugs.map((s) => s.trim().toLowerCase())) : null;
   const { rows } = await sql`
-    SELECT w.id, w.client_slug, c.name AS klant, c.email AS klant_mail, w.thread, w.taak, w.toelichting, w.wie, w.url, w.taaktype,
+    SELECT w.id, w.client_slug, c.name AS klant, c.email AS klant_mail, w.thread, w.taak, w.toelichting, w.notitie, w.wie, w.url, w.taaktype,
            w.copy_url, w.bron_mail, w.week_year, w.week_no, w.status, w.sort_order, w.naar_dev,
            w.taak_handmatig, w.ruw, COALESCE(jsonb_array_length(w.archief), 0) AS archief_aantal,
            to_char(w.datum, 'YYYY-MM-DD') AS datum

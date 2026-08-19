@@ -25,13 +25,30 @@
 // De laatste twee gaan met `keepalive` de deur uit: een gewone fetch wordt door
 // de browser afgebroken zodra het onderdeel of de pagina verdwijnt, en dat is
 // precies het moment waarop het moet lukken.
+//
+// ── En waarom het tóch leek alsof hij niet bewaarde (19 augustus 2026) ──
+// Het wegschrijven klopte al die tijd; wat er niet klopte was wat je daarna
+// terugzag. Dit blokje krijgt zijn begintekst (`start`) uit de takenlijst van de
+// planning, en die lijst werd na het bewaren niet bijgewerkt. Klapte je de taak
+// dicht en weer open, dan verdween dit blokje van het scherm en kwam het opnieuw
+// op met de tekst zoals die bij het láden van de pagina was: dus leeg, of zonder
+// wat je net had toegevoegd. Precies het beeld "hij bewaart niet". Erger nog:
+// typte je daarna verder op die oude tekst, dan overschreef dat de goede.
+// Daarom meldt dit blokje elke bewaarde tekst nu terug naar boven
+// (`onBewaard`), zodat de lijst waar hij vandaan komt meteen klopt.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 
 const WACHT_MS = 400;
 
-export default function KaartNotitie({ slug, id, start, toolbarExtra }: { slug: string; id: number; start: string; toolbarExtra?: ReactNode }) {
+export default function KaartNotitie({ slug, id, start, toolbarExtra, onBewaard }: {
+  slug: string; id: number; start: string; toolbarExtra?: ReactNode;
+  /** Wat er zojuist is weggeschreven, zodat het scherm eromheen niet met een
+      oudere versie blijft rondlopen. Optioneel: zonder dit werkt het bewaren
+      gewoon, alleen kan een lijst er dan naast zitten. */
+  onBewaard?: (html: string) => void;
+}) {
   const [waarde, setWaarde] = useState(start);
   const [stand, setStand] = useState<"" | "bezig" | "bewaard" | "fout">("");
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,6 +58,11 @@ export default function KaartNotitie({ slug, id, start, toolbarExtra }: { slug: 
   // ref. Zou hij naar de state kijken, dan zag hij de tekst van het allereerste
   // moment, en bewaarde hij dus niets.
   const nu = useRef(start);
+  // Via een ref, want het afscheid hieronder draait uit een effect dat maar één
+  // keer wordt opgezet; die zou anders de melder van de eerste tekening
+  // vasthouden.
+  const melder = useRef(onBewaard);
+  melder.current = onBewaard;
 
   function stopKlok() {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
@@ -67,7 +89,12 @@ export default function KaartNotitie({ slug, id, start, toolbarExtra }: { slug: 
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, id, notitie: onderweg }),
       }).then((r) => r.json());
-      if (d?.ok) { laatst.current = onderweg; setStand("bewaard"); setTimeout(() => setStand(""), 1500); }
+      if (d?.ok) {
+        laatst.current = onderweg;
+        melder.current?.(onderweg);
+        setStand("bewaard");
+        setTimeout(() => setStand(""), 1500);
+      }
       else setStand("fout");
     } catch { setStand("fout"); }
   }
@@ -84,6 +111,12 @@ export default function KaartNotitie({ slug, id, start, toolbarExtra }: { slug: 
     // kwijt. Wel onthouden wát er net weg is, zodat hetzelfde afscheid niet
     // twee keer dezelfde tekst stuurt.
     directGestuurd.current = html;
+    // Meteen doorgeven aan het scherm eromheen, vóór het verzoek de deur uit
+    // gaat: dit is juist het moment waarop dit blokje verdwijnt (de taak klapt
+    // dicht), en dan is er straks niemand meer om het antwoord af te wachten.
+    // Precies daar ging het mis: de kaart ging dicht, kwam weer op met de oude
+    // tekst uit de lijst, en het leek alsof er niets bewaard was.
+    melder.current?.(html);
     // keepalive: de browser maakt dit verzoek af, ook als dit blokje of de hele
     // pagina op datzelfde moment weg is.
     fetch("/api/admin/weekplan", {

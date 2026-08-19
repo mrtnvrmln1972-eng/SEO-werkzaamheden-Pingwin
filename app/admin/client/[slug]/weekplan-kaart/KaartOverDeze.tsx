@@ -42,11 +42,13 @@ export function cijferRegel(p?: { vertoningen?: number; klikken?: number; doorge
   return delen.join(" · ");
 }
 
-export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate, onLijstPunt }: {
+export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate, onLijstPunt, onNotitie }: {
   slug: string; t: WpTask; page?: WpPageInfo; mailLinks?: MailLinks;
   onOpenMailDate?: (datum: string) => void;
   /** Een aanpak-punt uit de kaarttekst doorgeven aan de bespreeklijst. */
   onLijstPunt: (tekst: string) => void;
+  /** Zojuist bewaarde aantekening, terug naar de lijst waar deze kaart uit komt. */
+  onNotitie?: (html: string) => void;
 }) {
   const hasInfo = !!t.toelichting.trim();
   // Plek in de knoppenbalk van de aantekeningen waar het "document toevoegen"-
@@ -194,6 +196,7 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
       {/* Je eigen aantekeningen. Los van de kaarttekst die de assistent
           schreef: geen automatische stap raakt dit veld aan. */}
       <KaartNotitie slug={slug} id={t.id} start={t.notitie || ""}
+        onBewaard={onNotitie}
         toolbarExtra={<span ref={setNotitieDocSlot} />} />
     </div>
   );

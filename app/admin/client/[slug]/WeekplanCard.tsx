@@ -31,7 +31,7 @@ import type { WpTask, WpPageInfo } from "./weekplan-kaart/types";
 // importeren deze types al jaren vanaf hier.
 export type { WpTask, WpPageInfo };
 
-export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen, onDragStart, onDragEnd, onRemove, onMail, onOpenMailDate, mailLinks, refreshBoard }: {
+export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen, onDragStart, onDragEnd, onRemove, onMail, onOpenMailDate, mailLinks, refreshBoard, onNotitie }: {
   slug: string; t: WpTask; page?: WpPageInfo; open: boolean;
   /** Hangt deze kaart onder een regel in de planning? Dan toont die regel de
       titel, het pad en de fase-letters al, en wordt de kaartkop één actiebalk.
@@ -41,6 +41,10 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
   onStatus: () => void; onRemove: () => void; onMail: (aud: "klant" | "dev") => void;
   onGoToPage?: (url: string) => void; onGoToTab?: (tab: string) => void;
   onOpenMailDate?: (datum: string) => void; mailLinks?: MailLinks; refreshBoard: () => void;
+  /** Een zojuist bewaarde aantekening, terug naar de lijst waar deze kaart uit
+      komt. Zonder dit blijft die lijst met de tekst van bij het laden zitten, en
+      dan lijkt het na dichtklappen alsof er niets bewaard is. */
+  onNotitie?: (html: string) => void;
 }) {
   const hasInfo = !!t.toelichting.trim();
   // Eén bezet-vlag voor de hele kaart: opschonen en een fase starten mogen niet
@@ -97,7 +101,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               document bij leggen, terwijl dat juist het eerste is wat je wilt doen. */}
           {open && (
             <KaartOverDeze slug={slug} t={t} page={page} mailLinks={mailLinks}
-              onOpenMailDate={onOpenMailDate} onLijstPunt={lijst.kies} />
+              onOpenMailDate={onOpenMailDate} onLijstPunt={lijst.kies} onNotitie={onNotitie} />
           )}
 
           {open && <BespreeklijstKeuze lijst={lijst} />}
