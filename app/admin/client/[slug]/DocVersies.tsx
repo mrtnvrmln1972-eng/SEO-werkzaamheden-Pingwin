@@ -498,10 +498,10 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                   de sitebouwer moet leggen, en wat er niet klopt. Dat laatste
                   wordt in code nagerekend, niet door het taalmodel beloofd. */}
               {steunUit?.id === v.id && (
-                <div className="wp-steun-uit">
+                <div className="wp-steun-uit md">
                   <strong>{steunUit.plan.kop}</strong>
                   {steunUit.plan.doelen.length > 0 && (
-                    <table className="wp-steun-tabel">
+                    <table className="md-table">
                       <thead><tr><th>Landingspagina</th><th>Blijft de baas op</th><th>Dit stuk mikt op</th></tr></thead>
                       <tbody>
                         {steunUit.plan.doelen.map((d, i) => (
@@ -518,14 +518,14 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                     <ul>{steunUit.plan.wijzigingen.map((w, i) => <li key={i}>{w}</li>)}</ul>
                   )}
                   {steunUit.plan.links.length > 0 && (
-                    <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(
+                    <div dangerouslySetInnerHTML={{ __html: netteHtml(
                       "**Links vanuit dit stuk:** " + steunUit.plan.links.map((l) => `${padVan(l.naar)} met linktekst "${l.anker}"`).join("; "),
                     ) }} />
                   )}
                   {steunUit.plan.waarschuwingen.length > 0 && (
                     <ul className="wp-steun-letop">{steunUit.plan.waarschuwingen.map((w, i) => <li key={i}>{w}</li>)}</ul>
                   )}
-                  {steunUit.link && <a className="wp-link" href={docsBewerkLink(steunUit.link)} target="_blank" rel="noreferrer">het aangepaste document openen</a>}
+                  {steunUit.link && <p><a href={docsBewerkLink(steunUit.link)} target="_blank" rel="noreferrer">het aangepaste document openen</a></p>}
                 </div>
               )}
 

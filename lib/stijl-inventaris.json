@@ -1,7 +1,7 @@
 {
   "css": {
     "regels": 8886,
-    "stijlregels": 4358,
+    "stijlregels": 4355,
     "classnamen": 2962
   },
   "kleuren": {
@@ -377,7 +377,7 @@
     },
     {
       "naam": "Tabellen",
-      "aantal": 21,
+      "aantal": 20,
       "namen": [
         "chat-table",
         "dev-afgerond-tabel",
@@ -398,7 +398,6 @@
         "stijl-tabel",
         "task-table",
         "uk-tabel",
-        "wp-steun-tabel",
         "wz-kw-table"
       ]
     },
@@ -587,7 +586,7 @@
     }
   ],
   "inline": {
-    "totaal": 612,
+    "totaal": 613,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1910,7 +1909,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8512,
-    "schaalGebruik": 1471
+    "gebruik": 8509,
+    "schaalGebruik": 1470
   }
 }

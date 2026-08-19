@@ -3726,10 +3726,10 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
   border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); background: var(--kleur-kaart); }
 .wp-steun-map { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; color: var(--kleur-tekst); }
 .wp-steun-acties { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
-.wp-steun-tabel { width: 100%; border-collapse: collapse; }
-.wp-steun-tabel th, .wp-steun-tabel td { text-align: left; padding: var(--ruimte-krap) var(--ruimte-naast);
-  border-bottom: 1px solid var(--kleur-rand-zacht); vertical-align: top; }
-.wp-steun-uit ul { margin: 0; padding-left: var(--s-4); }
+/* De uitkomst staat in een .md-container, dus de tabel, de opsomming en de
+   links komen uit het gedeelde opmaakblok bovenaan dit bestand. Hier stond een
+   eigen tabel met een eigen kop, en die werd een zwarte balk terwijl diezelfde
+   tabel overal elders een licht-oranje kop heeft. Geen tweede uiterlijk meer. */
 .wp-steun-letop { color: var(--danger); }
 
 /* Voorvertoning van een document (spatiebalk). */
