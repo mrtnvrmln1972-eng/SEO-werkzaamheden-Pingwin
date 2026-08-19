@@ -5695,6 +5695,11 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .lead-kaart-koppel-rij { display: flex; gap: var(--ruimte-naast); align-items: center; flex-wrap: wrap; margin-top: var(--ruimte-regel); }
 .lead-kaart-koppel-rij input { flex: 1 1 220px; min-width: 0; }
 .lead-mail { margin-bottom: var(--ruimte-blok); }
+/* De mailwisseling staat in de smalle kolom. Naast de titel is te weinig ruimte
+   voor twee knoppen, dus daar staan ze eronder in plaats van dat hun tekst over
+   twee regels breekt. Alleen plaatsing, geen ander uiterlijk. */
+.lead-mail .lead-blok-kop { flex-direction: column; align-items: stretch; }
+.lead-mail .pnl-acties-groep { flex-wrap: wrap; }
 .lead-tijdlijn { margin-top: var(--ruimte-blok); }
 .lead-tijdregel {
   display: flex; gap: var(--ruimte-regel); align-items: flex-start;
