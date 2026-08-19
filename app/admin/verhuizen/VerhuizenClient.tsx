@@ -94,9 +94,15 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
   // keuzelijst bestaat pas als er iemand met de muis iets aanklikt. Bewust via
   // window en niet via useSearchParams, want dat laatste dwingt een extra
   // wachtlaag af op elke pagina die deze schil gebruikt.
+  const [uitAdres, setUitAdres] = useState<string>("");
   useEffect(() => {
-    const uitAdres = new URLSearchParams(window.location.search).get("klant");
-    if (uitAdres) setSlug(uitAdres.trim().toLowerCase());
+    const q = new URLSearchParams(window.location.search);
+    const k = q.get("klant");
+    if (k) setSlug(k.trim().toLowerCase());
+    // Met ?voordeur=… erbij kijk je meteen naar een adres zonder het te bewaren.
+    // Zo is een controle als link te delen ("kijk zelf, dit staat er nu").
+    const v = (q.get("voordeur") || "").trim();
+    if (v) { setVoordeur(v); setUitAdres(v); }
   }, []);
 
   useEffect(() => {
@@ -109,15 +115,17 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
     if (!slug) { setTelling(null); setKaart(null); setCodeStand(null); setVoordeur(""); setVoordeurUit(null); return; }
     setNieuweCode(""); setRegels([]); setVoordeurUit(null);
     void haalOp(slug);
-    fetch(`/api/admin/voordeur?slug=${encodeURIComponent(slug)}`)
+    fetch(`/api/admin/voordeur?slug=${encodeURIComponent(slug)}${uitAdres ? `&adres=${encodeURIComponent(uitAdres)}` : ""}`)
       .then((r) => r.json())
       .then((d) => {
         if (!d?.ok) return;
-        setVoordeur(String(d.adres || ""));
+        // Een adres uit de link wint van het bewaarde adres: dat is precies waar
+        // je naar kwam kijken.
+        if (!uitAdres) setVoordeur(String(d.adres || ""));
         setVoordeurUit((d.uitkomst as Voordeur) || null);
       })
       .catch(() => {});
-  }, [slug, haalOp]);
+  }, [slug, uitAdres, haalOp]);
 
   // Bewaart het adres en vraagt de voordeur meteen wie hij is. Eén knop, want
   // een adres bewaren zonder te weten of het klopt heeft geen waarde.
