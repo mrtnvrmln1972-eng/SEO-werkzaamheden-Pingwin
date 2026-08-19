@@ -155,14 +155,37 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
 
-  // Alle gesprekken (threads) van deze klant laden voor de keuzelijst.
+  // Alle gesprekken (threads) van deze klant laden voor de keuzelijst, en meteen
+  // het gesprek kiezen waar je gebleven was: het laatst bijgewerkte. Zonder dat
+  // opende het venster altijd op het basisgesprek, en dat is bij een klant die
+  // zijn gesprekken onder een eigen naam heeft staan gewoon een leeg scherm,
+  // terwijl er drie lopende gesprekken in de keuzelijst staan.
+  const gekozenRef = useRef(false);
   useEffect(() => {
-    fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setThreads(d.threads || []); }).catch(() => {});
+    fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => {
+      if (!d.ok) return;
+      const lijst = (d.threads || []) as { thread: string; count: number; updatedAt: string; title?: string }[];
+      setThreads(lijst);
+      if (gekozenRef.current || messages.length) return;
+      // De lijst komt op laatst-gewijzigd binnen; een leeg gesprek slaan we over.
+      const laatste = lijst.find((t) => isSiteGesprek(t.thread) && t.count > 0);
+      if (!laatste || laatste.thread === threadRef.current) return;
+      gekozenRef.current = true;
+      setThread(laatste.thread);
+      // Stond het venster al open toen deze lijst binnenkwam, dan is de historie
+      // van het basisgesprek al geladen; die van het gekozen gesprek dus ook halen.
+      if (loadedRef.current) {
+        fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(laatste.thread)}&nothreads=1`)
+          .then((r) => r.json()).then((c) => { if (c?.ok && Array.isArray(c.messages)) setMessages(c.messages); }).catch(() => {});
+      }
+    }).catch(() => {});
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [slug]);
 
   // Wisselen naar een ander gesprek: de historie van dat gesprek laden.
   async function switchThread(t: string) {
     if (t === thread) return;
+    gekozenRef.current = true;
     setThread(t); setMessages([]); setError("");
     const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t)}`).then((r) => r.json()).catch(() => null);
     if (d?.ok) { setMessages(d.messages || []); setThreads(d.threads || []); }
@@ -172,7 +195,7 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
   // vanuit de KPI-tab): luistert naar een window-event.
   useEffect(() => {
     function onOpen(e: Event) {
-      const t = ((e as CustomEvent).detail?.thread as string) || "algemeen";
+      const t = ((e as CustomEvent).detail?.thread as string) || GESPREK_BASIS;
       setCollapsed(false);
       switchThread(t);
     }
