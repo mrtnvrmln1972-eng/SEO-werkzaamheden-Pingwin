@@ -2837,12 +2837,15 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .strategy-head .strategy-meta-right { margin-left: auto; font-weight: 400; font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); }
 .strategy-caret { color: var(--kleur-accent); font-size: var(--type-bijschrift); }
 .strategy-body { padding: var(--ruimte-regel) var(--ruimte-groep) var(--ruimte-groep); display: flex; flex-direction: column; gap: var(--ruimte-naast); }
-/* Een blok op het beheerscherm: de knop van dat blok staat rechts in dezelfde
-   kopbalk als de titel, zodat hij ook zichtbaar is als het blok dicht staat.
-   De kaart staat al op position: relative, dus dit hangt aan de kopbalk zelf. */
-.vouwblok .strategy-head { padding-right: var(--s-12); }
-.vouwblok-actie { position: absolute; top: var(--ruimte-krap); right: var(--ruimte-groep); display: flex; align-items: center; gap: var(--ruimte-naast); }
-.vouwblok .strategy-body > .task-table-wrap { margin: 0; }
+/* Een blok op het beheerscherm. De kopbalk is bewust dezelfde zwarte balk als
+   de kolomkop van de tabel eronder: dat is de balk die je op dit scherm herkent.
+   De knop van het blok staat er rechts in, zodat hij ook zichtbaar is als het
+   blok dicht staat; de kaart staat al op position: relative. */
+.vouwblok .strategy-head { background: var(--dark); color: var(--white); align-items: center; padding-right: var(--s-12); }
+.vouwblok .strategy-head:hover .strategy-title { color: var(--kleur-accent); }
+.vouwblok .strategy-sub { color: var(--kleur-accent-vlak); }
+.vouwblok-actie { position: absolute; top: var(--ruimte-krap); right: var(--ruimte-naast); display: flex; align-items: center; gap: var(--ruimte-naast); }
+.vouwblok .strategy-body > .task-table-wrap { margin: 0; box-shadow: none; }
 .strategy-session { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); background: var(--kleur-kaart); }
 .strategy-session-head { display: flex; align-items: center; gap: var(--ruimte-naast); padding: var(--ruimte-krap) var(--ruimte-naast) var(--ruimte-krap) var(--ruimte-krap); }
 .strategy-session-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: var(--ruimte-naast); background: none; border: none; padding: var(--ruimte-naast) var(--ruimte-naast); font-family: inherit; font-size: var(--type-lopend); font-weight: 600; color: var(--dark); text-align: left; cursor: pointer; }
