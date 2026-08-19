@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import type { Mail } from "./LeadMail";
 
 // ═══════════════════════════════════════════════════════════
 // DE TIJDLIJN VAN EEN LEAD
@@ -17,7 +18,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 type DossierItem = { id: number; soort: string; titel: string; samenvatting: string; bron: string; driveLink: string; createdAt: string };
 type LeadDoc = { id: number; titel: string; driveLink: string; createdAt: string };
-type Mail = { id: string; subject: string | null; fromName: string | null; fromAddress: string | null; receivedAt: string | null; superhumanLink: string | null; webLink: string | null };
 
 type Regel = { sleutel: string; datum: string; label: string; titel: string; onder: string; link: string };
 
@@ -27,18 +27,8 @@ function datumLang(iso: string): string {
   } catch { return iso.slice(0, 10); }
 }
 
-export default function LeadTijdlijn({ slug, items, docs }: { slug: string; items: DossierItem[]; docs: LeadDoc[] }) {
-  const [mails, setMails] = useState<Mail[]>([]);
+export default function LeadTijdlijn({ items, docs, mails }: { items: DossierItem[]; docs: LeadDoc[]; mails: Mail[] }) {
   const [alles, setAlles] = useState(false);
-
-  const laadMail = useCallback(async () => {
-    try {
-      const d = await fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
-      if (d.ok && Array.isArray(d.emails)) setMails(d.emails.slice(0, 25));
-    } catch { /* stil: zonder mail is de tijdlijn nog steeds bruikbaar */ }
-  }, [slug]);
-
-  useEffect(() => { laadMail(); }, [laadMail]);
 
   const regels = useMemo<Regel[]>(() => {
     const uit: Regel[] = [];

@@ -40,12 +40,16 @@ export default function HubSpotBlok() {
   const [stand, setStand] = useState<Stand | null>(null);
   const [bezig, setBezig] = useState("");
   const [melding, setMelding] = useState<{ ok: boolean; text: string } | null>(null);
+  // Waarom er niets te zien is. Zonder dit blijft er "Bezig met ophalen…" staan
+  // bij een gast of een meekijksessie, en dan lijkt het scherm vast te lopen.
+  const [geenToegang, setGeenToegang] = useState("");
 
   const laad = useCallback(async () => {
     try {
-      const d = (await fetch("/api/admin/hubspot").then((r) => r.json())) as Stand;
-      if (d.ok) setStand(d);
-    } catch { /* stil */ }
+      const d = (await fetch("/api/admin/hubspot").then((r) => r.json())) as Stand & { error?: string };
+      if (d.ok) { setStand(d); setGeenToegang(""); }
+      else setGeenToegang(d.error || "De koppeling is nu niet op te halen.");
+    } catch { setGeenToegang("De koppeling is nu niet op te halen."); }
   }, []);
 
   useEffect(() => { laad(); }, [laad]);
@@ -83,7 +87,7 @@ export default function HubSpotBlok() {
 
       {melding && <div className={melding.ok ? "saved-msg" : "login-error"} style={{ marginBottom: "var(--s-4)" }}>{melding.text}</div>}
 
-      {!stand && <p className="muted">Bezig met ophalen…</p>}
+      {!stand && <p className="muted">{geenToegang || "Bezig met ophalen…"}</p>}
 
       {stand && !stand.gekoppeld && (
         <div className="created-box">

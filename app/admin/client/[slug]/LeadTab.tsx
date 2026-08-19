@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import LeadChat from "./LeadChat";
 import LeadKaart from "./LeadKaart";
-import LeadMail from "./LeadMail";
+import LeadMail, { type Mail } from "./LeadMail";
 import LeadTijdlijn from "./LeadTijdlijn";
 import { netteHtml } from "../../../../lib/nette-html";
 import { voorvertoningLink } from "../../../../lib/drive-id";
@@ -43,6 +43,8 @@ export default function LeadTab({ slug, naam, domain, email = "" }: { slug: stri
   const [opdracht, setOpdracht] = useState("");
   const [sleep, setSleep] = useState(false);
   const bestandRef = useRef<HTMLInputElement | null>(null);
+  const [mails, setMails] = useState<Mail[]>([]);
+  const [mailVerbonden, setMailVerbonden] = useState<boolean | null>(null);
 
   const laad = useCallback(async () => {
     try {
@@ -56,6 +58,21 @@ export default function LeadTab({ slug, naam, domain, email = "" }: { slug: stri
   }, [slug]);
 
   useEffect(() => { laad(); }, [laad]);
+
+  // De mail wordt hier één keer opgehaald en doorgegeven aan de mailwisseling én
+  // de tijdlijn. Haalden die hem allebei zelf op, dan stonden er twee identieke
+  // verzoeken tegelijk uit naar dezelfde mailbox en konden ze een ander antwoord
+  // krijgen; dat gebeurde op 19-08-2026 meteen op het eerste scherm.
+  const laadMail = useCallback(async () => {
+    try {
+      const d = await fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
+      if (!d.ok) { setMailVerbonden(false); return; }
+      setMailVerbonden(d.connected !== false);
+      setMails(Array.isArray(d.emails) ? d.emails.slice(0, 25) : []);
+    } catch { setMailVerbonden(false); }
+  }, [slug]);
+
+  useEffect(() => { laadMail(); }, [laadMail]);
 
   async function bewaarTekst() {
     const t = tekst.trim();
@@ -142,11 +159,11 @@ export default function LeadTab({ slug, naam, domain, email = "" }: { slug: stri
       <div className="lead-grid">
       <div className="lead-kolom-links">
         <LeadChat slug={slug} naam={naam} domain={domain} onVeranderd={laad} />
-        <LeadTijdlijn slug={slug} items={items} docs={docs} />
+        <LeadTijdlijn items={items} docs={docs} mails={mails} />
       </div>
 
       <div className="lead-kolom-rechts">
-        <LeadMail slug={slug} naam={naam} email={email} />
+        <LeadMail slug={slug} naam={naam} email={email} mails={mails} verbonden={mailVerbonden} onVernieuw={laadMail} />
 
         {melding && (
           <div className={melding.ok ? "saved-msg" : "login-error"} style={{ marginBottom: "var(--s-4)" }}>{melding.text}</div>

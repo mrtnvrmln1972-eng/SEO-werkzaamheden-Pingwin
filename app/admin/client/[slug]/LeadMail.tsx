@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import MailVenster from "./MailVenster";
 
 // ═══════════════════════════════════════════════════════════
@@ -14,7 +14,7 @@ import MailVenster from "./MailVenster";
 // antwoorden. Eén bron voor mail, en dat is de mailbox.
 // ═══════════════════════════════════════════════════════════
 
-type Mail = {
+export type Mail = {
   id: string; subject: string | null; fromName: string | null; fromAddress: string | null;
   receivedAt: string | null; preview: string | null; webLink: string | null; superhumanLink: string | null;
 };
@@ -24,22 +24,18 @@ function datum(iso: string | null): string {
   try { return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return ""; }
 }
 
-export default function LeadMail({ slug, naam, email }: { slug: string; naam: string; email: string }) {
-  const [mails, setMails] = useState<Mail[]>([]);
-  const [verbonden, setVerbonden] = useState<boolean | null>(null);
+export default function LeadMail({ slug, naam, email, mails, verbonden, onVernieuw }: {
+  slug: string; naam: string; email: string;
+  // De mails komen van boven, uit één ophaalronde. Haalde dit blok ze zelf op,
+  // dan stonden er twee identieke verzoeken tegelijk uit naar dezelfde mailbox
+  // en kon het ene "vijftien mails" zeggen terwijl het andere leeg terugkwam.
+  // Dat is precies wat er op 19-08 op het scherm stond.
+  mails: Mail[];
+  verbonden: boolean | null;
+  onVernieuw: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [schrijven, setSchrijven] = useState(false);
-
-  const laad = useCallback(async () => {
-    try {
-      const d = await fetch(`/api/admin/mail?slug=${encodeURIComponent(slug)}`).then((r) => r.json());
-      if (!d.ok) { setVerbonden(false); return; }
-      setVerbonden(d.connected !== false);
-      setMails(Array.isArray(d.emails) ? d.emails.slice(0, 10) : []);
-    } catch { setVerbonden(false); }
-  }, [slug]);
-
-  useEffect(() => { laad(); }, [laad]);
 
   return (
     <div className="card lead-mail">
@@ -98,7 +94,7 @@ export default function LeadMail({ slug, naam, email }: { slug: string; naam: st
           toelichting={`Dit bedrijf is nog geen klant. Schrijf kort en persoonlijk, in de ik-vorm, met één duidelijke vraag of vervolgstap.`}
           clientName={naam}
           clientEmail={email}
-          onClose={() => { setSchrijven(false); laad(); }}
+          onClose={() => { setSchrijven(false); onVernieuw(); }}
         />
       )}
     </div>
