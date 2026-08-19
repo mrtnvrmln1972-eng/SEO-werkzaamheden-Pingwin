@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Vouwblok from "./Vouwblok";
+import { Lijstje } from "../_ui/Pijl";
 import { GOLVEN, GOLF_LABEL, GOLF_UITLEG, GOLF_UNITS, type Golf, type BulkStand, type Raming } from "../../lib/onboarding-golven";
 
 // ═══════════════════════════════════════════════════════════
@@ -107,6 +108,7 @@ export default function BulkOnboarding() {
   return (
     <Vouwblok
       titel="Onboarding voor alle klanten"
+      icoon={<Lijstje />}
       sub={stand?.actief ? "de rij loopt" : undefined}
       actie={(openen) => (stand?.actief
         ? <button type="button" className="btn btn-klein" onClick={() => { openen(); void stop(); }} disabled={bezig}>Rij stoppen</button>

@@ -80,6 +80,66 @@ export function Uitklap({ className }: { className?: string }) {
   return <Teken className={className} vulling><path d="M6 4l5 4-5 4z" /></Teken>;
 }
 
+/** Een vlaggetje: iets dat nog geen klant is, maar wel in beeld. */
+export function Vlag({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M4 14V2.6M4 3.2h8l-1.6 2.6L12 8.4H4" />
+    </Teken>
+  );
+}
+
+/** Twee figuurtjes: mensen, een klantenlijst. */
+export function Mensen({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <circle cx="6.2" cy="5.4" r="2.4" />
+      <path d="M1.8 13.4c0-2.4 2-4 4.4-4s4.4 1.6 4.4 4" />
+      <path d="M11 3.4a2.4 2.4 0 0 1 0 4.6M12.2 9.8c1.3.5 2.2 1.7 2.2 3.6" />
+    </Teken>
+  );
+}
+
+/** Een gebouw: een organisatie of een groep klanten. */
+export function Gebouw({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M2.6 13.6V4.2L8 2.2l5.4 2v9.4M1.6 13.6h12.8" />
+      <path d="M5.4 13.6v-3h5.2v3M5.6 6.6h1.2M9.2 6.6h1.2M5.6 8.8h1.2M9.2 8.8h1.2" />
+    </Teken>
+  );
+}
+
+/** Een lijstje met vinkjes: een rij die afgewerkt wordt. */
+export function Lijstje({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M2.4 4.4l1.4 1.4 2.2-2.4M2.4 11.4l1.4 1.4 2.2-2.4" />
+      <path d="M8.4 4.6h5.2M8.4 11.6h5.2" />
+    </Teken>
+  );
+}
+
+/** Een muntje: geld, waarde per klant. */
+export function Munt({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <circle cx="8" cy="8" r="5.6" />
+      <path d="M10 5.8a2.6 2.6 0 1 0 0 4.4" />
+    </Teken>
+  );
+}
+
+/** Een oog: meekijken. */
+export function Oog({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M1.4 8S3.8 3.8 8 3.8 14.6 8 14.6 8 12.2 12.2 8 12.2 1.4 8 1.4 8Z" />
+      <circle cx="8" cy="8" r="1.9" />
+    </Teken>
+  );
+}
+
 /** Twee schakels: een link. */
 export function Ketting({ className }: { className?: string }) {
   return (

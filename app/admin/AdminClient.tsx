@@ -9,7 +9,7 @@ import MeldingenMenu from "./MeldingenMenu";
 import BulkOnboarding from "./BulkOnboarding";
 import KlantwaardeBulk from "./KlantwaardeBulk";
 import Vouwblok from "./Vouwblok";
-import { PijlRechts } from "../_ui/Pijl";
+import { Gebouw, Mensen, Oog, PijlRechts, Vlag } from "../_ui/Pijl";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
@@ -105,6 +105,7 @@ function KijkSleutel() {
   return (
     <Vouwblok
       titel="Claude laten meekijken"
+      icoon={<Oog />}
       actie={
         <span className={"kijk-stand" + (status?.actief ? " kijk-stand-aan" : "")}>
           {status === null ? "…" : status.actief ? "staat aan" : "staat uit"}
@@ -749,6 +750,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             als een klant, maar zonder inlog, sheet en budget. */}
         <Vouwblok
           titel="Leads"
+          icoon={<Vlag />}
           aantal={leads.length}
           actie={isOwner ? (openen) => (
             <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowLeadForm((v) => !v); }}>
@@ -788,6 +790,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             rechts in de kopbalk van dát blok, niet los onderaan de pagina. */}
         <Vouwblok
           titel={showGroups && mmcClients.length > 0 ? "Mijn eigen klanten" : "Klanten"}
+          icoon={<Mensen />}
           aantal={showGroups && mmcClients.length > 0 ? ownClients.length : klanten.length}
           actie={isOwner ? (openen) => (
             <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowForm((v) => !v); }}>
@@ -800,7 +803,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         </Vouwblok>
 
         {showGroups && mmcClients.length > 0 && (
-          <Vouwblok titel="Multimedia Concepts" aantal={mmcClients.length}>
+          <Vouwblok titel="Multimedia Concepts" aantal={mmcClients.length} icoon={<Gebouw />}>
             <div className="mmc-list">{clientTable(mmcClients, "Nog geen Multimedia Concepts-klanten.")}</div>
           </Vouwblok>
         )}

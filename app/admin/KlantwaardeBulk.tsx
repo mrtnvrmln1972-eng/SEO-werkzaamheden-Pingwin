@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Vouwblok from "./Vouwblok";
+import { Munt } from "../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // KLANTWAARDE EN CONVERSIE VOOR ALLE KLANTEN IN ÉÉN SCHERM
@@ -66,6 +67,7 @@ export default function KlantwaardeBulk() {
   return (
     <Vouwblok
       titel="Klantwaarde en conversie invullen"
+      icoon={<Munt />}
       actie={(openen) => (
         <button type="button" className="btn btn-klein" onClick={() => { openen(); setOpen((v) => !v); }}>
           {open ? "− Sluiten" : "+ Invullen"}

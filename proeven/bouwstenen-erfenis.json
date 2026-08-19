@@ -1,0 +1,16 @@
+[
+  ".email-head-actions .btn.btn-ghost.btn-klein.email-taak",
+  ".vouwblok .strategy-body > .task-table-wrap",
+  ".btn.wp-fase-btn-primair",
+  ".wp-fases-kop .btn.btn-ghost.btn-klein",
+  ".wp-fases-kop .btn.btn-ghost.btn-klein:hover:not(:disabled)",
+  ".btn.wp-fase-btn-licht",
+  ".wp-kop-acties .btn.btn-ghost.btn-klein",
+  ".wp-vouwrij .btn",
+  ".wp-vouwrij .btn[aria-expanded=\"true\"]",
+  ".btn.opr-btn.aan",
+  ".pl-lijstkop .btn.btn-ghost.btn-klein",
+  ".wp-fase-rij .btn[aria-pressed=\"true\"]",
+  ".stijl-stap-bezig .stijl-stap-titel .chip",
+  ".stijl-stap-af .stijl-stap-titel .chip"
+]

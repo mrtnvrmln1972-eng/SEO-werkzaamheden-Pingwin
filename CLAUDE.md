@@ -144,6 +144,29 @@ Alles wat Maarten ziet (dashboard, chat, mail, preview, terugkoppeling) moet 100
     leest élke CSS-regel ná het gedeelde blok en wordt rood zodra iemand er weer een eigen setje
     bijzet, en hij controleert dat de omgezette schermen via de poort renderen. Zet die proef
     nooit uit.
+- **Een gedeelde bouwsteen ziet er OVERAL hetzelfde uit (vaste regel, 19-08-2026).**
+  Het beheerscherm werd verbouwd naar inklapbare blokken met de gedeelde inklapkaart van de
+  cockpit (`strategy-card` + `strategy-head`). Precies goed. Maar er ging één regel overheen:
+  `.vouwblok .strategy-head { background: var(--dark); color: var(--white); }`, met als reden
+  "dezelfde zwarte balk als de tabelkop eronder". Resultaat: zes zwarte balken onder elkaar op
+  `/admin`, terwijl diezelfde bouwsteen overal elders een zacht kleurverloop met een oranje
+  driehoekje is. Maartens oordeel: "allemaal zwarte balken, ik vind het er niet uitzien."
+  **Elke bestaande poort was groen**, en terecht: nette tokens, knoppen op het knopsysteem, geen
+  losse pixelwaarden, scherm netjes in het Intern-menu. Geen enkele controle stelde de vraag die
+  ertoe deed: ziet deze bouwsteen er hier hetzelfde uit als overal?
+  - **Wat mag wél op een gedeelde bouwsteen:** positioneren en ruimte (padding, marge, gap,
+    uitlijning, breedte, hoogte). Een blok mag zijn inhoud anders neerzetten, het mag er niet
+    anders uitzien. En de varianten die het ontwerp zélf kent (`acc-orange` en familie,
+    `btn-primary` en familie): dat is een keuze bínnen het systeem.
+  - **Wat niet:** achtergrond, tekstkleur, rand, ronding, schaduw, lettergrootte, letterdikte of
+    hoofdletters van `strategy-head`, `strategy-card`, `strategy-body`, `cockpit-card`, `card`,
+    `btn`, `chip`, `ovc-icontile` of `ovc-head` vanuit een scherm-eigen klasse. Wil je daar echt
+    iets anders, maak er dan een variant van in het ontwerp zelf.
+  - **`proeven/bouwstenen.proef.ts` rekent het na en draait vóór élke bouw.** De 14 gevallen van
+    vóór deze datum staan in `proeven/bouwstenen-erfenis.json`; die lijst mag alleen korter.
+  - **En de tweede helft van dezelfde les:** een scherm dat qua gezicht verandert, laat je eerst
+    zien. Dat stond al in 0b-bis en is hier overgeslagen. Bouwen mag zonder te vragen, het gezicht
+    van een scherm veranderen niet.
 - **Met terugwerkende kracht (vaste regel, 31-07-2026).** Elke opmaak- of dashboardaanpassing geldt automatisch óók voor bestaande kaarten, taken en chats, in alle werelden (Pingwin én NOC). Bouw zulke aanpassingen daarom in de weergave-laag (renderer/parser, zoals `lib/card-info.ts`), niet alleen in de prompt voor nieuwe data. Maarten hoeft dit niet meer per wijziging te vragen.
 
 ## 0b. DE UITLEGPAGINA BIJWERKEN (vaste stap, 06-08-2026)

@@ -77,7 +77,17 @@ export const BLOKKEN: Uitklapper[] = [
         "tekens die we gebruiken. Ze zien er daardoor overal hetzelfde uit, ook in tekst die het " +
         "dashboard niet zelf schrijft. De tekens die geen enkel lettertype heeft zijn getekende " +
         "icoontjes geworden, en een controle vóór elke bouw wordt rood zodra er een teken in beeld " +
-        "komt dat niemand kan tekenen.",
+        "komt dat niemand kan tekenen.\n\n" +
+        "En dan de fout die al deze controles samen niet zagen. Het beheerscherm werd verbouwd naar " +
+        "inklapbare blokken, met de gedeelde inklapkaart van de cockpit. Precies goed, alleen ging " +
+        "er één regel opmaak overheen die die kaart een zwarte achtergrond gaf, en toen stonden er " +
+        "zes zwarte balken onder elkaar terwijl diezelfde kaart overal elders een zacht " +
+        "kleurverloop met een oranje driehoekje is. Élke poort stond groen: nette namen voor de " +
+        "kleuren, knoppen op het knopsysteem, geen losse maten. Geen enkele stelde de vraag die " +
+        "ertoe deed: ziet deze bouwsteen er hier hetzelfde uit als overal? Dat is nu de nieuwste " +
+        "controle. Een scherm mag een gedeelde bouwsteen anders néérzetten (meer ruimte, andere " +
+        "uitlijning) maar niet anders kleuren, omranden of beletteren; wil je echt iets anders, dan " +
+        "wordt het een variant in het ontwerp zelf.",
     },
     {
       titel: "Meters die maar één kant op kunnen",

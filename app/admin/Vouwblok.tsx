@@ -21,11 +21,17 @@ import { Omlaag, Uitklap } from "../_ui/Pijl";
 // ═══════════════════════════════════════════════════════════
 
 export default function Vouwblok({
-  titel, aantal, sub, actie, standaardOpen = false, children,
+  titel, aantal, sub, actie, icoon, standaardOpen = false, children,
 }: {
   titel: string;
   aantal?: number;
   sub?: ReactNode;
+  /**
+   * Het icoontje links van de titel, in dezelfde tegel als de kop van een
+   * cockpit-kaart (`ovc-icontile`). Dat is wat een blok herkenbaar maakt zonder
+   * te lezen, en het is exact de vorm die elders in het dashboard al staat.
+   */
+  icoon?: ReactNode;
   // De knop mag zelf het blok openzetten: "+ Nieuwe lead" hoort het formulier te
   // tonen, en dat kan niet in een blok dat dicht blijft. Geef daarom een functie
   // mee die het openzetten als argument krijgt.
@@ -41,6 +47,7 @@ export default function Vouwblok({
         {/* Getekend, geen teken: Montserrat heeft geen driehoekje, dus een
             letterlijke ▸ wordt een leeg vierkantje (zie app/_ui/Pijl.tsx). */}
         <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
+        {icoon && <span className="ovc-icontile" aria-hidden="true">{icoon}</span>}
         <span className="strategy-title">{titel}{aantal === undefined ? "" : ` (${aantal})`}</span>
         {sub && <span className="strategy-sub">{sub}</span>}
       </button>
