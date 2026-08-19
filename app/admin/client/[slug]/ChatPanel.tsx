@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { PijlRechts } from "../../../_ui/Pijl";
+import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
 
-type Msg = { role: "user" | "assistant"; content: string; image?: string; images?: string[] };
+// Een "oogst"-bericht is geen tekst maar een voorstel met vinkjes: precies
+// hetzelfde blok als in de bird's eye-chat. Zo is er één weg van gesprek naar
+// taak, in beide chats, in plaats van een tweede plek (de vroegere site-wide
+// strategie-sessie) waar de uitkomst van een gesprek stilletjes belandde.
+type Msg = { role: "user" | "assistant"; content: string; image?: string; images?: string[]; soort?: "conclusie" | "oogst"; oogst?: Oogst };
 
 // Lichte Markdown → HTML voor nette antwoorden (kopjes, bullets, vet, links).
 function mdToHtml(md: string): string {
@@ -49,12 +53,16 @@ function mdToHtml(md: string): string {
   return out.join("");
 }
 
-export default function ChatPanel({ slug, configured, initialMessages }: { slug: string; configured: boolean; initialMessages?: Msg[] }) {
+export default function ChatPanel({ slug, configured, initialMessages, domain = "", onWeekplanChanged }: { slug: string; configured: boolean; initialMessages?: Msg[]; domain?: string; onWeekplanChanged?: () => void }) {
   const [messages, setMessages] = useState<Msg[]>(initialMessages || []);
   // Zonder meegegeven geschiedenis: het actieve gesprek laden zodra het venster
   // voor het eerst opent (het scherm zelf hoeft er niet op te wachten).
   const loadedRef = useRef(false);
   const [thread, setThread] = useState("algemeen");
+  // Welk gesprek er nú openstaat, ook binnen een lopende fetch: een trage oogst
+  // mag het antwoord niet in een ander gesprek laten vallen.
+  const threadRef = useRef("algemeen");
+  useEffect(() => { threadRef.current = thread; }, [thread]);
   const [threads, setThreads] = useState<{ thread: string; count: number; updatedAt: string }[]>([]);
   const [collapsed, setCollapsed] = useState(true);
   const [input, setInput] = useState("");
@@ -219,22 +227,46 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
     if (item) { e.preventDefault(); acceptImageFile(item.getAsFile()); }
   }
 
-  // Legt het huidige gesprek vast als site-wide strategie-sessie (Taken-tabblad):
-  // AI maakt er een beschrijvende titel, de conclusie en de actiepunten van.
-  const [strategyBusy, setStrategyBusy] = useState(false);
-  const [strategyMsg, setStrategyMsg] = useState("");
-  async function saveStrategy() {
-    if (strategyBusy || messages.length < 2) return;
-    setStrategyBusy(true); setStrategyMsg(""); setError("");
+  // Wat volgt hieruit: leest het hele gesprek terug en levert een VOORSTEL met
+  // vinkjes. Dat is dezelfde stap en hetzelfde blok als in de bird's eye-chat.
+  //
+  // Wat hier stond en waarom het weg is (19-08-2026): dit was "Site-wide
+  // strategie". Die knop legde het gesprek vast als sessie in een apart blok op
+  // het Taken-tabblad, met actiepunten die je daar nog een keer moest omzetten
+  // naar taken. Maarten hield de grote lijn al zelf bij in "De koers", en zag op
+  // de takenpagina ineens een analyse staan waar hij niet om had gevraagd en die
+  // hij niet zelf beheerde. Eén weg van gesprek naar taak is genoeg; die weg is
+  // deze knop, en het resultaat komt terecht waar het werk ook staat.
+  const [oogstBusy, setOogstBusy] = useState(false);
+  async function oogst() {
+    if (oogstBusy || messages.length < 2) return;
+    const t = thread;
+    setOogstBusy(true); setError("");
     try {
-      const res = await fetch("/api/admin/strategy", {
+      const r = await fetch("/api/admin/overview/oogst", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, messages }),
+        body: JSON.stringify({ slug, thread: t, stap: "taken" }),
       });
-      const d = await res.json();
-      if (d.ok) setStrategyMsg(`Vastgelegd als strategie-sessie "${d.session?.title || ""}". Je vindt hem bovenaan het Taken-tabblad onder Site-wide strategie, met de actiepunten om als taak toe te voegen.`);
-      else setError(d.error || "Vastleggen mislukt.");
-    } catch { setError("Vastleggen mislukt."); } finally { setStrategyBusy(false); }
+      const d = await r.json();
+      if (threadRef.current !== t) return;            // intussen naar een ander gesprek
+      if (d?.ok) setMessages((m) => {
+        // Nog een keer drukken vervángt een voorstel dat nog niet verwerkt is;
+        // er is er altijd maar één actueel.
+        const nieuw: Msg = { role: "assistant", content: "Voorstel: dit werk volgt uit dit gesprek.", soort: "oogst", oogst: d.oogst };
+        const idx = m.map((x) => (x.soort === "oogst" && !x.oogst?.verwerkt ? 1 : 0)).lastIndexOf(1);
+        if (idx < 0) return [...m, nieuw];
+        const kopie = [...m];
+        kopie[idx] = nieuw;
+        return kopie;
+      });
+      else setError(d?.error || "Er ging iets mis.");
+    } catch { setError("De assistent is niet bereikbaar."); } finally { setOogstBusy(false); }
+  }
+
+  // Een verwerkt voorstel blijft staan, maar onthoudt dat het verwerkt is (de
+  // server zet dezelfde vlag in de historie, dus ook na herladen).
+  function markeerVerwerkt(idx: number) {
+    setMessages((prev) => prev.map((m, i) => (i === idx && m.oogst ? { ...m, oogst: { ...m.oogst, verwerkt: true } } : m)));
   }
 
   // Eén blok (bericht) uit het gesprek verwijderen; wordt ook op de server opgeslagen.
@@ -318,17 +350,25 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                   </select>
                   <button type="button" className="btn btn-klein" onClick={newThread}>+ Nieuw</button>
                   {messages.length >= 2 && (
-                    <button type="button" className="btn btn-klein" onClick={saveStrategy} disabled={strategyBusy} title="Legt dit hele gesprek (met conclusie en actiepunten) vast als sessie onder Site-wide strategie, bovenaan het Taken-tabblad.">
-                      {strategyBusy ? "Vastleggen…" : <><PijlRechts /> Site-wide strategie</>}
+                    <button type="button" className="btn btn-primary btn-klein" onClick={() => void oogst()} disabled={oogstBusy || busy} title="Leest het hele gesprek terug en bepaalt welk werk hieruit volgt. Je krijgt een voorstel dat je zelf aanvinkt; wat je aanvinkt wordt een taak in de weekplanning.">
+                      {oogstBusy ? "Bezig…" : "Wat volgt hieruit?"}
                     </button>
                   )}
                 </div>
-                {strategyMsg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{strategyMsg}</div>}
                 <div className="chat-log">
-                  {messages.map((m, i) => (
+                  {messages.map((m, i) => {
+                    // Er is maar ÉÉN actueel takenvoorstel; een ouder voorstel uit
+                    // hetzelfde gesprek blijft in de historie maar niet in beeld.
+                    if (m.soort === "oogst") {
+                      const laatste = messages.map((x) => (x.soort === "oogst" ? 1 : 0)).lastIndexOf(1);
+                      if (i !== laatste) return null;
+                    }
+                    return (
                     <div key={i} className={"chat-msg " + m.role}>
                       <button type="button" className="chat-msg-del" title="Dit blok uit het gesprek verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
-                      {m.role === "assistant"
+                      {m.soort === "oogst" && m.oogst
+                        ? <TakenVoorstel slug={slug} thread={thread} index={i} oogst={m.oogst} domain={domain} onWeekplanChanged={onWeekplanChanged} onVerwerkt={() => markeerVerwerkt(i)} />
+                        : m.role === "assistant"
                         ? <div className="chat-bubble chat-md" dangerouslySetInnerHTML={{ __html: mdToHtml(m.content) }} />
                         : <div className="chat-bubble">{(m.images?.length || m.image) && (
                             <span className="chat-img-row">
@@ -338,8 +378,10 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                             </span>
                           )}{m.content}</div>}
                     </div>
-                  ))}
+                    );
+                  })}
                   {busy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het denken…</div></div>}
+                  {oogstBusy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het wegen welk werk hier echt uit volgt…</div></div>}
                   <div ref={endRef} />
                 </div>
 

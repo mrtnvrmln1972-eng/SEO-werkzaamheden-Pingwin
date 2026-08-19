@@ -150,8 +150,8 @@ export const ONBOARDING: StapDef[] = [
 
   // ── En dan pas: aan het werk ──
   {
-    key: "strategie", label: "Strategie vastgelegd", blok: "werken", door: "jij", nodig: ["profiel", "prioriteiten"], tab: "werkzaamheden",
-    waarom: "Het gesprek waarin de koers wordt gekozen; daarna pas gaan er pagina's de keten in.",
+    key: "strategie", label: "De koers vastgelegd", blok: "werken", door: "jij", nodig: ["profiel", "prioriteiten"], tab: "werkzaamheden",
+    waarom: "Waar we met deze klant naartoe werken, in je eigen woorden op de takenpagina; daarna pas gaan er pagina's de keten in.",
   },
 ];
 

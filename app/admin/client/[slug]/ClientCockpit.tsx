@@ -7,7 +7,6 @@ import type {
   EmailSnapshot, MetricSnapshot, KeywordSnapshot, PageSnapshot, ClientStatus,
 } from "../../../../lib/snapshots";
 import type { TaskRow } from "../../../../lib/tasks";
-import type { StrategySession } from "../../../../lib/strategy";
 import dynamic from "next/dynamic";
 
 // ── Per tabblad nabezorgd, niet vooraf ──────────────────────────────
@@ -43,7 +42,6 @@ import Planning from "./Planning";
 import KlantTabs, { type Tab } from "./KlantTabs";
 import FocusBlock from "./FocusBlock";
 import KoersBlok from "./KoersBlok";
-import StrategyPanel from "./StrategyPanel";
 import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
@@ -112,8 +110,8 @@ export default function ClientCockpit({
   client, emails: initialEmails, metrics, keywords, pages, lastIngest, status, statusUpdatedAt,
   msConfigured, msConnected, myEmail, allClients,
   googleConfigured, googleConnected, chatConfigured, tasks, initialTab, initialPage, highlight,
-  initialStrategie, showMailSections = true,
-}: { client: ClientConfig; initialTab?: string; initialPage?: string; highlight?: string; initialStrategie?: string; showMailSections?: boolean } & CockpitData) {
+  showMailSections = true,
+}: { client: ClientConfig; initialTab?: string; initialPage?: string; highlight?: string; showMailSections?: boolean } & CockpitData) {
   // Live mail komt NA het tonen binnen (achtergrond-verversing): het scherm opent
   // met de opgeslagen mails, en zodra Microsoft antwoordt worden ze ververst.
   const [emails, setEmails] = useState(initialEmails);
@@ -602,12 +600,14 @@ export default function ClientCockpit({
                 langs dingen die je op dat moment niet nodig had. Nu één kop met drie
                 blokken die dicht beginnen, zodat je zelf kiest wat je openzet. */}
             <div className="tk-wide">
-            {/* De strategiegesprekken uit de assistent, met per actiepunt één klik
-                naar de takenlijst. Dit blok bestond al en werd door de chat ook
-                beloofd ("je vindt hem bovenaan het Taken-tabblad"), maar hing na
-                de herindeling nergens meer op het scherm. */}
-            <StrategyPanel slug={client.slug}
-              openSessionId={initialStrategie ? Number(initialStrategie) || undefined : undefined} />
+            {/* Hier stond "Site-wide strategie": de gesprekken uit de assistent, met
+                per actiepunt een knop naar de takenlijst. Weg op 19-08-2026. Het was
+                een tweede plek waar de uitkomst van een gesprek belandde, náást de
+                weekplanning, en het verscheen op deze pagina zonder dat Maarten er
+                iets voor deed. De grote lijn houdt hij zelf bij in "De koers"
+                hieronder; wat uit een gesprek volgt wordt nu meteen een taak, via
+                "Wat volgt hieruit?" in de assistent. De vastgelegde sessies blijven
+                in de database staan, er is niets weggegooid. */}
             <div className="tk-grid">
             <div className="tk-links">
             <div className="cockpit-card ovc-card">
@@ -982,7 +982,7 @@ export default function ClientCockpit({
 
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
 
-      <ChatPanel slug={client.slug} configured={chatConfigured} />
+      <ChatPanel slug={client.slug} configured={chatConfigured} domain={client.domain || ""} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} />
       <LinkPreview />
     </>
   );

@@ -32,8 +32,12 @@ const taken = cockpit.slice(
 check("het koersblok staat op de takenpagina", /<KoersBlok/.test(taken),
   "Zonder dat blok heeft de takenpagina geen antwoord op 'waar werken we naartoe'.");
 
-check("de vastgelegde strategiegesprekken staan op de takenpagina", /<StrategyPanel/.test(taken),
-  "De chat belooft na het vastleggen dat je ze bovenaan Taken vindt; die belofte moet kloppen.");
+// Andersom sinds 19-08-2026: het strategie-blok mag hier juist NIET meer staan.
+// Het was een tweede plek waar de uitkomst van een gesprek belandde, zonder dat
+// Maarten er iets voor deed; de grote lijn houdt hij bij in De koers, en wat uit
+// een gesprek volgt wordt meteen een taak via "Wat volgt hieruit?".
+check("er staat geen los strategie-blok meer op de takenpagina", !/<StrategyPanel/.test(taken),
+  "Eén weg van gesprek naar taak. Een tweede blok met eigen actiepunten komt niet terug.");
 
 const koers = lees("app/admin/client/[slug]/KoersBlok.tsx");
 

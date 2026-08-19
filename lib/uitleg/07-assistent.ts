@@ -37,6 +37,22 @@ export const HOOFDSTUK: Hoofdstuk = {
         "er iets komt kosten leestijd en ruimte, en werden op een gegeven moment zelfs als taak aangeboden.",
     },
     {
+      titel: "Van gesprek naar werk: één knop, één weg",
+      kern: "\"Wat volgt hieruit?\" weegt het hele gesprek en levert een voorstel met vinkjes.",
+      tekst:
+        "Sparren mag vrijblijvend blijven. Pas als jij erom vraagt, leest de assistent het hele gesprek terug " +
+        "en bepaalt hij welk werk eruit volgt. Je krijgt geen takenlijst maar een **voorstel**: per punt wat " +
+        "het is, waarom het volgt uit dit gesprek, en hoe zeker dat is. Wat duidelijk volgt staat aangevinkt, " +
+        "een suggestie staat uit. Wat bewust géén taak is staat er grijs onder, zodat zichtbaar blijft dat het " +
+        "is meegewogen en er niets stilletjes wegvalt. Wat jij aanvinkt wordt een kaart in de weekplanning, " +
+        "via dezelfde poort als elke andere kaart.\n\n" +
+        "**Dit is de enige weg van gesprek naar taak**, en dat is met opzet. Er was tot 19 augustus 2026 een " +
+        "tweede: een knop legde een gesprek vast als \"site-wide strategie-sessie\" in een apart blok op de " +
+        "takenpagina, met eigen actiepunten die je daar nog een keer moest omzetten. Dat leverde een analyse op " +
+        "een plek waar je hem niet verwachtte en niet zelf bijhield. De grote lijn hoort in **De koers**, in je " +
+        "eigen woorden; het werk hoort in de weekplanning. Daartussen zit niets meer.",
+    },
+    {
       titel: "Als een vraag niet lukt, zie je waarom",
       kern: "Geen stilte meer: de reden staat onder je vraag en je vraag komt terug in het invulveld.",
       tekst:

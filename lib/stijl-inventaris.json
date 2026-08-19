@@ -585,7 +585,7 @@
     }
   ],
   "inline": {
-    "totaal": 615,
+    "totaal": 612,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1530,13 +1530,13 @@
     }
   ],
   "icoontekens": {
-    "totaal": 208,
+    "totaal": 207,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
       {
         "teken": "✓",
-        "aantal": 62
+        "aantal": 61
       },
       {
         "teken": "→",

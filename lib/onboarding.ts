@@ -8,6 +8,7 @@ import { getEuroInstelling } from "./opruim-euro";
 import { hasWpCreds } from "./wp-creds";
 import { ahrefsConfigured } from "./ahrefs";
 import { telDocumenten } from "./documenten";
+import { getFocus } from "./focus";
 import { PROFILE_HEADER, TOV_HEADER } from "./constants";
 
 // ═══════════════════════════════════════════════════════════
@@ -143,11 +144,16 @@ async function telKansen(slug: string): Promise<{ aantal: number; sinds: string 
     return { aantal: Number(rows[0]?.n || 0), sinds: rows[0]?.laatst ? new Date(rows[0].laatst as string).toISOString() : null };
   } catch { return { aantal: 0, sinds: null }; }
 }
-async function telStrategie(slug: string): Promise<{ aantal: number; sinds: string | null }> {
+// De koers: Maartens eigen tekst over waar we met deze klant naartoe werken.
+// Las hier eerst de vastgelegde strategie-sessies (19-08-2026 weggehaald, want
+// dat was een tweede plek naast de koers). De stap is dus niet vervallen maar
+// wijst nu naar de plek waar de koers echt wordt bijgehouden.
+async function telKoers(slug: string): Promise<{ gevuld: boolean; sinds: string | null }> {
   try {
-    const { rows } = await sql`SELECT COUNT(*)::int AS n, MAX(created_at) AS laatst FROM client_strategy_sessions WHERE client_slug = ${slug}`;
-    return { aantal: Number(rows[0]?.n || 0), sinds: rows[0]?.laatst ? new Date(rows[0].laatst as string).toISOString() : null };
-  } catch { return { aantal: 0, sinds: null }; }
+    const f = await getFocus(slug);
+    const tekst = (f.koersHtml || "").replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").trim();
+    return { gevuld: tekst.length > 40, sinds: f.gewijzigd?.koersHtml || null };
+  } catch { return { gevuld: false, sinds: null }; }
 }
 
 /** Bevat het profielveld de betreffende automatisch gegenereerde sectie, met inhoud? */
@@ -185,7 +191,7 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
     opruimRun(slug),
     linkRun(slug),
     hasWpCreds(slug).catch(() => false),
-    telStrategie(slug),
+    telKoers(slug),
     gmbFeiten(slug),
     telDocumenten(slug).catch(() => ({ aantal: 0, sinds: null })),
   ]);
@@ -330,8 +336,8 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
     opruimen: { af: opruim.klaar, bezig: opruim.bezig, detail: opruim.klaar ? "De opruimanalyse is gedraaid." : opruim.bezig ? "De analyse draait." : "Er is nog niet gekeken welke pagina's elkaar in de weg zitten.", sinds: opruim.sinds },
     internelinks: { af: links.klaar, bezig: links.bezig, detail: links.klaar ? "De interne-link-analyse is gedraaid." : links.bezig ? "De analyse draait." : "De interne links zijn nog niet doorgemeten.", sinds: links.sinds },
     strategie: {
-      af: strat.aantal > 0,
-      detail: strat.aantal > 0 ? `${strat.aantal} ${strat.aantal === 1 ? "strategiesessie" : "strategiesessies"} vastgelegd.` : "De koers is nog niet vastgelegd in een strategiesessie.",
+      af: strat.gevuld,
+      detail: strat.gevuld ? "De koers is ingevuld op de takenpagina." : "De koers is nog niet ingevuld; daar staat waar we met deze klant naartoe werken.",
       sinds: strat.sinds,
     },
   };

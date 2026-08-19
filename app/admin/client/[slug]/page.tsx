@@ -125,7 +125,6 @@ export default async function ClientCockpitPage({ params, searchParams }: { para
       initialTab={searchParams.tab}
       initialPage={searchParams.page}
       highlight={searchParams.highlight}
-      initialStrategie={searchParams.strategie}
       showMailSections={mailSections}
     />
     </>
