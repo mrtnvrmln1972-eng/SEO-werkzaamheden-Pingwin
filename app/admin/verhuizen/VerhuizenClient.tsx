@@ -417,7 +417,7 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
                 <Signalen regels={voordeurUit.teDoen} soort="let-op" />
                 {voordeurUit.bereikbaar && (
                   <Signaal soort="notitie">
-                    Zo lang dit niet klopt, is de omzetting niet af. Verander de instellingen bij het
+                    Zolang dit niet klopt, is de omzetting niet af. Verander de instellingen bij het
                     Vercel-project van die voordeur en druk hier daarna opnieuw op de knop.
                   </Signaal>
                 )}
