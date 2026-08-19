@@ -2031,6 +2031,10 @@ button.ck-collapse-head {
 .chat-float-body { flex: 1; display: flex; flex-direction: column; padding: var(--ruimte-groep) var(--ruimte-groep); min-height: 0; }
 .chat-threads { display: flex; align-items: center; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-regel); padding-bottom: var(--ruimte-naast); border-bottom: 1px solid var(--kleur-rand); }
 .chat-threads-label { font-size: var(--type-bijschrift); font-weight: 700; color: var(--kleur-tekst-stil); }
+/* De knoppen in deze rij houden hun label op één regel; de keuzelijst geeft de
+   ruimte. Zonder dit brak "Wat volgt hieruit?" over twee regels zodra een gesprek
+   een lange titel had. Alleen ruimte en uitlijning, geen eigen uiterlijk. */
+.chat-threads .btn { flex: 0 0 auto; white-space: nowrap; }
 .chat-thread-select { flex: 1 1 auto; min-width: 0; font-family: inherit; font-size: var(--type-bijschrift); padding: var(--ruimte-krap) var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart); color: var(--dark); }
 .chat-thread-select:focus { outline: none; border-color: var(--kleur-rand-accent); }
 .chat-suggest { display: flex; flex-direction: column; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-regel); }
