@@ -111,7 +111,11 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
     void haalOp(slug);
     fetch(`/api/admin/voordeur?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
-      .then((d) => { if (d?.ok) setVoordeur(String(d.adres || "")); })
+      .then((d) => {
+        if (!d?.ok) return;
+        setVoordeur(String(d.adres || ""));
+        setVoordeurUit((d.uitkomst as Voordeur) || null);
+      })
       .catch(() => {});
   }, [slug, haalOp]);
 

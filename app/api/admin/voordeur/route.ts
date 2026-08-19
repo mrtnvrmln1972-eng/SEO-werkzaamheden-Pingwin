@@ -97,11 +97,28 @@ async function controleer(adres: string, slug: string): Promise<Uitkomst> {
   };
 }
 
+// Kijken is lezen: de controle verandert niets, dus hij zit in de GET en niet
+// achter de knop alleen. Zo staat de stand er al zodra je het scherm opent, in
+// plaats van dat je eerst moet klikken om te weten of er iets mis is. Geef je
+// een adres mee, dan wordt dát adres bekeken zonder het te bewaren.
 export async function GET(req: NextRequest) {
   const slug = (req.nextUrl.searchParams.get("slug") || "").trim().toLowerCase();
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
+
   const klant = await getClientBySlug(slug);
-  return NextResponse.json({ ok: true, adres: klant?.cockpit.voordeurUrl || "", hier: omgevingStand() });
+  const bewaard = klant?.cockpit.voordeurUrl || "";
+  const proef = (req.nextUrl.searchParams.get("adres") || "").trim().replace(/\/+$/, "");
+  if (proef && !pingwinAdresOk(proef)) {
+    return NextResponse.json({ ok: false, error: "Geef het adres van een Pingwin-omgeving, beginnend met https://." }, { status: 400 });
+  }
+
+  const kijken = proef || bewaard;
+  return NextResponse.json({
+    ok: true,
+    adres: bewaard,
+    uitkomst: kijken ? await controleer(kijken, slug) : null,
+    hier: omgevingStand(),
+  });
 }
 
 export async function POST(req: NextRequest) {
