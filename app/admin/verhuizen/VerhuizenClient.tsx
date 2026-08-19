@@ -89,6 +89,22 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
     finally { setLaden(false); }
   }, []);
 
+  // De gekozen klant staat in het adres (…/admin/verhuizen?klant=noc). Zonder dat
+  // was dit scherm niet te delen en niet te fotograferen: alles onder de
+  // keuzelijst bestaat pas als er iemand met de muis iets aanklikt. Bewust via
+  // window en niet via useSearchParams, want dat laatste dwingt een extra
+  // wachtlaag af op elke pagina die deze schil gebruikt.
+  useEffect(() => {
+    const uitAdres = new URLSearchParams(window.location.search).get("klant");
+    if (uitAdres) setSlug(uitAdres.trim().toLowerCase());
+  }, []);
+
+  useEffect(() => {
+    const adres = new URL(window.location.href);
+    if (slug) adres.searchParams.set("klant", slug); else adres.searchParams.delete("klant");
+    window.history.replaceState(null, "", adres.toString());
+  }, [slug]);
+
   useEffect(() => {
     if (!slug) { setTelling(null); setKaart(null); setCodeStand(null); setVoordeur(""); setVoordeurUit(null); return; }
     setNieuweCode(""); setRegels([]); setVoordeurUit(null);
