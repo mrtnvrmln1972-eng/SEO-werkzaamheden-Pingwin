@@ -43,7 +43,11 @@ export default function CannibalisatieKaart({ canni, driveFolder, openPicker, en
         )}
         {pc?.result && (
           <div className="pch-canni-doc">
-            <button type="button" className="pch-canni-toggle" onClick={() => setPcOpen((o) => !o)}>{pcOpen ? <Omlaag /> : <Uitklap />} Cannibalisatie- &amp; content-mapping-analyse{pc.updatedAt ? ` · ${new Date(pc.updatedAt).toLocaleString("nl-NL")}` : ""}{pc.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+            <button type="button" className="strategy-head" onClick={() => setPcOpen((o) => !o)} aria-expanded={pcOpen}>
+              <span className="strategy-caret">{pcOpen ? <Omlaag /> : <Uitklap />}</span>
+              <span className="strategy-title">Cannibalisatie &amp; content-overlap</span>
+              <span className="strategy-sub">{pc.status === "running" ? "nieuwe analyse draait…" : pc.updatedAt ? new Date(pc.updatedAt).toLocaleString("nl-NL") : ""}</span>
+            </button>
             {pcOpen && (<>
               <div className="md pch-canni-md" onClick={onCanniClick} dangerouslySetInnerHTML={{ __html: canniHtml }} />
               {wpRedirects.length > 0 && (!wpConf?.configured || wpFormOpen || wpMsg) && (

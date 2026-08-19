@@ -202,8 +202,8 @@ export default function WerkplanPanel({ slug, onGoToPage, onGoToMeta }: { slug: 
 
       {gedaan.length > 0 && (
         <div className="wp-group">
-          <button type="button" className="wp-group-head wp-head-gedaan wp-head-toggle" onClick={() => setGedaanOpen((o) => !o)}>
-            <span>{gedaanOpen ? <Omlaag /> : <Uitklap />} Gedaan</span> <span className="wp-count">{gedaan.length}</span>
+          <button type="button" className="deelkop" onClick={() => setGedaanOpen((o) => !o)} aria-expanded={gedaanOpen}>
+            Gedaan <span className="chip">{gedaan.length}</span>
           </button>
           {gedaanOpen && gedaan.map((it) => <PageCard key={it.url} it={it} slug={slug} onGoToPage={onGoToPage} onGoToMeta={onGoToMeta} />)}
         </div>

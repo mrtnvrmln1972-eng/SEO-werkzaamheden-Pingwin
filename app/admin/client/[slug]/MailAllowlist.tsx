@@ -32,12 +32,14 @@ export default function MailAllowlist({ slug }: { slug: string }) {
   const count = text.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean).length;
 
   return (
-    <div className="mail-allow">
-      <button type="button" className="mail-allow-head" onClick={() => setOpen((v) => !v)}>
-        {open ? <Omlaag /> : <Uitklap />} Welke afzenders horen bij deze klant? {count > 0 ? <span className="plan-chip has">{count} ingesteld</span> : <span className="plan-chip">alles</span>}
+    <div className="mail-allow strategy-card">
+      <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
+        <span className="strategy-title">Welke afzenders horen bij deze klant?</span>
+        <span className="strategy-sub">{count > 0 ? `${count} ingesteld` : "alles"}</span>
       </button>
       {open && (
-        <div className="mail-allow-body">
+        <div className="mail-allow-body strategy-body">
           <div className="muted" style={{ fontSize: "var(--fs-sm)", marginBottom: "var(--s-2)" }}>
             Eén per regel: een mailadres (bijv. jan@voorbeeld.nl) of een heel domein (bijv. voorbeeld.nl). Alleen mail van deze afzenders verschijnt bij Laatste mails; jouw eigen verzonden mail blijft altijd staan. Voeg ook je eigen verzenddomein toe (bijv. pingwin.nl). Leeg = alles tonen.
           </div>

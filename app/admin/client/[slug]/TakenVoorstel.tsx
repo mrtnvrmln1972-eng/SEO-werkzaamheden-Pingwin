@@ -160,9 +160,8 @@ export default function TakenVoorstel({ slug, thread, index, oogst, domain = "",
 
       {oogst.geenTaak.length > 0 && (
         <div className="tv-geen">
-          <button type="button" className="tv-geen-kop" onClick={() => setToonGeen((v) => !v)}>
-            <span className="tv-geen-pijl">{toonGeen ? <Omlaag /> : <Uitklap />}</span>
-            Besproken, maar bewust geen taak ({oogst.geenTaak.length})
+          <button type="button" className="deelkop" onClick={() => setToonGeen((v) => !v)} aria-expanded={toonGeen}>
+            Besproken, maar bewust geen taak <span className="deelkop-meta">{oogst.geenTaak.length}</span>
           </button>
           {toonGeen && (
             <ul className="tv-geen-lijst">

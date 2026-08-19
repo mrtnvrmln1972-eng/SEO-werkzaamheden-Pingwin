@@ -255,16 +255,23 @@ function FocusSelect({ tier, onChange }: { tier: FocusTier | undefined; onChange
 // De titel klapt in/uit; eventuele actieknoppen staan ernaast (klappen niet mee).
 function Collapse({ sub, title, meta, open, onToggle, actions, children }: { sub?: boolean; title: ReactNode; meta?: string; open: boolean; onToggle: () => void; actions?: ReactNode; children: ReactNode }) {
   return (
-    <div className={sub ? "kpi-sub" : "cockpit-card kpi-section"}>
+    <div className={sub ? "kpi-sub" : "cockpit-card strategy-card kpi-section"}>
       <div className={sub ? "kpi-sub-head" : "kpi-section-head"}>
-        <button type="button" className={sub ? "kpi-sub-toggle" : "kpi-section-toggle"} onClick={onToggle}>
-          <span className="kpi-caret">{open ? <Omlaag /> : <Uitklap />}</span>
-          <span className={sub ? "kpi-sub-title" : "kpi-section-title"}>{title}</span>
-          {meta && <span className="ck-updated">{meta}</span>}
-        </button>
+        {sub ? (
+          <button type="button" className="deelkop" onClick={onToggle} aria-expanded={open}>
+            <span className="kpi-sub-title">{title}</span>
+            {meta && <span className="deelkop-meta">{meta}</span>}
+          </button>
+        ) : (
+          <button type="button" className="strategy-head" onClick={onToggle} aria-expanded={open}>
+            <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
+            <span className="strategy-title">{title}</span>
+            {meta && <span className="strategy-sub">{meta}</span>}
+          </button>
+        )}
         {actions && <span className="kpi-head-actions">{actions}</span>}
       </div>
-      {open && <div className={sub ? "kpi-sub-body" : "kpi-section-body"}>{children}</div>}
+      {open && <div className={sub ? "kpi-sub-body" : "kpi-section-body strategy-body"}>{children}</div>}
     </div>
   );
 }

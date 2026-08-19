@@ -95,7 +95,11 @@ export default function InterneLinksKaart({ slug, url, siteBase, setErr, onAppli
           )}
           {il?.result && (
             <div className="pch-canni-doc">
-              <button type="button" className="pch-canni-toggle" onClick={() => setIlDocOpen((o) => !o)}>{ilDocOpen ? <Omlaag /> : <Uitklap />} Interne-links-voorstel{il.updatedAt ? ` · ${new Date(il.updatedAt).toLocaleString("nl-NL")}` : ""}{il.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+              <button type="button" className="strategy-head" onClick={() => setIlDocOpen((o) => !o)} aria-expanded={ilDocOpen}>
+                <span className="strategy-caret">{ilDocOpen ? <Omlaag /> : <Uitklap />}</span>
+                <span className="strategy-title">Interne-links-voorstel</span>
+                <span className="strategy-sub">{il.status === "running" ? "nieuwe analyse draait…" : il.updatedAt ? new Date(il.updatedAt).toLocaleString("nl-NL") : ""}</span>
+              </button>
               {ilDocOpen && <div className="md pch-canni-md pch-il-md" dangerouslySetInnerHTML={{ __html: ilHtml }} />}
               {/* Map + overnemen blijven ook zichtbaar als het voorstel is ingeklapt. */}
               <DriveRij folder={driveFolder} legeTekst="nog geen Drive-map, kies er een zodat het taak-document in de juiste map komt" onKies={openPicker} style={{ margin: "var(--s-3) 0 var(--s-2)" }} />

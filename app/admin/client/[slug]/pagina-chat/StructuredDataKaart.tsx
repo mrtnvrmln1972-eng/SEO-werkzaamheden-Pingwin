@@ -104,7 +104,11 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
           )}
           {sch?.result && (
             <div className="pch-canni-doc">
-              <button type="button" className="pch-canni-toggle" onClick={() => setSchDocOpen((o) => !o)}>{schDocOpen ? <Omlaag /> : <Uitklap />} Structured data-advies{sch.updatedAt ? ` · ${new Date(sch.updatedAt).toLocaleString("nl-NL")}` : ""}{sch.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+              <button type="button" className="strategy-head" onClick={() => setSchDocOpen((o) => !o)} aria-expanded={schDocOpen}>
+                <span className="strategy-caret">{schDocOpen ? <Omlaag /> : <Uitklap />}</span>
+                <span className="strategy-title">Structured data-advies</span>
+                <span className="strategy-sub">{sch.status === "running" ? "nieuwe analyse draait…" : sch.updatedAt ? new Date(sch.updatedAt).toLocaleString("nl-NL") : ""}</span>
+              </button>
               {schDocOpen && (
                 <>
                   {sch.warnings.length > 0 && (
@@ -116,7 +120,7 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
                   {sch.jsonld && (
                     <div className="sch-json">
                       <div className="sch-json-head">
-                        <button type="button" className="pch-canni-toggle" onClick={() => setSchJsonOpen((o) => !o)}>{schJsonOpen ? <Omlaag /> : <Uitklap />} De JSON-LD (voor de developer)</button>
+                        <button type="button" className="deelkop" onClick={() => setSchJsonOpen((o) => !o)} aria-expanded={schJsonOpen}>De JSON-LD (voor de developer)</button>
                         <button type="button" className="btn btn-klein" onClick={copySchJson}>{schCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
                       </div>
                       {schJsonOpen && <pre className="sch-json-pre">{sch.jsonld}</pre>}
