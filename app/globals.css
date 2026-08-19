@@ -8698,7 +8698,9 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   display: flex; flex-wrap: wrap; align-items: flex-end;
   gap: var(--ruimte-regel); margin-top: var(--ruimte-regel);
 }
-.stijl-vergelijk-bediening .stijl-knop { flex: 1 1 auto; }
+/* De keuzelijst groeit niet mee: anders duwt hij de knop ernaast naar de
+   overkant van het paneel en staat "Open dit scherm zelf" stuurloos rechts. */
+.stijl-vergelijk-bediening .stijl-knop { flex: 0 1 auto; }
 .stijl-vergelijk {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--ruimte-groep); margin-top: var(--ruimte-groep);
