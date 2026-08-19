@@ -7,8 +7,10 @@
 // twee versies.
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import AdminKop from "../AdminKop";
-import { Blok, Chip, Chips, Paneel, Signaal, Tekst } from "../../_ui/Uitkomst";
+import { PijlRechts } from "../../_ui/Pijl";
+import { Chip, Chips, Paneel, Signaal, Tekst } from "../../_ui/Uitkomst";
 import {
   CRITERIA,
   DISCIPLINES,
@@ -42,27 +44,48 @@ function KopChips({ weegt, vaststellen, bewijs }: { weegt: Weegt; vaststellen: V
   );
 }
 
+/**
+ * Eén punt als uitklapper, met dezelfde bouwsteen als de uitleg-pagina
+ * (`.ut-blok`). Bewust geen eigen opmaak: dat zou een tweede uiterlijk voor
+ * hetzelfde ding zijn. En bewust dicht bij het openen, want tweeëndertig
+ * criteria onder elkaar is een muur, en dan lees je er nul.
+ */
+function Uitklapper({ kop, chips, children }: { kop: string; chips: ReactNode; children: ReactNode }) {
+  return (
+    <details className="ut-blok">
+      <summary>
+        <span className="ut-pijl"><PijlRechts /></span>
+        <span className="ut-blok-kop">
+          <span className="ut-blok-titel">{kop}</span>
+          {chips}
+        </span>
+      </summary>
+      <div className="ut-blok-body">{children}</div>
+    </details>
+  );
+}
+
 function CriteriumBlok({ c }: { c: Criterium }) {
   return (
-    <Blok titel={`${c.id} · ${c.titel}`} meta={<KopChips weegt={c.weegt} vaststellen={c.vaststellen} bewijs={c.bewijs} />}>
+    <Uitklapper kop={`${c.id} · ${c.titel}`} chips={<KopChips weegt={c.weegt} vaststellen={c.vaststellen} bewijs={c.bewijs} />}>
       <Tekst>
         {`**Waar we naar kijken.** ${c.waarNaarKijken}\n\n**Waarom.** ${c.waarom}${c.nuance ? `\n\n**Nuance.** ${c.nuance}` : ""}`}
       </Tekst>
       <Tekst klein>
         {`**Bron, nagekeken op ${datum(c.gecheckt)}:** ${c.bronnen.map((b) => `[${b.naam}](${b.url})`).join(" · ")}`}
       </Tekst>
-    </Blok>
+    </Uitklapper>
   );
 }
 
 function VakoordeelBlok({ v }: { v: Vakoordeel }) {
   return (
-    <Blok titel={`${v.id} · ${v.titel}`} meta={<KopChips weegt={v.weegt} vaststellen={v.vaststellen} />}>
+    <Uitklapper kop={`${v.id} · ${v.titel}`} chips={<KopChips weegt={v.weegt} vaststellen={v.vaststellen} />}>
       <Tekst>
         {`**Waar we naar kijken.** ${v.waarNaarKijken}\n\n**Waarom wij dit vinden.** ${v.waarom}\n\n**Waar het vandaan komt.** ${v.grond}`}
       </Tekst>
       <Tekst klein>{`**Geen bron.** Opgeschreven op ${datum(v.sinds)}.`}</Tekst>
-    </Blok>
+    </Uitklapper>
   );
 }
 
@@ -111,7 +134,9 @@ export default function PaginaLabClient() {
             {`${CRITERIA.length} onderbouwde criteria en ${VAKOORDELEN.length} vakoordelen. Oudste broncontrole: ${datum(oudsteControle())}.`}
           </Tekst>
           {filter !== "alles" && <Tekst klein>{DISCIPLINE_UITLEG[filter]}</Tekst>}
-          {criteria.map((c) => <CriteriumBlok key={c.id} c={c} />)}
+          <div className="ut-blokken">
+            {criteria.map((c) => <CriteriumBlok key={c.id} c={c} />)}
+          </div>
         </Paneel>
 
         <Paneel
@@ -124,7 +149,9 @@ export default function PaginaLabClient() {
           }
         >
           <Signaal soort="let-op">{VAKOORDEEL_WAARSCHUWING}</Signaal>
-          {eigen.map((v) => <VakoordeelBlok key={v.id} v={v} />)}
+          <div className="ut-blokken">
+            {eigen.map((v) => <VakoordeelBlok key={v.id} v={v} />)}
+          </div>
         </Paneel>
       </div>
     </>
