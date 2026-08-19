@@ -181,21 +181,21 @@ export default function WerkplanPanel({ slug, onGoToPage, onGoToMeta }: { slug: 
 
       {bezig.length > 0 && (
         <div className="wp-group">
-          <div className="wp-group-head wp-head-bezig">Bezig <span className="wp-count">{bezig.length}</span></div>
+          <div className="deelkop deelkop-vast">Bezig <span className="chip">{bezig.length}</span></div>
           {bezig.map((it) => <PageCard key={it.url} it={it} slug={slug} onGoToPage={onGoToPage} onGoToMeta={onGoToMeta} />)}
         </div>
       )}
 
       {gepland.length > 0 && (
         <div className="wp-group">
-          <div className="wp-group-head wp-head-gepland">Gepland / kansen <span className="wp-count">{gepland.length}</span></div>
+          <div className="deelkop deelkop-vast">Gepland / kansen <span className="chip">{gepland.length}</span></div>
           {gepland.map((it) => <PageCard key={it.url} it={it} slug={slug} onGoToPage={onGoToPage} onGoToMeta={onGoToMeta} />)}
         </div>
       )}
 
       {geschreven.length > 0 && (
         <div className="wp-group">
-          <div className="wp-group-head wp-head-geschreven">Geschreven, nog niet doorgevoerd <span className="wp-count">{geschreven.length}</span></div>
+          <div className="deelkop deelkop-vast">Geschreven, nog niet doorgevoerd <span className="chip">{geschreven.length}</span></div>
           {geschreven.map((it) => <PageCard key={it.url} it={it} slug={slug} onGoToPage={onGoToPage} onGoToMeta={onGoToMeta} />)}
         </div>
       )}
