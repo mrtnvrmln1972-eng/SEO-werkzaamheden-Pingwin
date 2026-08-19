@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Vouwblok from "./Vouwblok";
 
 // ═══════════════════════════════════════════════════════════
 // KLANTWAARDE EN CONVERSIE VOOR ALLE KLANTEN IN ÉÉN SCHERM
@@ -63,21 +64,18 @@ export default function KlantwaardeBulk() {
   const nogLeeg = rijen.filter((r) => !r.ingevuld).length;
 
   return (
-    <div className="bulk-onb card">
-      <div className="bulk-kop">
-        <div>
-          <strong>Klantwaarde en conversie invullen</strong>
-          <p className="muted">
-            Het enige dat het dashboard niet zelf kan opzoeken. Zonder deze twee getallen kan geen enkele
-            opruim- of prioriteitenlijst een bedrag noemen, alleen een aantal bezoekers.
-          </p>
-        </div>
-        <div className="bulk-knoppen">
-          <button type="button" className="btn btn-klein" onClick={() => setOpen((v) => !v)}>
-            {open ? "− Sluiten" : "+ Invullen"}
-          </button>
-        </div>
-      </div>
+    <Vouwblok
+      titel="Klantwaarde en conversie invullen"
+      actie={(openen) => (
+        <button type="button" className="btn btn-klein" onClick={() => { openen(); setOpen((v) => !v); }}>
+          {open ? "− Sluiten" : "+ Invullen"}
+        </button>
+      )}
+    >
+      <p className="muted">
+        Het enige dat het dashboard niet zelf kan opzoeken. Zonder deze twee getallen kan geen enkele
+        opruim- of prioriteitenlijst een bedrag noemen, alleen een aantal bezoekers.
+      </p>
 
       {open && (
         <div className="bulk-kies">
@@ -136,6 +134,6 @@ export default function KlantwaardeBulk() {
           )}
         </div>
       )}
-    </div>
+    </Vouwblok>
   );
 }

@@ -8,6 +8,7 @@ import Tellers from "./Tellers";
 import MeldingenMenu from "./MeldingenMenu";
 import BulkOnboarding from "./BulkOnboarding";
 import KlantwaardeBulk from "./KlantwaardeBulk";
+import Vouwblok from "./Vouwblok";
 import { PijlRechts } from "../_ui/Pijl";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
@@ -29,7 +30,6 @@ function KijkSleutel() {
   const [status, setStatus] = useState<KijkStatus | null>(null);
   const [sleutel, setSleutel] = useState("");
   const [bezig, setBezig] = useState(false);
-  const [open, setOpen] = useState(false);
   const [kopie, setKopie] = useState(false);
   // Een mislukte knopdruk moet je kunnen zíen. Eerst gebeurde er bij een fout
   // helemaal niets op het scherm: geen sleutel, geen melding. Dan denk je dat
@@ -103,15 +103,15 @@ function KijkSleutel() {
   };
 
   return (
-    <div className="kijk-kaart">
-      <button type="button" className="kijk-kop" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span>{open ? "▾" : "▸"} Claude laten meekijken</span>
+    <Vouwblok
+      titel="Claude laten meekijken"
+      actie={
         <span className={"kijk-stand" + (status?.actief ? " kijk-stand-aan" : "")}>
           {status === null ? "…" : status.actief ? "staat aan" : "staat uit"}
         </span>
-      </button>
-
-      {open && (
+      }
+    >
+      {(
         <div className="kijk-body">
           <p>
             Hiermee kan Claude alles in dit dashboard <strong>bekijken</strong>, in elke sessie, zonder dat je een link
@@ -167,7 +167,7 @@ function KijkSleutel() {
           </div>
         </div>
       )}
-    </div>
+    </Vouwblok>
   );
 }
 
@@ -612,6 +612,62 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     </div>
   );
 
+  // Het formulier voor een nieuwe klant hoort bij de klantenlijst, dus het
+  // staat in dát blok. Hier alleen opgeschreven; hierboven wordt het getoond.
+  const klantForm = (
+          <form className="admin-form" onSubmit={onSubmit}>
+            <div className="form-grid">
+              <div className="field">
+                <label>Bedrijfsnaam</label>
+                <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Bedrijfsnaam van de klant" required />
+              </div>
+              <div className="field">
+                <label>Inlognaam (geen spaties)</label>
+                <input value={form.loginId} onChange={(e) => set("loginId", e.target.value)} placeholder="inlognaam-zonder-spaties" required />
+              </div>
+              <div className="field">
+                <label>E-mailadres klant</label>
+                <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="contact@klant.nl" />
+              </div>
+              {showGroups && (
+                <div className="field">
+                  <label>Groep</label>
+                  <select className="compose-input" value={form.grp} onChange={(e) => set("grp", e.target.value)}>
+                    <option value="">Mijn eigen klanten</option>
+                    <option value="mmc">Multimedia Concepts (cockpit-only, geen login)</option>
+                  </select>
+                </div>
+              )}
+              <div className="field field-wide">
+                <label>Google Sheet-link (optioneel; alleen voor oude klanten met een Sheet, nieuwe klanten werken met taken)</label>
+                <input value={form.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="Leeg laten bij de taken-werkwijze" />
+              </div>
+              <div className="field">
+                <label>Maandfee (&euro;, incl. linkbuilding)</label>
+                <input type="number" value={form.maandbudget} onChange={(e) => set("maandbudget", e.target.value)} placeholder="1800" required={form.grp !== "mmc"} />
+              </div>
+              <div className="field">
+                <label>Linkbuilding-budget (&euro;)</label>
+                <input type="number" value={form.linkbuilding} onChange={(e) => set("linkbuilding", e.target.value)} placeholder="600" required={form.grp !== "mmc"} />
+              </div>
+              <div className="field">
+                <label>Uurtarief (&euro;)</label>
+                <input type="number" value={form.uurtarief} onChange={(e) => set("uurtarief", e.target.value)} placeholder="100" required={form.grp !== "mmc"} />
+              </div>
+              <div className="field">
+                <label>Beschikbare uren per maand</label>
+                <input type="number" value={form.beschikbareUren} onChange={(e) => set("beschikbareUren", e.target.value)} placeholder="12" required={form.grp !== "mmc"} />
+              </div>
+            </div>
+
+            {error && <div className="login-error">{error}</div>}
+
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              {busy ? "Bezig..." : "Klant aanmaken + wachtwoord genereren"}
+            </button>
+          </form>
+  );
+
   return (
     <>
       <div className="header">
@@ -691,15 +747,16 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
 
         {/* Leads: eigen lijst boven de klanten. Een lead is dezelfde soort rij
             als een klant, maar zonder inlog, sheet en budget. */}
-        <div className="section-title">Leads ({leads.length})</div>
-        {leadTable}
-        {isOwner && (
-          <div style={{ marginTop: "var(--s-3)" }}>
-            <button type="button" className="btn btn-klein" onClick={() => setShowLeadForm((v) => !v)}>
+        <Vouwblok
+          titel="Leads"
+          aantal={leads.length}
+          actie={isOwner ? (openen) => (
+            <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowLeadForm((v) => !v); }}>
               {showLeadForm ? "− Formulier sluiten" : "+ Nieuwe lead"}
             </button>
-          </div>
-        )}
+          ) : undefined}
+        >
+        {leadTable}
         {isOwner && showLeadForm && (
           <form className="admin-form" style={{ marginTop: "var(--s-4)" }} onSubmit={onSubmitLead}>
             <div className="form-grid">
@@ -725,21 +782,27 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             </button>
           </form>
         )}
+        </Vouwblok>
 
-        <div style={{ marginTop: "var(--s-10)" }} />
+        {/* De knop "Nieuwe klant aanmaken" hoort bij de klantenlijst en staat dus
+            rechts in de kopbalk van dát blok, niet los onderaan de pagina. */}
+        <Vouwblok
+          titel={showGroups && mmcClients.length > 0 ? "Mijn eigen klanten" : "Klanten"}
+          aantal={showGroups && mmcClients.length > 0 ? ownClients.length : klanten.length}
+          actie={isOwner ? (openen) => (
+            <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowForm((v) => !v); }}>
+              {showForm ? "− Formulier sluiten" : "+ Nieuwe klant"}
+            </button>
+          ) : undefined}
+        >
+          {clientTable(showGroups && mmcClients.length > 0 ? ownClients : klanten, "Nog geen klanten.")}
+          {isOwner && showForm && klantForm}
+        </Vouwblok>
 
-        {showGroups && mmcClients.length > 0 ? (
-          <>
-            <div className="section-title">Mijn eigen klanten ({ownClients.length})</div>
-            {clientTable(ownClients, "Nog geen klanten.")}
-            <div className="section-title" style={{ marginTop: "var(--s-10)" }}>Multimedia Concepts ({mmcClients.length})</div>
+        {showGroups && mmcClients.length > 0 && (
+          <Vouwblok titel="Multimedia Concepts" aantal={mmcClients.length}>
             <div className="mmc-list">{clientTable(mmcClients, "Nog geen Multimedia Concepts-klanten.")}</div>
-          </>
-        ) : (
-          <>
-            <div className="section-title">Klanten ({klanten.length})</div>
-            {clientTable(klanten, "Nog geen klanten.")}
-          </>
+          </Vouwblok>
         )}
 
         {isOwner && <BulkOnboarding />}
@@ -748,67 +811,6 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
 
         {isOwner && <KijkSleutel />}
 
-        {isOwner && (
-        <div style={{ marginTop: "var(--s-10)" }}>
-          <button type="button" className="btn btn-klein" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? "− Formulier sluiten" : "+ Nieuwe klant aanmaken"}
-          </button>
-        </div>
-        )}
-
-        {isOwner && showForm && (
-        <form className="admin-form" style={{ marginTop: "var(--s-5)" }} onSubmit={onSubmit}>
-          <div className="form-grid">
-            <div className="field">
-              <label>Bedrijfsnaam</label>
-              <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="Bedrijfsnaam van de klant" required />
-            </div>
-            <div className="field">
-              <label>Inlognaam (geen spaties)</label>
-              <input value={form.loginId} onChange={(e) => set("loginId", e.target.value)} placeholder="inlognaam-zonder-spaties" required />
-            </div>
-            <div className="field">
-              <label>E-mailadres klant</label>
-              <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="contact@klant.nl" />
-            </div>
-            {showGroups && (
-              <div className="field">
-                <label>Groep</label>
-                <select className="compose-input" value={form.grp} onChange={(e) => set("grp", e.target.value)}>
-                  <option value="">Mijn eigen klanten</option>
-                  <option value="mmc">Multimedia Concepts (cockpit-only, geen login)</option>
-                </select>
-              </div>
-            )}
-            <div className="field field-wide">
-              <label>Google Sheet-link (optioneel; alleen voor oude klanten met een Sheet, nieuwe klanten werken met taken)</label>
-              <input value={form.sheetUrl} onChange={(e) => set("sheetUrl", e.target.value)} placeholder="Leeg laten bij de taken-werkwijze" />
-            </div>
-            <div className="field">
-              <label>Maandfee (&euro;, incl. linkbuilding)</label>
-              <input type="number" value={form.maandbudget} onChange={(e) => set("maandbudget", e.target.value)} placeholder="1800" required={form.grp !== "mmc"} />
-            </div>
-            <div className="field">
-              <label>Linkbuilding-budget (&euro;)</label>
-              <input type="number" value={form.linkbuilding} onChange={(e) => set("linkbuilding", e.target.value)} placeholder="600" required={form.grp !== "mmc"} />
-            </div>
-            <div className="field">
-              <label>Uurtarief (&euro;)</label>
-              <input type="number" value={form.uurtarief} onChange={(e) => set("uurtarief", e.target.value)} placeholder="100" required={form.grp !== "mmc"} />
-            </div>
-            <div className="field">
-              <label>Beschikbare uren per maand</label>
-              <input type="number" value={form.beschikbareUren} onChange={(e) => set("beschikbareUren", e.target.value)} placeholder="12" required={form.grp !== "mmc"} />
-            </div>
-          </div>
-
-          {error && <div className="login-error">{error}</div>}
-
-          <button type="submit" className="btn btn-primary" disabled={busy}>
-            {busy ? "Bezig..." : "Klant aanmaken + wachtwoord genereren"}
-          </button>
-        </form>
-        )}
       </div>
 
       <div className="footer">

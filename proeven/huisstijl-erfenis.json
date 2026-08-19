@@ -2,7 +2,6 @@
   "knopsysteem": [
     "app/_velden/RijkTekstVeld.tsx",
     "app/_werklijst/WerklijstLijst.tsx",
-    "app/admin/AdminClient.tsx",
     "app/admin/BulkOnboarding.tsx",
     "app/admin/TweakKnop.tsx",
     "app/admin/agenda/AgendaClient.tsx",

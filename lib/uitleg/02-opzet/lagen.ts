@@ -78,7 +78,12 @@ export const BLOKKEN: Uitklapper[] = [
         "niet nodig en ze duwen de rest uit beeld. Zit je zelf in zo'n groep, dan staat die vanzelf open. " +
         "Bovenin staat een zoekveldje, en zodra je typt gaan alle groepen open, anders zou een treffer in een " +
         "dichtgeklapte groep onvindbaar zijn. Leads staan bewust niet meer tussen de klanten: dat is een bedrijf " +
-        "waar nog niets voor gedaan wordt.",
+        "waar nog niets voor gedaan wordt.\n\n" +
+        "**Het beheerscherm zelf staat standaard dicht.** Leads, klanten, de klanten van een aangesloten bureau, " +
+        "de onboardingrij, klantwaarde en meekijken zijn allemaal blokken met een kopbalk en een pijltje; je " +
+        "klapt open wat je nodig hebt in plaats van langs alles heen te scrollen. De knop die bij een blok hoort " +
+        "staat rechts in diezelfde kopbalk ('+ Nieuwe lead' bij de leads, '+ Nieuwe klant' bij de klanten), dus " +
+        "hij is ook zichtbaar als het blok dicht staat; hij stond eerst helemaal onderaan, achter alle rijen.",
     },
     {
       titel: "Fundament: wat er per klant gekoppeld en ingevuld is, in één oogopslag",

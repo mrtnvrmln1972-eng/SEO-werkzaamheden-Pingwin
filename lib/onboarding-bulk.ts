@@ -132,11 +132,27 @@ export async function stopDeRij(): Promise<number> {
 
 export async function getBulkStand(): Promise<BulkStand> {
   await ensureTable();
-  const [{ rows }, t, namen] = await Promise.all([
+  const [uitDeTabel, t, namen] = await Promise.all([
     sql`SELECT client_slug, golf, status, error, started_at, updated_at FROM onboarding_bulk ORDER BY updated_at ASC`,
     tegoed(),
     listClients().then((cs) => new Map(cs.map((c) => [c.slug, c.name]))).catch(() => new Map<string, string>()),
   ]);
+  let rows = uitDeTabel.rows;
+  // Een klant die niet (meer) bestaat hoort niet in de rij te staan. Zo'n regel
+  // bleef als "mislukt, deze klant bestaat niet" in beeld hangen terwijl er
+  // niets meer te doen valt, en dat leest als werk dat nog open staat. Hij gaat
+  // hier weg uit beeld én uit de tabel, zodat hij niet elke ronde terugkomt.
+  // Alleen doen als de klantenlijst echt geladen is: bij een storing is `namen`
+  // leeg, en dan zou dit de hele rij wissen.
+  if (namen.size > 0) {
+    const spoken = rows.map((r) => String(r.client_slug)).filter((s) => !namen.has(s));
+    if (spoken.length) {
+      rows = rows.filter((r) => namen.has(String(r.client_slug)));
+      for (const slug of spoken) {
+        await sql`DELETE FROM onboarding_bulk WHERE client_slug = ${slug}`;
+      }
+    }
+  }
   const rijen: Rij[] = rows.map((r) => ({
     slug: String(r.client_slug),
     naam: namen.get(String(r.client_slug)) || String(r.client_slug),

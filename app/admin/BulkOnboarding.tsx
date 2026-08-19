@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Vouwblok from "./Vouwblok";
 import { GOLVEN, GOLF_LABEL, GOLF_UITLEG, GOLF_UNITS, type Golf, type BulkStand, type Raming } from "../../lib/onboarding-golven";
 
 // ═══════════════════════════════════════════════════════════
@@ -104,21 +105,17 @@ export default function BulkOnboarding() {
   const gedaan = stand?.rijen.filter((r) => r.status === "klaar") || [];
 
   return (
-    <div className="bulk-onb card">
-      <div className="bulk-kop">
-        <div>
-          <strong>Onboarding voor alle klanten</strong>
-          <p className="muted">
-            Werkt de klanten één voor één bij en slaat over wat al staat. De prijs staat erbij vóór je start,
-            en de rij stopt zichzelf als je Ahrefs-tegoed onder de ondergrens zakt.
-          </p>
-        </div>
-        <div className="bulk-knoppen">
-          {stand?.actief
-            ? <button type="button" className="btn btn-klein" onClick={stop} disabled={bezig}>Rij stoppen</button>
-            : <button type="button" className="btn btn-klein" onClick={() => setOpen((v) => !v)}>{open ? "− Sluiten" : "+ Rij samenstellen"}</button>}
-        </div>
-      </div>
+    <Vouwblok
+      titel="Onboarding voor alle klanten"
+      sub={stand?.actief ? "de rij loopt" : undefined}
+      actie={(openen) => (stand?.actief
+        ? <button type="button" className="btn btn-klein" onClick={() => { openen(); void stop(); }} disabled={bezig}>Rij stoppen</button>
+        : <button type="button" className="btn btn-klein" onClick={() => { openen(); setOpen((v) => !v); }}>{open ? "− Sluiten" : "+ Rij samenstellen"}</button>)}
+    >
+      <p className="muted">
+        Werkt de klanten één voor één bij en slaat over wat al staat. De prijs staat erbij vóór je start,
+        en de rij stopt zichzelf als je Ahrefs-tegoed onder de ondergrens zakt.
+      </p>
 
       {/* ── De lopende rij ── */}
       {stand && stand.rijen.length > 0 && (
@@ -222,6 +219,6 @@ export default function BulkOnboarding() {
           )}
         </div>
       )}
-    </div>
+    </Vouwblok>
   );
 }
