@@ -131,7 +131,7 @@ async function anonimiseerPagina(page: any, vervang: { van: string; naar: string
  *   vastgelegde huisstijl gebruikt.
  */
 export async function maakSchermafbeelding(
-  pad: string, baseUrl: string, wachtMs = 600, thema?: Thema | null
+  pad: string, baseUrl: string, wachtMs = 600, thema?: Thema | null, klik?: string | null
 ): Promise<Buffer | null> {
   const sessie = makeAdminSession();
   const vervang = await haalVervangingenOp();
@@ -144,6 +144,15 @@ export async function maakSchermafbeelding(
     // gelijke zwaarte wint de laatste, en dat is hier de bedoeling: je wilt de
     // richting zien die je uitprobeert, niet de stijl die al vaststaat.
     if (thema) await page.addStyleTag({ content: themaNaarCss(thema) });
+    // Eerst iets aanklikken (?klik=...): een blok dat standaard dicht staat is
+    // anders niet te fotograferen, en dan kun je niet zien wat je gebouwd hebt.
+    // Alles wat op de selector past wordt aangeklikt; niets gevonden is geen
+    // fout, dan staat er gewoon niets open op de foto.
+    if (klik) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await page.$$eval(klik, (els: any[]) => els.forEach((e) => (e as HTMLElement).click())).catch(() => {});
+      await new Promise((r) => setTimeout(r, 300));
+    }
     await new Promise((r) => setTimeout(r, Math.max(0, Math.min(20000, wachtMs))));
     await anonimiseerPagina(page, vervang);
     const shot = await page.screenshot({ type: "png", fullPage: true });

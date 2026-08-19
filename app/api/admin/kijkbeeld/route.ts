@@ -64,7 +64,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: `Onbekende stijlrichting: ${stijlNaam}.` }, { status: 400 });
   }
   try {
-    const png = await maakSchermafbeelding(pad, basis, wacht, thema);
+    // Optioneel: klik eerst iets aan (?klik=.vouwblok .strategy-head). Een blok
+    // dat standaard dicht staat is anders niet te fotograferen.
+    const klik = (req.nextUrl.searchParams.get("klik") || "").slice(0, 200) || null;
+    const png = await maakSchermafbeelding(pad, basis, wacht, thema, klik);
     if (!png) {
       return NextResponse.json({ ok: false, error: "De browser kon niet starten op deze server." }, { status: 500 });
     }

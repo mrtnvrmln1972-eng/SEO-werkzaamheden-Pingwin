@@ -2846,6 +2846,10 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .vouwblok .strategy-sub { color: var(--kleur-accent-vlak); }
 .vouwblok-actie { position: absolute; top: var(--ruimte-krap); right: var(--ruimte-naast); display: flex; align-items: center; gap: var(--ruimte-naast); }
 .vouwblok .strategy-body > .task-table-wrap { margin: 0; box-shadow: none; }
+/* Eén zwarte balk per kaart, niet twee. De kolomnamen ónder de kopbalk zijn
+   bijschrift, geen kop: stil vlak, kleine grijze letters, één lijntje eronder. */
+.vouwblok thead th { background: var(--kleur-rustig); color: var(--kleur-tekst-zacht); border-bottom: 1px solid var(--kleur-rand); }
+.vouwblok .task-table-wrap thead tr th:first-child, .vouwblok .task-table-wrap thead tr th:last-child { border-radius: 0; }
 .strategy-session { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); background: var(--kleur-kaart); }
 .strategy-session-head { display: flex; align-items: center; gap: var(--ruimte-naast); padding: var(--ruimte-krap) var(--ruimte-naast) var(--ruimte-krap) var(--ruimte-krap); }
 .strategy-session-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: var(--ruimte-naast); background: none; border: none; padding: var(--ruimte-naast) var(--ruimte-naast); font-family: inherit; font-size: var(--type-lopend); font-weight: 600; color: var(--dark); text-align: left; cursor: pointer; }
