@@ -111,8 +111,19 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
     window.history.replaceState(null, "", adres.toString());
   }, [slug]);
 
+  // Van klant wisselen begint opnieuw: een adres of een uitkomst van de vorige
+  // klant hoort niet te blijven staan. Dit gebeurt hier bij de handeling en niet
+  // in het effect hieronder, want dat effect draait óók bij het openen van het
+  // scherm en wiste dan meteen weer wat er uit de link kwam.
+  function kiesKlant(s: string) {
+    setSlug(s);
+    setVoordeur("");
+    setUitAdres("");
+    setVoordeurUit(null);
+  }
+
   useEffect(() => {
-    if (!slug) { setTelling(null); setKaart(null); setCodeStand(null); setVoordeur(""); setVoordeurUit(null); return; }
+    if (!slug) { setTelling(null); setKaart(null); setCodeStand(null); return; }
     setNieuweCode(""); setRegels([]); setVoordeurUit(null);
     void haalOp(slug);
     fetch(`/api/admin/voordeur?slug=${encodeURIComponent(slug)}${uitAdres ? `&adres=${encodeURIComponent(uitAdres)}` : ""}`)
@@ -223,7 +234,7 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
 
         <div className="beheer-blok">
           <h2 className="beheer-h2">Klant</h2>
-          <select className="wp-docdrop-input" value={klanten.some((k) => k.slug === slug) ? slug : ""} onChange={(e) => setSlug(e.target.value)}>
+          <select className="wp-docdrop-input" value={klanten.some((k) => k.slug === slug) ? slug : ""} onChange={(e) => kiesKlant(e.target.value)}>
             <option value="">Kies een klant…</option>
             {klanten.map((k) => <option key={k.slug} value={k.slug}>{k.name}</option>)}
           </select>
@@ -234,7 +245,7 @@ export default function VerhuizenClient({ klanten }: { klanten: { slug: string; 
           <input
             className="wp-docdrop-input"
             value={slug}
-            onChange={(e) => setSlug(e.target.value.trim().toLowerCase())}
+            onChange={(e) => kiesKlant(e.target.value.trim().toLowerCase())}
             placeholder="korte naam van de klant"
           />
         </div>
