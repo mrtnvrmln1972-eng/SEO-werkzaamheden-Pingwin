@@ -365,6 +365,22 @@ export async function uploadBestand(folderId: string, filename: string, buffer: 
   return { id: file.id as string, link: `https://drive.google.com/file/d/${file.id}/view?usp=sharing`, shared };
 }
 
+// Een bestand weggooien. Bedoeld voor wat we zelf tijdelijk aanmaken, zoals de
+// omgezette tekstversie van een pdf: die is alleen gereedschap om de tekst eruit
+// te halen en hoort niet in de map van de klant te blijven staan. Geeft false
+// terug als het niet lukte; de aanroeper hoeft daar niet op te wachten.
+export async function verwijderBestand(idOrUrl: string): Promise<boolean> {
+  const id = driveIdFromUrl(idOrUrl);
+  if (!id) return false;
+  try {
+    const t = await token();
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?supportsAllDrives=true`, {
+      method: "DELETE", headers: { Authorization: `Bearer ${t}` },
+    });
+    return res.ok;
+  } catch { return false; }
+}
+
 export async function uploadPlainFile(folderId: string, filename: string, content: string, mimeType = "application/json"): Promise<{ id: string; link: string; shared: boolean }> {
   const t = await token();
   const parent = folderId && folderId !== "root" ? folderId : "root";

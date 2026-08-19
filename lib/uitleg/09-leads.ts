@@ -27,6 +27,18 @@ export const HOOFDSTUK: Hoofdstuk = {
         "wat je nodig hebt als een traject een jaar duurt.",
     },
     {
+      titel: "Aanleveren: een link blijft een link, een bestand houdt zijn opmaak",
+      kern: "Wat je erin sleept of plakt, ziet er later nog uit zoals het binnenkwam.",
+      tekst:
+        "Sleep je een pdf in het dossier, dan wordt het bestand zelf bewaard, precies zoals het was: kolommen, " +
+        "tabellen, beeld, huisstijl. Daarnaast wordt de tekst eruit gehaald, want daar zoekt het gesprek in. " +
+        "Op het scherm zie je standaard het origineel; met één knop schakel je naar de uitgelezen tekst.\n\n" +
+        "Plak je een link, dan blijft het gewoon een link: het stuk komt in het dossier te staan met de naam van " +
+        "het document en een knop die het opent op de plek waar het echt staat. Kan de inhoud gelezen worden " +
+        "(een Google-document), dan reist die mee zodat het gesprek erop kan zoeken. Kan dat niet (een pdf in " +
+        "Drive, een map, een link naar een ander portaal), dan is dat geen fout meer: het blijft die link.",
+    },
+    {
       titel: "Klantprofiel automatisch opbouwen",
       kern: "Van een domein naar een volledig profiel, zonder vragenlijst.",
       tekst:

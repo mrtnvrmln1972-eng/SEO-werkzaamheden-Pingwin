@@ -92,7 +92,6 @@ export default function LeadChat({
       <div className="lead-chat-kop">
         <div>
           <div className="lead-chat-titel">Gesprek over {naam}</div>
-          <div className="lead-chat-sub">Vertel gewoon wat je wilt. De chat kent het dossier en kan zelf meten.</div>
         </div>
         {messages.length > 0 && (
           <button className="btn btn-klein" onClick={wis} title="Begin een nieuw gesprek">Wis gesprek</button>
@@ -101,18 +100,6 @@ export default function LeadChat({
 
       <div className="lead-chat-verloop">
         {!geladen && <div className="muted">Bezig met laden…</div>}
-        {geladen && messages.length === 0 && (
-          <div className="lead-chat-leeg">
-            <p>Nog geen gesprek. Je kunt hier zo losjes typen als je wilt, bijvoorbeeld:</p>
-            <ul>
-              <li>Kijk eens hoe deze website ervoor staat, en wat er te winnen valt.</li>
-              <li>Hoe staat de pagina /diensten/ ervoor ten opzichte van de concurrentie?</li>
-              <li>Maak een SEO-voorstel. Budget mag 1500 per maand, ze hechten aan duurzaamheid.</li>
-              <li>Hier is een Ads-analyse van een collega, maak er een Pingwin-document van.</li>
-            </ul>
-            <p className="muted">Wat blijvend geldt voor dit bedrijf bewaart de chat zelf in het dossier hiernaast.</p>
-          </div>
-        )}
         {messages.map((m, i) => (
           <div key={i} className={"lead-bericht " + (m.role === "user" ? "van-mij" : "van-ai")}>
             {m.role === "assistant"

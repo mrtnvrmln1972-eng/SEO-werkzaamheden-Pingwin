@@ -5484,11 +5484,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .lead-chat { display: flex; flex-direction: column; }
 .lead-chat-kop { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ruimte-groep); margin-bottom: var(--s-5); }
 .lead-chat-titel { font-size: var(--type-sectiekop); line-height: var(--regel-sectiekop); font-weight: 700; color: var(--dark); }
-.lead-chat-sub { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); margin-top: var(--ruimte-krap); }
 .lead-chat-verloop { display: flex; flex-direction: column; gap: var(--ruimte-groep); max-height: 62vh; overflow-y: auto; padding-right: var(--ruimte-naast); }
-.lead-chat-leeg { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); max-width: 70ch; }
-.lead-chat-leeg ul { margin: var(--ruimte-regel) 0; padding-left: var(--s-5); }
-.lead-chat-leeg li { margin-bottom: var(--ruimte-naast); }
 .lead-bericht { max-width: 92%; border-radius: var(--ronding-knop); padding: var(--ruimte-regel) var(--ruimte-groep); font-size: var(--type-lopend); line-height: var(--regel-lopend); }
 .lead-bericht.van-mij { align-self: flex-end; background: var(--kleur-accent-vlak); color: var(--dark); }
 .lead-bericht.van-ai { align-self: flex-start; background: var(--kleur-rustig); width: 100%; max-width: 100%; }
@@ -5532,7 +5528,11 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .lead-item-datum { font-size: var(--type-label); color: var(--kleur-tekst-zacht); white-space: nowrap; }
 .lead-item-sam { font-size: var(--type-label); line-height: 1.5; color: var(--kleur-tekst-zacht); margin-top: var(--ruimte-naast); }
 .lead-item-volledig { margin-top: var(--ruimte-regel); max-height: 320px; overflow-y: auto; background: var(--kleur-rustig); border-radius: var(--ronding-klein); padding: var(--ruimte-regel); }
-.lead-item-volledig pre { margin: 0; white-space: pre-wrap; font-family: inherit; font-size: var(--type-label); line-height: 1.55; color: var(--dark); }
+/* Het origineel zelf, met zijn eigen opmaak: dan hoeft de voorvertoning niet in
+   het kleine tekstvenster te passen. */
+.lead-item-volledig:has(.lead-item-voorbeeld) { max-height: none; overflow: visible; }
+.lead-item-voorbeeld { display: block; width: 100%; height: 60vh; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart); }
+.lead-item-bijschrift { margin-top: var(--ruimte-naast); font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-zacht); }
 .lead-item-acties { margin-top: var(--ruimte-regel); display: flex; gap: var(--ruimte-naast); flex-wrap: wrap; align-items: center; }
 
 @media (max-width: 1100px) {

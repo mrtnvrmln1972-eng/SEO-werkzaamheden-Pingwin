@@ -23,6 +23,23 @@ export function docsBewerkLink(input: string): string {
   return id ? `https://docs.google.com/document/d/${id}/edit?usp=sharing` : s;
 }
 
+// ═══════════════════════════════════════════════════════════
+// HET ORIGINEEL LATEN ZIEN, NIET DE UITGELEZEN TEKST
+// ═══════════════════════════════════════════════════════════
+// Van een aangeleverd bestand bewaren we twee dingen: de tekst (daar zoekt de
+// chat in) en het bestand zelf. Op het scherm hoort het bestand zelf te staan,
+// want de tekst is de opmaak kwijt: een pdf met kolommen, tabellen en beeld werd
+// een grijze lap. Drive kan elk bestand tonen zoals het is; dit is de link naar
+// dat kijkvenster. Leeg als het geen Google-link is; dan is er niets te tonen.
+export function voorvertoningLink(input: string): string {
+  const s = (input || "").trim();
+  if (!/^https?:\/\/(docs|sheets|slides|drive)\.google\.com\//i.test(s)) return "";
+  const docs = s.match(/^https?:\/\/(?:docs|sheets|slides)\.google\.com\/([a-z]+)\/d\/([a-zA-Z0-9_-]{20,})/i);
+  if (docs) return `https://docs.google.com/${docs[1]}/d/${docs[2]}/preview`;
+  const id = driveIdFromUrl(s);
+  return id ? `https://drive.google.com/file/d/${id}/preview` : "";
+}
+
 export function driveIdFromUrl(input: string): string {
   const s = (input || "").trim();
   const byPath = s.match(/\/d\/([a-zA-Z0-9_-]{20,})/);

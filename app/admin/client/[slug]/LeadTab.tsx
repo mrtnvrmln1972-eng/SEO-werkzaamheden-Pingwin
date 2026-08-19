@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import LeadChat from "./LeadChat";
+import { netteHtml } from "../../../../lib/nette-html";
+import { voorvertoningLink } from "../../../../lib/drive-id";
 
 type DossierItem = { id: number; soort: string; titel: string; samenvatting: string; bron: string; driveLink: string; createdAt: string };
 type LeadDoc = { id: number; sjabloon: string; titel: string; opdracht: string; driveLink: string; createdAt: string };
@@ -28,6 +30,9 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
   const [bezig, setBezig] = useState("");
   const [open, setOpen] = useState<number | null>(null);
   const [volledig, setVolledig] = useState<Record<number, string>>({});
+  // Een aangeleverd stuk laat standaard het origineel zien (met zijn eigen
+  // opmaak); de uitgelezen tekst is er nog steeds, één knop verderop.
+  const [alsTekst, setAlsTekst] = useState<Record<number, boolean>>({});
 
   // Toevoegen aan het dossier (tekst of Drive-link) en documenten maken.
   const [tekst, setTekst] = useState("");
@@ -53,7 +58,10 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
     const t = tekst.trim();
     if (!t) return;
     setBezig("dossier"); setMelding(null);
-    const isLink = /^https?:\/\/(docs|drive)\.google\.com\//i.test(t);
+    // Eén losse link (Drive, een portaal, waar dan ook) blijft een link: hij
+    // wordt bewaard met de naam van het document en een knop die hem opent op
+    // zijn eigen plek. Alleen tekst mét een link erin is gewoon tekst.
+    const isLink = /^https?:\/\/\S+$/i.test(t);
     try {
       const res = await fetch("/api/admin/lead-dossier", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -193,12 +201,26 @@ export default function LeadTab({ slug, naam, domain }: { slug: string; naam: st
                 {i.samenvatting && <div className="lead-item-sam">{i.samenvatting}</div>}
                 {open === i.id && (
                   <div className="lead-item-volledig">
-                    <pre>{volledig[i.id] ?? "Bezig met laden…"}</pre>
+                    {voorvertoningLink(i.driveLink) && !alsTekst[i.id] ? (
+                      <>
+                        <iframe className="lead-item-voorbeeld" src={voorvertoningLink(i.driveLink)} title={i.titel} />
+                        <div className="lead-item-bijschrift">Het origineel, met zijn eigen opmaak. Blijft dit leeg, open het dan in Drive.</div>
+                      </>
+                    ) : (
+                      <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(volledig[i.id] ?? "Bezig met laden…", { basis: domain }) }} />
+                    )}
                   </div>
                 )}
                 <div className="lead-item-acties">
                   {i.driveLink && <a href={i.driveLink} target="_blank" rel="noreferrer" className="btn btn-klein">Openen</a>}{" "}
                   <button className="btn btn-klein" onClick={() => toonVolledig(i.id)}>{open === i.id ? "Inklappen" : "Volledig"}</button>{" "}
+                  {open === i.id && voorvertoningLink(i.driveLink) && (
+                    <>
+                      <button className="btn btn-klein" onClick={() => setAlsTekst((v) => ({ ...v, [i.id]: !v[i.id] }))}>
+                        {alsTekst[i.id] ? "Toon het origineel" : "Toon als tekst"}
+                      </button>{" "}
+                    </>
+                  )}
                   <button className="btn btn-klein" onClick={() => verwijderItem(i.id)}>Verwijder</button>
                 </div>
               </div>

@@ -6,7 +6,7 @@ import { getClientBySlug } from "./clients";
 import { getPageDocOutputs, savePageDocOutput, getPageDriveFolder } from "./site-urls";
 import { ensureFolderFor } from "./drive-map";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
-import { uploadBestand, uploadEnConverteer, readDriveDoc } from "./drive";
+import { uploadBestand, uploadEnConverteer, readDriveDoc, verwijderBestand } from "./drive";
 import { kanDirectGelezen, tekstUitLokaalBestand } from "./bestand-tekst";
 import { GEEN_DATUM, type BronDatum, type DatumBron } from "./bron-datum";
 
@@ -246,11 +246,23 @@ export async function leesAangeleverdDocument(
     return { ok: false, error: "Een pdf lees ik via Google Drive, en die koppeling werkt nu niet. Koppel Drive opnieuw in het adminscherm, of lever het stuk als Word of tekst aan." };
   }
   try {
-    const lees = await uploadEnConverteer(folderId, `Aangeleverd-${datum}-${naam}`, buf, "application/pdf");
+    // Het origineel gaat er ongewijzigd in, en dát is de link die we bewaren.
+    // De omzetting naar een Google Doc is alleen gereedschap om de tekst eruit
+    // te halen; die gooit de opmaak van de pdf weg (kolommen, tabellen, beeld,
+    // huisstijl). Zolang die omzetting de bewaarde link wás, zag een aangeleverde
+    // pdf er achteraf niet meer uit zoals hij binnenkwam. Nu wel.
+    const origineel = await uploadBestand(folderId, `Aangeleverd-${datum}-${naam}`, buf, "application/pdf");
+    const lees = await uploadEnConverteer(folderId, `Tekstversie-${datum}-${naam}`, buf, "application/pdf");
     const read = await readDriveDoc(lees.id, 60000);
+    // Gereedschap, geen document: weg ermee, anders staat elke pdf twee keer in
+    // de map van de klant.
+    await verwijderBestand(lees.id).catch(() => false);
     return read.ok && (read.text || "").trim()
-      ? { ok: true, tekst: read.text || "", driveLink: lees.link }
-      : { ok: false, error: "Kon geen leesbare tekst uit de pdf halen (mogelijk een scan zonder tekstlaag)." };
+      ? { ok: true, tekst: read.text || "", driveLink: origineel.link }
+      // Geen tekstlaag (een scan): het bestand zelf is er wél, dus we geven de
+      // link mee. De aanleverkant kan hem dan als link bewaren in plaats van de
+      // aanlevering te laten mislukken.
+      : { ok: false, driveLink: origineel.link, error: "Kon geen leesbare tekst uit de pdf halen (mogelijk een scan zonder tekstlaag)." };
   } catch (e) {
     return { ok: false, error: "Inlezen mislukte: " + (e as Error).message };
   }
