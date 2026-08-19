@@ -18,6 +18,8 @@ export type KlantStand = {
   naam: string;
   domein: string;
   ga4: string | null;
+  /** Wanneer er voor het laatst naar de property gezocht is. Null = nooit. */
+  ga4Gezocht: string | null;
   clarity: { gekoppeld: boolean; laatste: string | null; vandaag: number; ruimte: number; bewaard: number };
 };
 
@@ -47,6 +49,9 @@ export default function GedragPaneel({ klanten, magSchrijven }: { klanten: Klant
   const [property, setProperty] = useState("");
   const [bezig, setBezig] = useState("");
   const [melding, setMelding] = useState<{ soort: "goed" | "let-op"; tekst: string } | null>(null);
+  // Aparte melding voor de zoekronde, want die knop staat in het andere paneel;
+  // één gedeelde melding zou daar én hier verschijnen.
+  const [zoekMelding, setZoekMelding] = useState<{ soort: "goed" | "let-op"; tekst: string } | null>(null);
 
   const [proefUrl, setProefUrl] = useState("");
   const [proef, setProef] = useState<{ analytics: Cijfers; clarity: { pagina: ClarityPagina | null } } | null>(null);
@@ -85,6 +90,36 @@ export default function GedragPaneel({ klanten, magSchrijven }: { klanten: Klant
     }
   }
 
+  async function zoekProperties() {
+    setBezig("ga4-zoeken");
+    setZoekMelding(null);
+    try {
+      const res = await fetch("/api/admin/gedrag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actie: "ga4-zoeken" }),
+      });
+      const data = await res.json();
+      if (!data.ok) { setZoekMelding({ soort: "let-op", tekst: data.error || "Het zoeken lukte niet." }); return; }
+      const gevonden: { slug: string; property: string }[] = data.gevonden || [];
+      const nu = new Date().toISOString();
+      setStand((oud) => oud.map((k) => {
+        const raak = gevonden.find((g) => g.slug === k.slug);
+        return raak ? { ...k, ga4: raak.property, ga4Gezocht: nu } : { ...k, ga4Gezocht: k.ga4 ? k.ga4Gezocht : nu };
+      }));
+      setZoekMelding({
+        soort: gevonden.length ? "goed" : "let-op",
+        tekst: gevonden.length
+          ? `${gevonden.length} klant(en) gekoppeld aan hun property, uit ${data.gezien} properties in je Google-account.`
+          : `Er zaten ${data.gezien} properties in je Google-account, maar geen enkele hoorde bij een domein dat hier bekend is. Controleer of dit dashboard met het juiste Google-account gekoppeld is.`,
+      });
+    } catch {
+      setZoekMelding({ soort: "let-op", tekst: "De verbinding met het dashboard viel weg." });
+    } finally {
+      setBezig("");
+    }
+  }
+
   async function probeer() {
     if (!klant || !proefUrl.trim()) return;
     setBezig("proef");
@@ -107,6 +142,11 @@ export default function GedragPaneel({ klanten, magSchrijven }: { klanten: Klant
     <>
       <Paneel
         titel="Weten we per klant wat bezoekers doen?"
+        knoppen={magSchrijven ? (
+          <button className="btn btn-klein btn-primary" disabled={bezig === "ga4-zoeken"} onClick={zoekProperties}>
+            {bezig === "ga4-zoeken" ? "Bezig met zoeken…" : "Zoek de Analytics-properties op"}
+          </button>
+        ) : undefined}
         uitleg={
           "Analytics vindt zichzelf meestal: het dashboard zoekt binnen jouw Google-account naar de property die " +
           "bij het domein hoort. Clarity heeft per website een eigen sleutel nodig, die je in Clarity zelf aanmaakt. " +
@@ -114,6 +154,7 @@ export default function GedragPaneel({ klanten, magSchrijven }: { klanten: Klant
           "hoe hij uitpakt."
         }
       >
+        {zoekMelding && <Signaal soort={zoekMelding.soort === "goed" ? "goed" : "let-op"}>{zoekMelding.tekst}</Signaal>}
         {stand.length === 0 ? (
           <Leeg>Er zijn nog geen klanten om gedragsdata bij op te halen.</Leeg>
         ) : (
@@ -121,7 +162,13 @@ export default function GedragPaneel({ klanten, magSchrijven }: { klanten: Klant
             {stand.map((k) => (
               <tr key={k.slug}>
                 <td>{k.naam}</td>
-                <td>{k.ga4 ? <Chip toon="goed">{`property ${k.ga4}`}</Chip> : <Chip toon="uit">nog niet gevonden</Chip>}</td>
+                <td>
+                  {k.ga4
+                    ? <Chip toon="goed">{`property ${k.ga4}`}</Chip>
+                    : k.ga4Gezocht
+                      ? <Chip toon="let-op">gezocht, niets gevonden</Chip>
+                      : <Chip toon="uit">nog nooit gezocht</Chip>}
+                </td>
                 <td>{k.clarity.gekoppeld ? <Chip toon="goed">sleutel bekend</Chip> : <Chip toon="uit">geen sleutel</Chip>}</td>
                 <td>{k.clarity.bewaard ? `${datum(k.clarity.laatste)} (${k.clarity.bewaard} metingen bewaard)` : "nog nooit"}</td>
               </tr>

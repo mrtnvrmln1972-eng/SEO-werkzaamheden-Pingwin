@@ -34,7 +34,7 @@ export default async function PaginaLabPage() {
   const alle = await listClients();
   const zichtbaar = scope.allowedSlugs ? alle.filter((c) => scope.allowedSlugs?.includes(c.slug)) : alle;
   const [properties, clarity] = await Promise.all([
-    ga4PropertiesBekend().catch(() => ({} as Record<string, string>)),
+    ga4PropertiesBekend().catch(() => ({} as Awaited<ReturnType<typeof ga4PropertiesBekend>>)),
     clarityStandAlle().catch(() => ({} as Awaited<ReturnType<typeof clarityStandAlle>>)),
   ]);
 
@@ -42,7 +42,8 @@ export default async function PaginaLabPage() {
     slug: c.slug,
     naam: c.name,
     domein: c.domain || "",
-    ga4: properties[c.slug] || null,
+    ga4: properties[c.slug]?.property || null,
+    ga4Gezocht: properties[c.slug]?.gezochtOp || null,
     clarity: clarity[c.slug] || { gekoppeld: false, laatste: null, vandaag: 0, ruimte: 8, bewaard: 0 },
   }));
 

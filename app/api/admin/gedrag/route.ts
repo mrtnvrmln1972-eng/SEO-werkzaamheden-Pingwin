@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { guardSlug } from "../../../../lib/admin-scope";
-import { getClientBySlug } from "../../../../lib/clients";
-import { bewaarGa4Property, ga4Stand } from "../../../../lib/ga4-pagina";
+import { guardOwner, guardSlug } from "../../../../lib/admin-scope";
+import { getClientBySlug, listClients } from "../../../../lib/clients";
+import { bewaarGa4Property, ga4Stand, ga4ZoekAlle } from "../../../../lib/ga4-pagina";
 import { bewaarClarityToken, clarityStand, haalClarity, verwijderClarityToken } from "../../../../lib/clarity";
 import type { Dagen, Dimensie } from "../../../../lib/clarity";
 
@@ -37,6 +37,16 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return NextResponse.json({ ok: false, error: "Ongeldige aanvraag." }, { status: 400 }); }
+
+  // Eén ronde langs het hele Google-account om elke klant aan zijn property te
+  // helpen. Gaat over álle klanten heen, dus alleen de eigenaar; guardOwner
+  // sluit ook een omgeving uit die maar één klant mag tonen.
+  if (body.actie === "ga4-zoeken") {
+    const g = await guardOwner(req); if (!g.ok) return g.res;
+    const klanten = (await listClients()).map((c) => ({ slug: c.slug, domain: c.domain || "" }));
+    const uit = await ga4ZoekAlle(klanten);
+    return NextResponse.json(uit, { status: uit.ok ? 200 : 400 });
+  }
 
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });

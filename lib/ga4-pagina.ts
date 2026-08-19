@@ -172,18 +172,122 @@ export async function ga4Stand(slug: string, domainHint = ""): Promise<{ gekoppe
 }
 
 /**
- * De properties die al bekend zijn, rechtstreeks uit de kolom.
+ * Wat er per klant al bekend is, rechtstreeks uit de kolom.
  *
  * Bewust ZONDER zoeken: een overzicht van dertig klanten zou anders dertig keer
  * het hele Analytics-account aflopen, en dat is precies waarom `ga4PropertyFor`
  * zijn zoekpogingen een week uit elkaar houdt. Voor een lijstje "waar staat het
  * al" is de opgeslagen waarde genoeg.
+ *
+ * De zoekdatum hoort er wél bij, want zonder die datum lezen "hier is nooit naar
+ * gezocht" en "gezocht en niets gevonden" op het scherm hetzelfde. Dat is het
+ * verschil tussen niets doen en iets uitzoeken.
  */
-export async function ga4PropertiesBekend(): Promise<Record<string, string>> {
-  const { rows } = await sql`SELECT slug, ga4_property_id FROM clients WHERE ga4_property_id IS NOT NULL AND ga4_property_id <> ''`;
-  const uit: Record<string, string> = {};
-  for (const r of rows) uit[String(r.slug)] = String(r.ga4_property_id);
+export type Ga4Bekend = { property: string | null; gezochtOp: string | null };
+
+export async function ga4PropertiesBekend(): Promise<Record<string, Ga4Bekend>> {
+  const { rows } = await sql`SELECT slug, ga4_property_id, ga4_gezocht_op FROM clients`;
+  const uit: Record<string, Ga4Bekend> = {};
+  for (const r of rows) {
+    uit[String(r.slug)] = {
+      property: (r.ga4_property_id as string) || null,
+      gezochtOp: r.ga4_gezocht_op ? new Date(r.ga4_gezocht_op as string).toISOString() : null,
+    };
+  }
   return uit;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ALLE KLANTEN IN ÉÉN RONDE AAN HUN PROPERTY HELPEN
+// ═══════════════════════════════════════════════════════════
+// Per klant zoeken werkt, maar het schaalt niet: dat is per klant één keer de
+// lijst met properties ophalen plus veertig keer de webadressen erbij, dus bij
+// twintig klanten al gauw achthonderd aanvragen. Precies daarom stond er ook een
+// rem op (één zoekpoging per week per klant), en het gevolg is dat een klant met
+// Analytics er alsnog jaren onbekend bij kan staan.
+//
+// Andersom is het één ronde: haal de properties van het hele account op, haal
+// van elke property het webadres op, en leg dat naast de domeinen van alle
+// klanten tegelijk. Eén keer werk voor twintig klanten in plaats van twintig
+// keer werk voor één.
+// ═══════════════════════════════════════════════════════════
+
+const ADMIN_API = "https://analyticsadmin.googleapis.com/v1beta";
+
+/** Elke property in het gekoppelde Google-account, met de webadressen erachter. */
+async function allePropertiesMetAdres(token: string): Promise<{ property: string; hosts: string[] }[]> {
+  const res = await fetch(`${ADMIN_API}/accountSummaries?pageSize=200`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+  if (!res.ok) return [];
+  const j = await res.json();
+  const namen: string[] = [];
+  for (const acc of (j.accountSummaries || []) as { propertySummaries?: { property?: string }[] }[]) {
+    for (const p of acc.propertySummaries || []) if (p.property) namen.push(p.property);
+  }
+
+  const uit: { property: string; hosts: string[] }[] = [];
+  // Acht tegelijk: hetzelfde tempo als het zoeken per klant, want daar is deze
+  // stap uit overgenomen. Honderd properties is de grens; daarboven duurt het
+  // langer dan een scherm mag wachten.
+  const lijst = namen.slice(0, 100);
+  for (let i = 0; i < lijst.length; i += 8) {
+    const groep = lijst.slice(i, i + 8);
+    const stukken = await Promise.all(groep.map(async (prop) => {
+      const sres = await fetch(`${ADMIN_API}/${prop}/dataStreams`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      if (!sres.ok) return { property: prop.replace("properties/", ""), hosts: [] as string[] };
+      const sj = await sres.json().catch(() => null);
+      const hosts: string[] = [];
+      for (const s of (sj?.dataStreams || []) as { webStreamData?: { defaultUri?: string } }[]) {
+        const uri = (s.webStreamData?.defaultUri || "").toLowerCase();
+        if (!uri) continue;
+        try { hosts.push(new URL(uri).hostname.replace(/^www\./, "")); } catch { hosts.push(uri.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "")); }
+      }
+      return { property: prop.replace("properties/", ""), hosts };
+    }));
+    uit.push(...stukken);
+  }
+  return uit;
+}
+
+export type ZoekUitkomst = {
+  ok: boolean;
+  error?: string;
+  /** Hoeveel properties er in het account zitten. */
+  gezien: number;
+  /** Per klant wat er gevonden is. Alleen de klanten die nog niets hadden. */
+  gevonden: { slug: string; property: string }[];
+  /** Klanten waar echt niets bij paste. */
+  nietGevonden: string[];
+};
+
+export async function ga4ZoekAlle(klanten: { slug: string; domain: string }[]): Promise<ZoekUitkomst> {
+  const token = await getGoogleAccessToken();
+  if (!token) return { ok: false, error: "Google is niet gekoppeld in dit dashboard.", gezien: 0, gevonden: [], nietGevonden: [] };
+
+  const properties = await allePropertiesMetAdres(token).catch(() => []);
+  if (!properties.length) {
+    return { ok: false, error: "Het gekoppelde Google-account ziet geen enkele Analytics-property.", gezien: 0, gevonden: [], nietGevonden: [] };
+  }
+
+  const perHost = new Map<string, string>();
+  for (const p of properties) for (const h of p.hosts) if (!perHost.has(h)) perHost.set(h, p.property);
+
+  const gevonden: { slug: string; property: string }[] = [];
+  const nietGevonden: string[] = [];
+  for (const k of klanten) {
+    const domein = (k.domain || "").toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+    if (!domein) { nietGevonden.push(k.slug); continue; }
+    // Eerst een exacte treffer, anders een adres dat op het domein eindigt (een
+    // property op een subdomein hoort nog steeds bij deze klant).
+    const treffer = perHost.get(domein) || [...perHost.entries()].find(([h]) => h.endsWith(`.${domein}`))?.[1];
+    if (treffer) {
+      await bewaarGa4Property(k.slug, treffer);
+      gevonden.push({ slug: k.slug, property: treffer });
+    } else {
+      await sql`UPDATE clients SET ga4_gezocht_op = now() WHERE slug = ${k.slug}`;
+      nietGevonden.push(k.slug);
+    }
+  }
+  return { ok: true, gezien: properties.length, gevonden, nietGevonden };
 }
 
 /** Een property met de hand vastleggen of weghalen (leeg = weghalen). */
