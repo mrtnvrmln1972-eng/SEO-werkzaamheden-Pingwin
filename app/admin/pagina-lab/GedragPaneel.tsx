@@ -23,7 +23,7 @@ export type KlantStand = {
   clarity: { gekoppeld: boolean; laatste: string | null; vandaag: number; ruimte: number; bewaard: number };
 };
 
-type Gedrag = { weergaven: number; instappen: number; betrokkenheid: number; wegklikken: number; seconden: number; conversies: number };
+type Gedrag = { weergaven: number; instappen: number; betrokkenheid: number; seconden: number; conversies: number };
 type Cijfers = {
   gekoppeld: boolean; property: string | null; dagen: number; pad: string;
   totaal: Gedrag | null; perApparaat: { apparaat: string; gedrag: Gedrag }[]; melding?: string;
@@ -269,18 +269,16 @@ function Uitkomst({ analytics, clarity }: { analytics: Cijfers; clarity: Clarity
             <Chip toon="accent">{`${analytics.totaal.weergaven} weergaven`}</Chip>
             <Chip>{`${analytics.totaal.instappen} sessies gestart`}</Chip>
             <Chip>{`${analytics.totaal.betrokkenheid}% betrokken`}</Chip>
-            <Chip>{`${analytics.totaal.wegklikken}% meteen weg`}</Chip>
             <Chip>{tijd(analytics.totaal.seconden)}</Chip>
             <Chip toon={analytics.totaal.conversies > 0 ? "goed" : "neutraal"}>{`${analytics.totaal.conversies} conversies`}</Chip>
           </Chips>
           {analytics.perApparaat.length > 1 && (
-            <Tabel kolommen={["Apparaat", "Weergaven", "Betrokken", "Meteen weg", "Tijd", "Conversies"]}>
+            <Tabel kolommen={["Apparaat", "Weergaven", "Betrokken", "Tijd", "Conversies"]}>
               {analytics.perApparaat.map((a) => (
                 <tr key={a.apparaat}>
                   <td>{APPARAAT[a.apparaat] || a.apparaat}</td>
                   <td>{a.gedrag.weergaven}</td>
                   <td>{`${a.gedrag.betrokkenheid}%`}</td>
-                  <td>{`${a.gedrag.wegklikken}%`}</td>
                   <td>{tijd(a.gedrag.seconden)}</td>
                   <td>{a.gedrag.conversies}</td>
                 </tr>

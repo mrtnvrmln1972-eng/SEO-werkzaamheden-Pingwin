@@ -29,8 +29,6 @@ export type Gedrag = {
   instappen: number;
   /** Percentage sessies dat als betrokken telt (GA4 rekent dat zelf uit). */
   betrokkenheid: number;
-  /** Percentage sessies dat meteen weer weg is. */
-  wegklikken: number;
   /** Gemiddelde tijd op de pagina, in seconden. */
   seconden: number;
   /** Conversies (in GA4 sinds 2024 "sleutelgebeurtenissen") toegeschreven aan deze pagina. */
@@ -50,7 +48,7 @@ export type PaginaCijfers = {
   melding?: string;
 };
 
-const LEEG: Gedrag = { weergaven: 0, instappen: 0, betrokkenheid: 0, wegklikken: 0, seconden: 0, conversies: 0 };
+const LEEG: Gedrag = { weergaven: 0, instappen: 0, betrokkenheid: 0, seconden: 0, conversies: 0 };
 
 function padVan(url: string): string {
   try { return new URL(url).pathname || "/"; } catch { return url.startsWith("/") ? url : `/${url}`; }
@@ -68,7 +66,11 @@ function dagenTerug(dagen: number): { startDate: string; endDate: string } {
 // in nieuwere properties `keyEvents`; welke van de twee een property kent
 // verschilt, dus als de eerste wordt geweigerd gaat dezelfde vraag nog een keer
 // met de andere naam. Alleen die ene naam verschilt, de rest blijft gelijk.
-const METRIEKEN = ["screenPageViews", "sessions", "engagementRate", "bounceRate", "userEngagementDuration"];
+// Bewust GEEN bounceRate erbij: GA4 rekent dat uit als precies honderd min de
+// betrokkenheid, dus dan staan er twee getallen op het scherm die hetzelfde
+// zeggen. Twee namen voor één cijfer is hoe een scherm onbetrouwbaar gaat
+// voelen zonder dat iemand kan aanwijzen waarom.
+const METRIEKEN = ["screenPageViews", "sessions", "engagementRate", "userEngagementDuration"];
 const CONVERSIE_NAMEN = ["conversions", "keyEvents"];
 
 type ApiRij = { dimensionValues?: { value: string }[]; metricValues?: { value: string }[] };
@@ -80,9 +82,8 @@ function leesGedrag(waarden: string[]): Gedrag {
     weergaven,
     instappen: n(1),
     betrokkenheid: Math.round(n(2) * 1000) / 10,
-    wegklikken: Math.round(n(3) * 1000) / 10,
-    seconden: weergaven ? Math.round(n(4) / weergaven) : 0,
-    conversies: n(5),
+    seconden: weergaven ? Math.round(n(3) / weergaven) : 0,
+    conversies: n(4),
   };
 }
 
@@ -151,7 +152,6 @@ export async function ga4VoorPagina(slug: string, url: string, dagen = 28, domai
     weergaven,
     instappen: perApparaat.reduce((s, a) => s + a.gedrag.instappen, 0),
     betrokkenheid: gewogen((g) => g.betrokkenheid),
-    wegklikken: gewogen((g) => g.wegklikken),
     seconden: Math.round(gewogen((g) => g.seconden)),
     conversies: perApparaat.reduce((s, a) => s + a.gedrag.conversies, 0),
   };
