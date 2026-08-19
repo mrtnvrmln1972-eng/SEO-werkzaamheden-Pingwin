@@ -68,14 +68,20 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
     setNaMapKeuze(() => actie);
     setKiezerOpen(true);
   }
+  // De sleutel waaronder de documenten van deze kaart leven: de pagina als die
+  // er is, en anders de taak zelf. Dezelfde sleutel als het documentenblok
+  // gebruikt. Stond hier eerst alleen `t.url`, waardoor een taak zonder pagina
+  // (een blog, een rapportage) wel documenten kon hebben maar geen Drive-map,
+  // en er dus ook geen document bij te maken was.
+  const docSleutel = t.url || `taak:${t.id}`;
   useEffect(() => {
-    if (!open || !t.url) return;
+    if (!open) return;
     let alive = true;
-    fetch(`/api/admin/drive/folders?chosenOnly=1&slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(t.url)}`)
+    fetch(`/api/admin/drive/folders?chosenOnly=1&slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(docSleutel)}`)
       .then((r) => r.json()).then((d) => { if (alive && d?.ok && d.chosen) setDriveMap({ id: d.chosen.folderId, name: d.chosen.folderName, path: d.chosen.folderPath }); })
       .catch(() => { /* niet kritisch */ });
     return () => { alive = false; };
-  }, [open, slug, t.url]);
+  }, [open, slug, docSleutel]);
 
   const chat = useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFoutje, setMelding });
   const dev = useNaarDev({ slug, t, setFoutje });
@@ -101,7 +107,8 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               document bij leggen, terwijl dat juist het eerste is wat je wilt doen. */}
           {open && (
             <KaartOverDeze slug={slug} t={t} page={page} mailLinks={mailLinks}
-              onOpenMailDate={onOpenMailDate} onLijstPunt={lijst.kies} onNotitie={onNotitie} />
+              onOpenMailDate={onOpenMailDate} onLijstPunt={lijst.kies} onNotitie={onNotitie}
+              driveMap={driveMap} onKiesMap={() => setKiezerOpen(true)} />
           )}
 
           {open && <BespreeklijstKeuze lijst={lijst} />}
@@ -156,8 +163,8 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
         />
       )}
 
-      {t.url && (
-        <DriveMapKiezer slug={slug} url={t.url} open={kiezerOpen}
+      {(
+        <DriveMapKiezer slug={slug} url={docSleutel} open={kiezerOpen}
           onClose={() => { setKiezerOpen(false); setNaMapKeuze(null); }}
           onChosen={(m) => {
             setDriveMap(m); setKiezerOpen(false);

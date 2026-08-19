@@ -6,6 +6,7 @@ import { BLOKKEN as interneLinks } from "./interne-links";
 import { BLOKKEN as structuredData } from "./structured-data";
 import { BLOKKEN as kansenEnSignalen } from "./kansen-en-signalen";
 import { BLOKKEN as bedrijfsprofiel } from "./bedrijfsprofiel";
+import { BLOKKEN as ondersteunend } from "./ondersteunend";
 import type { Hoofdstuk } from "../types";
 
 export const HOOFDSTUK: Hoofdstuk = {
@@ -23,5 +24,6 @@ export const HOOFDSTUK: Hoofdstuk = {
     ...structuredData,
     ...kansenEnSignalen,
     ...bedrijfsprofiel,
+    ...ondersteunend,
   ],
 };

@@ -17,7 +17,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { mdToHtml } from "../../../../lib/markdown";
+import { netteHtml } from "../../../../lib/nette-html";
+import { groepeer, groepAantallen } from "../../../../lib/doc-groepen";
 import { driveIdFromUrl, docsBewerkLink } from "../../../../lib/drive-id";
+import type { DriveMap } from "./DriveMapKiezer";
 
 type Toets = { oordeel: "goed" | "let-op" | "niet-goed"; kop: string; behouden: string[]; verdwenen: string[]; advies: string };
 type Versie = {
@@ -35,9 +38,25 @@ const DATUM_BRON: Record<string, string> = {
 };
 
 const KIND_LABEL: Record<string, string> = { analyse: "Analyse", blauwdruk: "Blauwdruk", copy: "Copy", structured: "Structured data", overig: "Overig" };
+
+// ── Ondersteunend maken ──
+// Een aangeleverde blog of projecttekst gaat vaak over hetzelfde onderwerp als
+// een landingspagina die het van precies dat zoekwoord moet hebben. Publiceer je
+// hem zoals hij is, dan pakt hij die pagina zijn plek af of ze wisselen elkaar
+// af; in beide gevallen zakt het geheel. Dit venster zet er een doelpagina bij,
+// en de motor maakt het stuk ondersteunend in plaats van concurrerend.
+type SteunPlan = {
+  kop: string;
+  doelen: { url: string; hoofdterm: string; steuntermen: string[] }[];
+  titel: string; metaTitle: string; metaDescription: string;
+  wijzigingen: string[];
+  links: { naar: string; anker: string; plek: string }[];
+  linksNaarBlog: { van: string; anker: string }[];
+  waarschuwingen: string[];
+};
 const OORDEEL_KLEUR: Record<Toets["oordeel"], string> = { "goed": "wp-toets-goed", "let-op": "wp-toets-letop", "niet-goed": "wp-toets-fout" };
 
-export default function DocVersies({ slug, url, taakId, triggerSlot, open, onStand }: { slug: string; url: string; taakId?: number;
+export default function DocVersies({ slug, url, taakId, triggerSlot, open, onStand, driveMap, onKiesMap }: { slug: string; url: string; taakId?: number;
   /** DOM-knoop uit de knoppenbalk van de aantekeningen (via een portal), zodat
       het "document toevoegen"-chipje daar fysiek in staat i.p.v. als eigen,
       altijd-open blok. Geen knoop (nog niet gemount) = gewoon hier inline. */
@@ -50,7 +69,12 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
   open?: boolean;
   /** Hoeveel documenten er liggen en of er nog een keuze openstaat. De knop
       hierboven toont dat, en die staat in het andere bestand. */
-  onStand?: (s: { aantal: number; moetKiezen: boolean }) => void }) {
+  onStand?: (s: { aantal: number; moetKiezen: boolean }) => void;
+  /** De Drive-map die nu bij deze kaart hoort, plus de weg om een andere te
+      kiezen. Nodig omdat een aangepast document ergens moet landen, en Maarten
+      dat per keer wil kunnen bepalen in plaats van het achteraf te verslepen. */
+  driveMap?: DriveMap | null;
+  onKiesMap?: () => void }) {
   const [versies, setVersies] = useState<Versie[]>([]);
   const [drag, setDrag] = useState(false);
   // Het "voeg een document toe"-blok stond hier altijd volledig open, ook als er
@@ -66,17 +90,30 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
   const [preview, setPreview] = useState<Versie | null>(null);
   const [hernoem, setHernoem] = useState<{ id: number; naam: string } | null>(null);
   const [toets, setToets] = useState<{ id: number; uitkomst: Toets } | null>(null);
+  // Het open venster "ondersteunend maken" (welk document, welke doelpagina's),
+  // de uitkomst ervan, en de paginalijst van deze klant om uit te kiezen. Die
+  // lijst wordt pas opgehaald als je het venster opent: hij is voor elke andere
+  // regel op de kaart niet nodig.
+  const [steun, setSteun] = useState<{ id: number; doelen: string[]; zoekwoorden: string } | null>(null);
+  const [steunUit, setSteunUit] = useState<{ id: number; plan: SteunPlan; link: string } | null>(null);
+  const [paginas, setPaginas] = useState<string[]>([]);
 
-  // Aantal versies per soort. Eén copy betekent: die geldt, punt. Twee betekent:
-  // jij moet kiezen, en dan pas verschijnt het vinkje.
-  const aantalPerSoort: Record<string, number> = {};
-  for (const v of versies) aantalPerSoort[v.kind] = (aantalPerSoort[v.kind] || 0) + 1;
-  // Ligt er van een soort meer dan één versie zonder dat er één is aangewezen?
-  // Dan wacht de mail en de sitebouwer op jouw keuze, en gaat het blok open.
-  // Structured data telt hier niet in mee: daarvoor is de kennisbank de plek waar
-  // per gegeven vastligt wat geldt, dus er valt op deze kaart niets te kiezen.
-  const moetKiezen = Object.keys(aantalPerSoort).some((kind) =>
-    kind !== "structured" && aantalPerSoort[kind] > 1 && !versies.some((v) => v.kind === kind && v.goedgekeurd));
+  // Welke documenten zijn versies van elkáár? Hier stond "hetzelfde soort", en
+  // dat klopt alleen als een taak over één ding gaat. Zitten er twee projecten
+  // in één taak (twee blogs, twee pagina's), dan kreeg je een keuze voorgelegd
+  // die niet bestaat, en leek het stuk dat je niet aanvinkte vervallen. Nu telt
+  // ook het onderwerp mee, uit de naam; zie lib/doc-groepen.ts.
+  const groepVan = groepeer(versies.map((v) => ({ id: v.id, kind: v.kind, naam: v.naam })));
+  const aantalPerGroep = groepAantallen(versies.map((v) => ({ id: v.id, kind: v.kind, naam: v.naam })), groepVan);
+  /** Hoeveel documenten gaan er over hetzelfde als dit document? */
+  const inGroep = (v: Versie) => aantalPerGroep[groepVan[v.id]] || 1;
+  // Ligt er van één onderwerp meer dan één versie zonder dat er één is
+  // aangewezen? Dan wachten de mail en de sitebouwer op jouw keuze, en gaat het
+  // blok open. Structured data telt hier niet in mee: daarvoor is de kennisbank
+  // de plek waar per gegeven vastligt wat geldt.
+  const moetKiezen = versies.some((v) =>
+    v.kind !== "structured" && inGroep(v) > 1
+    && !versies.some((x) => groepVan[x.id] === groepVan[v.id] && x.goedgekeurd));
 
   // De kaart tekent de knop voor dit blok, dus die moet weten wat erin zit.
   useEffect(() => { onStand?.({ aantal: versies.length, moetKiezen }); }, [versies.length, moetKiezen, onStand]);
@@ -119,6 +156,43 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
     finally { setBusy(""); }
   }
 
+  /** Het venster openen en, één keer, de paginalijst van deze klant ophalen. */
+  function openSteun(id: number) {
+    setSteun((s) => (s?.id === id ? null : { id, doelen: [""], zoekwoorden: "" }));
+    setFout("");
+    if (paginas.length) return;
+    fetch(`/api/admin/urls?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => { if (d?.ok) setPaginas(((d.urls || []) as { url: string }[]).map((u) => u.url).filter(Boolean)); })
+      .catch(() => { /* dan typ je de URL zelf */ });
+  }
+
+  /**
+   * De opdracht wegzetten. Dit duurt langer dan de andere knoppen op deze kaart
+   * (twee pagina's lezen, Search Console erbij, een heel stuk tekst terug), dus
+   * de knop zegt onderweg wat er gebeurt in plaats van alleen "bezig".
+   */
+  async function maakSteun() {
+    if (!steun) return;
+    const doelen = steun.doelen.map((d) => d.trim()).filter(Boolean);
+    if (!doelen.length) { setFout("Kies eerst de landingspagina die dit stuk moet ondersteunen."); return; }
+    setBusy("steun"); setFout("");
+    try {
+      const d = await fetch("/api/admin/page-doc/ondersteunend", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: steun.id, doelUrls: doelen, zoekwoorden: steun.zoekwoorden, folderId: driveMap?.id || "" }),
+      }).then((r) => r.json());
+      if (d?.ok && d.plan) {
+        setSteunUit({ id: steun.id, plan: d.plan as SteunPlan, link: String(d.link || "") });
+        setSteun(null);
+        await laad();
+        return;
+      }
+      setFout(d?.error || "Dat lukte niet; probeer het nog een keer.");
+    } catch { setFout("Dat lukte niet; probeer het nog een keer."); }
+    finally { setBusy(""); }
+  }
+
   async function drop(file: File) {
     setBusy("lezen"); setFout("");
     try {
@@ -151,6 +225,8 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
     finally { setBusy(""); }
   }
 
+  /** Alleen het pad tonen; een hele URL maakt van een keuzelijst een muur. */
+  const padVan = (u: string) => { try { return new URL(u).pathname || u; } catch { return u; } };
   const dd = (d: string) => {
     try { return new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return ""; }
   };
@@ -320,8 +396,8 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                     title="Wat hierin stond is per gegeven verwerkt in de kennisbank van deze klant. Daar staat welke waarde geldt en van wanneer die is; dit bestand is het archief.">
                     in de kennisbank
                   </a>
-                ) : aantalPerSoort[v.kind] > 1 ? (
-                  <label className="wp-docrij-geldt-vink" title={`Er liggen ${aantalPerSoort[v.kind]} versies van dit soort. Vink aan welke er geldt: die gaat mee in een mail en naar de sitebouwer, en is de tekst waar de rest mee rekent.`}>
+                ) : inGroep(v) > 1 ? (
+                  <label className="wp-docrij-geldt-vink" title={`Er liggen ${inGroep(v)} versies van dit stuk. Vink aan welke er geldt: die gaat mee in een mail en naar de sitebouwer, en is de tekst waar de rest mee rekent.`}>
                     <input type="checkbox" checked={v.goedgekeurd} disabled={!!busy}
                       onChange={(e) => void stuur({ action: "goedkeur", id: v.id, aan: e.target.checked }, "goedkeur")} />
                     <span>geldt</span>
@@ -329,6 +405,16 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                 ) : v.goedgekeurd ? (
                   <span className="wp-docrij-geldt-vast" title="Het enige document van dit soort, dus dit is de versie waar de mail, de sitebouwer en de rest van het dashboard mee rekenen.">geldt</span>
                 ) : null}
+                {/* Een aangeleverd stuk (blog, projectverhaal) botst standaard
+                    met de landingspagina die over hetzelfde onderwerp gaat.
+                    Alleen bij documenten waar tekst van bewaard is, want zonder
+                    tekst valt er niets aan te passen. */}
+                {v.kind !== "structured" && (
+                  <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy}
+                    aria-expanded={steun?.id === v.id}
+                    title="Maak dit stuk ondersteunend aan een landingspagina in plaats van concurrerend: de landingspagina houdt zijn zoekwoord, dit stuk pakt de vragen eromheen en geeft zijn kracht door met een interne link"
+                    onClick={() => openSteun(v.id)}>Ondersteunend maken</button>
+                )}
                 {v.source === "klant" && (
                   <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy}
                     title="Kijk of deze teruggekregen versie nog aan de SEO-criteria voldoet"
@@ -359,6 +445,90 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                   </span>
                 </div>
               )}
+              {/* Het venster zelf: welke landingspagina moet hier sterker van
+                  worden, en waar komt het aangepaste stuk te staan. Twee velden,
+                  want meer is het niet: de rest haalt de motor zelf op. */}
+              {steun?.id === v.id && (
+                <div className="wp-steun" onClick={(e) => e.stopPropagation()}>
+                  <div className="wp-steun-uitleg">
+                    Dit stuk gaat straks over hetzelfde onderwerp als een landingspagina. Kies welke pagina de baas blijft op zijn zoekwoord; dit stuk pakt de vragen eromheen en linkt ernaartoe.
+                  </div>
+                  {steun.doelen.map((keuze, i) => (
+                    <label key={i} className="wp-steun-rij">
+                      <span className="wp-steun-lab">{i === 0 ? "Ondersteunt" : "En ook"}</span>
+                      <select className="wp-steun-kies" value={keuze}
+                        onChange={(e) => setSteun({ ...steun, doelen: steun.doelen.map((d, j) => (j === i ? e.target.value : d)) })}>
+                        <option value="">{paginas.length ? "kies een pagina" : "paginalijst ophalen…"}</option>
+                        {paginas.map((p) => <option key={p} value={p}>{padVan(p)}</option>)}
+                      </select>
+                    </label>
+                  ))}
+                  {steun.doelen.length < 2 && (
+                    <button type="button" className="btn btn-quiet btn-klein"
+                      onClick={() => setSteun({ ...steun, doelen: [...steun.doelen, ""] })}>Tweede pagina erbij</button>
+                  )}
+                  <label className="wp-steun-rij">
+                    <span className="wp-steun-lab">Zoekwoorden</span>
+                    <input className="wp-steun-veld" value={steun.zoekwoorden} placeholder="optioneel: waar die pagina op moet winnen"
+                      onChange={(e) => setSteun({ ...steun, zoekwoorden: e.target.value })} />
+                  </label>
+                  <div className="wp-steun-rij">
+                    <span className="wp-steun-lab">Opslaan in</span>
+                    <span className="wp-steun-map">
+                      {driveMap ? (driveMap.path || driveMap.name) : "nog geen map gekozen"}
+                      {onKiesMap && (
+                        <button type="button" className="btn btn-quiet btn-klein" onClick={onKiesMap}>
+                          {driveMap ? "andere map" : "map kiezen"}
+                        </button>
+                      )}
+                    </span>
+                  </div>
+                  <div className="wp-steun-acties">
+                    <button type="button" className="btn btn-primary btn-klein" disabled={!!busy}
+                      onClick={() => void maakSteun()}>
+                      {busy === "steun" ? "Bezig, dit duurt een minuut…" : "Maak ondersteunend"}
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy}
+                      onClick={() => setSteun(null)}>Annuleren</button>
+                  </div>
+                </div>
+              )}
+
+              {/* De uitkomst: wat er is aangepast, de rolverdeling, de links die
+                  de sitebouwer moet leggen, en wat er niet klopt. Dat laatste
+                  wordt in code nagerekend, niet door het taalmodel beloofd. */}
+              {steunUit?.id === v.id && (
+                <div className="wp-steun-uit">
+                  <strong>{steunUit.plan.kop}</strong>
+                  {steunUit.plan.doelen.length > 0 && (
+                    <table className="wp-steun-tabel">
+                      <thead><tr><th>Landingspagina</th><th>Blijft de baas op</th><th>Dit stuk mikt op</th></tr></thead>
+                      <tbody>
+                        {steunUit.plan.doelen.map((d, i) => (
+                          <tr key={i}>
+                            <td>{padVan(d.url)}</td>
+                            <td>{d.hoofdterm || "niet bepaald"}</td>
+                            <td>{d.steuntermen.join(", ") || "niet bepaald"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  {steunUit.plan.wijzigingen.length > 0 && (
+                    <ul>{steunUit.plan.wijzigingen.map((w, i) => <li key={i}>{w}</li>)}</ul>
+                  )}
+                  {steunUit.plan.links.length > 0 && (
+                    <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(
+                      "**Links vanuit dit stuk:** " + steunUit.plan.links.map((l) => `${padVan(l.naar)} met linktekst "${l.anker}"`).join("; "),
+                    ) }} />
+                  )}
+                  {steunUit.plan.waarschuwingen.length > 0 && (
+                    <ul className="wp-steun-letop">{steunUit.plan.waarschuwingen.map((w, i) => <li key={i}>{w}</li>)}</ul>
+                  )}
+                  {steunUit.link && <a className="wp-link" href={docsBewerkLink(steunUit.link)} target="_blank" rel="noreferrer">het aangepaste document openen</a>}
+                </div>
+              )}
+
               {toets?.id === v.id && (
                 <div className={"wp-toets " + OORDEEL_KLEUR[toets.uitkomst.oordeel]}>
                   <strong>{toets.uitkomst.kop}</strong>

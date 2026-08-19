@@ -3710,6 +3710,28 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-toets-letop { border-left-color: var(--kleur-accent); }
 .wp-toets-fout { border-left-color: var(--danger); }
 
+/* ── Ondersteunend maken ──
+   Het venster onder een documentregel waarin je kiest welke landingspagina dit
+   stuk moet ondersteunen, en de uitkomst daarvan. Zelfde vorm als de
+   criteria-toets hierboven: volle breedte onder de regel, rustig vlak, een
+   gekleurd streepje links. */
+.wp-steun, .wp-steun-uit { flex-basis: 100%; margin-top: var(--ruimte-naast); padding: var(--ruimte-regel);
+  border-radius: var(--ronding-knop); border-left: 3px solid var(--kleur-rand-accent); background: var(--kleur-pagina);
+  display: flex; flex-direction: column; gap: var(--ruimte-naast); }
+.wp-steun-uitleg { color: var(--kleur-tekst-zacht); }
+.wp-steun-rij { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.wp-steun-lab { min-width: 7rem; color: var(--kleur-tekst-zacht); }
+.wp-steun-kies, .wp-steun-veld { flex: 1 1 14rem; min-width: 0; font: inherit;
+  padding: var(--ruimte-krap) var(--ruimte-naast);
+  border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); background: var(--kleur-kaart); }
+.wp-steun-map { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; color: var(--kleur-tekst); }
+.wp-steun-acties { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.wp-steun-tabel { width: 100%; border-collapse: collapse; }
+.wp-steun-tabel th, .wp-steun-tabel td { text-align: left; padding: var(--ruimte-krap) var(--ruimte-naast);
+  border-bottom: 1px solid var(--kleur-rand-zacht); vertical-align: top; }
+.wp-steun-uit ul { margin: 0; padding-left: var(--s-4); }
+.wp-steun-letop { color: var(--danger); }
+
 /* Voorvertoning van een document (spatiebalk). */
 .wp-preview { width: min(56rem, 92vw); }
 .wp-preview-frame { width: 100%; height: min(70vh, 42rem); border: 1px solid var(--kleur-rand-zacht);

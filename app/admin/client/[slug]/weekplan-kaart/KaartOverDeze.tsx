@@ -16,6 +16,7 @@
 import { useEffect, useState } from "react";
 import { cardInfoHtml, eerdereNotitiesHtml, verhaalAantal, type MailLinks } from "../../../../../lib/card-info";
 import DocVersies from "../DocVersies";
+import type { DriveMap } from "../DriveMapKiezer";
 import KaartNotitie from "../KaartNotitie";
 import type { WpTask, WpPageInfo } from "./types";
 import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
@@ -42,13 +43,18 @@ export function cijferRegel(p?: { vertoningen?: number; klikken?: number; doorge
   return delen.join(" · ");
 }
 
-export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate, onLijstPunt, onNotitie }: {
+export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate, onLijstPunt, onNotitie, driveMap, onKiesMap }: {
   slug: string; t: WpTask; page?: WpPageInfo; mailLinks?: MailLinks;
   onOpenMailDate?: (datum: string) => void;
   /** Een aanpak-punt uit de kaarttekst doorgeven aan de bespreeklijst. */
   onLijstPunt: (tekst: string) => void;
   /** Zojuist bewaarde aantekening, terug naar de lijst waar deze kaart uit komt. */
   onNotitie?: (html: string) => void;
+  /** De Drive-map van deze kaart, plus de weg om een andere te kiezen. Het
+      documentenblok heeft dat nodig: daar wordt een aangepast document gemaakt
+      en dat moet ergens landen. */
+  driveMap?: DriveMap | null;
+  onKiesMap?: () => void;
 }) {
   const hasInfo = !!t.toelichting.trim();
   // Plek in de knoppenbalk van de aantekeningen waar het "document toevoegen"-
@@ -162,7 +168,7 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
           Het chipje "+ document" staat via een portal in de knoppenbalk van de
           aantekeningen hieronder; de lijst zelf hoort bij de knop hierboven. */}
       <DocVersies slug={slug} url={t.url || `taak:${t.id}`} taakId={t.id} triggerSlot={notitieDocSlot}
-        open={vouw === "docs"} onStand={setDocStand} />
+        open={vouw === "docs"} onStand={setDocStand} driveMap={driveMap} onKiesMap={onKiesMap} />
 
       {/* Het archief: de geschreven tekst die van de kaart af is geschoven.
           Hier landt alles wat wordt weggehaald: een oude titel, een oude

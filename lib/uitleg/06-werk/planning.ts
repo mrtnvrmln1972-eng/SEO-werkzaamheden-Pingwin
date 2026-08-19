@@ -103,7 +103,11 @@ export const BLOKKEN: Uitklapper[] = [
       "het document wordt sinds 19 augustus 2026 helemaal getoond** in plaats van afgekapt met puntjes, en het " +
       "tijdstip komt erbij zodra twee documenten van hetzelfde soort dezelfde dag dragen. Reden: liggen er " +
       "twee stukken copy voor twee verschillende onderwerpen in één taak, dan is juist het staartje van de " +
-      "titel het enige waaraan je ze uit elkaar houdt, en dat viel weg.\n\n" +
+      "titel het enige waaraan je ze uit elkaar houdt, en dat viel weg. **En de vraag \"welke versie geldt?\" " +
+      "wordt alleen nog gesteld waar hij bestaat:** twee documenten van hetzelfde soort golden als twee " +
+      "versies van elkaar, ook als het twee losse projecten waren, en dan leek het stuk dat je niet aanvinkte " +
+      "vervallen. Nu telt het onderwerp mee (uit de naam): een teruggestuurde klantversie hoort bij zijn " +
+      "origineel, twee losse stukken gelden allebei gewoon.\n\n" +
       "**De kaart heeft één rij uitklappers en hooguit één open paneel (18 augustus 2026).** " +
       "\"Achtergrond en afspraken\", \"Documenten\" en \"Oude versies van deze kaart\" staan als drie knopjes " +
       "naast elkaar, direct boven je aantekeningen; klik je er een open, dan vult die de hele breedte van de " +
