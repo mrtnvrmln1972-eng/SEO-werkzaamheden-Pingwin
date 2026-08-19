@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
+import { GESPREK_BASIS, gesprekLabel, isSiteGesprek } from "../../../../lib/gesprekken";
 
 // Een "oogst"-bericht is geen tekst maar een voorstel met vinkjes: precies
 // hetzelfde blok als in de bird's eye-chat. Zo is er één weg van gesprek naar
@@ -58,12 +59,15 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
   // Zonder meegegeven geschiedenis: het actieve gesprek laden zodra het venster
   // voor het eerst opent (het scherm zelf hoeft er niet op te wachten).
   const loadedRef = useRef(false);
-  const [thread, setThread] = useState("algemeen");
+  // Hetzelfde basisgesprek als het Overview-blok op de takenpagina: dit venster is
+  // geen tweede assistent meer maar hetzelfde gesprek, bij de hand. Oude gesprekken
+  // ("algemeen" en de vrij benoemde) blijven gewoon in de keuzelijst staan.
+  const [thread, setThread] = useState(GESPREK_BASIS);
   // Welk gesprek er nú openstaat, ook binnen een lopende fetch: een trage oogst
   // mag het antwoord niet in een ander gesprek laten vallen.
-  const threadRef = useRef("algemeen");
+  const threadRef = useRef(GESPREK_BASIS);
   useEffect(() => { threadRef.current = thread; }, [thread]);
-  const [threads, setThreads] = useState<{ thread: string; count: number; updatedAt: string }[]>([]);
+  const [threads, setThreads] = useState<{ thread: string; count: number; updatedAt: string; title?: string }[]>([]);
   const [collapsed, setCollapsed] = useState(true);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -177,11 +181,20 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [thread, slug]);
 
+  // De gesprekken die in dit venster horen: dezelfde als in het Overview-blok,
+  // plus de Ads-assistent (eigen cijfers, eigen rol) zolang die openstaat of
+  // bestaat. Zonder dit filter kwam ook `lead` en het eigen gesprek van elke
+  // projectkaart voorbij, met hun technische naam.
+  const zichtbareThreads = threads.filter((t) => isSiteGesprek(t.thread) || t.thread === "ads");
+
   // Nieuw gesprek starten (bijv. over een pagina, situatie of onderwerp).
   function newThread() {
     const name = window.prompt("Naam van het nieuwe gesprek (bijv. een pagina, situatie of onderwerp):", "");
-    const t = (name || "").trim().slice(0, 80);
-    if (!t) return;
+    const naam = (name || "").trim().slice(0, 60);
+    if (!naam) return;
+    // In dezelfde naamruimte als het Overview-blok, anders groeit er weer een
+    // tweede soort gesprek naast de eerste.
+    const t = `overzicht:${naam}`;
     setThread(t); setMessages([]); setError("");
     setThreads((ts) => (ts.some((x) => x.thread === t) ? ts : [{ thread: t, count: 0, updatedAt: "" }, ...ts]));
   }
@@ -192,7 +205,7 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
     setMessages([]); setError("");
     await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(thread)}`, { method: "DELETE" }).catch(() => {});
     setThreads((ts) => ts.filter((x) => x.thread !== thread));
-    if (thread !== "algemeen") setThread("algemeen");
+    if (thread !== GESPREK_BASIS) setThread(GESPREK_BASIS);
   }
 
   // Afbeelding meesturen: slepen of plakken; in de browser verkleind naar max
@@ -344,8 +357,13 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
                 <div className="chat-threads">
                   <span className="chat-threads-label">Gesprek:</span>
                   <select className="chat-thread-select" value={thread} onChange={(e) => switchThread(e.target.value)}>
-                    {(threads.some((t) => t.thread === thread) ? threads : [{ thread, count: messages.length, updatedAt: "" }, ...threads]).map((t) => (
-                      <option key={t.thread} value={t.thread}>{t.thread === "algemeen" ? "Algemeen" : t.thread === "ads" ? "Google Ads" : t.thread}{t.count ? ` (${t.count})` : ""}</option>
+                    {/* Dezelfde gesprekken als in het Overview-blok, plus de Ads-assistent
+                        (die heeft eigen cijfers en een eigen rol, en je landt hier als je
+                        op de KPI-tab "Vraag de Ads-assistent" klikt). Hier stond geen
+                        filter: élk gesprek uit de database kwam voorbij met zijn
+                        technische naam, dus ook `overzicht:~mshj4bjy` en `lead`. */}
+                    {(zichtbareThreads.some((t) => t.thread === thread) ? zichtbareThreads : [{ thread, count: messages.length, updatedAt: "" }, ...zichtbareThreads]).map((t) => (
+                      <option key={t.thread} value={t.thread}>{gesprekLabel(t.thread, t.title)}{t.count ? ` (${t.count})` : ""}</option>
                     ))}
                   </select>
                   <button type="button" className="btn btn-klein" onClick={newThread}>+ Nieuw</button>

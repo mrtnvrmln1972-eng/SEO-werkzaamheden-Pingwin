@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import ActionCard, { type Action } from "./ActionCard";
 import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
+import { GESPREK_BASIS, gesprekLabel, isSiteGesprek } from "../../../../lib/gesprekken";
 import DeelKnoppen from "./DeelKnoppen";
 import ChatBestanden from "./ChatBestanden";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
@@ -163,8 +164,12 @@ function mdToHtml(md: string, domain = ""): string {
   return linkify(out.join(""), domain);
 }
 
-const BASE = "overzicht";
-const labelOf = (t: string) => (t === BASE ? "Algemeen" : t.startsWith("overzicht:~") ? "Nieuw onderwerp" : t.replace(/^overzicht:/, ""));
+// Hoe een gesprek heet, staat op ÉÉN plek (lib/gesprekken.ts): dit blok en het
+// zwevende venster zijn twee vensters op dezelfde tool en moeten dus dezelfde
+// namen tonen. Hier stond een eigen regel die "overzicht" als "Algemeen"
+// labelde, terwijl het venster een ánder gesprek ook "Algemeen" noemde.
+const BASE = GESPREK_BASIS;
+const labelOf = (t: string) => gesprekLabel(t);
 
 // De gedokte bird's eye-assistent, nu per ONDERWERP (toggle). Elk onderwerp is
 // standaard dichtgeklapt en toont zijn titel plus een korte samenvatting; je klapt
@@ -231,9 +236,11 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
   // "gedaan" onderaan.
   function normalizeTopics(threads: { thread: string; count?: number; title?: string; summary?: string; done?: boolean; updatedAt?: string }[]): Topic[] {
-    // De eigen gesprekken van projectkaarten ("overzicht:kaart:<id>") horen bij
-    // die kaart, niet in deze onderwerpenlijst.
-    const mine = threads.filter((t) => t.thread.startsWith("overzicht") && !t.thread.startsWith("overzicht:kaart:"));
+    // Welke gesprekken hierbij horen: één gedeelde regel, zodat dit blok en het
+    // zwevende venster gegarandeerd dezelfde lijst tonen. Dit filterde op
+    // "overzicht*", waardoor de gesprekken uit het venster ("algemeen" en de vrij
+    // benoemde) hier onzichtbaar waren terwijl het dezelfde assistent was.
+    const mine = threads.filter((t) => isSiteGesprek(t.thread));
     const list: Topic[] = mine.map((t) => ({
       thread: t.thread, count: t.count || 0, title: t.title || "",
       summary: t.summary || "", done: !!t.done, updatedAt: t.updatedAt || "",

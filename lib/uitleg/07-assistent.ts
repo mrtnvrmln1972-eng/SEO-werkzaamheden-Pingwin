@@ -37,6 +37,23 @@ export const HOOFDSTUK: Hoofdstuk = {
         "er iets komt kosten leestijd en ruimte, en werden op een gegeven moment zelfs als taak aangeboden.",
     },
     {
+      titel: "Eén assistent, twee vensters",
+      kern: "Het Overview-blok en het zwevende venster zijn hetzelfde gesprek, met dezelfde kennis.",
+      tekst:
+        "Er waren twee schermen op dezelfde motor, en welke assistent je kreeg hing af van welk venster je "
+        + "toevallig opende. Het Overview-blok op de takenpagina kende de hele site: de volledige paginalijst met "
+        + "status en redirects, wat er per pagina al gedaan is, de zoekwoordstand, de koers, de concurrenten. Het "
+        + "zwevende venster kende de klant: de mail, de stand van zaken, de lopende werkzaamheden, de Search "
+        + "Console-totalen, Google Ads. Allebei een half beeld, en het verschil was nergens te zien.\n\n"
+        + "Sinds 19 augustus 2026 is het één tool. Elk gesprek krijgt **alles**: de mail én de site, de cijfers én "
+        + "de koers. Je kunt in het zwevende venster verdergaan waar je in het Overview-blok gebleven was, want het "
+        + "is letterlijk hetzelfde gesprek in dezelfde lijst.\n\n"
+        + "Twee assistenten blijven apart, en dat is met opzet: de **Ads-assistent** (eigen campagnecijfers, eigen "
+        + "rol) en de **leadomgeving** (een bedrijf dat nog geen klant is, dus geen Search Console en geen "
+        + "weekplanning). De **pagina-chat** blijft ook apart: die gaat over één URL, scrapet die elke beurt live, "
+        + "en levert een vastgelegde strategie en een document in plaats van taken.",
+    },
+    {
       titel: "Van gesprek naar werk: één knop, één weg",
       kern: "\"Wat volgt hieruit?\" weegt het hele gesprek en levert een voorstel met vinkjes.",
       tekst:

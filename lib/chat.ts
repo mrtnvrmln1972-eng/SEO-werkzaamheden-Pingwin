@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { isSiteAssistent } from "./gesprekken";
 import { getClientBySlug } from "./clients";
 import { getEmails, getMetrics, getKeywords, getStatus } from "./snapshots";
 import { msStatus, msSearchClientEmails } from "./ms-graph";
@@ -134,114 +135,12 @@ async function sheetTaskLines(client: ClientConfig): Promise<string[]> {
   }
 }
 
-async function buildContext(client: ClientConfig): Promise<string> {
-  const parts: string[] = [];
-  parts.push(`KLANT: ${client.name} (${client.domain || "geen domein"})`);
-
-  // E-mails (live indien gekoppeld, anders opgeslagen).
-  let emails = await getEmails(client.slug);
-  const ms = await msStatus();
-  if (ms.connected) {
-    const q = (client.email || client.domain || "").trim();
-    if (q) {
-      const live = await msSearchClientEmails(q, ms.account || "", 15);
-      if (live) emails = live;
-    }
-  }
-  // Automatische meldingen eruit, met hetzelfde filter dat ook bij het koppelen
-  // aan een pagina geldt. Bij One Day Clinic waren negen van de twintig "laatste
-  // mails" meldingen van Ahrefs, Search Console of een agenda-uitnodiging; die
-  // verdrongen de echte correspondentie.
-  emails = emails.filter((e) => !isRuisMail(e));
-  if (emails.length > 0) {
-    // Vastgepinde mail hoort er altijd bij, ook als hij ouder is dan de laatste
-    // tien; de rest volgt op datum binnen een totaalbudget.
-    const gekoppeld = await getGekoppeldeMails(client.slug).catch(() => new Map());
-    const regels = kiesMails(emails as ChatMail[], gekoppeld);
-    if (regels.length) {
-      parts.push("\nRECENTE E-MAILS (nieuwste eerst; mails die bij een pagina horen staan vooraan):");
-      parts.push(regels.join("\n---\n"));
-    }
-  }
-
-  // Stand van zaken.
-  const { status } = await getStatus(client.slug);
-  if (status.exchanges.length > 0) {
-    parts.push("\nSTAND VAN ZAKEN (gesprek klant/wij):");
-    for (const ex of status.exchanges) {
-      parts.push(`[${ex.side === "client" ? "KLANT" : "WIJ"}, ${ex.status === "done" ? "afgehandeld" : "OPEN"}] ${ex.text}`);
-    }
-  }
-  if (status.mailActions.length > 0) {
-    parts.push("\nMOGELIJKE ACTIES UIT MAIL:");
-    for (const a of status.mailActions) parts.push(`- ${a.text}`);
-  }
-
-  // Lopende werkzaamheden uit de Sheet (huidige maand).
-  const tasks = await sheetTaskLines(client);
-  if (tasks.length > 0) {
-    parts.push("\nLOPENDE WERKZAAMHEDEN (huidige maand, uit Google Sheet):");
-    parts.push(...tasks);
-  }
-
-  // Search Console.
-  const google = await googleStatus();
-  if (google.connected && client.domain) {
-    const gsc = await getGscForClient(client.domain);
-    if (gsc && gsc.metrics.length > 0) {
-      parts.push("\nSEARCH CONSOLE (laatste 28 dagen):");
-      parts.push(gsc.metrics.map((m) => `${m.metric}=${m.value}`).join(", "));
-      if (gsc.keywords.length > 0) {
-        parts.push("Top zoekwoorden (GSC, 28d): " + gsc.keywords.slice(0, 10).map((k) => `${k.keyword} (pos ${k.position}, ${k.clicks} klikken)`).join("; "));
-      }
-    }
-    // Zoekwoord-ontwikkeling over de laatste 4 maanden (gemiddelde positie per maand).
-    const trend = await getGscKeywordTrend(client.domain);
-    if (trend && trend.rows.length > 0) {
-      parts.push(`\nSEARCH CONSOLE ZOEKWOORD-TREND (gem. positie per maand: ${trend.months.join(" / ")}):`);
-      for (const r of trend.rows) parts.push(`${r.keyword}: ${r.positions.map((p) => (p == null ? "-" : p)).join(" / ")}`);
-    }
-  }
-
-  // Ahrefs (opgeslagen).
-  const metrics = await getMetrics(client.slug);
-  if (metrics.length > 0) {
-    parts.push("\nAHREFS: " + metrics.map((m) => `${m.metric}=${m.value}`).join(", "));
-  }
-  const keywords = await getKeywords(client.slug, 15);
-  if (keywords.length > 0) {
-    parts.push("Ahrefs-zoekwoorden: " + keywords.map((k) => `${k.keyword} (pos ${k.position ?? "-"}, vol ${k.volume ?? "-"})`).join("; "));
-  }
-
-  // Google Ads (via de GA4-koppeling): prestaties, campagnes en activiteit-signalen,
-  // zodat je in de chat kunt sparren over de inrichting en of er echt aan gewerkt wordt.
-  try {
-    const { getAdsComparison } = await import("./google");
-    const ads = await getAdsComparison(client.slug, client.domain || "", 28, "prev");
-    if (ads?.linked) {
-      const t = (m: string) => ads.totals.find((x) => x.metric === m);
-      const cost = t("cost"), clicks = t("clicks"), conv = t("conversions");
-      const e2 = (n: number | undefined) => (n ?? 0).toFixed(2);
-      parts.push("\nGOOGLE ADS (laatste 28 dagen vs. de 28 dagen ervoor, via GA4-koppeling):");
-      parts.push(`Kosten \u20ac${e2(cost?.cur)} (vorige periode \u20ac${e2(cost?.prev)}), klikken ${Math.round(clicks?.cur || 0)} (${Math.round(clicks?.prev || 0)}), conversies ${Math.round(conv?.cur || 0)} (${Math.round(conv?.prev || 0)}).`);
-      parts.push("Campagnes (nu vs. vorige periode):");
-      for (const c of ads.campaigns.slice(0, 15)) {
-        const status = c.prevCost === 0 && c.cost > 0 ? "NIEUW" : c.cost === 0 && c.prevCost > 0 ? "GESTOPT/STIL" : "loopt";
-        parts.push(`- ${c.name} [${status}]: kosten \u20ac${e2(c.cost)} (was \u20ac${e2(c.prevCost)}), klikken ${Math.round(c.clicks)} (${Math.round(c.prevClicks)}), conversies ${Math.round(c.conversions)} (${Math.round(c.prevConversions)})`);
-      }
-      parts.push("Activiteit-duiding: NIEUW = campagne draaide vorige periode nog niet; GESTOPT/STIL = had toen kosten en nu niet; grote kostenverschuivingen wijzen op actieve wijzigingen. Weinig campagnes en vlakke kosten maandenlang = mogelijk geparkeerd account. Budgetten, biedstrategie-instellingen en de exacte wijzigingshistorie zitten NIET in deze data (die vereisen de Google Ads-API); zeg dat eerlijk als ernaar gevraagd wordt.");
-    }
-  } catch { /* Ads-context is aanvulling */ }
-
-  // Klantprofiel en notities: deze chat had ze allebei niet, terwijl het juist de
-  // achtergrond is waarmee je een antwoord op maat geeft.
-  const prof = (client.seoProfile || "").trim();
-  if (prof) parts.push("\n=== KLANTPROFIEL (positionering/werkgebied) ===\n" + prof.slice(0, 2500));
-  const nt = await notitiesBlok(client.slug);
-  if (nt) parts.push(nt);
-
-  return parts.join("\n");
-}
+// De volledige context van een klant zat tot 19-08-2026 in TWEE builders: deze
+// (het zwevende venster) en buildOverviewContext (het Overview-blok). Ze kenden
+// allebei net iets anders, en welke je kreeg hing af van de naam van de thread.
+// Deze is opgegaan in buildOverviewContext; de blokken die alleen hier stonden
+// (Search Console-totalen, de zoekwoord-trend, de Ahrefs-sitecijfers, Google Ads
+// en de acties uit mail) staan daar nu onderaan.
 
 // ── Ads-chat: eigen, gerichte context (thread "ads") ──
 // Alleen de Google Ads-cijfers (28 dagen én 90 dagen, met campagnes), zodat de
@@ -372,8 +271,55 @@ async function buildOverviewContext(client: ClientConfig): Promise<string> {
   try {
     const { status } = await getStatus(client.slug);
     if (status.exchanges.length) parts.push("\n=== STAND VAN ZAKEN ===\n" + status.exchanges.map((ex) => `[${ex.side === "client" ? "KLANT" : "WIJ"}, ${ex.status === "done" ? "afgehandeld" : "OPEN"}] ${ex.text}`).join("\n"));
+    if (status.mailActions.length) parts.push("\n=== MOGELIJKE ACTIES UIT MAIL ===\n" + status.mailActions.map((a) => `- ${a.text}`).join("\n"));
   } catch { /* aanvulling */ }
   try { const tasks = await sheetTaskLines(client); if (tasks.length) parts.push("\n=== LOPENDE WERKZAAMHEDEN (huidige maand) ===\n" + tasks.join("\n")); } catch { /* aanvulling */ }
+
+  // ── De cijferblokken die hier tot 19-08-2026 niet bij zaten ───────────────
+  // Ze zaten in de aparte context van het zwevende venster (buildContext). Toen
+  // dat een tweede assistent was met een eigen half geheugen, betekende dat: de
+  // ene kende de site maar niet de Search Console-totalen, de andere andersom.
+  // Nu is het één tool, dus alles ligt op tafel bij elk gesprek.
+  try {
+    const google = await googleStatus();
+    if (google.connected && client.domain) {
+      const gsc = await getGscForClient(client.domain);
+      if (gsc && gsc.metrics.length) {
+        const regels = ["\n=== SEARCH CONSOLE, TOTALEN LAATSTE 28 DAGEN ===", gsc.metrics.map((m) => `${m.metric}=${m.value}`).join(", ")];
+        if (gsc.keywords.length) regels.push("Top zoekwoorden (28d): " + gsc.keywords.slice(0, 10).map((k) => `${k.keyword} (pos ${k.position}, ${k.clicks} klikken)`).join("; "));
+        parts.push(regels.join("\n"));
+      }
+      const trend = await getGscKeywordTrend(client.domain);
+      if (trend && trend.rows.length) {
+        parts.push(`\n=== SEARCH CONSOLE, ZOEKWOORD-TREND (gem. positie per maand: ${trend.months.join(" / ")}) ===\n`
+          + trend.rows.map((r) => `${r.keyword}: ${r.positions.map((p) => (p == null ? "-" : p)).join(" / ")}`).join("\n"));
+      }
+    }
+  } catch { /* aanvulling */ }
+  try {
+    const metrics = await getMetrics(client.slug);
+    if (metrics.length) parts.push("\n=== AHREFS, SITE-CIJFERS ===\n" + metrics.map((m) => `${m.metric}=${m.value}`).join(", "));
+  } catch { /* aanvulling */ }
+  try {
+    const { getAdsComparison } = await import("./google");
+    const ads = await getAdsComparison(client.slug, client.domain || "", 28, "prev");
+    if (ads?.linked) {
+      const t = (m: string) => ads.totals.find((x) => x.metric === m);
+      const cost = t("cost"), clicks = t("clicks"), conv = t("conversions");
+      const e2 = (n: number | undefined) => (n ?? 0).toFixed(2);
+      const regels = [
+        "\n=== GOOGLE ADS (laatste 28 dagen vs. de 28 dagen ervoor, via de GA4-koppeling) ===",
+        `Kosten €${e2(cost?.cur)} (vorige periode €${e2(cost?.prev)}), klikken ${Math.round(clicks?.cur || 0)} (${Math.round(clicks?.prev || 0)}), conversies ${Math.round(conv?.cur || 0)} (${Math.round(conv?.prev || 0)}).`,
+        "Campagnes (nu vs. vorige periode):",
+      ];
+      for (const c of ads.campaigns.slice(0, 15)) {
+        const staat = c.prevCost === 0 && c.cost > 0 ? "NIEUW" : c.cost === 0 && c.prevCost > 0 ? "GESTOPT/STIL" : "loopt";
+        regels.push(`- ${c.name} [${staat}]: kosten €${e2(c.cost)} (was €${e2(c.prevCost)}), klikken ${Math.round(c.clicks)} (${Math.round(c.prevClicks)}), conversies ${Math.round(c.conversions)} (${Math.round(c.prevConversions)})`);
+      }
+      regels.push("Budgetten, biedstrategie-instellingen en de exacte wijzigingshistorie zitten NIET in deze data (die vereisen de Google Ads-API); zeg dat eerlijk als ernaar gevraagd wordt.");
+      parts.push(regels.join("\n"));
+    }
+  } catch { /* aanvulling */ }
   return parts.join("\n");
 }
 
@@ -1214,17 +1160,26 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   const client = await getClientBySlug(slug);
   if (!client) return { ok: false, error: "Klant niet gevonden." };
 
-  // Thread "ads" = de Ads-assistent, thread "overzicht" = de bird's eye-strateeg;
-  // beide hebben eigen grounding en rol. Alle andere threads = volledige projectcontext.
+  // Drie soorten gesprek, en dat zijn er sinds 19-08-2026 geen vier meer.
+  //
+  // "ads"  = de Ads-assistent: eigen grounding, alleen de campagnecijfers.
+  // "lead" = de leadomgeving: een bedrijf dat nog geen klant is, dus geen Search
+  //          Console en geen weekplanning, wel een site die we van buiten meten.
+  // De rest = de site-assistent, en dat is ÉÉN tool met twee vensters (het
+  //          Overview-blok op de takenpagina en het zwevende venster). Hiervoor
+  //          bepaalde de naam van de thread welke assistent je kreeg: "overzicht*"
+  //          gaf de bird's eye met de volledige site-context, elke andere naam een
+  //          lichtere projectchat met een half beeld. Dat verschil was onzichtbaar
+  //          en niets waard: het hing ervan af welk venster je toevallig opende.
+  //          Nu krijgt elk site-gesprek dezelfde kennis en dezelfde gereedschappen,
+  //          ook het eigen gesprek van een projectkaart (dat staat alleen niet in
+  //          de gesprekkenlijst; zie het verschil in lib/gesprekken.ts).
   const isAds = cleanThread(thread) === "ads";
-  // "overzicht" én "overzicht:<naam>" (meerdere bird's eye-gesprekken) → bird's eye.
-  const isOverview = cleanThread(thread).startsWith("overzicht");
-  // Thread "lead" = de leadomgeving: eigen lichte context (dossier + plank),
-  // los van alles wat voor bestaande klanten gebouwd is.
   const isLead = cleanThread(thread) === "lead";
+  const isOverview = isSiteAssistent(cleanThread(thread));
   let context = isLead
     ? await buildLeadContext(client)
-    : isOverview ? await buildOverviewContext(client) : isAds ? await buildAdsContext(client) : await buildContext(client);
+    : isAds ? await buildAdsContext(client) : await buildOverviewContext(client);
   // Wat je in dit gesprek naar binnen hebt gesleept, leest de assistent mee: de
   // teksten die de klant terugstuurde, de screenshot van het zoekresultaat. Zonder
   // dit blok landde een gedropt bestand wel in het dossier, maar wist het gesprek
@@ -1355,30 +1310,16 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
       `  - Voor cijfervergelijkingen (bijv. wat staat live / hoe presteert het, of een lijst producten/prijzen) een net klein tabelletje (| Kop | Kop |). Gebruik GEEN tabel voor de takenlijst (die komt als kaartjes).\n` +
       `  - Doel: het leest als een verzorgd overzicht met oranje kopjes, streepjes ertussen, vet en linkjes, niet als een lap tekst.\n` +
       `Mens aan het stuur: jij adviseert en stelt voor, Maarten beslist.\n\n--- OVERZICHT-CONTEXT ---\n${context}${opruimBlok}`
-    : isAds
-    ? `Je bent de Google Ads-specialist van Pingwin voor de klant ${client.name}. ` +
+    // Wat geen lead is en niet op de site-assistent draait, is per definitie de
+    // Ads-assistent. Hier stond nog een vierde prompt (de oude projectassistent
+    // van het zwevende venster); die is na de samenvoeging onbereikbaar geworden.
+    : `Je bent de Google Ads-specialist van Pingwin voor de klant ${client.name}. ` +
       `Je helpt Maarten beoordelen wat er in het Ads-account gebeurt en wordt geoptimaliseerd, wat er beter kan en welke vragen hij het Ads-bureau moet stellen. ` +
       `Baseer je op de onderstaande Ads-context (via de GA4-koppeling; wees eerlijk over wat daar NÍET in zit).\n\n` +
       `OPMAAK: schrijf conversationeel en netjes, zoals in een chat, in Markdown. Geen emoji. Korte alinea's, bullets (-) voor opsommingen, **vet** voor kernpunten, en cijfers of campagne-vergelijkingen in een nette Markdown-tabel.\n\n` +
       `WERKWIJZE: jij bent de specialist; geef ANTWOORDEN en concrete optimalisatie-adviezen (budgetverdeling over campagnes, stilgevallen of juist nieuwe campagnes, kosten per conversie, opvallende verschuivingen), in volgorde van impact. ` +
       `Je kunt met meet_pagina zelf landingspagina's uitlezen om de aansluiting tussen advertentie en pagina te beoordelen. ` +
-      `Sluit waar zinvol af met de vragen die Maarten aan de Ads-beheerder kan stellen. Hooguit één korte wedervraag, alleen bij een echte keuze.\n\n--- ADS-CONTEXT ---\n${context}`
-    : `Je bent de SEO-projectassistent van Pingwin voor de klant ${client.name}. ` +
-    `Beantwoord in het Nederlands, uitsluitend op basis van de onderstaande projectcontext ` +
-    `(e-mails inclusief afzender/ontvangers en inhoud, stand van zaken, taken, Search Console incl. 4-maanden zoekwoord-trend, Ahrefs, en Google Ads-prestaties per campagne via de GA4-koppeling).\n\n` +
-    `OPMAAK: schrijf conversationeel en netjes, zoals in een chat, in Markdown. Geen emoji.\n` +
-    `- Schrijf in korte alinea's. Gebruik een kopje (## Kop) alleen als je antwoord echt meerdere onderwerpen behandelt; bij een kort antwoord geen kop.\n` +
-    `- Gebruik bullets (-) voor opsommingen en **vet** voor labels/kernpunten.\n` +
-    `- Zet cijfermatige of vergelijkende data (zoals zoekwoord-posities per maand, klikken, CTR) in een nette Markdown-tabel met uitgelijnde kolommen, bijvoorbeeld:\n` +
-    `  | Zoekwoord | apr | mei | jun |\n  | --- | --- | --- | --- |\n  | soa test amsterdam | 9 | 7 | 6 |\n` +
-    `- Houd zinnen kort en groepeer logisch. Sluit af met een kort actiepunt als dat past.\n\n` +
-    `Noem waar relevant het mail-onderwerp, de datum of de ontvanger (bv. of een mail naar de klant of naar jezelf ging). ` +
-    `Staat het antwoord niet in de context, zeg dat eerlijk in plaats van te gokken.\n\n` +
-    `WERKWIJZE (belangrijk): jij bent de specialist; Maarten wil ANTWOORDEN, geen vragenlijsten.\n` +
-    `- Je hebt gereedschap om ZELF te kijken: meet_pagina (content/koppen/meta/links van een URL), gsc_pagina (zoekwoorden per pagina), ahrefs_pagina (posities, volume en verwijzende domeinen van een pagina), serp_top10 (de concurrentie op een zoekwoord) en zoek_mail (de mailwisseling met deze klant doorzoeken op naam, onderwerp of trefwoord; noem bij het citeren van een mail altijd de mail-link uit de uitvoer als markdown-link). GEBRUIK dat gereedschap eerst, en beantwoord de vraag daarna onderbouwd met wat je zag.\n` +
-    `- Stel NOOIT een lijst controlevragen die je zelf kunt beantwoorden (zoals "staat het zoekwoord in de H1?" of "hoeveel backlinks heeft de pagina?"): meet het en vertel het resultaat.\n` +
-    `- Enkelvoud/meervoud en andere woordvormen tellen als GEDEKT: "veranda's" in een H1 dekt het zoekwoord "veranda" gewoon af (Google begrijpt woordvormen). Zeg dus nooit "het zoekwoord ontbreekt in de H1" als alleen de woordvorm verschilt; beoordeel koppen op kern-overlap en op een onderscheidende propositie.\n` +
-    `- Trek zelf de conclusie en sluit af met concrete aanbevelingen in volgorde van impact. Hooguit \u00e9\u00e9n korte vraag, alleen als een echte keuze bij Maarten ligt.\n\n--- PROJECTCONTEXT ---\n${context}`;
+      `Sluit waar zinvol af met de vragen die Maarten aan de Ads-beheerder kan stellen. Hooguit één korte wedervraag, alleen bij een echte keuze.\n\n--- ADS-CONTEXT ---\n${context}`;
 
   try {
     // Agentisch: de assistent kan zelf meten (pagina, GSC, Ahrefs, top-10) vóór hij
