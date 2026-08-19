@@ -128,10 +128,19 @@ function alleTekst(inhoud: string): string {
  * een link-emoji in de werkbalk van elk rijk tekstveld terwijl de emoji-lijst
  * leeg was en leeg heette te blijven. Een regel met een achterdeur is geen regel.
  */
+const NAAM_TEKENS: Record<string, string> = {
+  times: "\u00d7", bull: "\u2022", raquo: "\u00bb", laquo: "\u00ab",
+  larr: "\u2190", rarr: "\u2192", uarr: "\u2191", darr: "\u2193",
+  mdash: "\u2014", ndash: "\u2013", hellip: "\u2026", middot: "\u00b7",
+  check: "\u2713", nbsp: " ", amp: "&", lt: "<", gt: ">", quot: '"',
+  rsquo: "\u2019", lsquo: "\u2018", rdquo: "\u201d", ldquo: "\u201c",
+};
+
 function ontcijfer(tekst: string): string {
   return tekst
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (heel, naam) => NAAM_TEKENS[String(naam).toLowerCase()] ?? heel);
 }
 
 function alleTsx(map: string): string[] {
@@ -156,7 +165,12 @@ for (const rel of alleTsx("app")) {
   for (const k of knoppen(bron)) {
     const klasse = /className=(?:"([^"]*)"|\{([^}]*)\})/.exec(k.open);
     const klasseTekst = klasse ? `${klasse[1] || ""} ${klasse[2] || ""}` : "";
-    const tekst = label(k.inhoud);
+    // Ontcijferd, want `&times;` is precies zo'n kruisje als `×`, alleen dan
+    // als code geschreven. Zonder deze stap meldde deze proef vijf sluitkruisjes
+    // als "knop zonder knopsysteem", terwijl de regel er juist zegt dat een
+    // teken-knopje kaal mag blijven. Een proef die het goede werk afkeurt, wordt
+    // uitgezet, en dan bewaakt hij niets meer.
+    const tekst = ontcijfer(label(k.inhoud));
     const isTeken = TEKEN_KNOP.test(tekst) && tekst.length <= 3;
 
     // 1. Het knopsysteem. Een teken-knopje (kruisje, vinkje) en de gedeelde
@@ -214,7 +228,7 @@ const onnodig = [...ERF_SYSTEEM].filter((rel) => {
     const klasse = /className=(?:"([^"]*)"|\{([^}]*)\})/.exec(k.open);
     const klasseTekst = klasse ? `${klasse[1] || ""} ${klasse[2] || ""}` : "";
     const tekst = label(k.inhoud);
-    const isTeken = TEKEN_KNOP.test(tekst) && tekst.length <= 3;
+    const isTeken = TEKEN_KNOP.test(ontcijfer(tekst)) && ontcijfer(tekst).length <= 3;
     const systeemOk = isTeken || KOP_KNOP.test(klasseTekst) || /\bbtn\b/.test(klasseTekst);
     const emojiOk = !(/[A-Za-zÀ-ÿ]{3,}/.test(tekst) && EMOJI.test(alleTekst(k.inhoud)));
     return systeemOk && emojiOk;

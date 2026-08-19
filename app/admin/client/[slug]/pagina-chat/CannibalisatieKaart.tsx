@@ -9,6 +9,7 @@ import Voortgang from "../Voortgang";
 import DriveRij from "./DriveRij";
 import type { useCannibalisatie } from "./useCannibalisatie";
 import type { DriveFolder } from "./types";
+import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 
 export default function CannibalisatieKaart({ canni, driveFolder, openPicker, ensureDriveMap }: {
   canni: ReturnType<typeof useCannibalisatie>;
@@ -24,7 +25,7 @@ export default function CannibalisatieKaart({ canni, driveFolder, openPicker, en
   return (
       <div className={"page-chat-canni step-card step-card-5" + (canniDone ? " done" : "")}>
         <div className="step-head" onClick={() => setCanniOpen((o) => !o)}>
-          <span className="step-caret">{canniOpen ? "▾" : "▸"}</span>
+          <span className="step-caret">{canniOpen ? <Omlaag /> : <Uitklap />}</span>
           <span className="step-badge">{canniDone ? "✓" : "4"}</span>
           <span className="step-title">Cannibalisatie oplossen</span>
           <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 4 — Kannibalisatie oplossen" text={"Kannibalisatie betekent dat meerdere eigen pagina's om dezelfde zoekintentie vechten; Google kan dan niet kiezen en geen van de pagina's haalt zijn potentie. Deze stap brengt dat voor deze pagina volledig in kaart en levert per betrokken pagina een onderbouwde actie.\n## Het principe: GSC is de waarheid, Ahrefs de verrekijker\n- **Search Console bewijst:** splitsen meerdere eigen pagina's de klikken en vertoningen op letterlijk dezelfde zoekopdracht, dan is dat harde kannibalisatie; dit signaal weegt het zwaarst. Per zoekwoord staat er expliciet bij welke andere eigen pagina's Google ook toont.\n- **Ahrefs ontdekt:** waarop rankt deze pagina, welke eigen pagina's ranken op de kernterm, en per beslis-zoekwoord het echte volume plus de complete top-10; ook 'verstopte kapers' worden gevonden, pagina's die je niet verdenkt maar wel op de term ranken.\n- **Nuance ingebouwd:** een blog naast een transactionele pagina met een andere intentie is geen kannibalisatie en wordt niet geflagd; taalvarianten krijgen nooit een redirect-advies maar hreflang.\n## De scheidsrechter per zoekwoord\nVoor elke betwiste term wordt beslist: verdient hij een eigen pagina of hoort hij bij deze pagina geclusterd? Volume rond nul en geen eigen pagina's in de top-10 betekent clusteren; echt volume met eigen pagina's in de top-10 rechtvaardigt een eigen pagina; en tonen twee termen voor meer dan 50% dezelfde top-10-URL's, dan is het een intentie en dus een pagina.\n## Wie wint, en hoe zeker is het\n- Elke betrokken pagina krijgt een **kannibalisatiescore van 1 tot 100**: bewezen kliksplitsing in GSC scoort 70-100, ranken op de kernterm zonder splitsing 40-69, alleen thematische overlap 10-39, eigen intentie 1-9.\n- De **winnaar-weging** is expliciet, in volgorde: verwijzende domeinen (zwaarst, dat is opgebouwde autoriteit die je nooit weggooit), dan organische tractie, businesswaarde, content-diepte en URL-kwaliteit. En bij twijfel wint de bedoelde eigenaar volgens het plan; nooit blind de toevallige beste ranker.\n## Van advies naar uitgevoerd werk\nPer pagina komt er een actie uit een vaste beslisboom: niets doen, interne links herverdelen, content differentiëren, canonical, samenvoegen met 301, of de-indexeren. Jij beoordeelt elke rij (uitvoeren, afwijzen, als taak doorzetten); pas dan worden het developer-taken met werkdocument. De 301's worden daarna **live geverifieerd**: de taak gaat pas op Klaar als elke redirect echt werkt."} /></span>
@@ -42,7 +43,7 @@ export default function CannibalisatieKaart({ canni, driveFolder, openPicker, en
         )}
         {pc?.result && (
           <div className="pch-canni-doc">
-            <button type="button" className="pch-canni-toggle" onClick={() => setPcOpen((o) => !o)}>{pcOpen ? "▾" : "▸"} Cannibalisatie- &amp; content-mapping-analyse{pc.updatedAt ? ` · ${new Date(pc.updatedAt).toLocaleString("nl-NL")}` : ""}{pc.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+            <button type="button" className="pch-canni-toggle" onClick={() => setPcOpen((o) => !o)}>{pcOpen ? <Omlaag /> : <Uitklap />} Cannibalisatie- &amp; content-mapping-analyse{pc.updatedAt ? ` · ${new Date(pc.updatedAt).toLocaleString("nl-NL")}` : ""}{pc.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
             {pcOpen && (<>
               <div className="md pch-canni-md" onClick={onCanniClick} dangerouslySetInnerHTML={{ __html: canniHtml }} />
               {wpRedirects.length > 0 && (!wpConf?.configured || wpFormOpen || wpMsg) && (

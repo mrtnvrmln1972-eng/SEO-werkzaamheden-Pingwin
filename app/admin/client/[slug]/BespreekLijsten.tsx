@@ -18,6 +18,7 @@ import { escapeHtml, isHtml, htmlNaarTekst } from "../../../../lib/veilige-html"
 import { openMailProgramma } from "../../../../lib/mailto-openen";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 import AdresVeld from "./AdresVeld";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type Item = { id: number; persoon: string; tekst: string; klaar: boolean; gedeeldAt: string | null; createdAt: string | null };
 
@@ -160,7 +161,7 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
   return (
     <div className="cockpit-card strategy-card">
       <button type="button" className="strategy-head" onClick={() => setKaartOpen((v) => !v)}>
-        <span className="strategy-caret">{kaartOpen ? "▾" : "▸"}</span>
+        <span className="strategy-caret">{kaartOpen ? <Omlaag /> : <Uitklap />}</span>
         <span className="strategy-title">Bespreeklijsten</span>
         {totaalOpen > 0 && <span className="wp-count">{totaalOpen}</span>}
       </button>
@@ -188,7 +189,7 @@ export default function BespreekLijsten({ slug, clientName, clientEmail, domain 
         return (
           <div key={p} className="bl-lijst">
             <button type="button" className="strategy-head bl-head" onClick={() => setOpenLijst(isOpen ? "" : p)}>
-              <span className="strategy-caret">{isOpen ? "▾" : "▸"}</span>
+              <span className="strategy-caret">{isOpen ? <Omlaag /> : <Uitklap />}</span>
               <span className="bl-titel">Bespreken met {labelVan(p)}</span>
               {open.length > 0 && <span className="wp-count">{open.length}</span>}
               {gedeeld && <span className="bl-gedeeld muted">gedeeld {dd(gedeeld)}</span>}

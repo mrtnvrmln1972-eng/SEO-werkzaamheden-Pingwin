@@ -13,6 +13,7 @@
 // besluit nooit twee keer hoeft te nemen.
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 export type RedirectRij = { van: string; naar: string; type?: string; mergeContent?: boolean; verhuizen?: boolean; reden?: string };
 // Het bewijs achter een regel: welk zoekwoord, wie wint, en de cijfers. Stond
@@ -310,7 +311,7 @@ export default function OpruimTabel({ slug, domain, rijen, openTarget, bewijs = 
                   </td>}
                   <td className="opr-reden">
                     <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen((o) => ({ ...o, [v]: !o[v] }))}>
-                      {open[v] ? "▾" : "▸"} {open[v] ? "minder" : "reden"}
+                      {open[v] ? <Omlaag /> : <Uitklap />} {open[v] ? "minder" : "reden"}
                     </button>
                     {/* Elke regel krijgt hetzelfde verhaal: wat er aan de hand is, en
                         wat we eraan doen. Zat de pagina in een cluster, dan met de

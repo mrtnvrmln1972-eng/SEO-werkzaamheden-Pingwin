@@ -39,7 +39,7 @@ import { useMailDatumLinks } from "./useMailDatumLinks";
 import DatumKiezer, { vandaagIso, langDatum } from "./DatumKiezer";
 import { haalVooraf } from "../../../../lib/vooraf";
 import { STANDEN, standVan, naarOpslag, type Stand } from "../../../../lib/taak-stand";
-import { PijlSchuin } from "../../../_ui/Pijl";
+import { Omlaag, PijlSchuin, Uitklap } from "../../../_ui/Pijl";
 
 type Taak = {
   notitie?: string;
@@ -752,7 +752,7 @@ export default function Planning({
           {afgerond.length > 0 && (
             <div className="pl-staart pl-af">
               <button type="button" className="pl-af-kop" onClick={() => setToonAfgerond((v) => !v)}>
-                <span className="pl-af-caret">{toonAfgerond ? "▾" : "▸"}</span>
+                <span className="pl-af-caret">{toonAfgerond ? <Omlaag /> : <Uitklap />}</span>
                 <span className="pl-staarttitel">Afgeronde taken</span>
                 <span className="pl-aantal">{afgerond.length}</span>
               </button>

@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import type { WpTask } from "./types";
+import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 
 export default function KaartKop({
   slug, t, open, inRij, onToggleOpen, onRemove, setFoutje, refreshBoard,
@@ -66,7 +67,7 @@ export default function KaartKop({
             </div>
           ) : inRij ? null : (
             <div className="wp-card-taak wp-clickable" onClick={toggleAlsGeenSelectie} title={open ? "Klik om dicht te klappen" : "Klik voor de fases, info en chat"}>
-              <span className="wp-caret">{open ? "▾" : "▸"}</span>
+              <span className="wp-caret">{open ? <Omlaag /> : <Uitklap />}</span>
               {titel}
               <button type="button" className="wp-titel-pen" title="Titel aanpassen"
                 onClick={(e) => { e.stopPropagation(); setTitelDraft(t.taak.replace(/<[^>]*>/g, "").trim()); setTitelBewerk(true); }}>✎</button>

@@ -16,6 +16,7 @@ import { FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import { PROFILE_HEADER, TOV_HEADER } from "../../../../lib/constants";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -447,7 +448,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
     <>
       <div className="profile-search-row">
         <button type="button" className="client-profile-toggle" onClick={() => setProfileOpen((v) => !v)}>
-        {profileOpen ? "▾" : "▸"} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
+        {profileOpen ? <Omlaag /> : <Uitklap />} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
         {profileSaved && <span className="focus-save-status" style={{ marginLeft: "var(--s-2)" }}>opgeslagen</span>}
         </button>
         <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
@@ -481,7 +482,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       {/* De twee gegenereerde delen als toggle, standaard dicht. */}
       <div className="profile-part acc-teal">
       <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-0)", cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, profile: !o.profile }))}>
-      <span>{genPartOpen.profile ? "▾" : "▸"}</span> Klantprofiel (automatisch gegenereerd)
+      <span>{genPartOpen.profile ? <Omlaag /> : <Uitklap />}</span> Klantprofiel (automatisch gegenereerd)
       {!parts.profileMd && <span className="plan-chip" style={{ marginLeft: "var(--s-2)" }}>leeg</span>}
       </button>
       {genPartOpen.profile && (parts.profileMd
@@ -491,7 +492,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 
       <div className="profile-part acc-blue">
       <button type="button" className="profile-part-head" style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", width: "100%", background: "none", border: "none", padding: "var(--s-0)", cursor: "pointer", textAlign: "left" }} onClick={() => setGenPartOpen((o) => ({ ...o, tov: !o.tov }))}>
-      <span>{genPartOpen.tov ? "▾" : "▸"}</span> Tone of voice (automatisch gegenereerd)
+      <span>{genPartOpen.tov ? <Omlaag /> : <Uitklap />}</span> Tone of voice (automatisch gegenereerd)
       {!parts.tovMd && <span className="plan-chip" style={{ marginLeft: "var(--s-2)" }}>leeg</span>}
       </button>
       {genPartOpen.tov && (parts.tovMd
@@ -602,16 +603,16 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
           <div className="res-table-wrap pages-table-wrap" style={{ marginTop: "var(--s-3)" }}>
             <table className="res-table pages-table">
               <thead><tr>
-                <th className="pg-sort" onClick={() => setSortKey("prio")} title="Sorteer op prioriteit: sterretjes bovenaan, dan pagina's met een plan, dan op kans">★{sortKey === "prio" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("status")}>Status{sortKey === "status" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("pagina")} title="Sorteer alfabetisch op URL">Pagina{sortKey === "pagina" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("klikken")}>Klikken{sortKey === "klikken" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("vertoningen")}>Vertoningen{sortKey === "vertoningen" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("positie")}>Positie{sortKey === "positie" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("volume")} title="Zoekvolume van het hoofdzoekwoord (meeste vertoningen)">Volume{sortKey === "volume" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("kans")} title="Veel vertoningen + positie net buiten de top 10 = grote kans">Kans{sortKey === "kans" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("fases")} title={`De zeven fases van deze pagina: ${PG_FASEN.map((f) => f.label.toLowerCase()).join(", ")}.\nGroen = gedaan, oranje randje = de eerstvolgende stap. Wijs een rijtje aan om te zien welke fase welke is. Klik om te sorteren op hoe ver een pagina is.`}>Fases{sortKey === "fases" ? " ▾" : ""}</th>
-                <th className="pg-sort" onClick={() => setSortKey("plan")} title="Sorteer op plan-status: vol plan eerst, dan half plan, dan leeg">Plan{sortKey === "plan" ? " ▾" : ""}</th>
+                <th className="pg-sort" onClick={() => setSortKey("prio")} title="Sorteer op prioriteit: sterretjes bovenaan, dan pagina's met een plan, dan op kans">★{sortKey === "prio" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("status")}>Status{sortKey === "status" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("pagina")} title="Sorteer alfabetisch op URL">Pagina{sortKey === "pagina" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("klikken")}>Klikken{sortKey === "klikken" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("vertoningen")}>Vertoningen{sortKey === "vertoningen" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("positie")}>Positie{sortKey === "positie" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("volume")} title="Zoekvolume van het hoofdzoekwoord (meeste vertoningen)">Volume{sortKey === "volume" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("kans")} title="Veel vertoningen + positie net buiten de top 10 = grote kans">Kans{sortKey === "kans" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("fases")} title={`De zeven fases van deze pagina: ${PG_FASEN.map((f) => f.label.toLowerCase()).join(", ")}.\nGroen = gedaan, oranje randje = de eerstvolgende stap. Wijs een rijtje aan om te zien welke fase welke is. Klik om te sorteren op hoe ver een pagina is.`}>Fases{sortKey === "fases" ? <Omlaag /> : null}</th>
+                <th className="pg-sort" onClick={() => setSortKey("plan")} title="Sorteer op plan-status: vol plan eerst, dan half plan, dan leeg">Plan{sortKey === "plan" ? <Omlaag /> : null}</th>
                 <th title="Zet deze pagina als projectkaart in de weekplanning van deze week, met de fases en de pagina-context erin.">Planning</th>
               </tr></thead>
               <tbody>
@@ -789,7 +790,7 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
             <button type="button" onClick={(e) => { e.stopPropagation(); void toggleKeywords(); }}
               title="Alle zoekwoorden en posities waar deze pagina nu op scoort (Search Console, 90 dagen)"
               style={{ border: "1px solid var(--border)", background: kwOpen ? "var(--orange-light)" : "var(--white)", borderRadius: "var(--r-sm)", cursor: "pointer", padding: "var(--s-1) var(--s-2)", fontSize: "var(--fs-xs)", color: "var(--gray)", flex: "0 0 auto" }}>
-              {kwOpen ? "▾" : "▸"} zw
+              {kwOpen ? <Omlaag /> : <Uitklap />} zw
             </button>
             {opp && opp.clicks > 0 ? opp.clicks.toLocaleString("nl-NL") : (u.gscClicks > 0 ? u.gscClicks.toLocaleString("nl-NL") : <span className="muted">&mdash;</span>)}
           </div>
@@ -820,10 +821,10 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
                 <table className="res-table" style={{ maxWidth: 860 }}>
                   <thead><tr>
                     <th>Zoekwoord</th>
-                    <th className="pg-sort" onClick={() => setKwSort("positie")}>Positie{kwSort === "positie" ? " ▾" : ""}</th>
-                    <th className="pg-sort" onClick={() => setKwSort("klikken")}>Klikken{kwSort === "klikken" ? " ▾" : ""}</th>
-                    <th className="pg-sort" onClick={() => setKwSort("vertoningen")}>Vertoningen{kwSort === "vertoningen" ? " ▾" : ""}</th>
-                    <th className="pg-sort" onClick={() => setKwSort("volume")} title="Maandelijks zoekvolume (Ahrefs)">Volume{kwSort === "volume" ? " ▾" : ""}</th>
+                    <th className="pg-sort" onClick={() => setKwSort("positie")}>Positie{kwSort === "positie" ? <Omlaag /> : null}</th>
+                    <th className="pg-sort" onClick={() => setKwSort("klikken")}>Klikken{kwSort === "klikken" ? <Omlaag /> : null}</th>
+                    <th className="pg-sort" onClick={() => setKwSort("vertoningen")}>Vertoningen{kwSort === "vertoningen" ? <Omlaag /> : null}</th>
+                    <th className="pg-sort" onClick={() => setKwSort("volume")} title="Maandelijks zoekvolume (Ahrefs)">Volume{kwSort === "volume" ? <Omlaag /> : null}</th>
                   </tr></thead>
                   <tbody>
                     {[...kws].sort((a, b) =>

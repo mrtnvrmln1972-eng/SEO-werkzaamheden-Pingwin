@@ -59,7 +59,7 @@ import Tellers from "../../Tellers";
 import KlantKiezer from "./KlantKiezer";
 import KlussenChip from "./KlussenChip";
 import MeldingenMenu from "../../MeldingenMenu";
-import { LosVenster, PijlRechts } from "../../../_ui/Pijl";
+import { LosVenster, Omlaag, PijlRechts, Uitklap } from "../../../_ui/Pijl";
 import {
   metricLabel, fmtMetric, periodLabel, sanitizeEmail, cleanReplyHtml,
   daysSince, daysAgoLabel, contactColor, fmtDate, fmtDateTime, shortUrl,
@@ -620,7 +620,7 @@ export default function ClientCockpit({
 
               <div className="ov-blok">
                 <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, chats: !v.chats }))}>
-                  <span className="strategy-caret">{ovOpen.chats ? "▾" : "▸"}</span>
+                  <span className="strategy-caret">{ovOpen.chats ? <Omlaag /> : <Uitklap />}</span>
                   <span className="strategy-title">Chats</span>
                 </button>
                 {ovOpen.chats && (
@@ -632,7 +632,7 @@ export default function ClientCockpit({
 
               <div className="ov-blok">
                 <button type="button" className="strategy-head" onClick={() => setOvOpen((v) => ({ ...v, week: !v.week }))}>
-                  <span className="strategy-caret">{ovOpen.week ? "▾" : "▸"}</span>
+                  <span className="strategy-caret">{ovOpen.week ? <Omlaag /> : <Uitklap />}</span>
                   <span className="strategy-title">Planning</span>
                   {/* Naar het compacte weekbord. Stond eerst in de kop van de
                       weekplanning zelf, maar die kop is hier verborgen (de titel
@@ -843,7 +843,7 @@ export default function ClientCockpit({
                   {!mailsFloating ? (
                     <div className="cockpit-card strategy-card">
                       <button type="button" className="strategy-head" onClick={() => setShowMailsBox((v) => !v)}>
-                        <span className="strategy-caret">{showMailsBox ? "▾" : "▸"}</span>
+                        <span className="strategy-caret">{showMailsBox ? <Omlaag /> : <Uitklap />}</span>
                         <span className="strategy-title">Laatste mails <HelpHint xl title="Laatste mails" text={"De recentste e-mails met deze klant, **live uit de gekoppelde mailbox** (Microsoft 365); je hoeft dus niet te wisselen tussen dashboard en mailprogramma om de context te zien.\n## Wat je ermee kunt\n- **Lezen:** klik een mail aan om hem volledig in het dashboard te lezen.\n- **Zoeken:** doorzoek de correspondentie via het zoekveld, of open dezelfde zoekopdracht direct in Superhuman voor het volledige archief.\n- **Filteren:** via de filterlijst bepaal je welke afzenders hier meetellen, zodat nieuwsbrieven en automatische mails de tijdlijn niet vervuilen.\n- **Los zetten:** met het knopje 'los' zwaait dit venster groot en centraal open, los van de smalle kolom."} /></span>
                         <span className="mails-kop-mini">
                           <span className="afz-link" role="button" title="Los en groot in beeld zetten"

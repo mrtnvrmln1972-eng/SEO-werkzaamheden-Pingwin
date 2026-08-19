@@ -8,6 +8,7 @@ import HelpHint from "../HelpHint";
 import Voortgang from "../Voortgang";
 import DriveRij from "./DriveRij";
 import type { DriveFolder } from "./types";
+import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 
 export default function InterneLinksKaart({ slug, url, siteBase, setErr, onApplied, driveFolder, openPicker, ensureDriveMap }: {
   slug: string; url: string; siteBase: string;
@@ -76,7 +77,7 @@ export default function InterneLinksKaart({ slug, url, siteBase, setErr, onAppli
   return (
       <div className={"page-chat-links-card step-card step-card-6" + (ilDone ? " done" : "")}>
         <div className="step-head" onClick={() => setLinksOpen((o) => !o)}>
-          <span className="step-caret">{linksOpen ? "▾" : "▸"}</span>
+          <span className="step-caret">{linksOpen ? <Omlaag /> : <Uitklap />}</span>
           <span className="step-badge">{ilDone ? "✓" : "5"}</span>
           <span className="step-title">Interne links</span>
           <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 5 — Interne links (in ontwikkeling)" text={"Interne links sturen bezoekers en autoriteit (linkwaarde) naar de pagina's die het belangrijkst zijn. Deze stap zoekt de beste kansen om vanaf andere pagina's van de site NAAR deze pagina te linken, gerangschikt op wat een link echt waard is. Dit onderdeel wordt nog doorontwikkeld; de kern staat en is bruikbaar.\n## Hoe de kansen worden gewogen\n- **Relevantie is de toegangspoort:** de bronpagina moet het onderwerp raken. Dat wordt gemeten via de overlap tussen de onderwerptermen van deze pagina (titel, plan, top-zoekwoorden, Search Console-queries) en de titel en koppen van elke kandidaat-bron; elke kans krijgt een relevantiescore van 0 tot 100 en onder de 20 valt hij af.\n- **Autoriteit bepaalt de volgorde:** bronpagina's met veel externe verwijzende domeinen (uit Ahrefs) geven de meeste linkwaarde door; dat weegt zwaar in de rangschikking.\n- **Verkeer telt mee:** een bron met veel Search Console-klikken levert naast linkwaarde ook echte doorklikkers.\n## De nuances die vaak fout gaan, hier goed\n- **Menu- en footerlinks tellen niet als bestaande link.** Een link die met dezelfde ankertekst op 60% of meer van de pagina's voorkomt wordt herkend als sitewide navigatie en genegeerd; het gaat om de contextuele link in de lopende tekst. Pagina's die al zo'n contextuele link naar het doel hebben, worden uitgesloten.\n- **Ankertekst-variatie:** per kans wordt een natuurlijke ankertekst voorgesteld (exact, gedeeltelijk of beschrijvend), bewaakt tegen over-optimalisatie doordat het bestaande ankerprofiel van de doelpagina wordt meegewogen.\n## Wat je terugkrijgt\nEen gerangschikte lijst kansen met per bron de onderbouwing (relevantie, verwijzende domeinen, verkeer), de voorgestelde ankertekst en, als WordPress gekoppeld is, een directe bewerk-link naar die pagina in de backend; plaatsen is dan een minuut werk. Overnemen maakt er een net werkdocument en een developer-taak van."} /></span>
@@ -94,7 +95,7 @@ export default function InterneLinksKaart({ slug, url, siteBase, setErr, onAppli
           )}
           {il?.result && (
             <div className="pch-canni-doc">
-              <button type="button" className="pch-canni-toggle" onClick={() => setIlDocOpen((o) => !o)}>{ilDocOpen ? "▾" : "▸"} Interne-links-voorstel{il.updatedAt ? ` · ${new Date(il.updatedAt).toLocaleString("nl-NL")}` : ""}{il.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+              <button type="button" className="pch-canni-toggle" onClick={() => setIlDocOpen((o) => !o)}>{ilDocOpen ? <Omlaag /> : <Uitklap />} Interne-links-voorstel{il.updatedAt ? ` · ${new Date(il.updatedAt).toLocaleString("nl-NL")}` : ""}{il.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
               {ilDocOpen && <div className="md pch-canni-md pch-il-md" dangerouslySetInnerHTML={{ __html: ilHtml }} />}
               {/* Map + overnemen blijven ook zichtbaar als het voorstel is ingeklapt. */}
               <DriveRij folder={driveFolder} legeTekst="nog geen Drive-map, kies er een zodat het taak-document in de juiste map komt" onKies={openPicker} style={{ margin: "var(--s-3) 0 var(--s-2)" }} />

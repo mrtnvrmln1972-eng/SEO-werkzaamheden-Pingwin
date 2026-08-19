@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { netteHtml } from "../../../../lib/nette-html";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type Notitie = { id: number; titel: string; inhoud: string; createdAt: string | null; updatedAt: string | null };
 
@@ -86,7 +87,7 @@ export default function Notities({ slug, domain }: { slug: string; domain?: stri
           <div key={n.id} className="bl-lijst">
             <div className="strategy-head bl-head nt-head">
               <button type="button" className="nt-vouw" onClick={() => setOpenId(isOpen ? null : n.id)}>
-                <span className="strategy-caret">{isOpen ? "▾" : "▸"}</span>
+                <span className="strategy-caret">{isOpen ? <Omlaag /> : <Uitklap />}</span>
               </button>
               {titelId === n.id ? (
                 <input

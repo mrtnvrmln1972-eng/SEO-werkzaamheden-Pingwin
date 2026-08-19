@@ -9,7 +9,7 @@ import Concurrenten from "./Concurrenten";
 import { mdToHtml } from "../../../../lib/markdown";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
-import { Verschil } from "../../../_ui/Pijl";
+import { Omlaag, Uitklap, Verschil } from "../../../_ui/Pijl";
 
 type GscPage = GscComparison["pages"][number];
 
@@ -258,7 +258,7 @@ function Collapse({ sub, title, meta, open, onToggle, actions, children }: { sub
     <div className={sub ? "kpi-sub" : "cockpit-card kpi-section"}>
       <div className={sub ? "kpi-sub-head" : "kpi-section-head"}>
         <button type="button" className={sub ? "kpi-sub-toggle" : "kpi-section-toggle"} onClick={onToggle}>
-          <span className="kpi-caret">{open ? "▾" : "▸"}</span>
+          <span className="kpi-caret">{open ? <Omlaag /> : <Uitklap />}</span>
           <span className={sub ? "kpi-sub-title" : "kpi-section-title"}>{title}</span>
           {meta && <span className="ck-updated">{meta}</span>}
         </button>
@@ -751,7 +751,7 @@ export default function KpiPanel({ slug, domain, onOpenPage }: { slug: string; d
                             <span className={"wz-star" + (isPrio ? " on" : "")} title={isPrio ? "Prioriteit aan, klik om uit te zetten" : "Markeer als prioriteit (komt bovenaan)"} onClick={() => togglePagePrio(p.url)}>{isPrio ? "★" : "☆"}</span>
                             <span className="kpi-drag" draggable={canDrag} onDragStart={() => { if (canDrag) setDragIdx(i); }} onDragEnd={() => setDragIdx(null)} title={canDrag ? "Sleep om bovenaan te zetten" : "Zet de sortering/prioriteit uit om te slepen"}>⠿</span>
                           </td>
-                          <td><span className="kpi-page-caret">{kwOpen ? "▾" : "▸"}</span> <a href={p.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(p.url)}</a></td>
+                          <td><span className="kpi-page-caret">{kwOpen ? <Omlaag /> : <Uitklap />}</span> <a href={p.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{shortUrl(p.url)}</a></td>
                           {pageCols.map((gk) => pageCell[gk](p))}
                           <td className="kpi-openpage-cell"><button type="button" className="btn btn-klein" onClick={(e) => { e.stopPropagation(); onOpenPage?.(p.url); }} title="Open deze pagina in het Pagina's-tabje">open in Pagina&rsquo;s</button></td>
                         </tr>

@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { kaartTekst, faseVoorstel } from "../../../../../lib/weekplan-kaarttekst";
 import { wachtOpKlus } from "../useKlus";
-import { PijlLinks } from "../../../../_ui/Pijl";
+import { Omlaag, PijlLinks, Uitklap } from "../../../../_ui/Pijl";
 
 type Punt = { naam: string; behaald: number; max: number; uitleg: string };
 type Node = {
@@ -256,7 +256,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
       <>
         <div className={"nv-item " + kleur(n)} style={{ paddingLeft: 10 + diepte * 14 }}>
           {kids.length > 0
-            ? <button type="button" className="nv-caret" title={isDicht ? "Uitklappen" : "Inklappen"} onClick={() => setDicht((v) => ({ ...v, [n.url]: !v[n.url] }))}>{isDicht ? "▸" : "▾"}</button>
+            ? <button type="button" className="nv-caret" title={isDicht ? "Uitklappen" : "Inklappen"} onClick={() => setDicht((v) => ({ ...v, [n.url]: !v[n.url] }))}>{isDicht ? <Uitklap /> : <Omlaag />}</button>
             : <span className="nv-caret nv-caret-leeg" />}
           <a className="nv-naam" href={liveUrl(n.url)} target="_blank" rel="noreferrer" title={n.url}>{naam(n)}</a>
           <span className="nv-spacer" />
@@ -293,7 +293,7 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
     return (
       <div className="nv-kolom">
         <div className={"nv-kolomkop " + (n.bucket ? "nv-grijs" : kleur(n))}>
-          <button type="button" className="nv-caret" title={isDicht ? "Uitklappen" : "Inklappen"} onClick={() => setDicht((v) => ({ ...v, ["kolom:" + n.url]: !v["kolom:" + n.url] }))}>{isDicht ? "▸" : "▾"}</button>
+          <button type="button" className="nv-caret" title={isDicht ? "Uitklappen" : "Inklappen"} onClick={() => setDicht((v) => ({ ...v, ["kolom:" + n.url]: !v["kolom:" + n.url] }))}>{isDicht ? <Uitklap /> : <Omlaag />}</button>
           {n.bucket
             ? <span className="nv-kolomnaam nv-kolomnaam-los" title="Deze pagina's komen nergens in het hoofdmenu terug. Een bezoeker vindt ze alleen via een link in een tekst of via Google.">Niet in het menu</span>
             : <a className="nv-kolomnaam" href={liveUrl(n.url)} target="_blank" rel="noreferrer" title={n.url}>{naam(n)}</a>}

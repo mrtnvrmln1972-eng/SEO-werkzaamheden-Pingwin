@@ -6,6 +6,7 @@ import type { PrognoseUitkomst, MaandUitkomst, PrognoseRegel, Post, Bijdrage } f
 import BoekhoudingVullen from "./BoekhoudingVullen";
 import Kostenmodel from "./Kostenmodel";
 import type { KostenRegel } from "../../../lib/kostenmodel";
+import { Omlaag, Uitklap } from "../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // DE PROGNOSE OP HET SCHERM
@@ -199,7 +200,7 @@ function Maandlijst({ maanden, target, doelWoord, open, zetOpen }: {
                 onClick={() => zetOpen(isOpen ? null : m.maand)}
                 aria-expanded={isOpen}
               >
-                <span className="prog-maand-pijl">{isOpen ? "▾" : "▸"}</span>
+                <span className="prog-maand-pijl">{isOpen ? <Omlaag /> : <Uitklap />}</span>
                 <span className="prog-maand-naam">{m.label}</span>
                 <span className="prog-balk" title={`${Math.round(deel)}% van het doel`}>
                   <span className={"prog-balk-vul" + (m.haaltDoel ? " gehaald" : "")} style={{ width: `${deel}%` }} />

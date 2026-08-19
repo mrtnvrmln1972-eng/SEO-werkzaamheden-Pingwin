@@ -1,7 +1,7 @@
 {
   "css": {
-    "regels": 8759,
-    "stijlregels": 4361,
+    "regels": 8779,
+    "stijlregels": 4339,
     "classnamen": 2951
   },
   "kleuren": {
@@ -1526,18 +1526,10 @@
     }
   ],
   "icoontekens": {
-    "totaal": 379,
+    "totaal": 210,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
-      {
-        "teken": "▾",
-        "aantal": 107
-      },
-      {
-        "teken": "▸",
-        "aantal": 91
-      },
       {
         "teken": "✓",
         "aantal": 62
@@ -1545,6 +1537,14 @@
       {
         "teken": "→",
         "aantal": 45
+      },
+      {
+        "teken": "▾",
+        "aantal": 16
+      },
+      {
+        "teken": "▸",
+        "aantal": 13
       },
       {
         "teken": "⠿",
@@ -1904,7 +1904,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8444,
-    "schaalGebruik": 1522
+    "gebruik": 8478,
+    "schaalGebruik": 1472
   }
 }

@@ -18,6 +18,7 @@ import { cardInfoHtml, eerdereNotitiesHtml, verhaalAantal, type MailLinks } from
 import DocVersies from "../DocVersies";
 import KaartNotitie from "../KaartNotitie";
 import type { WpTask, WpPageInfo } from "./types";
+import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 
 const ARCHIEF_LABEL: Record<string, string> = {
   titel: "Eerdere titel",
@@ -105,7 +106,7 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
     return (
       <button type="button" className="btn btn-quiet btn-klein" aria-expanded={aan}
         onClick={() => klap(welke)}>
-        <span className="strategy-caret">{aan ? "▾" : "▸"}</span>
+        <span className="strategy-caret">{aan ? <Omlaag /> : <Uitklap />}</span>
         {naam}{aantal !== undefined ? ` (${aantal})` : ""}
         {extra && <span className="wp-doc-vouw-let">{extra}</span>}
       </button>

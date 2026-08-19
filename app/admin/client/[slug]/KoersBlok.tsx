@@ -34,6 +34,7 @@
 
 import { useEffect, useState } from "react";
 import FocusBlock from "./FocusBlock";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type WerkPost = { sleutel: string; label: string; aantal: number | null; tab: string; uitleg: string };
 
@@ -81,7 +82,7 @@ export default function KoersBlok({ slug, onGaNaarTab }: {
 
   const kop = (sleutel: "koers" | "bronnen", titel: string) => (
     <button type="button" className="strategy-head" onClick={() => klap(sleutel)}>
-      <span className="strategy-caret">{open[sleutel] ? "▾" : "▸"}</span>
+      <span className="strategy-caret">{open[sleutel] ? <Omlaag /> : <Uitklap />}</span>
       <span className="strategy-title">{titel}</span>
     </button>
   );

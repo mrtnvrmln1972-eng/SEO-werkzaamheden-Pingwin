@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
-import { Beeld, Blad } from "../../../_ui/Pijl";
+import { Beeld, Blad, Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // DE DROPZONE VAN HET GESPREK
@@ -140,7 +140,7 @@ export default function ChatBestanden({ slug, thread }: { slug: string; thread: 
                   title={openKern === f.id ? "Samenvatting dichtklappen" : "Samenvatting van dit bestand"}
                   aria-expanded={openKern === f.id}
                   onClick={() => setOpenKern((v) => (v === f.id ? null : f.id))}>
-                  {openKern === f.id ? "▾" : "▸"}
+                  {openKern === f.id ? <Omlaag /> : <Uitklap />}
                 </button>
               )}
               <button type="button" className="cb-weg" title="Uit dit gesprek halen (het bestand blijft in Drive staan)"

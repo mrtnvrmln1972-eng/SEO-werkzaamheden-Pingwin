@@ -12,7 +12,7 @@ import { Icoon, ICOON } from "./fase-iconen";
 import type { KaartChatState } from "./useKaartChat";
 import type { WpTask, WpPageInfo } from "./types";
 import MeegegevenAdvies from "../pagina-chat/MeegegevenAdvies";
-import { PijlSchuin } from "../../../../_ui/Pijl";
+import { Omlaag, PijlSchuin, Uitklap } from "../../../../_ui/Pijl";
 
 export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, ensureDriveMap, refreshBoard, onPaginas }: {
   slug: string; t: WpTask; page?: WpPageInfo; chat: KaartChatState;
@@ -35,7 +35,7 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
     <div className="wp-chat">
       <div className="wp-chat-kop">
         <button type="button" className={"wp-chat-toggle wp-chat-toggle-groot" + (chatOpen ? " wp-chat-open" : "")} onClick={() => (chatOpen ? setChatOpen(false) : void chat.openChat())}>
-          <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> {t.url ? "Chat over deze pagina" : "Chat over deze taak"} {chatOpen ? "▾" : "▸"}
+          <Icoon d={ICOON.chat} className="wp-sectie-icoon" /> {t.url ? "Chat over deze pagina" : "Chat over deze taak"} {chatOpen ? <Omlaag /> : <Uitklap />}
         </button>
         {/* Zelfde pilvorm, direct ernaast: naar deze pagina in Pagina's. */}
         {onPaginas && (
@@ -82,7 +82,7 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
                 )}
                 {inklapbaar && (
                   <button type="button" className="ovc-msg-vouw" onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
-                    <span className="ovc-msg-vouw-pijl">{dicht ? "▸" : "▾"}</span>
+                    <span className="ovc-msg-vouw-pijl">{dicht ? <Uitklap /> : <Omlaag />}</span>
                     <span className="ovc-msg-vouw-titel">{eersteKop(m.content || "")}</span>
                     {dicht && <span className="ovc-msg-vouw-meta">eerder antwoord</span>}
                   </button>

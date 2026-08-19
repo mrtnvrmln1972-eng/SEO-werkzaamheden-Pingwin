@@ -8,6 +8,7 @@ import HelpHint from "../HelpHint";
 import Voortgang from "../Voortgang";
 import DriveRij from "./DriveRij";
 import type { DriveFolder } from "./types";
+import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 
 export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApplied, driveFolder, openPicker, ensureDriveMap }: {
   slug: string; url: string; siteBase: string;
@@ -82,7 +83,7 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
   return (
       <div className={"page-chat-schema-card step-card step-card-7" + (schDone ? " done" : "")}>
         <div className="step-head" onClick={() => setSchemaOpen((o) => !o)}>
-          <span className="step-caret">{schemaOpen ? "▾" : "▸"}</span>
+          <span className="step-caret">{schemaOpen ? <Omlaag /> : <Uitklap />}</span>
           <span className="step-badge">{schDone ? "✓" : "6"}</span>
           <span className="step-title">Structured data</span>
           <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 6 — Structured data (in ontwikkeling)" text={"Structured data (schema.org, JSON-LD) vertelt zoekmachines en AI-assistenten in machinetaal wie dit bedrijf is en wat deze pagina is. Deze stap bepaalt per pagina de juiste markup en levert hem kant-en-klaar aan. Ook dit onderdeel wordt nog doorontwikkeld; de basis staat en is al goed bruikbaar.\n## De aanpak: een samenhangende entity graph\n- Geen losse snippets, maar een **@graph** waarin elke pagina met vaste @id's verwijst naar het site-brede identiteitsblok (organisatie en website op de homepage). Elke pagina krijgt sowieso een WebPage- en BreadcrumbList-node; de hoofdentiteit hangt daar via @id aan vast. Zo bouw je een consistente entiteit op in plaats van honderd losse claims.\n- Het **bedrijfstype** uit de bevestigde Bedrijfsgegevens (Klant-tab) bepaalt de keuze: een kliniek krijgt medische markup waarbij de behandelpagina gekoppeld wordt aan de juiste **arts met specialisatie en BIG-nummer** (bij medische onderwerpen hét vertrouwenssignaal voor Google); een webshop productmarkup met prijs, voorraad en retour/verzendinformatie (en nooit Product-markup op een niet-productpagina); een dienstverlener een dienst gekoppeld aan bedrijf en werkgebied; een blog een Article met auteur en datums.\n## De kwaliteitsregels\n- **Niets verzinnen, ooit:** er komt uitsluitend informatie in die zichtbaar op de pagina staat of uit de door jullie bevestigde bedrijfsgegevens komt. Geen verzonnen reviews, prijzen of openingstijden; twijfel betekent weglaten. Dat is precies het verschil tussen markup die vertrouwen opbouwt en markup die een handmatige actie riskeert.\n- **Bestaand plugin-schema wordt gedetecteerd** (Yoast, RankMath en dergelijke) en het advies vult aan zonder te dupliceren: een instantie per type per pagina.\n- **Eerlijk over de opbrengst:** FAQ-rich-results zijn door Google gestopt, dus die worden nergens beloofd; wel worden pagina's met een rijke, kloppende entity graph aantoonbaar vaker geciteerd door AI-assistenten, en de zichtbare content blijft altijd het belangrijkst.\n## De juiste volgorde: sluitstuk na de live copy\nDe gouden regel is dat markup moet kloppen met de zichtbare tekst. Draai deze stap daarom als **sluitstuk**, nadat de nieuwe copy (met FAQ's) live op de site staat. Staat er nog een niet-afgeronde copy-taak voor deze pagina, dan waarschuwt de analyse daar zelf voor.\n## De bewaking daarna\nWordt de pagina later aangepast (een veelgestelde vraag erbij, tekst herschreven, andere openingstijden), dan detecteert het Wijzigingen-tabblad dat en verschijnt hier automatisch een melding dat de structured data opnieuw bekeken moet worden; de markup mag immers nooit achterlopen op de zichtbare content. Ook wanneer een SEO-plugin (Yoast, RankMath) ineens andere schema levert, is dat een moment om deze stap opnieuw te draaien.\n## Wat 'overnemen' oplevert\nDrie dingen tegelijk: een kort uitleg-document voor klant en developer, een **los .json-bestand** dat letterlijk te plakken is (met verwijzing naar Google's Rich Results Test en validator.schema.org voor de controle), en een developer-taak met alle links en eventuele waarschuwingen erbij."} /></span>
@@ -103,7 +104,7 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
           )}
           {sch?.result && (
             <div className="pch-canni-doc">
-              <button type="button" className="pch-canni-toggle" onClick={() => setSchDocOpen((o) => !o)}>{schDocOpen ? "▾" : "▸"} Structured data-advies{sch.updatedAt ? ` · ${new Date(sch.updatedAt).toLocaleString("nl-NL")}` : ""}{sch.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
+              <button type="button" className="pch-canni-toggle" onClick={() => setSchDocOpen((o) => !o)}>{schDocOpen ? <Omlaag /> : <Uitklap />} Structured data-advies{sch.updatedAt ? ` · ${new Date(sch.updatedAt).toLocaleString("nl-NL")}` : ""}{sch.status === "running" ? " · nieuwe analyse draait…" : ""}</button>
               {schDocOpen && (
                 <>
                   {sch.warnings.length > 0 && (
@@ -115,7 +116,7 @@ export default function StructuredDataKaart({ slug, url, siteBase, setErr, onApp
                   {sch.jsonld && (
                     <div className="sch-json">
                       <div className="sch-json-head">
-                        <button type="button" className="pch-canni-toggle" onClick={() => setSchJsonOpen((o) => !o)}>{schJsonOpen ? "▾" : "▸"} De JSON-LD (voor de developer)</button>
+                        <button type="button" className="pch-canni-toggle" onClick={() => setSchJsonOpen((o) => !o)}>{schJsonOpen ? <Omlaag /> : <Uitklap />} De JSON-LD (voor de developer)</button>
                         <button type="button" className="btn btn-klein" onClick={copySchJson}>{schCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
                       </div>
                       {schJsonOpen && <pre className="sch-json-pre">{sch.jsonld}</pre>}

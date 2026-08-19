@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type NextStep = { label: string; actie: "pijplijn_starten" | "meta_verbeteren" | "alt_teksten" | "open"; steps?: string[]; zin: string };
 type DocLinks = { analyse: string; blauwdruk: string; copy: string };
@@ -202,7 +203,7 @@ export default function WerkplanPanel({ slug, onGoToPage, onGoToMeta }: { slug: 
       {gedaan.length > 0 && (
         <div className="wp-group">
           <button type="button" className="wp-group-head wp-head-gedaan wp-head-toggle" onClick={() => setGedaanOpen((o) => !o)}>
-            <span>{gedaanOpen ? "▾" : "▸"} Gedaan</span> <span className="wp-count">{gedaan.length}</span>
+            <span>{gedaanOpen ? <Omlaag /> : <Uitklap />} Gedaan</span> <span className="wp-count">{gedaan.length}</span>
           </button>
           {gedaanOpen && gedaan.map((it) => <PageCard key={it.url} it={it} slug={slug} onGoToPage={onGoToPage} onGoToMeta={onGoToMeta} />)}
         </div>

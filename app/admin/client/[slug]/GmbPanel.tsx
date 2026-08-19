@@ -7,6 +7,7 @@ import { STAP, type StapKey } from "../../../../lib/onboarding-stappen";
 import MailVenster from "./MailVenster";
 import { CHECKS } from "../../../../lib/gmb-kennis";
 import HelpHint from "./HelpHint";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // HET GOOGLE-PROFIELSCHERM
@@ -469,7 +470,7 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
                   className="gmb-kop"
                   onClick={() => setOpen((s) => { const n = new Set(s); if (n.has(loc.sleutel)) n.delete(loc.sleutel); else n.add(loc.sleutel); return n; })}
                 >
-                  <span className="gmb-kop-pijl">{uit ? "▾" : "▸"}</span>
+                  <span className="gmb-kop-pijl">{uit ? <Omlaag /> : <Uitklap />}</span>
                   <span className="gmb-kop-naam">{loc.vestiging}</span>
                   <span className={"gmb-stand gmb-stand-" + loc.stand}>{STAND_LABEL[loc.stand]}</span>
                   {loc.profiel && (
@@ -743,7 +744,7 @@ export default function GmbPanel({ slug, clientName, clientEmail, pingwinEmail, 
           {r.suggesties.length > 0 && (
             <div className="card">
               <button className="gmb-kop" onClick={() => setSuggestiesOpen((v) => !v)}>
-                <span className="gmb-kop-pijl">{suggestiesOpen ? "▾" : "▸"}</span>
+                <span className="gmb-kop-pijl">{suggestiesOpen ? <Omlaag /> : <Uitklap />}</span>
                 <span className="gmb-kop-naam">Wat er nog meer te halen valt</span>
                 <span className="gmb-kop-tel">{r.suggesties.length} suggesties</span>
               </button>

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
-import { PijlRechts } from "../../../_ui/Pijl";
+import { Omlaag, PijlRechts, Uitklap } from "../../../_ui/Pijl";
 
 /**
  * Eén vrij opmaakbaar tekstveld per klant, met knoppenbalk en automatisch opslaan.
@@ -176,7 +176,7 @@ export default function FocusBlock({ slug, standalone, soort = "focus", titel, k
     return (
       <>
         <button type="button" className="strategy-head" onClick={() => { if (open) bewaarDirect(); setOpen((v) => !v); }}>
-          <span className="strategy-caret">{open ? "▾" : "▸"}</span>
+          <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
           <span className="strategy-title">{titel || "Overzicht"}</span>
         </button>
         {/* Verborgen in plaats van weggehaald: zo blijft wat je typte staan als je

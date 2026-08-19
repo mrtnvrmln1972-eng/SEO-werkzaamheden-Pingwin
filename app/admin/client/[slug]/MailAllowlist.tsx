@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 // Witte lijst per klant: welke afzenders (mailadres of heel domein) bij "Laatste
 // mails" mogen verschijnen. Los, zelfstandig blokje in het mail-blok van de cockpit.
@@ -33,7 +34,7 @@ export default function MailAllowlist({ slug }: { slug: string }) {
   return (
     <div className="mail-allow">
       <button type="button" className="mail-allow-head" onClick={() => setOpen((v) => !v)}>
-        {open ? "▾" : "▸"} Welke afzenders horen bij deze klant? {count > 0 ? <span className="plan-chip has">{count} ingesteld</span> : <span className="plan-chip">alles</span>}
+        {open ? <Omlaag /> : <Uitklap />} Welke afzenders horen bij deze klant? {count > 0 ? <span className="plan-chip has">{count} ingesteld</span> : <span className="plan-chip">alles</span>}
       </button>
       {open && (
         <div className="mail-allow-body">

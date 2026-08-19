@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ProfitLoss, LedgerAccount, PostContact } from "../../../lib/moneybird";
 import { mdToHtml } from "../../../lib/markdown";
+import { Omlaag, Uitklap } from "../../_ui/Pijl";
 
 // Uitklapbare posten op de financiën-pagina (alleen Maarten):
 // niveau 1 = post (grootboekrekening), niveau 2 = klant/leverancier,
@@ -89,7 +90,7 @@ function PostSection({ title, type, posts, period, color }: {
       {posts.map((p) => (
         <div key={p.id}>
           <button type="button" style={rowBtn} onClick={() => setOpen((o) => ({ ...o, [p.id]: !o[p.id] }))}>
-            <span style={caret}>{open[p.id] ? "▾" : "▸"}</span>
+            <span style={caret}>{open[p.id] ? <Omlaag /> : <Uitklap />}</span>
             <span>{p.name}</span>
             <span style={{ ...amountRight, color }}>{euro(p.value)}</span>
           </button>
@@ -133,7 +134,7 @@ function PostDetail({ type, ledgerId, period }: { type: "revenue" | "cost"; ledg
         return (
           <div key={key}>
             <button type="button" style={{ ...rowBtn, fontSize: "var(--fs-sm)" }} onClick={() => setOpen((o) => ({ ...o, [key]: !o[key] }))}>
-              <span style={caret}>{open[key] ? "▾" : "▸"}</span>
+              <span style={caret}>{open[key] ? <Omlaag /> : <Uitklap />}</span>
               <span>{c.contactName}</span>
               <span style={{ ...amountRight, color: "var(--text-secondary)" }}>{euro(c.total)}</span>
             </button>
@@ -295,7 +296,7 @@ function Abonnementen() {
   return (
     <div style={card}>
       <button type="button" style={{ ...rowBtn, borderBottom: "none", padding: "0 0 var(--s-1)" }} onClick={() => setOpenSection((v) => !v)}>
-        <span style={caret}>{openSection ? "▾" : "▸"}</span>
+        <span style={caret}>{openSection ? <Omlaag /> : <Uitklap />}</span>
         <span style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--label-muted)" }}>Terugkerende kosten / abonnementen</span>
       </button>
       <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", margin: "0 0 var(--s-2) var(--s-5)" }}>
@@ -310,7 +311,7 @@ function Abonnementen() {
           {rows !== null && rows.map((r) => (
             <div key={r.contactName}>
               <button type="button" style={{ ...rowBtn, fontSize: "var(--fs-sm)" }} onClick={() => setOpenRow((o) => ({ ...o, [r.contactName]: !o[r.contactName] }))}>
-                <span style={caret}>{openRow[r.contactName] ? "▾" : "▸"}</span>
+                <span style={caret}>{openRow[r.contactName] ? <Omlaag /> : <Uitklap />}</span>
                 <span>{r.contactName}</span>
                 <span style={{ color: "var(--label-muted)", marginLeft: "var(--s-2)" }}>{r.monthsPresent} van 6 maanden</span>
                 <span style={{ ...amountRight, color: "var(--bad)" }}>{euro(r.avgPerMonth)}/mnd &nbsp;(&plusmn; {euro(r.perYear)}/jaar)</span>

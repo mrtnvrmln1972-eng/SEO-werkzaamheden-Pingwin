@@ -14,6 +14,7 @@ import { onderbouwing } from "../../../../lib/prioriteiten-onderbouwing";
 import { mdToHtml } from "../../../../lib/markdown";
 import MailVenster from "./MailVenster";
 import Voortgang from "./Voortgang";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 // Het bedoelde adres van een pagina die nog niet bestaat (content gap). De kaart
 // heeft een URL nodig om de fases en de pagina-context te kunnen tonen; zonder
@@ -572,7 +573,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
             {/* Bewust "keken mee" en niet "aangesloten": een bril waarvan de
                 analyse nooit gedraaid is, is wél aangesloten maar heeft niet
                 gekeken. Dat als aangesloten tellen leest als "gecontroleerd". */}
-            {openLenzen ? "▾" : "▸"} Waar is naar gekeken ({res.lenzen.filter((l) => l.status !== "niet-aangesloten" && l.status !== "niet-gedraaid").length} van de {res.lenzen.length} brillen keken mee)
+            {openLenzen ? <Omlaag /> : <Uitklap />} Waar is naar gekeken ({res.lenzen.filter((l) => l.status !== "niet-aangesloten" && l.status !== "niet-gedraaid").length} van de {res.lenzen.length} brillen keken mee)
           </button>
           {openLenzen && (
             <div className="prio-lenzen">
@@ -628,7 +629,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
                         <td colSpan={9}>
                           <button type="button" className="prio-groepknop" aria-expanded={uit}
                             onClick={() => setOpenGroep((m) => ({ ...m, [g.naam]: !groepOpen(g.naam) }))}>
-                            <span className="prio-groepkop-pijl">{uit ? "▾" : "▸"}</span>
+                            <span className="prio-groepkop-pijl">{uit ? <Omlaag /> : <Uitklap />}</span>
                             <span className="prio-groepkop-naam">{g.naam}</span>
                             <span className="prio-groepkop-tel">{g.rijen.length} {g.rijen.length === 1 ? "punt" : "punten"}</span>
                             {g.aanvragen > 0 ? (
@@ -736,7 +737,7 @@ export default function PrioriteitenPanel({ slug, domain = "", onGaNaar, clientN
           {skips.length > 0 && (
             <>
               <button type="button" className="prio-klap" onClick={() => setOpenSkip((v) => !v)}>
-                {openSkip ? "▾" : "▸"} Bewust niet doen ({skips.length})
+                {openSkip ? <Omlaag /> : <Uitklap />} Bewust niet doen ({skips.length})
               </button>
               {openSkip && (
                 <div className="prio-skip">

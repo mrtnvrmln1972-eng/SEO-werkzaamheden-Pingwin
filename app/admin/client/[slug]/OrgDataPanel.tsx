@@ -7,7 +7,7 @@ import Kennisbank from "./Kennisbank";
 import MailPopup from "./MailPopup";
 import { ontbrekendeSleutels, ontbrekendeVelden, LEGE_VESTIGING, type OrgVestiging } from "../../../../lib/org-vereist";
 import { mdToHtml } from "../../../../lib/markdown";
-import { Slot } from "../../../_ui/Pijl";
+import { Omlaag, Slot, Uitklap } from "../../../_ui/Pijl";
 
 // ── "Laatste stand structured data": één knop + "?", geen eigen balk meer ──
 // Maandelijks web-onderzoek naar de actuele schema.org/Google-richtlijnen
@@ -138,7 +138,7 @@ export function OrgDataForm({ data, onChange, disabled, toonTotaalbalk = true }:
     const open = !key || !!secOpen[key];
     const kopInhoud = (
       <>
-        {key && <span className="org-sec-caret">{open ? "▾" : "▸"}</span>}
+        {key && <span className="org-sec-caret">{open ? <Omlaag /> : <Uitklap />}</span>}
         <span>{titel}</span>
         {typeof opties?.aantal === "number" && <span className="org-sec-aantal">{opties.aantal}</span>}
         {!!opties?.misAantal && <span className="org-mis-vlag">{opties.misAantal} {opties.misAantal === 1 ? "ontbreekt" : "ontbreken"}</span>}
@@ -461,7 +461,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   return (
     <div className="cockpit-card strategy-card org-compact" id="fund-structured-data">
       <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)}>
-        <span className="strategy-caret">{open ? "▾" : "▸"}</span>
+        <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
         <span className="strategy-title">Bedrijfsgegevens (voor structured data) <HelpHint xl title="Bedrijfsgegevens: de bron voor alle structured data" text={"De vaste identiteit van dit bedrijf (naam, bedrijfstype, adres, telefoon, openingstijden, logo, sociale profielen, werkgebied): **de enige bron** waaruit alle structured data van de site wordt opgebouwd.\n## Twee lagen: site-breed en per pagina\nStructured data is onzichtbare, machineleesbare informatie in de code die Google en AI-assistenten (ChatGPT, Perplexity, Copilot) vertelt wie dit bedrijf is en wat elke pagina is. Het systeem werkt in twee lagen. __Laag 1, de fundering:__ uit dit formulier wordt het **site-brede identiteitsblok** gebouwd (bedrijf + website) dat op elke pagina hoort te staan; genereren doe je onderaan deze kaart, en de developer plaatst het één keer. __Laag 2, de kamers:__ elke pagina krijgt daarbovenop via de structured data-stap in het Pagina's-tabblad een eigen blok (behandeling, dienst, product, artikel) dat met vaste verwijzingen aan de fundering hangt. Zo ziet Google één samenhangende entiteit in plaats van losse snippers, en dat is precies wat zowel rijkere zoekresultaten als AI-citaties voedt.\n## Waarom dit zo strak geregeld is\nStructured data mag nooit iets beweren dat niet klopt; verzonnen of verouderde gegevens ondermijnen het vertrouwen van Google en kunnen een handmatige actie opleveren. Daarom komt élk gegeven in de schema's aantoonbaar uit dit formulier of van de pagina zelf, nergens anders vandaan.\n## De werkwijze in drie stappen\n- **Automatisch vullen:** het dashboard leest de website (homepage, contact, team/over-ons, bestaande JSON-LD) én zoekt daarnaast op het web: het KVK-register, de Google Business-vermelding met reviewcijfers, sociale profielen en reviewplatforms. Elk gevonden gegeven wordt geverifieerd (zelfde naam, plaats en domein) voordat het wordt ingevuld; bij twijfel blijft het veld leeg met een notitie. Er wordt niets verzonnen.\n- **Laten controleren:** deel de link met de klant (of gebruik de mail-knop); die corrigeert en vult aan wat wij niet kunnen vinden. Niemand kent de openingstijden beter dan de klant zelf.\n- **Vergrendelen:** daarna zet je het slot erop. De klant kan dan niets meer wijzigen en dit is de bevestigde, betrouwbare bron voor de structured data op álle pagina's.\n## Per bedrijfstype een eigen aanvulling\nHet gekozen bedrijfstype bepaalt welke extra sectie in het formulier verschijnt én welke markup de pagina's krijgen:\n- **Kliniek/zorg:** een blok met artsen en behandelaren (naam, functie, specialisatie, **BIG-nummer**, profielpagina). Bij medische onderwerpen weegt Google aantoonbare expertise extra zwaar; de arts wordt in de markup aan de bijbehorende behandelpagina's gekoppeld, met het BIG-nummer als openbaar controleerbaar bewijs.\n- **Webshop:** merken, retourbeleid en verzendinformatie; verplichte onderdelen om producten met prijs en voorraad in de zoekresultaten te mogen tonen. Productmarkup komt alleen op echte productpagina's.\n- **Dienstverlener:** de dienstenlijst plus het werkgebied; elke dienst wordt een eigen vermelding gekoppeld aan het bedrijf. Bij bedrijven zonder bezoekadres (aan-huis) wordt bewust géén adres in de markup gezet, maar het werkgebied.\n- **Lokaal bedrijf:** de volledige vestigingsinformatie met openingstijden en prijsindicatie.\n## De bewaking daarna\nStructured data is geen eenmalig kunstje: veranderen de openingstijden, reviewcijfers of veelgestelde vragen op de site, dan moet de markup mee. Het dashboard let daarop: wijzigt een pagina waar structured data op is doorgevoerd (dat detecteert het Wijzigingen-tabblad automatisch), dan verschijnt bij die pagina een seintje dat de structured data opnieuw bekeken moet worden."} /></span>
         {locked && <span className="strategy-meta-right"><Slot /> vergrendeld</span>}
       </button>
@@ -517,7 +517,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
           {msg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{msg}</div>}
           <section className="org-sec org-verzameld">
             <button type="button" className="org-sec-kop" onClick={() => setDataOpen((v) => !v)}>
-              <span className="org-sec-caret">{dataOpen ? "▾" : "▸"}</span>
+              <span className="org-sec-caret">{dataOpen ? <Omlaag /> : <Uitklap />}</span>
               <span>Verzamelde structured data</span>
               {missingCount > 0 && <span className="org-mis-vlag">{missingCount} ontbreken</span>}
             </button>

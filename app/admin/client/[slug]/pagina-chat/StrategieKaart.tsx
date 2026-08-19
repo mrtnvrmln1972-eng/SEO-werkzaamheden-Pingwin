@@ -9,6 +9,7 @@ import Bronnenstrip from "../Bronnenstrip";
 import DriveRij from "./DriveRij";
 import type { useStrategieChat } from "./useStrategieChat";
 import type { DriveFolder } from "./types";
+import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 
 export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatOpen, planDone, planSlot, taskDone, driveFolder, setDriveFolder, openPicker, ensureDriveMap }: {
   chat: ReturnType<typeof useStrategieChat>;
@@ -68,7 +69,7 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
               <div className={"pch-msg-wrap " + m.role}>
                 {inklapbaar && (
                   <button type="button" className="ovc-msg-vouw" onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
-                    <span className="ovc-msg-vouw-pijl">{dicht ? "▸" : "▾"}</span>
+                    <span className="ovc-msg-vouw-pijl">{dicht ? <Uitklap /> : <Omlaag />}</span>
                     <span className="ovc-msg-vouw-titel">{eersteKop(m.content || "")}</span>
                     {dicht && <span className="ovc-msg-vouw-meta">eerder antwoord</span>}
                   </button>
@@ -154,7 +155,7 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
   return (
       <div className={"page-chat step-card step-card-2" + (planDone || taskDone ? " done" : "")}>
         <div className="step-head" onClick={() => setChatOpen((o) => !o)} title={chatOpen ? "Chat inklappen" : "Chat uitklappen"}>
-          <span className="step-caret">{chatOpen ? "▾" : "▸"}</span>
+          <span className="step-caret">{chatOpen ? <Omlaag /> : <Uitklap />}</span>
           <span className="step-badge">{planDone || taskDone ? "✓" : "1"}</span>
           <span className="step-title">Strategie voor deze pagina</span>
           <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 1 — Strategie voor deze pagina" text={"Alles begint met de strategiebepaling: wat moet deze pagina zijn, op welk zoekwoord, en waarom gaan we die slag winnen? Deze stap bestaat uit de **vastgelegde strategie** (de conclusie bovenin: rol, primair en secundair zoekwoord, acties, doel-URL) en de **strategie-chat** die ernaartoe werkt.\n## Op welke data de chat werkt\n- **Search Console (de waarheid over Google):** de echte rankings, klikken en vertoningen van deze pagina over 90 dagen, plus de sitebrede zoekwoord-naar-pagina-matrix; zo ziet de chat direct of meerdere eigen pagina's op dezelfde term ranken.\n- **De volledige paginalijst** van de site (de spiegel): de chat mag nooit beweren dat een pagina niet bestaat zonder die lijst te checken.\n- **Ahrefs, live op te vragen tijdens het gesprek:** echt maandelijks zoekvolume, keyword difficulty en zoekintentie per term; de top-10 van elk zoekwoord met de Domain Rating van elke concurrent; de backlinks en verwijzende domeinen van de eigen site of een concurrent-URL; en waar elke concurrent-URL zelf op rankt (content-gap).\n- **De echte paginainhoud:** de chat kan elke publieke URL inlezen (titel, koppen, tekst) om intentie en volledigheid te toetsen, ook bij concurrenten.\n- **Het klantprofiel:** positionering, werkgebied en doelgroep sturen elk advies; is het profiel leeg, dan vraagt de chat eerst door in plaats van te gokken.\n## De afwegingen die worden afgedwongen\n- **Zoekintentie eerst:** past het paginatype bij wat de top-10 laat zien? Een transactionele SERP win je niet met een blogartikel.\n- **Samenvoegen of splitsen:** tonen twee termen voor meer dan 50% dezelfde URL's in de top-10, dan is het één intentie en dus één pagina.\n- **Eigen pagina alleen bij echte vraag:** richtlijn vanaf zo'n 100 zoekvolume per maand; daaronder aanhaken als sectie. Varianten tellen mee vanaf zo'n 50.\n- **Eigenaar volgens plan, niet volgens toeval:** de pagina waarvan het plan een zoekintentie claimt is de bestemming; huidige rankings van andere pagina's zijn waarde die daarnaartoe geconsolideerd moet worden, nooit een reden om de strategie om te draaien.\n- **Verzin-verbod:** volumes, posities, Domain Ratings en backlink-aantallen komen aantoonbaar uit de bronnen of worden niet genoemd.\n## Van gesprek naar vastgelegde strategie\nSluit af met 'Vat samen & leg strategie vast': het systeem redeneert dan nog één keer agentisch over alle verzamelde data (het mag daarbij zelf extra pagina's en concurrenten meten) en dwingt een complete slotconclusie af: huidige situatie, kansrijke termen met volume, concurrentiepositie, zoekintentie, wat er mist ten opzichte van de top-10, en een helder advies. Die conclusie wordt in dezelfde beweging de vastgelegde strategie bovenin (die alle volgende stappen aanstuurt) én het nette Pingwin-document in de Drive-map. Verder chatten kan altijd; met 'Vat opnieuw samen' vervang je de strategie door een nieuwe conclusie."} /></span>
@@ -170,7 +171,7 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
           {chatId === null && msgs.length > 0 && (
             <div className={"pch-item active" + (convoOpen ? " open" : "")}>
               <div className="pch-item-head" onClick={() => setConvoOpen((o) => !o)}>
-                <span className="pch-caret">{convoOpen ? "▾" : "▸"}</span>
+                <span className="pch-caret">{convoOpen ? <Omlaag /> : <Uitklap />}</span>
                 <span className="pch-title">{analyseTitle}</span>
                 {wegChat === "nieuw" ? (
                   <span className="pch-weg-vraag" onClick={(e) => e.stopPropagation()}>
@@ -192,7 +193,7 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
             return (
               <div key={c.id} className={"pch-item" + (open ? " open" : "") + (active ? " active" : "")}>
                 <div className="pch-item-head" onClick={() => { if (active) setConvoOpen((o) => !o); else { openChat(c.id); setConvoOpen(true); } }}>
-                  <span className="pch-caret">{open ? "▾" : "▸"}</span>
+                  <span className="pch-caret">{open ? <Omlaag /> : <Uitklap />}</span>
                   <span className="pch-title">{active ? analyseTitle : c.title}</span>
                   {wegChat === c.id ? (
                     <span className="pch-weg-vraag" onClick={(e) => e.stopPropagation()}>

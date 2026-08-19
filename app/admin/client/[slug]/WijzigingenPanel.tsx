@@ -6,6 +6,7 @@ import MetaPixelMeter from "./MetaPixelMeter";
 import type { MetaKind } from "@/lib/meta-rules";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type ArrayDiff = { added: string[]; removed: string[] };
 type FieldChange = { before: string; after: string };
@@ -711,7 +712,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         return (
           <div className="wz-opt">
             <button type="button" className="wz-opt-kop" onClick={() => setOptOpen((v) => !v)} aria-expanded={optOpen}>
-              <span className="wz-opt-pijl">{optOpen ? "▾" : "▸"}</span>
+              <span className="wz-opt-pijl">{optOpen ? <Omlaag /> : <Uitklap />}</span>
               <span>Doorgevoerde optimalisaties</span>
               <span className="wz-opt-teller">{opts.length} pagina&rsquo;s</span>
             </button>

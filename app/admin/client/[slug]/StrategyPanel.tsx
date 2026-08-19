@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../lib/markdown";
 import HelpHint from "./HelpHint";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // SITE-WIDE STRATEGIE, bovenaan het Taken-tabblad
@@ -95,7 +96,7 @@ export default function StrategyPanel({ slug, initialSessions, openSessionId, on
   return (
     <div className="cockpit-card acc-blue strategy-card" ref={wrapRef}>
       <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)}>
-        <span className="strategy-caret">{open ? "▾" : "▸"}</span>
+        <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
         <span className="strategy-title">Site-wide strategie ({sessions.length}) <HelpHint xl title="Site-wide strategie: de rode draad boven de pagina's" text={"Waar de strategie-stap per pagina over één URL gaat, gaat dit blok over de **site als geheel**: sitestructuur, thema-keuzes, welke clusters prioriteit krijgen, hoe de autoriteit verdeeld wordt.\n## Hoe een sessie ontstaat\nJe voert het gesprek met de **SEO-assistent** (de zwevende chat rechtsonder, met dezelfde databronnen als de pagina-chat: Search Console, Ahrefs, de paginalijst en het klantprofiel) en klikt daar op 'Naar Site-wide strategie'. Het hele gesprek wordt dan hier vastgelegd als sessie.\n## Wat je hier ziet en doet\n- **Per sessie een toggle** met de conclusie bovenaan, het volledige gesprek eronder en de concrete actiepunten eruit gelicht.\n- **Actiepunten worden werk:** één klik maakt van een actiepunt een taak in Werkzaamheden, of je vinkt hem af als al verwerkt.\n- Zo kun je vrij sparren en filosoferen in de chat, terwijl hier alleen de bruikbare, uitvoerbare strategie overblijft; met de onderbouwing er voor altijd bij."} /></span>
       </button>
       {open && (
@@ -107,7 +108,7 @@ export default function StrategyPanel({ slug, initialSessions, openSessionId, on
               <div key={s.id} className="strategy-session" id={`strategie-${s.id}`}>
                 <div className="strategy-session-head">
                   <button type="button" className="strategy-session-toggle" onClick={() => toggleId(s.id, openIds, setOpenIds)}>
-                    <span className="strategy-caret">{isOpen ? "▾" : "▸"}</span>
+                    <span className="strategy-caret">{isOpen ? <Omlaag /> : <Uitklap />}</span>
                     <span className="strategy-session-title">{s.title}</span>
                     <span className="strategy-session-date">{dNl(s.createdAt)}</span>
                   </button>

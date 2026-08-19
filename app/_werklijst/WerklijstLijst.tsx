@@ -32,6 +32,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { SOORT_LABEL, normFile, type ImageSoort } from "../../lib/image-classify";
+import { Omlaag, Uitklap } from "../_ui/Pijl";
 
 export type Alt = {
   file: string; src: string; alt: string; dubbel: boolean;
@@ -132,7 +133,7 @@ function Blok({ titel, uitleg, aantal, gedaan, open, onToggle, knop, children }:
     <div className="wl-kaart wl-blok">
       <div className="wl-blok-kop">
         <button type="button" className="wl-blok-titel" onClick={onToggle} aria-expanded={open}>
-          <span className="wl-blok-pijl">{open ? "▾" : "▸"}</span>
+          <span className="wl-blok-pijl">{open ? <Omlaag /> : <Uitklap />}</span>
           <span>{titel}</span>
           <span className="wl-blok-teller">{gedaan} van {aantal} gedaan</span>
         </button>
@@ -369,7 +370,7 @@ export default function WerklijstLijst(p: Props) {
       <div className="wl-kaart wl-blok">
         <div className="wl-blok-kop">
           <button type="button" className="wl-blok-titel" onClick={() => setOpenSug((s) => !s)} aria-expanded={openSug}>
-            <span className="wl-blok-pijl">{openSug ? "▾" : "▸"}</span>
+            <span className="wl-blok-pijl">{openSug ? <Omlaag /> : <Uitklap />}</span>
             <span>Foto&rsquo;s die beter een eigen foto konden zijn</span>
             <span className="wl-blok-teller">{dubbel.length} foto&rsquo;s</span>
           </button>

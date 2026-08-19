@@ -5,6 +5,7 @@ import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
 import { checkMetaTitle, checkMetaDescription, type MetaCheck } from "../../../../lib/meta-rules";
 import { urlKey } from "../../../../lib/url-key";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 // Uitklapbare criteria-checklist onder een meta-veld: toont per regel (META-02
 // t/m META-15) of de tekst eraan voldoet, met de gemeten waarde erbij.
@@ -20,7 +21,7 @@ function MetaChecklist({ kind, text, keyword, other }: { kind: "title" | "desc";
       <button type="button" onClick={() => setOpen((v) => !v)}
         style={{ border: "none", background: "transparent", cursor: "pointer", padding: "var(--s-0)", font: "inherit", fontSize: "var(--fs-sm)", color: allOk ? "var(--good)" : "var(--warn-dark)", fontWeight: 600 }}
         title="Bekijk per criterium of deze tekst voldoet (dezelfde regels waarmee de AI schrijft)">
-        {open ? "▾" : "▸"} voldoet aan {passed} van {checks.length} criteria
+        {open ? <Omlaag /> : <Uitklap />} voldoet aan {passed} van {checks.length} criteria
       </button>
       {open && (
         <ul style={{ listStyle: "none", margin: "var(--s-2) var(--s-0) var(--s-0)", padding: "var(--s-0)", display: "grid", gap: "var(--s-1)" }}>
@@ -471,7 +472,7 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
                       title="Open de beheeromgeving van de website (inloggen gaat via je eigen browser)"
                       onClick={(e) => e.stopPropagation()}>Open in site</a>
                   )}
-                  <span>{open ? "▾" : "▸"}</span>
+                  <span>{open ? <Omlaag /> : <Uitklap />}</span>
                 </span>
               </div>
               {open && (

@@ -13,6 +13,7 @@
 import { useState } from "react";
 import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { devLabel } from "../../../../lib/personen";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 export type OogstTaak = {
   taak: string; waarom: string; info?: string; url?: string; taaktype?: string;
@@ -160,7 +161,7 @@ export default function TakenVoorstel({ slug, thread, index, oogst, domain = "",
       {oogst.geenTaak.length > 0 && (
         <div className="tv-geen">
           <button type="button" className="tv-geen-kop" onClick={() => setToonGeen((v) => !v)}>
-            <span className="tv-geen-pijl">{toonGeen ? "▾" : "▸"}</span>
+            <span className="tv-geen-pijl">{toonGeen ? <Omlaag /> : <Uitklap />}</span>
             Besproken, maar bewust geen taak ({oogst.geenTaak.length})
           </button>
           {toonGeen && (

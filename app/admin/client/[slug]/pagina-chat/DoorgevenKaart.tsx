@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { mdToHtml } from "../../../../../lib/markdown";
 import HelpHint from "../HelpHint";
-import { Vink } from "../../../../_ui/Pijl";
+import { Omlaag, Uitklap, Vink } from "../../../../_ui/Pijl";
 
 export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, taskDone, setChatOpen, setErr, onClusterApplied, clusterDone, setClusterDone, clusterItems, setClusterItems, clusterMsg, setClusterMsg, gelieerdeUrls }: {
   slug: string; url: string; siteBase: string; lastAssistant: string;
@@ -82,7 +82,7 @@ export default function DoorgevenKaart({ slug, url, siteBase, lastAssistant, tas
   return (
       <div className={"page-chat-cluster-card step-card step-card-3" + (clusterDone > 0 ? " done" : "")}>
         <div className="step-head" onClick={() => setDoorgevenOpen((o) => !o)}>
-          <span className="step-caret">{doorgevenOpen ? "▾" : "▸"}</span>
+          <span className="step-caret">{doorgevenOpen ? <Omlaag /> : <Uitklap />}</span>
           <span className="step-badge">{clusterDone > 0 ? "✓" : "2"}</span>
           <span className="step-title">Doorgeven aan gelieerde pagina&rsquo;s</span>
           <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Stap 2 — Doorgeven aan gelieerde pagina's" text={"Een goede strategie voor één pagina raakt bijna altijd andere pagina's: een pagina die dezelfde term kaapt en moet herrichten, een locatiepagina die een eigen term krijgt, een pagina die een interne link moet gaan geven. Deze stap zorgt dat die beslissingen niet verdampen zodra je dit scherm sluit.\n## Hoe het werkt\n- Het systeem leest de volledige conclusie van de strategie-chat en haalt eruit welke **andere, bestaande** pagina's erin genoemd worden; alleen URL's die echt in de paginalijst staan tellen mee (er wordt niets verzonnen).\n- Per geraakte pagina wordt het advies samengevat dat specifiek over die pagina gaat: de bedoelde rol, het primaire zoekwoord, de actie en eventuele interne-link-afspraken.\n- Jij vinkt aan welke pagina's het advies krijgen en klikt doorgeven.\n## Wat de ontvangende pagina's ermee doen\n- Ze krijgen het advies als **vertrekpunt** ('half plan'): open je daar de strategie-stap, dan ligt deze beslissing er al, inclusief de volledige bronconclusie van dit gesprek als context.\n- De chat van die pagina toetst het meegegeven advies vervolgens aan de eigen live feiten (rankings, inhoud) in plaats van blind over te nemen.\n## Waarom dit belangrijk is\nCannibalisatie ontstaat meestal niet door slechte analyses maar door losse beslissingen die elkaar tegenspreken. Door de clusterbeslissing één keer te nemen en expliciet door te geven, blijft de eigenaar-keuze per zoekintentie overal consistent; precies wat Google nodig heeft om één duidelijke pagina per intentie te kunnen belonen."} /></span>

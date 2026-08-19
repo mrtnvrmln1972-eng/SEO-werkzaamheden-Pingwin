@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type Stempel = { datum: string; bron: string; waar: string };
 type Entiteit = { id: number; categorie: string; naam: string; velden: Record<string, string>; bron: string; updatedAt: string; stempels: Record<string, Stempel> };
@@ -224,7 +225,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
     return (
       <div className="kb-kaart" key={e.id}>
         <button type="button" className="kb-kaart-kop" onClick={() => setOpenKaart({ ...openKaart, [e.id]: !open })}>
-          <span className="kb-groep-caret">{open ? "▾" : "▸"}</span>
+          <span className="kb-groep-caret">{open ? <Omlaag /> : <Uitklap />}</span>
           <strong className="kb-kaart-naam">{e.naam}</strong>
           {e.categorie === "locatie" && !isVestiging(e) && (
             <span className="kb-geen-vestiging" title="Zonder bezoekadres tellen we dit niet als vestiging; het vraagt dus ook niet om openingstijden.">geen vestiging</span>
@@ -386,7 +387,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
       {gaps.length > 0 && (
         <div className="kb-gaps">
           <button type="button" className="kb-gaps-kop kb-gaps-kop-btn" onClick={() => setGapsOpen((v) => !v)}>
-            <span className="kb-groep-caret">{gapsOpen ? "▾" : "▸"}</span>
+            <span className="kb-groep-caret">{gapsOpen ? <Omlaag /> : <Uitklap />}</span>
             <span>Nog aan te leveren ({gaps.length})</span>
           </button>
           {gapsOpen && (
@@ -401,7 +402,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
       {perCat.length > 0 && (
         <section className="org-sec kb-detail-sec">
           <button type="button" className="org-sec-kop" onClick={() => setDetailOpen((v) => !v)}>
-            <span className="org-sec-caret">{detailOpen ? "▾" : "▸"}</span>
+            <span className="org-sec-caret">{detailOpen ? <Omlaag /> : <Uitklap />}</span>
             <span>Kennisbank per categorie</span>
             <span className="org-sec-aantal">{entiteiten.length}</span>
           </button>
@@ -424,7 +425,7 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
                     {rest.length > 0 && (
                       <div className="kb-subgroep">
                         <button type="button" className="kb-groep-kop kb-groep-kop-klein" onClick={() => setOpenRest(!openRest)}>
-                          <span className="kb-groep-caret">{openRest ? "▾" : "▸"}</span>
+                          <span className="kb-groep-caret">{openRest ? <Omlaag /> : <Uitklap />}</span>
                           <span className="kb-groep-titel">Zonder bezoekadres, geen vestiging</span>
                           <span className="kb-groep-aantal">{rest.length}</span>
                         </button>

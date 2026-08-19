@@ -12,7 +12,7 @@ import { eersteKop } from "../../../../lib/chat-vouw";
 import { bestandMelding } from "../../../../lib/bestand-melding";
 import MailVenster from "./MailVenster";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
-import { Beeld, Blad } from "../../../_ui/Pijl";
+import { Beeld, Blad, Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst; bronnen?: Bron[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean; updatedAt: string };
@@ -413,7 +413,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
           return (
             <div key={t.thread} className={"ovc-topic" + (t.done ? " done" : "") + (isOpen ? " open" : "")}>
               <div className="ovc-topic-head" onClick={() => toggleOpen(t)}>
-                <span className="ovc-caret">{isOpen ? "▾" : "▸"}</span>
+                <span className="ovc-caret">{isOpen ? <Omlaag /> : <Uitklap />}</span>
                 <input
                   type="checkbox"
                   className="ovc-done"
@@ -485,7 +485,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                         <button type="button" className="chat-msg-del" title="Dit blok verwijderen" onClick={() => deleteMessage(i)}>&times;</button>
                         {inklapbaar && (
                           <button type="button" className="ovc-msg-vouw" onClick={() => setOpenBericht((v) => ({ ...v, [i]: !v[i] }))}>
-                            <span className="ovc-msg-vouw-pijl">{dicht ? "▸" : "▾"}</span>
+                            <span className="ovc-msg-vouw-pijl">{dicht ? <Uitklap /> : <Omlaag />}</span>
                             <span className="ovc-msg-vouw-titel">{eersteKop(m.content || "")}</span>
                             {dicht && <span className="ovc-msg-vouw-meta">eerder antwoord</span>}
                           </button>

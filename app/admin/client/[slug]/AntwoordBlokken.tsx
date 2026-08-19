@@ -21,6 +21,7 @@ import { heeftInhoud } from "../../../../lib/vulzinnen";
 import { splitsAntwoord, type Sectie } from "../../../../lib/antwoord-secties";
 import { analyseNaarMailHtml } from "../../../../lib/mail-opmaak";
 import PaginaDossier from "./PaginaDossier";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type Feedback = { key: string; msg: string; ok: boolean };
 type PuntStaat = "taak" | "weg" | "klaar" | "lijst";
@@ -508,7 +509,7 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
       {genoemdePaden.length > 0 && (
         <div className="ovc-dossiers">
           <button type="button" className="ovc-dossiers-toggle" onClick={() => setDossiersOpen((o) => !o)}>
-            {dossiersOpen ? "▾" : "▸"} {genoemdePaden.length === 1 ? "Dossier van de genoemde pagina" : `Dossiers van ${genoemdePaden.length} genoemde pagina's`}
+            {dossiersOpen ? <Omlaag /> : <Uitklap />} {genoemdePaden.length === 1 ? "Dossier van de genoemde pagina" : `Dossiers van ${genoemdePaden.length} genoemde pagina's`}
           </button>
           {dossiersOpen && genoemdePaden.map((p) => <PaginaDossier key={p} slug={slug} url={p} compact />)}
         </div>
