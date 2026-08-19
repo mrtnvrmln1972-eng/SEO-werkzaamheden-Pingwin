@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardOwner } from "../../../../../lib/admin-scope";
 import { getTeamUserById, resetTeamUserPassword } from "../../../../../lib/team-users";
+import { voordeurVoorBereik } from "../../../../../lib/clients";
 import { msSendMail, msStatus } from "../../../../../lib/ms-graph";
 
 export const runtime = "nodejs";
@@ -28,11 +29,17 @@ export async function POST(req: NextRequest) {
   const password = await resetTeamUserPassword(id);
   if (!password) return NextResponse.json({ ok: false, error: "Wachtwoord genereren mislukt." }, { status: 500 });
 
-  const loginUrl = `${req.nextUrl.origin}/admin`;
+  // Mag deze gast maar één klant zien en heeft die klant een eigen voordeur, dan
+  // hoort de link daarheen te wijzen. Anders krijgt een collega een uitnodiging
+  // voor het dashboard met alle klanten erin, terwijl er voor hem een adres is
+  // waar die andere klanten niet eens bestaan.
+  const voordeur = await voordeurVoorBereik(user.allowedSlugs);
+  const loginUrl = `${voordeur ? voordeur.url : req.nextUrl.origin}/admin`;
+  const waarvoor = voordeur ? `het SEO-dashboard van ${voordeur.naam}` : "het SEO-dashboard van Pingwin";
   const first = (user.name || "").trim().split(/\s+/)[0] || "collega";
   const html = `
     <p>Beste ${first},</p>
-    <p>Hierbij je inloggegevens voor het SEO-dashboard van Pingwin. Hiermee log je in op het dashboard.</p>
+    <p>Hierbij je inloggegevens voor ${waarvoor}.</p>
     <p>
       Inloggen: <a href="${loginUrl}">${loginUrl}</a><br>
       Inlognaam: <strong>${user.loginId}</strong><br>
@@ -41,11 +48,11 @@ export async function POST(req: NextRequest) {
     <p>Lukt het inloggen niet, stuur me dan even een berichtje.</p>
     <p>Met vriendelijke groet,<br>Maarten</p>`;
 
-  const sent = await msSendMail([user.email], "Je inloggegevens voor het Pingwin SEO-dashboard", html);
+  const sent = await msSendMail([user.email], `Je inloggegevens voor ${waarvoor}`, html);
   if (!sent.ok) {
     // Het wachtwoord is al vernieuwd; geef het één keer terug zodat je het
     // alsnog zelf kunt doorgeven.
     return NextResponse.json({ ok: false, error: `Mailen mislukte (${sent.error || "onbekende fout"}). Er is wel een nieuw wachtwoord gegenereerd; geef het eventueel zelf door.`, password }, { status: 502 });
   }
-  return NextResponse.json({ ok: true, sentTo: user.email });
+  return NextResponse.json({ ok: true, sentTo: user.email, loginUrl });
 }

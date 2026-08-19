@@ -143,6 +143,25 @@ proef("verhuizen naar dezelfde gegevens wordt geweigerd",
   lees("app", "api", "admin", "verhuizing", "route.ts").includes("gegevensVingerafdruk"),
   "Zonder deze controle kun je een klant naar zichzelf verhuizen; dat leest en overschrijft dezelfde rijen.");
 
+// ── 3d. Een gast komt uit op de voordeur, niet op het dashboard ─
+// Mag iemand precies één klant zien en heeft die klant een eigen adres, dan hoort
+// hij daar in te loggen. Anders krijgt een collega een uitnodiging voor het
+// dashboard met alle klanten erin, terwijl er voor hem een adres is waar die
+// andere klanten niet eens bestaan.
+
+proef("de inlogplek van een gast is één regel, in lib/clients.ts",
+  /export async function voordeurVoorBereik/.test(lees("lib", "clients.ts")),
+  "Zonder gedeelde functie gaat elk scherm zelf bedenken waar iemand inlogt.");
+
+proef("de mail met inloggegevens wijst naar de voordeur",
+  lees("app", "api", "admin", "team", "mail-login", "route.ts").includes("voordeurVoorBereik"),
+  "Dan nodig je een collega uit voor het dashboard met al je klanten erin.");
+
+proef("het beheerscherm toont waar een gast uitkomt",
+  lees("app", "admin", "beheer", "BeheerClient.tsx").includes("inlogPlek")
+  && lees("app", "admin", "beheer", "page.tsx").includes("voordeurUrl"),
+  "Zonder dit zie je nergens waar iemand na je uitnodiging terechtkomt.");
+
 // ── 4. Elke route aan de beheerkant heeft een poort ─────────
 
 // Bewuste uitzonderingen, met reden. Deze lijst mag alleen korter worden.

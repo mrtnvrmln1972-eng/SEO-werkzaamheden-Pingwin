@@ -388,6 +388,25 @@ export async function setVoordeurUrl(slug: string, url: string): Promise<boolean
   return !!rowCount && rowCount > 0;
 }
 
+/**
+ * Waar logt iemand met dit bereik in?
+ *
+ * Mag iemand precies één klant zien en heeft die klant een eigen voordeur, dan
+ * hoort hij daar in te loggen en niet op het dashboard met alle klanten. Dat is
+ * niet alleen netter maar ook veiliger: op die voordeur bestaat er geen andere
+ * klant, ook niet als zijn rechten ooit per ongeluk verruimd worden.
+ *
+ * Geeft null bij de eigenaar (bereik null), bij meerdere klanten, of als die ene
+ * klant geen eigen voordeur heeft; dan is het gewone dashboard de inlogplek.
+ */
+export async function voordeurVoorBereik(allowedSlugs: string[] | null): Promise<{ url: string; slug: string; naam: string } | null> {
+  if (!allowedSlugs || allowedSlugs.length !== 1) return null;
+  const klant = await getClientBySlug(allowedSlugs[0]);
+  const url = (klant?.cockpit.voordeurUrl || "").trim().replace(/\/+$/, "");
+  if (!klant || !url) return null;
+  return { url, slug: klant.slug, naam: klant.name };
+}
+
 // Let op: dev_name, positioneringUrl, huisstijlUrl, adsAccountUrl en voordeurUrl
 // worden hier bewust NIET bijgewerkt. Deze functie overschrijft alle velden die
 // ze meekrijgt, dus zou een opslag vanuit een ander scherm die vijf anders

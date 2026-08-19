@@ -2,8 +2,9 @@
 
 Stappenplan, opgesteld 18 augustus 2026. Akkoord van Maarten op de richting, nog niets gebouwd.
 
-Dit plan vervangt `INTEGRATIE-NOC-PINGWIN.md` (27-06-2026, achterhaald) en gaat vóór de
-`WERELD-2-NOC-CHECKLIST.md`, want die gaat nog uit van een eigen, losse database voor NOC.
+Dit plan vervangt twee oudere documenten die uitgingen van een eigen, losse database voor NOC
+(`INTEGRATIE-NOC-PINGWIN.md` en `WERELD-2-NOC-CHECKLIST.md`). Allebei weggehaald in stap 4; wil je
+weten hoe wereld 2 destijds is opgezet, dan staat dat in de geschiedenis van deze repo.
 
 ## Waar we vandaan komen
 
@@ -125,27 +126,40 @@ opvangt. Mogelijk moet de Google-koppeling daar één keer opnieuw gelegd worden
 **Als het misgaat.** Terug is de oude database weer aankoppelen. Die blijft ongemoeid staan als
 bevroren reservekopie, dus je kunt altijd terug naar de situatie van vandaag.
 
-## Stap 4: opruimen
+## Stap 4: opruimen (klaar, 19-08-2026)
 
 **Wat er gebeurt.** De automatische nachtronden draaien nu twee keer, in beide werelden, op werk
 dat maar één keer nodig is. Dat wordt één keer. Verder ruimen we op wat door de verhuizing
 overbodig is geworden.
 
-**Wat jij doet.** Niets.
+**Wat er nu ligt.** Het dubbele nachtwerk stopt vanzelf zodra het slot uit stap 3 aanstaat: een
+omgeving met een klantvenster slaat élke automatische ronde over, en een proef rekent dat bij elke
+bouw na. Er is dus niets aan te zetten en niets om te onthouden. De twee documenten die nog
+uitgingen van een losse NOC-database zijn weg, zodat niemand er later per ongeluk naar werkt.
+
+**Wat jij doet.** Niets. De oude NOC-database mag pas weg als jij zegt dat het goed is; zolang hij
+staat, is de situatie van vandaag altijd terug te halen.
 
 **Wat het oplevert.** Je betaalt Ahrefs en Claude niet meer dubbel voor dezelfde ronde.
 
-## Stap 5: iemand anders erbij
+## Stap 5: iemand anders erbij (klaar, 19-08-2026)
 
 **Wat er gebeurt.** De NOC-voordeur krijgt een eigen login voor een tweede persoon. Eerst alleen
-meekijken, later ook meewerken. De rechten per klant zitten al in de app, dus dit is aanzetten en
+meekijken, later ook meewerken. De rechten per klant zaten al in de app, dus dit was aanzetten en
 afstellen, geen nieuwbouw.
 
-**Wat jij doet.** Zeggen wie het wordt en of diegene mag wijzigen of alleen kijken.
+**Wat er nu ligt.** Vink je bij een gast precies één klant aan en heeft die klant een eigen adres,
+dan wijst alles vanzelf daarheen: de mail met inloggegevens stuurt hem naar die voordeur in plaats
+van naar het dashboard met al je klanten, en in het overzicht staat per gast waar hij inlogt. Dat
+is niet alleen netter maar ook veiliger, want op dat adres bestaat er geen andere klant, ook niet
+als zijn rechten later verruimd worden.
 
-**Voorwaarde.** Dit gebeurt pas als het slot uit stap 1 er staat en de proef groen is. Zolang jij
-de enige bent die inlogt, is het risico klein; zodra er iemand van buiten bij kan, moet die deur
-aantoonbaar dicht zijn.
+**Wat jij doet.** Op Beheer een gast toevoegen, alleen Nationaal Oogcentrum aanvinken, en op
+"Mail inloggegevens" drukken. Laat "mag wijzigen en uitvoeren" uit als hij eerst alleen mag
+meekijken; dat vinkje kun je later aanzetten.
+
+**Voorwaarde.** Werkt pas echt zodra stap 3 gedaan is: tot die tijd heeft de voordeur zijn eigen
+database en staat jouw gast daar niet in.
 
 ---
 
@@ -163,7 +177,13 @@ aantoonbaar dicht zijn.
 - Stap 2: klaar op 18-08-2026. Nationaal Oogcentrum staat als klant `noc` in het Pingwin-dashboard.
 - Stap 3: gebouwd op 19-08-2026. De voordeur gedraagt zich als voordeur en het dashboard kan hem
   zelf controleren; wat er nog moet gebeuren is de omzetting in Vercel hierboven.
-- Stap 4 en 5: nog te doen, in deze volgorde.
+- Stap 4: klaar op 19-08-2026.
+- Stap 5: klaar op 19-08-2026. Werkt zodra stap 3 gedaan is.
+
+**Alles bij elkaar staat of valt met die ene omzetting in Vercel bij stap 3.** Zolang die niet
+gedaan is, heeft de voordeur zijn eigen database: veilig om te delen (er staat alleen NOC in),
+maar het is niet hetzelfde werk als in je dashboard, en een gast die je hier aanmaakt kan daar
+niet inloggen.
 
 ## Technisch voetnootje
 

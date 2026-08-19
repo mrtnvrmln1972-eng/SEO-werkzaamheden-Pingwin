@@ -59,7 +59,13 @@ export const HOOFDSTUK: Hoofdstuk = {
         "voordeur zelf vragen. Elke omgeving vertelt op een vast adres welke klant hij toont en een kort, " +
         "onomkeerbaar kenmerk van zijn database; gelijk kenmerk betekent dezelfde gegevens. Op het " +
         "verhuisscherm zit daar één knop op, met in gewone taal wat er nog moet als het niet klopt. " +
-        "Diezelfde vergelijking weigert ook een verhuizing naar een omgeving die dezelfde gegevens al heeft.",
+        "Diezelfde vergelijking weigert ook een verhuizing naar een omgeving die dezelfde gegevens al heeft.\n\n" +
+        "Zo'n voordeur is ook de plek waar iemand van buiten binnenkomt. Mag een gast precies één klant zien " +
+        "en heeft die klant een eigen adres, dan wijst de uitnodiging daarheen in plaats van naar het " +
+        "dashboard met alle klanten, en staat in het overzicht per gast waar hij inlogt. Dat is niet alleen " +
+        "netter maar ook veiliger: op dat adres bestaat er geen andere klant, ook niet als zijn rechten later " +
+        "verruimd worden. En de automatische nachtronden slaan zo'n omgeving over, zodat hetzelfde werk niet " +
+        "twee keer gedaan (en betaald) wordt.",
     },
     {
       titel: "Twee poorten in plaats van één",

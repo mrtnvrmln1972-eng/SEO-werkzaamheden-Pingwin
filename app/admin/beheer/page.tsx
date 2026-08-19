@@ -27,6 +27,7 @@ export default async function BeheerPage() {
         domain: c.domain,
         loginEnabled: c.loginEnabled,
         ahrefsKeyRef: c.ahrefsKeyRef,
+        voordeurUrl: c.cockpit.voordeurUrl,
       }))}
       team={team}
       showFinance={moneybirdConfigured()}

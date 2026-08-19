@@ -15,6 +15,9 @@ type ClientLite = {
   loginEnabled: boolean;
   // Label van de Ahrefs-sleutel (env AHREFS_API_TOKEN_<LABEL>); leeg = hoofdaccount.
   ahrefsKeyRef: string | null;
+  // Het eigen adres van deze klant, als hij er een heeft. Bepaalt waar een gast
+  // die alleen deze klant mag zien, inlogt.
+  voordeurUrl: string | null;
 };
 
 export default function BeheerClient({ clients, team, showFinance = false }: { clients: ClientLite[]; team: TeamUser[]; showFinance?: boolean }) {
@@ -150,7 +153,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
     editSlugs: [],
     canDev: false,
   });
-  const [created, setCreated] = useState<{ name: string; loginId: string; password: string } | null>(null);
+  const [created, setCreated] = useState<{ name: string; loginId: string; password: string; inlogPlek: string } | null>(null);
   const [editUserId, setEditUserId] = useState<number | null>(null);
   const [uForm, setUForm] = useState<{ name: string; email: string; allowedSlugs: string[]; canSeeMail: boolean; canEdit: boolean; editSlugs: string[]; canDev: boolean }>({
     name: "",
@@ -180,7 +183,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
       });
       const data = await res.json();
       if (data.ok) {
-        setCreated({ name: tForm.name || tForm.loginId, loginId: data.user.loginId, password: data.password });
+        setCreated({ name: tForm.name || tForm.loginId, loginId: data.user.loginId, password: data.password, inlogPlek: inlogPlek(tForm.allowedSlugs) });
         setTForm({ name: "", loginId: "", email: "", allowedSlugs: [], canSeeMail: false, canEdit: false, editSlugs: [], canDev: false });
         setShowTeamForm(false);
         router.refresh();
@@ -317,6 +320,14 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
       .join(", ");
   }
 
+  // Waar logt deze gast in? Eén klant met een eigen adres = daar; anders hier.
+  // Dezelfde regel als aan de serverkant (voordeurVoorBereik in lib/clients.ts),
+  // die bepaalt waar de mail met inloggegevens naartoe wijst.
+  function inlogPlek(slugs: string[]): string {
+    if (slugs.length !== 1) return "";
+    return (clients.find((c) => c.slug === slugs[0])?.voordeurUrl || "").trim();
+  }
+
   return (
     <>
       <div className="header">
@@ -445,12 +456,18 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
         <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>Team</h2>
         <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
           Gasten kunnen inloggen op dit adminscherm en zien alleen de klanten die je aanvinkt. Standaard is een gast alleen-lezen: rondkijken en openklappen mag, maar geen stappen draaien of iets opslaan. Vink &ldquo;mag wijzigen en uitvoeren&rdquo; aan om dat wel toe te staan.
+          Vink je precies één klant aan en heeft die klant een eigen adres, dan logt de gast dáár in; op dat adres bestaat geen andere klant, ook niet als zijn rechten later verruimd worden.
         </p>
 
         {created && (
           <div className="created-box" style={{ marginBottom: "var(--s-5)" }}>
             <div className="created-title">Inloggegevens voor {created.name}</div>
-            <p>Geef deze gegevens aan de gast. Het wachtwoord zie je maar één keer. Inloggen via het adminscherm met deze inlognaam.</p>
+            <p>
+              Geef deze gegevens aan de gast. Het wachtwoord zie je maar één keer.
+              {created.inlogPlek
+                ? ` Deze gast logt in op ${created.inlogPlek}/admin; daar bestaat geen andere klant.`
+                : " Inloggen via het adminscherm met deze inlognaam."}
+            </p>
             <div className="cred-row"><span>Inlognaam</span><code>{created.loginId}</code>
               <button className="btn btn-klein" type="button" onClick={() => copy(created.loginId)}>Kopieer</button></div>
             <div className="cred-row"><span>Wachtwoord</span><code>{created.password}</code>
@@ -477,7 +494,17 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 <tr key={u.id}>
                   <td style={{ fontWeight: 600 }}>{u.name || <span className="muted">&mdash;</span>}</td>
                   <td>{u.loginId}</td>
-                  <td>{u.role === "owner" ? "alles (eigenaar)" : slugsLabel(u.allowedSlugs)}</td>
+                  <td>
+                    {u.role === "owner" ? "alles (eigenaar)" : slugsLabel(u.allowedSlugs)}
+                    {/* Mag deze gast maar één klant zien en heeft die klant een
+                        eigen adres, dan logt hij daar in en niet hier. Zonder dit
+                        zie je nergens waar iemand eigenlijk terechtkomt. */}
+                    {inlogPlek(u.allowedSlugs) && (
+                      <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>
+                        logt in op {inlogPlek(u.allowedSlugs)}
+                      </div>
+                    )}
+                  </td>
                   <td>
                     {u.role === "owner" ? "alles" : u.canEdit ? "Mag overal wijzigen" : (u.editSlugs || []).length > 0 ? `Bewerken: ${(u.editSlugs || []).length} van ${u.allowedSlugs.length} klanten` : "Alleen lezen"}
                     {u.canDev && <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>+ developer-taken</div>}
