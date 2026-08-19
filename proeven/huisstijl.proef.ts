@@ -119,7 +119,19 @@ function label(inhoud: string): string {
 /** Alle tekst die zichtbaar kán worden, dus ook uit `{x ? "a" : "b"}`. */
 function alleTekst(inhoud: string): string {
   const uitExpressies = [...inhoud.matchAll(/["'`]([^"'`]*)["'`]/g)].map((m) => m[1]).join(" ");
-  return `${label(inhoud)} ${uitExpressies}`;
+  return ontcijfer(`${label(inhoud)} ${uitExpressies}`);
+}
+
+/**
+ * `&#128279;` is 🔗, en dat is precies zo'n emoji als de regel hierboven verbiedt.
+ * Geschreven als code ziet de proef er niets van, en zo stond er tot 19-08-2026
+ * een link-emoji in de werkbalk van elk rijk tekstveld terwijl de emoji-lijst
+ * leeg was en leeg heette te blijven. Een regel met een achterdeur is geen regel.
+ */
+function ontcijfer(tekst: string): string {
+  return tekst
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)));
 }
 
 function alleTsx(map: string): string[] {

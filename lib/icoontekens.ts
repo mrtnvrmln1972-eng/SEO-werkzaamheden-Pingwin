@@ -64,6 +64,20 @@ export const MONTSERRAT_HEEFT = "↑↓×›‹»«·−–—±•…€°“�
  */
 export const TOEGESTAAN = MONTSERRAT_HEEFT + BIJGELADEN;
 
+/**
+ * Wat écht een icoon is, voor de meter op /admin/stijl.
+ *
+ * Niet elk bijzonder teken is een icoontje: een beletselteken, een euroteken,
+ * een gedachtestreepje en een middenpunt zijn gewone leestekens en die horen
+ * nergens heen. Zonder dit onderscheid meldt de meter er 873 terwijl er 500 van
+ * gewoon "…" zijn, en dan zegt het getal niets meer.
+ *
+ * Wat hier wél in staat, hoort op termijn een tekening te worden (zie
+ * app/_ui/Pijl.tsx): dat teken is bediening, geen tekst. De pijl omhoog en
+ * omlaag en het kruisje staan er dus bij, ook al kan Montserrat ze tekenen.
+ */
+export const ICONEN = BIJGELADEN + "↑↓×";
+
 /** De namen zoals ze in de opmaak-stapel moeten staan, direct ná Montserrat. */
 export const SYMBOOL_FAMILIES = ["Noto Sans Symbols 2", "Noto Sans Symbols"];
 

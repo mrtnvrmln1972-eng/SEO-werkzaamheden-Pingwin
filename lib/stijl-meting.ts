@@ -29,7 +29,7 @@
 
 import fs from "fs";
 import path from "path";
-import { TOEGESTAAN } from "./icoontekens";
+import { TOEGESTAAN, ICONEN } from "./icoontekens";
 
 export const WORTEL = path.join(__dirname, "..");
 
@@ -416,7 +416,10 @@ export function zoekIcoontekens(): IcoonVondst[] {
 
 /** De telling voor de meter op /admin/stijl. */
 function meetIcoontekens(): Meting["icoontekens"] {
-  const vondsten = zoekIcoontekens();
+  const alles = zoekIcoontekens();
+  // Alleen wat écht een icoon is. Een beletselteken of een euroteken is een
+  // leesteken en hoort nergens heen; die meetellen maakt het getal betekenisloos.
+  const vondsten = alles.filter((v) => ICONEN.includes(v.teken) || !TOEGESTAAN.includes(v.teken));
   const perTeken = new Map<string, number>();
   for (const v of vondsten) perTeken.set(v.teken, (perTeken.get(v.teken) ?? 0) + 1);
   return {

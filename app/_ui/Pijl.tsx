@@ -80,6 +80,16 @@ export function Uitklap({ className }: { className?: string }) {
   return <Teken className={className} vulling><path d="M6 4l5 4-5 4z" /></Teken>;
 }
 
+/** Twee schakels: een link. */
+export function Ketting({ className }: { className?: string }) {
+  return (
+    <Teken className={className}>
+      <path d="M6.6 9.4a2.6 2.6 0 0 0 3.7 0l2.1-2.1a2.6 2.6 0 0 0-3.7-3.7l-.9.9" />
+      <path d="M9.4 6.6a2.6 2.6 0 0 0-3.7 0L3.6 8.7a2.6 2.6 0 0 0 3.7 3.7l.9-.9" />
+    </Teken>
+  );
+}
+
 /** Drie stipjes onder elkaar: hier zit een menu achter. */
 export function Kebab({ className }: { className?: string }) {
   return (
