@@ -102,8 +102,8 @@ export default function SelectionActions({ slug, clientName }: { slug: string; c
     <>
       {pos && (
         <div className="selection-pop" style={{ left: pos.x, top: pos.y }} onMouseDown={(e) => e.preventDefault()}>
-          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={makeTask} title="Maakt een werkzaamheid met deze tekst als toelichting">+ Taak</button>
-          <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={openCompose} title="Opent een mailvenster met deze tekst voorgevuld">Mail</button>
+          <button type="button" className="btn btn-klein" onMouseDown={(e) => e.preventDefault()} onClick={makeTask} title="Maakt een werkzaamheid met deze tekst als toelichting">+ Taak</button>
+          <button type="button" className="btn btn-klein" onMouseDown={(e) => e.preventDefault()} onClick={openCompose} title="Opent een mailvenster met deze tekst voorgevuld">Mail</button>
         </div>
       )}
       {toast && <div className="selection-toast">{toast}</div>}

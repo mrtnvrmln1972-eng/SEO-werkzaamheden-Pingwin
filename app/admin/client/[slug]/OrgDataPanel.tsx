@@ -516,8 +516,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
           </div>
           {msg && <div className="saved-msg" style={{ margin: "var(--s-2) 0" }}>{msg}</div>}
           <section className="org-sec org-verzameld">
-            <button type="button" className="org-sec-kop" onClick={() => setDataOpen((v) => !v)}>
-              <span className="org-sec-caret">{dataOpen ? <Omlaag /> : <Uitklap />}</span>
+            <button type="button" className="deelkop" onClick={() => setDataOpen((v) => !v)} aria-expanded={dataOpen}>
               <span>Verzamelde structured data</span>
               {missingCount > 0 && <span className="org-mis-vlag">{missingCount} ontbreken</span>}
             </button>

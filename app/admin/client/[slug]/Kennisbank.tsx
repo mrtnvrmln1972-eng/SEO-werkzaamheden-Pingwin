@@ -401,10 +401,9 @@ export default function Kennisbank({ slug, onVerwerkt, voorActie }: { slug: stri
       )}
       {perCat.length > 0 && (
         <section className="org-sec kb-detail-sec">
-          <button type="button" className="org-sec-kop" onClick={() => setDetailOpen((v) => !v)}>
-            <span className="org-sec-caret">{detailOpen ? <Omlaag /> : <Uitklap />}</span>
+          <button type="button" className="deelkop" onClick={() => setDetailOpen((v) => !v)} aria-expanded={detailOpen}>
             <span>Kennisbank per categorie</span>
-            <span className="org-sec-aantal">{entiteiten.length}</span>
+            <span className="deelkop-meta">{entiteiten.length}</span>
           </button>
           {detailOpen && (
             <div className="kb-tabs-wrap">

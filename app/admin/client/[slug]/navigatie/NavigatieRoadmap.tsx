@@ -352,8 +352,8 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
         </div>
         <div className="nv-balk-acties">
           <span className="nv-schakel">
-            <button type="button" className={blik === "huidig" ? "aan" : ""} onClick={() => setBlik("huidig")}>Huidige site</button>
-            <button type="button" className={blik === "beoogd" ? "aan" : ""} onClick={() => setBlik("beoogd")}>Beoogde structuur</button>
+            <button type="button" className={`schakel-knop${blik === "huidig" ? " aan" : ""}`} onClick={() => setBlik("huidig")}>Huidige site</button>
+            <button type="button" className={`schakel-knop${blik === "beoogd" ? " aan" : ""}`} onClick={() => setBlik("beoogd")}>Beoogde structuur</button>
           </span>
           <select className="nv-filter" value={filter} onChange={(e) => setFilter(e.target.value as Filter)}>
             <option value="alles">Alle pagina&rsquo;s</option>
@@ -362,8 +362,8 @@ export default function NavigatieRoadmap({ slug, clientName, domain }: { slug: s
             <option value="onder50">Onder de 50%</option>
           </select>
           <span className="nv-schakel">
-            <button type="button" className={weergave === "kolommen" ? "aan" : ""} onClick={() => setWeergave("kolommen")}>Als menu</button>
-            <button type="button" className={weergave === "lijst" ? "aan" : ""} onClick={() => setWeergave("lijst")}>Als lijst</button>
+            <button type="button" className={`schakel-knop${weergave === "kolommen" ? " aan" : ""}`} onClick={() => setWeergave("kolommen")}>Als menu</button>
+            <button type="button" className={`schakel-knop${weergave === "lijst" ? " aan" : ""}`} onClick={() => setWeergave("lijst")}>Als lijst</button>
           </span>
           <span className="nv-spacer" />
           {ontbrekend.length > 0 && (

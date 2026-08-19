@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8822,
-    "stijlregels": 4340,
-    "classnamen": 2946
+    "regels": 8845,
+    "stijlregels": 4343,
+    "classnamen": 2949
   },
   "kleuren": {
     "verschillend": 40,
@@ -228,7 +228,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 63,
+      "aantal": 65,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -276,6 +276,7 @@
         "prio-waarom-knop",
         "proefstijl-knop",
         "profile-gen-buttons",
+        "schakel-knop",
         "stijl-knop",
         "stijl-knoppen",
         "strategy-verwerkt-btn",
@@ -285,6 +286,7 @@
         "vg-knop",
         "vm-btn",
         "vm-knoppen",
+        "werkbalk-knop",
         "wl-knop",
         "wl-rij-knoppen",
         "wp-btns",
@@ -581,7 +583,7 @@
     }
   ],
   "inline": {
-    "totaal": 619,
+    "totaal": 615,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1526,7 +1528,7 @@
     }
   ],
   "icoontekens": {
-    "totaal": 210,
+    "totaal": 208,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
@@ -1540,7 +1542,7 @@
       },
       {
         "teken": "▾",
-        "aantal": 16
+        "aantal": 15
       },
       {
         "teken": "▸",
@@ -1575,7 +1577,7 @@
         "aantal": 5
       },
       {
-        "teken": "▴",
+        "teken": "↗",
         "aantal": 4
       }
     ]
@@ -1904,7 +1906,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8474,
+    "gebruik": 8481,
     "schaalGebruik": 1468
   }
 }

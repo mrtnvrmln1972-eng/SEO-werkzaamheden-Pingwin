@@ -68,9 +68,9 @@ export default function TaakPopup({
             <div className="ag-field">
               <span>Snel instellen</span>
               <div className="ag-weekday-row">
-                <button type="button" className="ag-toggle" onClick={() => setDraft({ ...draft, datum: todayKey, eindDatum: "" })}>Vandaag</button>
-                <button type="button" className="ag-toggle" onClick={() => setDraft({ ...draft, datum: shiftDate(todayKey, 1), eindDatum: "" })}>Morgen</button>
-                <button type="button" className="ag-toggle" onClick={() => setDraft({ ...draft, datum: shiftDate(todayKey, 7), eindDatum: "" })}>Volgende week</button>
+                <button type="button" className="schakel-knop" onClick={() => setDraft({ ...draft, datum: todayKey, eindDatum: "" })}>Vandaag</button>
+                <button type="button" className="schakel-knop" onClick={() => setDraft({ ...draft, datum: shiftDate(todayKey, 1), eindDatum: "" })}>Morgen</button>
+                <button type="button" className="schakel-knop" onClick={() => setDraft({ ...draft, datum: shiftDate(todayKey, 7), eindDatum: "" })}>Volgende week</button>
               </div>
             </div>
             <label className="ag-field">
@@ -90,7 +90,7 @@ export default function TaakPopup({
           <div className="ag-weekday-row">
             {HERINNERING_DAGEN_PRESETS.map(([val, label]) => (
               <button key={val} type="button"
-                className={`ag-toggle${draft.herinneringenDagen.includes(val) ? " on" : ""}`}
+                className={`schakel-knop${draft.herinneringenDagen.includes(val) ? " aan" : ""}`}
                 onClick={() => setDraft({
                   ...draft,
                   herinneringenDagen: draft.herinneringenDagen.includes(val)
@@ -130,7 +130,7 @@ export default function TaakPopup({
           <span>Prioriteit</span>
           <div className="ag-weekday-row">
             {PRIORITEITEN.map(([val, label]) => (
-              <button key={val} type="button" className={`ag-toggle${draft.prioriteit === val ? " on" : ""}`}
+              <button key={val} type="button" className={`schakel-knop${draft.prioriteit === val ? " aan" : ""}`}
                 onClick={() => setDraft({ ...draft, prioriteit: val })}>{label}</button>
             ))}
           </div>

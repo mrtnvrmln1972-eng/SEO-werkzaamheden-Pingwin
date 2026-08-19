@@ -61,12 +61,19 @@ const TEKEN_KNOP = /^[\s×✕✓✔☑☐▾▴▸▪▶◀←→↑↓⋮⋯•
 // uit op de data, hij vouwt een blok open of dicht, en hij is de volle breedte
 // met een eigen achtergrond; een .btn eromheen zou hem juist kapotmaken.
 //
-// Bewust ÉÉN vaste klassenaam en geen patroon: `strategy-head` staat één keer
-// in globals.css en wordt door de hele cockpit gedeeld. Zo blijft dit een
-// benoemd onderdeel van het systeem en geen achterdeur waardoor "mijn knop is
-// nou eenmaal anders" alsnog binnenkomt. Verzint een scherm een eigen kop-klasse,
-// dan is deze proef nog steeds rood, en dat hoort ook.
-const KOP_KNOP = /\bstrategy-head\b/;
+// Bewust een korte, VASTE lijst en geen patroon: elke naam hierin staat één keer
+// in globals.css en wordt gedeeld. Zo blijft dit een benoemd onderdeel van het
+// systeem en geen achterdeur waardoor "mijn knop is nou eenmaal anders" alsnog
+// binnenkomt. Verzint een scherm een eigen kop-klasse, dan is deze proef nog
+// steeds rood, en dat hoort ook.
+//
+// Twee niveaus sinds 19-08-2026: `strategy-head` is de kop van een heel paneel
+// (de kleurverloop-balk), `deelkop` is een kop bínnen zo'n paneel (het lijntje).
+// Daarvóór hadden zes plekken daar hun eigen vorm voor.
+// `schakel-knop` hoort er sinds 19-08-2026 ook bij: kiezen tussen twee weergaven
+// van dezelfde data is geen actie op die data, en die knopjes horen klein en
+// stil te zijn. Vijf plekken hadden daar hun eigen vorm voor.
+const KOP_KNOP = /\b(strategy-head|deelkop|schakel-knop|werkbalk-knop)\b/;
 
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/u;
 

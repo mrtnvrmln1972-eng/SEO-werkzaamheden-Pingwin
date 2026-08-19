@@ -751,10 +751,9 @@ export default function Planning({
               dus dit is ook de weg terug als je te vroeg hebt afgevinkt. */}
           {afgerond.length > 0 && (
             <div className="pl-staart pl-af">
-              <button type="button" className="pl-af-kop" onClick={() => setToonAfgerond((v) => !v)}>
-                <span className="pl-af-caret">{toonAfgerond ? <Omlaag /> : <Uitklap />}</span>
+              <button type="button" className="deelkop" onClick={() => setToonAfgerond((v) => !v)} aria-expanded={toonAfgerond}>
                 <span className="pl-staarttitel">Afgeronde taken</span>
-                <span className="pl-aantal">{afgerond.length}</span>
+                <span className="deelkop-meta">{afgerond.length}</span>
               </button>
               {toonAfgerond && rijen(afgerond)}
             </div>

@@ -127,8 +127,8 @@ export default async function FinancienPage({ searchParams }: { searchParams: { 
       {/* Vooruitkijken of terugkijken. Twee heel verschillende vragen, dus twee
           weergaven in plaats van één scherm dat allebei half doet. */}
       <nav className="prog-blik">
-        <Link href="/admin/financien?blik=prognose" className={blik === "prognose" ? "aan" : ""}>Prognose</Link>
-        <Link href="/admin/financien?blik=boekhouding" className={blik === "boekhouding" ? "aan" : ""}>Boekhouding</Link>
+        <Link href="/admin/financien?blik=prognose" className={`schakel-knop${blik === "prognose" ? " aan" : ""}`}>Prognose</Link>
+        <Link href="/admin/financien?blik=boekhouding" className={`schakel-knop${blik === "boekhouding" ? " aan" : ""}`}>Boekhouding</Link>
       </nav>
 
       {blik === "prognose" ? (

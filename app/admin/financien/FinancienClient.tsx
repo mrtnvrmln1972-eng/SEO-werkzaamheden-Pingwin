@@ -295,9 +295,8 @@ function Abonnementen() {
 
   return (
     <div style={card}>
-      <button type="button" style={{ ...rowBtn, borderBottom: "none", padding: "0 0 var(--s-1)" }} onClick={() => setOpenSection((v) => !v)}>
-        <span style={caret}>{openSection ? <Omlaag /> : <Uitklap />}</span>
-        <span style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--label-muted)" }}>Terugkerende kosten / abonnementen</span>
+      <button type="button" className="deelkop" onClick={() => setOpenSection((v) => !v)} aria-expanded={openSection}>
+        Terugkerende kosten / abonnementen
       </button>
       <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", margin: "0 0 var(--s-2) var(--s-5)" }}>
         Leveranciers waar in minstens 3 opeenvolgende maanden (van de laatste 6) kosten aan zijn geboekt.
@@ -310,10 +309,9 @@ function Abonnementen() {
           {rows !== null && rows.length === 0 && <div style={{ color: "var(--text-secondary)", fontSize: "var(--fs-sm)", padding: "var(--s-2) 0" }}>Geen terugkerende leveranciers gevonden in de laatste 6 maanden.</div>}
           {rows !== null && rows.map((r) => (
             <div key={r.contactName}>
-              <button type="button" style={{ ...rowBtn, fontSize: "var(--fs-sm)" }} onClick={() => setOpenRow((o) => ({ ...o, [r.contactName]: !o[r.contactName] }))}>
-                <span style={caret}>{openRow[r.contactName] ? <Omlaag /> : <Uitklap />}</span>
+              <button type="button" className="deelkop" onClick={() => setOpenRow((o) => ({ ...o, [r.contactName]: !o[r.contactName] }))} aria-expanded={!!openRow[r.contactName]}>
                 <span>{r.contactName}</span>
-                <span style={{ color: "var(--label-muted)", marginLeft: "var(--s-2)" }}>{r.monthsPresent} van 6 maanden</span>
+                <span className="deelkop-meta">{r.monthsPresent} van 6 maanden</span>
                 <span style={{ ...amountRight, color: "var(--bad)" }}>{euro(r.avgPerMonth)}/mnd &nbsp;(&plusmn; {euro(r.perYear)}/jaar)</span>
               </button>
               {openRow[r.contactName] && (

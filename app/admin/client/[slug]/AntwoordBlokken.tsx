@@ -508,8 +508,8 @@ export default function AntwoordBlokken({ slug, thread, content, mdToHtml, siteU
           genoemde pagina als een fout las. */}
       {genoemdePaden.length > 0 && (
         <div className="ovc-dossiers">
-          <button type="button" className="ovc-dossiers-toggle" onClick={() => setDossiersOpen((o) => !o)}>
-            {dossiersOpen ? <Omlaag /> : <Uitklap />} {genoemdePaden.length === 1 ? "Dossier van de genoemde pagina" : `Dossiers van ${genoemdePaden.length} genoemde pagina's`}
+          <button type="button" className="deelkop" onClick={() => setDossiersOpen((o) => !o)} aria-expanded={dossiersOpen}>
+            {genoemdePaden.length === 1 ? "Dossier van de genoemde pagina" : `Dossiers van ${genoemdePaden.length} genoemde pagina's`}
           </button>
           {dossiersOpen && genoemdePaden.map((p) => <PaginaDossier key={p} slug={slug} url={p} compact />)}
         </div>

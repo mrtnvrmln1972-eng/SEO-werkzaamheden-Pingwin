@@ -678,7 +678,7 @@ export default function AgendaClient() {
                   <span>Herhalen</span>
                   <div className="ag-weekday-row">
                     {([["geen", "Niet herhalen"], ["dag", "Elke dag"], ["werkdag", "Werkdagen"], ["aangepast", "Eigen dagen"]] as [Herhaal, string][]).map(([key, label]) => (
-                      <button key={key} className={`ag-toggle${draft.herhaal === key ? " on" : ""}`} onClick={() => setDraft({ ...draft, herhaal: key })}>{label}</button>
+                      <button key={key} className={`schakel-knop${draft.herhaal === key ? " aan" : ""}`} onClick={() => setDraft({ ...draft, herhaal: key })}>{label}</button>
                     ))}
                   </div>
                 </div>
@@ -687,7 +687,7 @@ export default function AgendaClient() {
                     <span>Op deze dagen</span>
                     <div className="ag-weekday-row">
                       {DAY_NAMES.map((name, i) => (
-                        <button key={name} className={`ag-toggle${draft.weekdays.includes(i + 1) ? " on" : ""}`}
+                        <button key={name} className={`schakel-knop${draft.weekdays.includes(i + 1) ? " aan" : ""}`}
                           onClick={() => setDraft({ ...draft, weekdays: draft.weekdays.includes(i + 1) ? draft.weekdays.filter((w) => w !== i + 1) : [...draft.weekdays, i + 1].sort() })}>
                           {name}
                         </button>
@@ -707,9 +707,9 @@ export default function AgendaClient() {
                     <div className="ag-field">
                       <span>Snel instellen</span>
                       <div className="ag-weekday-row">
-                        <button type="button" className="ag-toggle" onClick={() => setDraft({ ...draft, date: todayKey })}>Vandaag</button>
-                        <button type="button" className="ag-toggle" onClick={() => setDraft({ ...draft, date: shiftDate(todayKey, 1) })}>Morgen</button>
-                        <button type="button" className="ag-toggle" onClick={() => setDraft({ ...draft, date: shiftDate(todayKey, 7) })}>Volgende week</button>
+                        <button type="button" className="schakel-knop" onClick={() => setDraft({ ...draft, date: todayKey })}>Vandaag</button>
+                        <button type="button" className="schakel-knop" onClick={() => setDraft({ ...draft, date: shiftDate(todayKey, 1) })}>Morgen</button>
+                        <button type="button" className="schakel-knop" onClick={() => setDraft({ ...draft, date: shiftDate(todayKey, 7) })}>Volgende week</button>
                       </div>
                     </div>
                     <label className="ag-field">
@@ -740,7 +740,7 @@ export default function AgendaClient() {
             reminderSlot={
               <div className="ag-weekday-row">
                 {HERINNERING_MIN_PRESETS.map(([val, label]) => (
-                  <button key={val} type="button" className={`ag-toggle${draft.herinneringenMin.includes(val) ? " on" : ""}`}
+                  <button key={val} type="button" className={`schakel-knop${draft.herinneringenMin.includes(val) ? " aan" : ""}`}
                     onClick={() => setDraft({ ...draft, herinneringenMin: draft.herinneringenMin.includes(val) ? draft.herinneringenMin.filter((v) => v !== val) : [...draft.herinneringenMin, val].sort((a, c) => a - c) })}>
                     {label}
                   </button>
@@ -778,7 +778,7 @@ export default function AgendaClient() {
               <span>Prioriteit</span>
               <div className="ag-weekday-row">
                 {PRIORITEITEN.map(([val, label]) => (
-                  <button key={val} type="button" className={`ag-toggle${draft.prioriteit === val ? " on" : ""}`} onClick={() => setDraft({ ...draft, prioriteit: val })}>{label}</button>
+                  <button key={val} type="button" className={`schakel-knop${draft.prioriteit === val ? " aan" : ""}`} onClick={() => setDraft({ ...draft, prioriteit: val })}>{label}</button>
                 ))}
               </div>
             </div>

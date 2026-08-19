@@ -567,14 +567,14 @@ export default function RijkTekstVeld({
     <div className="rtv" onMouseMove={onWrapMouseMove} onMouseLeave={onWrapMouseLeave} onDragOver={onWrapDragOver} onDrop={onWrapDrop}>
       <div className={"focus-toolbar" + (compact ? " focus-toolbar-compact" : "")}>
         {toolbarLabel && <span className="focus-toolbar-label">{toolbarLabel}</span>}
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("bold")} title="Vet (Cmd+B)"><strong>B</strong></button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("italic")} title="Cursief (Cmd+I)"><em>I</em></button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegChecklistToe} title="Afvinklijstje: staat er tekst geselecteerd, dan wordt elke regel een eigen vinkpunt"><Vink /> vinklijst</button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={voegUitklapperToe} title="Uitklapper: een onderwerp met een driehoekje, en daaronder alles wat erbij hoort"><Omlaag /> uitklapper</button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={addLink} title="Link toevoegen (Cmd+K)"><Ketting /> link</button>
-        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("bold")} title="Vet (Cmd+B)"><strong>B</strong></button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("italic")} title="Cursief (Cmd+I)"><em>I</em></button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertUnorderedList")} title="Bullets">&bull; lijst</button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("insertOrderedList")} title="Genummerd">1. lijst</button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={voegChecklistToe} title="Afvinklijstje: staat er tekst geselecteerd, dan wordt elke regel een eigen vinkpunt"><Vink /> vinklijst</button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={voegUitklapperToe} title="Uitklapper: een onderwerp met een driehoekje, en daaronder alles wat erbij hoort"><Omlaag /> uitklapper</button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={addLink} title="Link toevoegen (Cmd+K)"><Ketting /> link</button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
         {toolbarExtra}
       </div>
       <div

@@ -450,8 +450,8 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
           </span>
         ) : <span className="muted">&mdash;</span>}
       </td>
-      <td className="col-center"><button type="button" className={"dev-done-toggle" + (r.devDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleDone(idx, !r.devDone); }} title={r.devDone ? "Gereed (klik om terug te zetten)" : "Afvinken als klaar"}>{r.devDone ? "☑" : "☐"}</button></td>
-      <td className="col-center"><button type="button" className={"dev-done-toggle dev-afgerond-toggle-cell" + (r.ownerDone ? " on" : "")} onClick={(e) => { e.stopPropagation(); toggleAfgerond(idx, !r.ownerDone); }} title={r.ownerDone ? "Afgerond (klik om terug naar open te zetten)" : "Zelf afronden"}>{r.ownerDone ? "☑" : "☐"}</button></td>
+      <td className="col-center"><button type="button" className={"dev-done-toggle" + (r.devDone ? " aan" : "")} onClick={(e) => { e.stopPropagation(); toggleDone(idx, !r.devDone); }} title={r.devDone ? "Gereed (klik om terug te zetten)" : "Afvinken als klaar"}>{r.devDone ? "☑" : "☐"}</button></td>
+      <td className="col-center"><button type="button" className={"dev-done-toggle dev-afgerond-toggle-cell" + (r.ownerDone ? " aan" : "")} onClick={(e) => { e.stopPropagation(); toggleAfgerond(idx, !r.ownerDone); }} title={r.ownerDone ? "Afgerond (klik om terug naar open te zetten)" : "Zelf afronden"}>{r.ownerDone ? "☑" : "☐"}</button></td>
       <td><input type="date" className="dev-date" value={r.execDate || ""} onChange={(e) => setDate(idx, e.target.value)} /></td>
       <td className="dev-rij-acties">
         <button type="button" className="btn btn-ghost btn-klein" onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }} title="Bekijk de hele taak: opmerking, documenten en (met het juiste recht) aanpassen">Bekijk</button>
@@ -475,8 +475,8 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
               {slug && (
                 <button type="button" className="dev-nieuw-btn" onClick={() => setVenster({ taak: null, clientSlug: slug, clientName: clientName || slug })}>+ Nieuwe taak</button>
               )}
-              <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Lijst per klant</button>
-              <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Weekplanning</button>
+              <button type="button" className={`schakel-knop${view === "list" ? " aan" : ""}`} onClick={() => setView("list")}>Lijst per klant</button>
+              <button type="button" className={`schakel-knop${view === "week" ? " aan" : ""}`} onClick={() => setView("week")}>Weekplanning</button>
             </span>
           </span>
           {/* Blijft, samen met de rest van deze balk, bovenin staan: bij een lange

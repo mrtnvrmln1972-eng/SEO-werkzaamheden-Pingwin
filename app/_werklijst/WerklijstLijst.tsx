@@ -132,10 +132,9 @@ function Blok({ titel, uitleg, aantal, gedaan, open, onToggle, knop, children }:
   return (
     <div className="wl-kaart wl-blok">
       <div className="wl-blok-kop">
-        <button type="button" className="wl-blok-titel" onClick={onToggle} aria-expanded={open}>
-          <span className="wl-blok-pijl">{open ? <Omlaag /> : <Uitklap />}</span>
+        <button type="button" className="deelkop" onClick={onToggle} aria-expanded={open}>
           <span>{titel}</span>
-          <span className="wl-blok-teller">{gedaan} van {aantal} gedaan</span>
+          <span className="deelkop-meta">{gedaan} van {aantal} gedaan</span>
         </button>
         {knop}
       </div>

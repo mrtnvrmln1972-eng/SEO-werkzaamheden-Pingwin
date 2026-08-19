@@ -2146,11 +2146,7 @@ button.ck-collapse-head {
 .mail-connect { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); background: var(--kleur-accent-vlak); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-regel) var(--ruimte-regel); margin-bottom: var(--ruimte-regel); display: flex; align-items: center; gap: var(--ruimte-regel); flex-wrap: wrap; }
 .email-reply { margin-top: var(--ruimte-regel); border-top: 1px dashed var(--kleur-rand); padding-top: var(--ruimte-regel); }
 .rt-toolbar { display: flex; gap: var(--ruimte-krap); margin-bottom: var(--ruimte-krap); }
-.rt-toolbar button {
-  font-family: var(--letter); font-size: var(--type-bijschrift); font-weight: 600; color: var(--dark);
-  background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-naast); cursor: pointer;
-}
-.rt-toolbar button:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent-diep); }
+/* De knoppen hier dragen `werkbalk-knop`; dat was de tweede vorm voor hetzelfde. */
 .rt-editor {
   min-height: 150px; font-size: var(--type-bijschrift); line-height: 1.5;
   padding: var(--ruimte-naast) var(--ruimte-regel); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); background: var(--kleur-kaart);
@@ -2691,13 +2687,17 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
   margin-bottom: var(--ruimte-naast); padding: var(--ruimte-naast) 0;
   background: var(--kleur-kaart); border-bottom: 1px solid var(--kleur-rand-zacht);
 }
-.focus-toolbar button { font-size: var(--type-bijschrift); padding: var(--ruimte-krap) var(--ruimte-naast); border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); border-radius: var(--ronding-klein); cursor: pointer; color: var(--dark); }
-.focus-toolbar button:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); }
+/* DE WERKBALK-KNOP: vet, cursief, een opsomming, een link. Geen knop in de
+   huisstijl (die voert iets uit op de data) maar gereedschap dat op de tekst
+   werkt waar je in staat, en dus klein en stil. Stond hier als `.focus-toolbar
+   button`, dus zonder naam: twaalf knoppen die geen enkele controle kon zien. */
+.werkbalk-knop { font-family: var(--letter); font-size: var(--type-bijschrift); padding: var(--ruimte-krap) var(--ruimte-naast); border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); border-radius: var(--ronding-klein); cursor: pointer; color: var(--dark); }
+.werkbalk-knop:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); }
 /* Compacte, rechtsboven-variant (opt-in via `compact` op RijkTekstVeld): voor een
    kort veld als de kaartaantekeningen is een volle, plakkende knoppenbalk te
    zwaar. Rechts uitgelijnd, geen eigen vlak/rand, pas zichtbaar op hover. */
 .focus-toolbar-compact { justify-content: flex-end; background: transparent; border-bottom: none; padding: 0 0 var(--ruimte-krap); }
-.focus-toolbar-compact button { border-color: transparent; background: transparent; color: var(--kleur-tekst-stil); padding: var(--ruimte-krap) var(--ruimte-krap); }
+.focus-toolbar-compact .werkbalk-knop { border-color: transparent; background: transparent; color: var(--kleur-tekst-stil); padding: var(--ruimte-krap) var(--ruimte-krap); }
 .focus-toolbar-compact button:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent); background: var(--kleur-kaart); }
 /* Vooraan de balk, met margin-right: auto geduwd zodat de rest (knoppen +
    toolbarExtra) rechts blijft staan, ook binnen de rechts-uitgelijnde compacte
@@ -7731,6 +7731,29 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
 /* Toggle-pil: dagkeuze, prioriteit, herinnering, kleine filters. Eigen vorm
    (geen .btn): dit is een selectiestaat, geen actie. */
 .ag-weekday-row { display: flex; gap: var(--ruimte-krap); flex-wrap: wrap; }
+/* ═══════════════════════════════════════════════════════════
+   DE SCHAKELAAR: kiezen tussen twee of drie weergaven van hetzelfde
+   ═══════════════════════════════════════════════════════════
+   Vijf plekken hadden hier hun eigen vorm voor: de agenda (`ag-toggle`), de
+   planning (`pl-schakelknop`), de developerlijst, de financiën en de
+   navigatie-roadmap. Die laatste drie hadden niet eens een eigen naam voor de
+   knop zelf; ze leunden op een klasse van het blok eromheen, met `aan` of
+   `active` als stand. Vijf vormen voor één handeling: kies een weergave.
+
+   Dit is die ene vorm. Een rij pillen, de gekozen pil in het accent. Dit is géén
+   knop in de huisstijl (die vóért iets uit), maar een keuze tussen weergaven van
+   dezelfde data, en daarom mag hij klein en stil zijn. */
+.schakel { display: inline-flex; align-items: center; gap: var(--ruimte-krap); flex-wrap: wrap; }
+.schakel-knop {
+  font-family: var(--letter); font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600;
+  padding: var(--ruimte-krap) var(--ruimte-regel); border: 1px solid var(--kleur-rand);
+  border-radius: var(--ronding-pil); background: var(--kleur-kaart); color: var(--kleur-tekst-stil);
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+}
+.schakel-knop:hover { border-color: var(--kleur-rand-accent); color: var(--kleur-accent-diep); }
+.schakel-knop.aan { background: var(--kleur-accent); border-color: var(--kleur-rand-accent); color: var(--kleur-tekst-op-vlak); }
+.schakel-knop:focus-visible { outline: 2px solid var(--kleur-accent); outline-offset: 2px; }
+
 .ag-toggle {
   font-family: var(--letter); font-size: var(--type-label); line-height: var(--regel-label); font-weight: 600;
   padding: var(--ruimte-krap) var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein);

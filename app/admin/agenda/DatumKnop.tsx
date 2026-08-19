@@ -75,8 +75,8 @@ export default function DatumKnop({
         >
           {duurSlot && (
             <div className="ag-weekday-row ag-datumknop-tabs">
-              <button type="button" className={`ag-toggle${tab === "datum" ? " on" : ""}`} onClick={() => setTab("datum")}>Datum</button>
-              <button type="button" className={`ag-toggle${tab === "duur" ? " on" : ""}`} onClick={() => setTab("duur")}>Duur</button>
+              <button type="button" className={`schakel-knop${tab === "datum" ? " aan" : ""}`} onClick={() => setTab("datum")}>Datum</button>
+              <button type="button" className={`schakel-knop${tab === "duur" ? " aan" : ""}`} onClick={() => setTab("duur")}>Duur</button>
             </div>
           )}
           <div className="ag-datumknop-tabcontent">{!duurSlot || tab === "datum" ? datumSlot : duurSlot}</div>

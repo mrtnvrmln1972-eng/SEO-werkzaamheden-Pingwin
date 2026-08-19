@@ -330,8 +330,8 @@ function VoorstelToelichting({ tekst, pageUrl, taak, mailLinks }: { tekst: strin
 
   return (
     <div className="tvk-why">
-      <button type="button" className="tvk-why-toggle" onClick={() => setOpen((o) => !o)}>
-        {open ? "Verberg achtergrond ▴" : `Toon achtergrond ▾${delen.length ? ` (${delen.join(", ")})` : ""}`}
+      <button type="button" className="deelkop" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        {open ? "Achtergrond" : "Achtergrond"}{delen.length ? <span className="deelkop-meta">{delen.join(", ")}</span> : null}
       </button>
       {/* De maildatums werden hier NIET klikbaar gemaakt: de kaart in de
           weekplanning gaf de mail-map wel mee, dit voorstel niet. Daardoor liep

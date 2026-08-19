@@ -1,12 +1,8 @@
 {
   "knopsysteem": [
-    "app/_velden/RijkTekstVeld.tsx",
     "app/_werklijst/WerklijstLijst.tsx",
     "app/admin/BulkOnboarding.tsx",
     "app/admin/TweakKnop.tsx",
-    "app/admin/agenda/AgendaClient.tsx",
-    "app/admin/agenda/DatumKnop.tsx",
-    "app/admin/agenda/TaakPopup.tsx",
     "app/admin/client/[slug]/ActionCard.tsx",
     "app/admin/client/[slug]/AntwoordBlokken.tsx",
     "app/admin/client/[slug]/BespreekLijsten.tsx",
@@ -18,26 +14,19 @@
     "app/admin/client/[slug]/GmbPanel.tsx",
     "app/admin/client/[slug]/Kennisbank.tsx",
     "app/admin/client/[slug]/KlussenChip.tsx",
-    "app/admin/client/[slug]/KpiPanel.tsx",
     "app/admin/client/[slug]/MetaCtrPanel.tsx",
-    "app/admin/client/[slug]/OrgDataPanel.tsx",
     "app/admin/client/[slug]/OverviewChat.tsx",
     "app/admin/client/[slug]/PagesPanel.tsx",
     "app/admin/client/[slug]/PaginaDossier.tsx",
     "app/admin/client/[slug]/Planning.tsx",
     "app/admin/client/[slug]/PrioriteitenPanel.tsx",
-    "app/admin/client/[slug]/SelectionActions.tsx",
-    "app/admin/client/[slug]/TakenVoorstel.tsx",
-    "app/admin/client/[slug]/WerkplanPanel.tsx",
     "app/admin/client/[slug]/WijzigingenPanel.tsx",
     "app/admin/client/[slug]/navigatie/NavigatieRoadmap.tsx",
-    "app/admin/client/[slug]/pagina-chat/StructuredDataKaart.tsx",
     "app/admin/client/[slug]/pagina-chat/VervolgstappenKaart.tsx",
     "app/admin/client/[slug]/weekplan-kaart/KaartChat.tsx",
     "app/admin/client/[slug]/weekplan-kaart/KaartKop.tsx",
     "app/admin/client/[slug]/weekplan-kaart/KaartOnderRegel.tsx",
-    "app/admin/developer/DeveloperOverview.tsx",
-    "app/admin/financien/FinancienClient.tsx"
+    "app/admin/developer/DeveloperOverview.tsx"
   ],
   "emoji": []
 }
