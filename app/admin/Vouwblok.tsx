@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { Omlaag, Uitklap } from "../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // EEN BLOK OP HET BEHEERSCHERM: DICHT, MET DE KNOP IN DE KOPBALK
@@ -37,7 +38,9 @@ export default function Vouwblok({
   return (
     <div className="cockpit-card strategy-card vouwblok">
       <button type="button" className="strategy-head" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span className="strategy-caret">{open ? "▾" : "▸"}</span>
+        {/* Getekend, geen teken: Montserrat heeft geen driehoekje, dus een
+            letterlijke ▸ wordt een leeg vierkantje (zie app/_ui/Pijl.tsx). */}
+        <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
         <span className="strategy-title">{titel}{aantal === undefined ? "" : ` (${aantal})`}</span>
         {sub && <span className="strategy-sub">{sub}</span>}
       </button>
