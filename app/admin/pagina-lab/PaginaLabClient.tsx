@@ -6,7 +6,7 @@
 // zo: een kennisbank die je in een veldje kunt overtypen, heeft binnen een maand
 // twee versies.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import AdminKop from "../AdminKop";
 import { PijlRechts } from "../../_ui/Pijl";
@@ -91,8 +91,25 @@ function VakoordeelBlok({ v }: { v: Vakoordeel }) {
   );
 }
 
+type Deel = "kennisbank" | "gedrag";
+
 export default function PaginaLabClient({ klanten, magSchrijven }: { klanten: KlantStand[]; magSchrijven: boolean }) {
-  const [deel, setDeel] = useState<"kennisbank" | "gedrag">("kennisbank");
+  const [deel, setDeel] = useState<Deel>("kennisbank");
+
+  // De keuze staat in het adres, zodat een link naar het gedrag-deel ook echt
+  // daar uitkomt: te bewaren als bladwijzer, te delen, en te fotograferen door
+  // de schermfoto-route (die kan niet klikken).
+  useEffect(() => {
+    const uit = new URLSearchParams(window.location.search).get("deel");
+    if (uit === "gedrag" || uit === "kennisbank") setDeel(uit);
+  }, []);
+
+  function kies(nieuw: Deel) {
+    setDeel(nieuw);
+    const adres = new URL(window.location.href);
+    adres.searchParams.set("deel", nieuw);
+    window.history.replaceState(null, "", adres.toString());
+  }
   const [filter, setFilter] = useState<Discipline | "alles">("alles");
 
   const criteria = filter === "alles" ? CRITERIA : CRITERIA.filter((c) => c.discipline === filter);
@@ -128,13 +145,13 @@ export default function PaginaLabClient({ klanten, magSchrijven }: { klanten: Kl
         <Veldrij>
           <button
             className={"btn btn-klein " + (deel === "kennisbank" ? "btn-primary" : "btn-ghost")}
-            onClick={() => setDeel("kennisbank")}
+            onClick={() => kies("kennisbank")}
           >
             Kennisbank
           </button>
           <button
             className={"btn btn-klein " + (deel === "gedrag" ? "btn-primary" : "btn-ghost")}
-            onClick={() => setDeel("gedrag")}
+            onClick={() => kies("gedrag")}
           >
             Gedrag: Analytics en Clarity
           </button>
