@@ -85,7 +85,7 @@ en Strandtuin ook vindt.
 bovenop te zetten, dus twee keer klikken geeft geen dubbele taken. En de NOC-cockpit blijft
 intussen gewoon staan zoals hij was.
 
-## Stap 3: de voordeur omzetten (klaar aan mijn kant, 19-08-2026)
+## Stap 3: de voordeur omzetten (klaar, 19-08-2026)
 
 **Wat er gebeurt.** Het NOC-adres gaat aan dezelfde gegevens hangen als het Pingwin-dashboard, en
 het slot uit stap 1 gaat daar aan. Vanaf dat moment kijken beide adressen naar dezelfde
@@ -175,15 +175,15 @@ database en staat jouw gast daar niet in.
 
 - Stap 1: klaar op 18-08-2026. Het slot staat in de code en slaapt tot het ergens aangezet wordt.
 - Stap 2: klaar op 18-08-2026. Nationaal Oogcentrum staat als klant `noc` in het Pingwin-dashboard.
-- Stap 3: gebouwd op 19-08-2026. De voordeur gedraagt zich als voordeur en het dashboard kan hem
-  zelf controleren; wat er nog moet gebeuren is de omzetting in Vercel hierboven.
+- Stap 3: klaar op 19-08-2026. Maarten heeft de omzetting in Vercel gedaan; de controle op
+  `/admin/verhuizen` staat groen (dezelfde gegevens, en het adres toont alleen `noc`).
 - Stap 4: klaar op 19-08-2026.
-- Stap 5: klaar op 19-08-2026. Werkt zodra stap 3 gedaan is.
+- Stap 5: klaar op 19-08-2026. Alleen nog een gast aanmaken zodra Maarten zegt wie het wordt.
 
-**Alles bij elkaar staat of valt met die ene omzetting in Vercel bij stap 3.** Zolang die niet
-gedaan is, heeft de voordeur zijn eigen database: veilig om te delen (er staat alleen NOC in),
-maar het is niet hetzelfde werk als in je dashboard, en een gast die je hier aanmaakt kan daar
-niet inloggen.
+**Alle vijf de stappen zijn gedaan.** Er is nog één administratie voor Nationaal Oogcentrum, met
+twee ingangen: het Pingwin-dashboard (tussen de andere klanten) en `noc-seo-cockpit.vercel.app`
+(alleen NOC, geschikt om te delen). De oude NOC-database blijft als bevroren reservekopie staan
+tot Maarten zegt dat hij weg mag.
 
 ## Technisch voetnootje
 
