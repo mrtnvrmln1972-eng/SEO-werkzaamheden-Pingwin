@@ -8,6 +8,7 @@ import { splitCardInfo, cardInfoHtml } from "../../../../lib/card-info";
 import { mdToHtml } from "../../../../lib/markdown";
 import { openMailProgramma } from "../../../../lib/mailto-openen";
 import PaginaDossier from "./PaginaDossier";
+import { PijlRechts } from "../../../_ui/Pijl";
 
 export type Action = {
   id: string; type: string; reason?: string;
@@ -240,7 +241,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
                         <span className={"tvk-wie " + (t.wie === "Dev" ? "wie-dev" : "wie-seo")}>{t.wie || "SEO"}</span>
                         <span className="tvk-taak">{t.taak}</span>
                         <button type="button" className={"tvk-pill" + (added ? " tvk-pill-done" : "") + (b ? " busy" : "") + (addErr === i ? " tvk-pill-err" : "")} disabled={b || added} onClick={() => addOne(i, t)} title={added ? "Er staat al een kaart voor deze pagina in het bord" : addErr === i ? "Toevoegen mislukt, klik om opnieuw te proberen" : "Kopieer deze taak naar de weekplanning"}>
-                          {added ? "✓ Staat in de weekplanning" : b ? "…" : addErr === i ? "Mislukt, opnieuw" : "→ Weekplanning"}
+                          {added ? "✓ Staat in de weekplanning" : b ? "…" : addErr === i ? "Mislukt, opnieuw" : <><PijlRechts /> Weekplanning</>}
                         </button>
                       </div>
                       <div className="tvk-links">
@@ -306,7 +307,7 @@ export default function ActionCard({ action, slug, thread, onExecuted, onGoToPag
           )}
           <div className="act-jump">
             {result.taskIds && result.taskIds.length > 0 && onGoToTask && <button type="button" className="btn btn-klein" onClick={() => onGoToTask(result.taskIds![0])}>Bekijk in Taken →</button>}
-            {action.url && onGoToPage && <button type="button" className="btn btn-klein" onClick={() => onGoToPage(action.url!)}>Open pagina →</button>}
+            {action.url && onGoToPage && <button type="button" className="btn btn-klein" onClick={() => onGoToPage(action.url!)}>Open pagina <PijlRechts /></button>}
           </div>
         </div>
       )}

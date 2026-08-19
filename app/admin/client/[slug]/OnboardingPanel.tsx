@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BLOK_LABEL, BLOK_UITLEG, type Blok, type Stand, type StapStand } from "../../../../lib/onboarding-stappen";
 import type { RunStand, Regel } from "../../../../lib/onboarding-run";
 import Voortgang from "./Voortgang";
+import { PijlRechts } from "../../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // ONBOARDING: ÉÉN SCHERM MET DE VASTE VOLGORDE
@@ -174,7 +175,7 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
                     )}
                   </div>
                   {s.tab && s.staat !== "af" && (
-                    <button type="button" className="btn btn-klein" onClick={() => onGaNaar(s.tab!)}>Ga erheen →</button>
+                    <button type="button" className="btn btn-klein" onClick={() => onGaNaar(s.tab!)}>Ga erheen <PijlRechts /></button>
                   )}
                 </li>
               ))}

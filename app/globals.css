@@ -1329,11 +1329,8 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .pages-plan:focus { border-color: var(--kleur-rand-accent); }
 .pages-plan-view { border: 1px solid var(--kleur-rand); border-left: 3px solid var(--brand-teal); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); font-size: var(--type-bijschrift); line-height: 1.55; color: var(--dark); background: var(--kleur-kaart); max-width: 1040px; }
 .pages-plan-view.muted { color: var(--kleur-tekst-zacht); }
-.pages-plan-view p { margin: 0 0 var(--ruimte-naast); }
-.pages-plan-view ul { margin: var(--ruimte-krap) 0 var(--ruimte-naast); padding-left: var(--s-5); }
-.pages-plan-view li { margin: var(--ruimte-krap) 0; }
-.pages-plan-view h1, .pages-plan-view h2, .pages-plan-view h3 { font-size: var(--type-lopend); margin: var(--ruimte-naast) 0 var(--ruimte-krap); }
-.pages-plan-view strong { color: var(--dark); }
+/* Alinea's, opsommingen en koppen: uit het gedeelde blok bovenaan (dit blok
+   draagt de klasse `md`, dus het hoort er niets van over te doen). */
 /* Taken voor deze pagina (spiegel uit de Werkzaamheden-tab) */
 .page-tasks { margin-top: var(--ruimte-regel); }
 .page-tasks-head { font-size: var(--type-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--kleur-tekst-stil); margin-bottom: var(--ruimte-krap); }
@@ -1679,10 +1676,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .pch-cluster-head { display: flex; align-items: center; gap: var(--ruimte-naast); font-weight: 600; font-size: var(--type-bijschrift); }
 .pch-cluster-url { word-break: break-all; }
 .pch-cluster-advice { font-size: var(--type-bijschrift); margin-top: var(--ruimte-krap); line-height: 1.5; color: var(--dark); }
-.pch-cluster-advice p { margin: 0 0 var(--ruimte-krap); }
-.pch-cluster-advice ul { margin: var(--ruimte-krap) 0 var(--ruimte-krap); padding-left: var(--ruimte-groep); }
-.pch-cluster-advice li { margin: var(--ruimte-krap) 0; }
-.pch-cluster-advice strong { color: var(--kleur-kop); }
+/* Lopende tekst: uit het gedeelde blok bovenaan (dit blok draagt `md`). */
 /* Meegegeven cluster-advies (vertrekpunt-kaart op de ontvangende pagina) */
 .page-chat-incoming { border: 1px solid var(--kleur-rand); border-left: 3px solid var(--brand-blue); border-radius: var(--ronding-knop); padding: var(--ruimte-groep) var(--s-5); margin: 0 0 var(--ruimte-regel); background: var(--brand-blue-light); }
 .pchi-item { margin-top: var(--ruimte-naast); }
@@ -1831,7 +1825,11 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .dev-date { font-family: var(--letter); font-size: var(--type-bijschrift); padding: var(--ruimte-krap) var(--ruimte-naast); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); color: var(--dark); background: var(--kleur-kaart); width: 100%; }
 .dev-date:focus { border-color: var(--kleur-rand-accent); outline: none; }
 .cockpit-card {
-  background: var(--kleur-kaart); border-radius: var(--ronding-kaart); padding: var(--s-5) var(--s-6); margin-bottom: var(--s-5);
+  /* De ruimte tússen twee kaarten is de ruimte tussen twee blokken, dus de naam
+     daarvan en niet een losse trede van de schaal. Stond op --s-5 (20px) terwijl
+     --ruimte-blok 24px is; daardoor plakten de kaarten op de klantpagina aan
+     elkaar terwijl elders wél de volle ruimte stond. */
+  background: var(--kleur-kaart); border-radius: var(--ronding-kaart); padding: var(--ruimte-kaart); margin-bottom: var(--ruimte-blok);
   border: 1px solid var(--kleur-rand-zacht); box-shadow: var(--diepte-kaart);
   transition: box-shadow .18s ease, transform .18s ease;
 }
@@ -2301,10 +2299,7 @@ button.ck-collapse-head {
 .ktr-explain-btn:hover:not(:disabled) { text-decoration: underline; }
 .ktr-explain-btn:disabled { color: var(--kleur-tekst-stil); cursor: default; }
 .ktr-explain-body { margin-top: var(--ruimte-krap); font-size: var(--type-bijschrift); line-height: 1.5; color: var(--dark); }
-.ktr-explain-body p { margin: 0 0 var(--ruimte-krap); }
-.ktr-explain-body ul { margin: var(--ruimte-krap) 0 var(--ruimte-krap); padding-left: var(--ruimte-groep); }
-.ktr-explain-body li { margin: var(--ruimte-krap) 0; }
-.ktr-explain-body strong { color: var(--dark); }
+/* Lopende tekst: uit het gedeelde blok bovenaan (dit blok draagt `md`). */
 .ktr-chart { position: relative; }
 .ktr-svg { width: 100%; height: 52px; display: block; overflow: visible; }
 .ktr-hoverline { stroke: rgba(0,0,0,0.22); stroke-width: 1; stroke-dasharray: 2 2; }
@@ -3066,13 +3061,9 @@ button.org-sec-kop:hover { color: var(--kleur-accent-diep); }
 .hh-modal-close:hover { color: var(--dark); }
 .hh-modal-title { font-size: var(--type-kaartkop); line-height: var(--regel-kaartkop); font-weight: 700; color: var(--dark); margin: var(--ruimte-krap) 0 var(--ruimte-naast); }
 .hh-modal-body { font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst); }
-.hh-modal-body p { margin: 0 0 var(--ruimte-regel); }
-.hh-modal-body p:last-child { margin-bottom: 0; }
-.hh-modal-body ul { margin: 0 0 var(--ruimte-regel); padding-left: var(--s-5); display: flex; flex-direction: column; gap: var(--ruimte-krap); }
-.hh-modal-body li { margin: 0; }
+/* Lopende tekst: uit het gedeelde blok bovenaan (dit blok draagt `md`). */
 .hh-modal-body .hh-h { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 700; color: var(--kleur-accent-diep); text-transform: uppercase; letter-spacing: var(--spatie-label); margin: var(--ruimte-groep) 0 var(--ruimte-naast); padding-bottom: var(--ruimte-krap); border-bottom: 1px solid var(--orange-light, var(--grad-perzik)); }
 .hh-modal-body .hh-h:first-child { margin-top: var(--ruimte-krap); }
-.hh-modal-body strong { color: var(--dark); }
 
 /* Type-specifieke secties in het bedrijfsgegevens-formulier (artsen/diensten/webshop). */
 /* Ontbrekende-maar-nodige velden: zichtbaar in het rood, niet verstopt. */
@@ -3785,10 +3776,7 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 /* Klikken op een punt opent het bewerkveld; dat mag je zien. */
 .bl-tekst-klik { cursor: text; border-radius: var(--ronding-klein); }
 .bl-tekst-klik:hover { background: var(--kleur-accent-vlak); }
-.bl-tekst p { margin: 0 0 var(--ruimte-krap); }
-.bl-tekst p:last-child { margin-bottom: 0; }
-.bl-tekst ul, .bl-tekst ol { margin: var(--ruimte-krap) 0; padding-left: var(--s-5); }
-.bl-tekst a { color: var(--kleur-accent-diep); text-decoration: underline; word-break: break-word; }
+/* Lopende tekst: uit het gedeelde blok bovenaan (dit blok draagt `md`). */
 .bl-mail { display: flex; gap: var(--ruimte-naast); align-items: center; flex-wrap: wrap; max-width: 720px; }
 .bl-mail .wp-docdrop-input { flex: 1; min-width: 220px; }
 .bl-mail-label { font-size: var(--type-label); font-weight: 700; color: var(--kleur-tekst-stil); }
@@ -3805,8 +3793,7 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .nt-veld:empty::before { content: attr(data-placeholder); color: var(--kleur-tekst-stil); }
 /* Dichtgeklapt zie je de eerste regels, zodat je de juiste notitie herkent. */
 .nt-voorproef { padding: 0 var(--ruimte-groep) var(--ruimte-regel) var(--s-8); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); cursor: pointer; max-height: 44px; overflow: hidden; }
-.nt-voorproef p, .nt-voorproef ul, .nt-voorproef ol { margin: 0; padding-left: var(--ruimte-groep); }
-.nt-voorproef a { color: var(--kleur-accent-diep); }
+/* Lopende tekst: uit het gedeelde blok bovenaan (dit blok draagt `md`). */
 .nt-weg-vraag { display: inline-flex; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-label); color: var(--kleur-tekst-stil); }
 .bl-punten { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-naast); max-width: 720px; }
 .bl-punten li { display: flex; align-items: flex-start; gap: var(--ruimte-naast); border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); padding: var(--ruimte-naast) var(--ruimte-regel); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); background: var(--kleur-kaart); }
@@ -4059,7 +4046,7 @@ body.zp-sleept { user-select: none; cursor: grabbing; }
 .wp-mail-blok-kop { display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-naast); padding: var(--ruimte-naast) var(--ruimte-regel); border-bottom: 1px solid var(--kleur-rand-zacht); font-size: var(--type-label); font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--kleur-tekst-stil); }
 .wp-mail-blok-body { padding: var(--ruimte-regel); max-height: 320px; overflow-y: auto; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); outline: none; }
 .wp-mail-blok-body:focus { background: var(--kleur-kaart); box-shadow: inset 0 0 0 2px var(--kleur-accent-vlak); }
-.wp-mail-blok-body h3, .wp-mail-blok-body h4, .wp-mail-blok-body h5 { color: var(--kleur-accent-diep); }
+/* Koppen: uit het gedeelde blok bovenaan (dit blok draagt `md`). */
 .wp-mail-blok-body table { width: 100%; border-collapse: collapse; }
 .wp-mail-blok-body th, .wp-mail-blok-body td { border: 1px solid var(--kleur-rand-zacht); padding: var(--ruimte-krap) var(--ruimte-naast); text-align: left; }
 /* "Zet dit blok in een mail" onder een los antwoord in de chat. */
@@ -4139,7 +4126,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-chat-wis:hover { color: var(--danger); background: var(--kleur-accent-vlak); }
 .wp-chat-vraag { align-self: flex-end; max-width: 85%; background: var(--kleur-accent-vlak); border: 1px solid var(--kleur-accent); border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-naast); font-size: var(--type-bijschrift); }
 .wp-chat-antwoord { align-self: stretch; background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-naast); font-size: var(--type-bijschrift); line-height: 1.55; }
-.wp-chat-antwoord ul { margin: var(--ruimte-krap) 0 var(--ruimte-krap) var(--ruimte-groep); padding: 0; }
+/* Opsommingen: uit het gedeelde blok bovenaan (dit blok draagt `md`). */
 /* Een mislukte vraag, gemeld op de plek waar je hem stelde. */
 .wp-chat-fout { margin-top: var(--ruimte-naast); display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-naast); flex-wrap: wrap; background: var(--kleur-fout-vlak); border: 1px solid var(--kleur-fout-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); }
 .wp-chat-fout-tekst { font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-fout); flex: 1 1 12rem; }
@@ -4357,7 +4344,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 /* Jouw eigen vraag: compact, alles achter elkaar, kernwoorden vet zodat je hem
    in één oogopslag terugvindt. De witregels kostten een half scherm per gesprek. */
 .ovc-bubble-vraag { white-space: normal; }
-.ovc-bubble-vraag strong { font-weight: 700; }
 
 /* Cijfers op de kaart: uit de meting, één vaste plek, dus nooit meer twee
    metingen die elkaar tegenspreken. */
@@ -4934,8 +4920,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .opr-punten strong { color: var(--dark); }
 /* De uitgebreide bevindingen krijgen hetzelfde ritme als de rest van de kaart. */
 .cannibal-summary.md { font-size: var(--type-bijschrift); line-height: 1.65; color: var(--kleur-tekst-zacht); max-width: 72ch; margin-top: var(--ruimte-regel); }
-.cannibal-summary.md li { margin-bottom: var(--ruimte-naast); }
-.cannibal-summary.md strong { color: var(--dark); }
+/* Opsommingen en vet: uit het gedeelde blok bovenaan. */
 /* De knoppenrij van een kaart: netjes rechts, altijd op één hoogte. */
 .opr-kaart-acties { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; margin-left: auto; }
 .opr-kaart-sam { cursor: pointer; font-weight: 800; font-size: var(--type-kaartkop); line-height: var(--regel-kaartkop); color: var(--kleur-accent); list-style: none; }
@@ -5227,25 +5212,28 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   font-weight: 700; color: var(--kleur-accent-diep);
 }
 
-/* Het verhaal: eerste regel de conclusie, daaronder de stappen als bullets. */
-.pd-verhaal { font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst); max-width: 72ch; }
-.pd-verhaal p { margin: 0; }
-.pd-verhaal p + ul { margin-top: var(--ruimte-regel); }
-.pd-verhaal ul { margin: 0; padding: 0; list-style: none; }
-.pd-verhaal li { position: relative; padding-left: var(--s-5); margin: var(--ruimte-naast) 0; }
-.pd-verhaal li:first-child { margin-top: 0; }
-.pd-verhaal li::before {
-  content: ""; position: absolute; left: 5px; top: 9px;
-  width: 6px; height: 6px; border-radius: var(--ronding-pil); background: var(--kleur-accent);
-}
+/* Het verhaal: eerste regel de conclusie, daaronder de stappen als bullets.
+   Alleen de leesbreedte staat hier; alinea's, opsommingen, het opsommingsteken
+   en de links komen uit het gedeelde blok bovenaan, want dit blok krijgt naast
+   `pd-verhaal` ook de klasse `md` mee.
 
-/* DE standaardlink in dit blok: oranje en onderstreept, zoals in de chat. */
-.pd-verhaal a, .pd-link, .pd-tijdlijn a {
+   Hier stond tot 19-08-2026 een tweede setje: een eigen ul, een eigen li met
+   eigen inspringing, en een eigen `::before` met een rond oranje bolletje. Dat
+   won niet en verloor ook niet, want de cascade kiest per eigenschap: het
+   gedeelde `.md ul > li::before` leverde de tekst van het opsommingsteken (een
+   oranje chevron) en dit blok leverde de 6 bij 6 pixel achtergrond met volledige
+   ronding eromheen. Op het scherm zag je daardoor twee halve tekens boven elkaar
+   tegen de linkerrand: een bolletje met een chevron die eronderuit stak. */
+.pd-verhaal { font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst); max-width: 72ch; }
+
+/* DE standaardlink buiten het verhaal: oranje en onderstreept, zoals in de chat.
+   Binnen het verhaal doet het gedeelde blok dit al. */
+.pd-link, .pd-tijdlijn a {
   color: var(--kleur-accent-diep);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.pd-verhaal a:hover, .pd-link:hover, .pd-tijdlijn a:hover { color: var(--kleur-accent); }
+.pd-link:hover, .pd-tijdlijn a:hover { color: var(--kleur-accent); }
 .pd-link-klant { font-weight: 600; }
 .pd-link-uit { color: var(--kleur-tekst-stil); }
 
@@ -6488,13 +6476,8 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
    .rk-punt-meer p en de opsommingen de gewone maat van de body, waardoor
    dezelfde tekst in twee groottes door elkaar liep. Lezen kost dan moeite die
    niets met de inhoud te maken heeft. */
-.rk-volledig p,
-.rk-volledig li,
-.rk-volledig ul,
-.rk-volledig ol { font-size: var(--type-lopend); line-height: 23px; color: var(--kleur-tekst-zacht); }
-.rk-volledig strong { color: var(--kleur-kop); }
-.rk-volledig ol, .rk-volledig ul { padding-left: var(--s-5); margin: var(--ruimte-naast) 0 var(--ruimte-regel); }
-.rk-volledig li { margin-bottom: var(--ruimte-naast); }
+/* Lopende tekst: uit het gedeelde blok bovenaan (dit blok draagt `md`). Hier
+   stond een eigen set met een losse regelhoogte van 23 pixels. */
 .rk-geen-tekst { font-style: italic; }
 .om-kop {
   padding: var(--ruimte-naast) var(--ruimte-regel) 0;
@@ -7895,8 +7878,6 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before { content: "▾"
 }
 .tw-item-af { opacity: 0.65; }
 .tw-tekst { color: var(--kleur-tekst); }
-.tw-tekst p:first-child { margin-top: 0; }
-.tw-tekst p:last-child { margin-bottom: 0; }
 .tw-meta {
   display: flex; align-items: center; gap: var(--ruimte-regel); flex-wrap: wrap;
   margin-top: var(--ruimte-naast); font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil);

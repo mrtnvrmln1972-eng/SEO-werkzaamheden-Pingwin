@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { PijlRechts } from "../../../_ui/Pijl";
 
 type Msg = { role: "user" | "assistant"; content: string; image?: string; images?: string[] };
 
@@ -318,7 +319,7 @@ export default function ChatPanel({ slug, configured, initialMessages }: { slug:
                   <button type="button" className="btn btn-klein" onClick={newThread}>+ Nieuw</button>
                   {messages.length >= 2 && (
                     <button type="button" className="btn btn-klein" onClick={saveStrategy} disabled={strategyBusy} title="Legt dit hele gesprek (met conclusie en actiepunten) vast als sessie onder Site-wide strategie, bovenaan het Taken-tabblad.">
-                      {strategyBusy ? "Vastleggen…" : "→ Site-wide strategie"}
+                      {strategyBusy ? "Vastleggen…" : <><PijlRechts /> Site-wide strategie</>}
                     </button>
                   )}
                 </div>

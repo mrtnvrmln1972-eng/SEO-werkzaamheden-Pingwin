@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import HelpHint from "./HelpHint";
 import FundamentActieKnop, { type FundamentActieKind } from "./FundamentActieKnop";
+import { PijlRechts } from "../../../_ui/Pijl";
 import { BLOK_LABEL, type Blok, type Stand, type StapStand } from "../../../../lib/onboarding-stappen";
 
 // ═══════════════════════════════════════════════════════════
@@ -73,10 +74,10 @@ function Tegel({ s, onGaNaar, extra, ankerHref }: {
         <div className="fnd-tegel-acties">
           {extra}
           {ankerHref ? (
-            <a className="btn btn-ghost btn-klein" href={ankerHref}>{s.staat === "af" ? "Bekijken" : "Openen"} →</a>
+            <a className="btn btn-ghost btn-klein" href={ankerHref}>{s.staat === "af" ? "Bekijken" : "Openen"} <PijlRechts /></a>
           ) : s.tab ? (
             <button type="button" className="btn btn-ghost btn-klein" onClick={() => onGaNaar(s.tab!)}>
-              {s.staat === "af" ? "Bekijken" : "Openen"} →
+              {s.staat === "af" ? "Bekijken" : "Openen"} <PijlRechts />
             </button>
           ) : null}
         </div>

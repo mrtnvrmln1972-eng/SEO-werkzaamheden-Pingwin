@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Voortgang from "./Voortgang";
+import { PijlRechts } from "../../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // WAT DRAAIT ER NU: ZICHTBAAR OP ELK TABBLAD
@@ -82,7 +83,7 @@ export default function KlussenChip({ slug, onGaNaar }: { slug: string; onGaNaar
               />
               {k.tab && onGaNaar && (
                 <button type="button" className="btn btn-klein" onClick={() => { setOpen(false); onGaNaar(k.tab!); }}>
-                  Ga erheen →
+                  Ga erheen <PijlRechts />
                 </button>
               )}
             </div>

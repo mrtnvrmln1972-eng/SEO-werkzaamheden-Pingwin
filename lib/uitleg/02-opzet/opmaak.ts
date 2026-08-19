@@ -59,7 +59,16 @@ export const BLOKKEN: Uitklapper[] = [
         "alles doorheen gaat.\n\n" +
         "Een controle vóór elke bouw houdt het zo: hij leest élke opmaakregel die ná de gedeelde staat en " +
         "stopt de bouw zodra iemand er weer een eigen setje bijzet voor een kop, een opsomming, een link " +
-        "of een tabel.",
+        "of een tabel.\n\n" +
+        "Die controle keek tot 19-08-2026 alleen naar regels waar de gedeelde naam lettérlijk in stond, en " +
+        "dat is precies de helft van het verhaal: de gewone manier waarop een blok meedoet, is een tweede " +
+        "naam in de code. Daardoor groeiden er veertien blokken met een eigen setje eroverheen. Op de " +
+        "pagina-kaart was dat ook echt te zien: het opsommingsteken in \"Waar deze pagina staat\" waren " +
+        "twee halve tekens over elkaar, een rond bolletje met een chevron die eronderuit stak. De browser " +
+        "kiest namelijk per eigenschap, dus de tekst van het teken kwam uit de gedeelde opmaak en het " +
+        "bolletje eromheen uit het blok zelf. Alle veertien staan nu op de gedeelde opmaak, en de controle " +
+        "telt vanaf nu élk blok na. Eén uitzondering blijft, met reden: een e-mail is bewust simpel, met " +
+        "gewone bullets en blauwe links, want dat is wat een mailprogramma ervan maakt.",
     },
     {
       titel: "Meters die maar één kant op kunnen",

@@ -10,6 +10,7 @@ import {
   type TaakItem, type DagTaak, COLORS, blokKleur, PRIORITEITEN, HERINNERING_MIN_PRESETS,
   shiftDate, toKey, fmtDatumLabel, fmtTaakBadge, geldtOp,
 } from "../../../lib/agenda-items";
+import { PijlLinks, PijlRechts } from "../../_ui/Pijl";
 
 type Block = {
   id: number;
@@ -529,9 +530,9 @@ export default function AgendaClient() {
     <div className="ag-wrap">
       <div className="ag-toolbar">
         <div className="ag-weekbar">
-          <button className="btn btn-ghost btn-klein" onClick={() => shiftWeek(-1)} aria-label="Vorige week">←</button>
+          <button className="btn btn-ghost btn-klein" onClick={() => shiftWeek(-1)} aria-label="Vorige week"><PijlLinks /></button>
           <span className="ag-weekbar-label">{weekLabel}</span>
-          <button className="btn btn-ghost btn-klein" onClick={() => shiftWeek(1)} aria-label="Volgende week">→</button>
+          <button className="btn btn-ghost btn-klein" onClick={() => shiftWeek(1)} aria-label="Volgende week"><PijlRechts /></button>
           <button className="btn btn-ghost btn-klein" onClick={() => { setWeekStart(mondayOf(new Date())); setMobileDay((new Date().getDay() + 6) % 7); }}>
             {isMobile ? "Vandaag" : "Deze week"}
           </button>

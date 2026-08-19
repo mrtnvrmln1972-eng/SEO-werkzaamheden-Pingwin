@@ -188,6 +188,70 @@ proef(
     ? `Deze regel(s) overschrijven het gedeelde blok:\n     | ${echtFout.slice(0, 3).map((r) => r.trim().slice(0, 110)).join("\n     | ")}\n     | Zet de opmaak in het gedeelde blok bovenaan, niet hier.`
     : "",
 );
+// ── En het gat dat de controle hierboven openliet ──────────────────────────
+// Die kijkt naar CSS-regels waar `.md` letterlijk in de selector staat. Maar de
+// gewone manier waarop een blok meedoet, is een tweede klasse in de code:
+// `<div className="pd-verhaal md">`. De CSS heet dan gewoon `.pd-verhaal`, dus
+// de controle hierboven zag er niets van, en er groeiden dertien blokken met een
+// eigen setje alinea's, opsommingen en links bovenop het gedeelde blok.
+//
+// Wat dat op het scherm doet, is erger dan "het wijkt af", want de cascade kiest
+// per eigenschap. Bij het dossierblok op de pagina-kaart leverde het gedeelde
+// blok de tekst van het opsommingsteken (een oranje chevron) en het eigen setje
+// de ronde oranje achtergrond eromheen. Resultaat: twee halve tekens boven
+// elkaar tegen de linkerrand. Maarten zag dat op 19-08-2026 zelf en beschreef het
+// als "daar vallen gewoon dingen weg links". Precies daarom telt deze controle
+// vanaf nu élk blok na, en niet een vaste lijst selectors.
+const COMBI = /class(?:Name)?=(?:"([^"]*)"|\{`([^`]*)`\})/g;
+const metgezellen = new Set<string>();
+const loopDoor = (map: string) => {
+  for (const naam of readdirSync(map, { withFileTypes: true })) {
+    const pad = join(map, naam.name);
+    if (naam.isDirectory()) { loopDoor(pad); continue; }
+    if (!/\.tsx?$/.test(naam.name)) continue;
+    const inhoud = readFileSync(pad, "utf8");
+    for (const m of inhoud.matchAll(COMBI)) {
+      const klassen = (m[1] ?? m[2] ?? "").split(/\s+/).filter(Boolean);
+      if (!klassen.some((k) => k === "md" || k === "chat-md" || k === "focus-rich")) continue;
+      for (const k of klassen) {
+        if (["md", "chat-md", "focus-rich"].includes(k)) continue;
+        if (/[^\w-]/.test(k)) continue;   // een stukje sjabloon, geen klasse
+        metgezellen.add(k);
+      }
+    }
+  }
+};
+loopDoor(join(__dirname, "..", "app"));
+
+// Eén uitzondering, met reden, en de lijst mag alleen korter worden.
+// Een e-mail is bewust géén dashboardtekst: simpele bullets, blauwe links, geen
+// oranje chevrons. Dat staat zo in CLAUDE.md ("e-mail juist simpel"), dus dat
+// blok hoort een eigen, kleinere opmaak te hebben.
+const EIGEN_OPMAAK_MAG = new Set(["mail-edit"]);
+
+const eigenBovenopGedeeld: string[] = [];
+for (const klasse of metgezellen) {
+  if (EIGEN_OPMAAK_MAG.has(klasse)) continue;
+  // `table` doet hier niet mee: het gedeelde blok maakt `.md-table` op en niet
+  // een kale tabel, dus een blok dat HTML van buiten toont (een mail) mag een
+  // kale tabel wél op de breedte zetten.
+  const patroon = new RegExp(`\\.${klasse}(?![\\w-])[^,{]*?\\s>?\\s*${ONDERDEEL.replace("|table", "")}(?:[:.][\\w-]+)*\\s*[,{]`);
+  for (const regel of css.split("\n")) {
+    if (!regel.includes("{") || regel.trim().startsWith("/*") || regel.trim().startsWith("*")) continue;
+    // De accolade hoort erbij: het patroon eindigt op een komma of een accolade,
+    // en zonder die laatste vindt hij alleen selectors met meerdere delen.
+    const sel = `${regel.split("{")[0]}{`;
+    if (patroon.test(sel)) eigenBovenopGedeeld.push(regel.trim());
+  }
+}
+proef(
+  "geen enkel md-blok maakt lopende tekst zelf nog een keer op",
+  eigenBovenopGedeeld.length === 0,
+  eigenBovenopGedeeld.length
+    ? `Deze regel(s) staan bovenop het gedeelde blok:\n     | ${eigenBovenopGedeeld.slice(0, 5).map((r) => r.slice(0, 110)).join("\n     | ")}\n     | Haal ze weg; alinea's, opsommingen, koppen en links komen uit het blok bovenaan.`
+    : "",
+);
+
 // De kern van het gedeelde blok: kop, bullet, link en tabel staan er voor alle
 // drie de soorten tekst tegelijk in (gerenderd, chat, zelf getypt).
 for (const selector of [
