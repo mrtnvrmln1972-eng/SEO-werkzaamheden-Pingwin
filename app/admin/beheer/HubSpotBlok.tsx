@@ -41,7 +41,7 @@ type Stand = {
   /** Wat de laatste ronde opleverde. */
   uitkomst?: {
     tijd: string; ok: boolean; gelezen: number; nieuw: number; bijgewerkt: number;
-    melding: string; volledig: boolean;
+    melding: string; volledig: boolean; veld?: string; waarde?: string; eigenaar?: string;
   } | null;
 };
 
@@ -192,6 +192,9 @@ export default function HubSpotBlok() {
                         {stand.uitkomst.volledig ? " (alles opgehaald)" : " (alleen wat gewijzigd was)"},
                         {" "}{stand.uitkomst.nieuw} nieuw, {stand.uitkomst.bijgewerkt} bijgewerkt.
                         {stand.uitkomst.melding ? ` ${stand.uitkomst.melding}` : ""}
+                        {stand.uitkomst.veld !== undefined && (
+                          <span className="muted"> Gezocht op: {stand.uitkomst.veld || "geen veld"} = {stand.uitkomst.waarde || "geen waarde"}.</span>
+                        )}
                       </span>
                     )}
                   </td>

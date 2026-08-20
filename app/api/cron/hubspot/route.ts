@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { syncHubspot } from "../../../../lib/hubspot-leads";
+import { syncHubspot, getHubspotInstelling } from "../../../../lib/hubspot-leads";
 import { hubspotConfigured } from "../../../../lib/hubspot";
 
 export const runtime = "nodejs";
@@ -22,7 +22,9 @@ export async function GET(req: NextRequest) {
   }
   try {
     const res = await syncHubspot();
-    return NextResponse.json(res);
+    // De instelling gaat mee terug: zo is van buiten te zien waarop deze ronde
+    // gezocht heeft, in plaats van alleen dat hij niets vond.
+    return NextResponse.json({ ...res, instelling: await getHubspotInstelling() });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
   }

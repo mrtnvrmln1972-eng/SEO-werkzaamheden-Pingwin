@@ -414,6 +414,13 @@ export async function syncHubspot(opties: { volledig?: boolean } = {}): Promise<
   // Altijd bewaren, ook als de ronde mislukte: juist dán wil je het lezen.
   await setSetting(SETTING_LAATSTE_UITKOMST, JSON.stringify({
     tijd: new Date().toISOString(),
+    // Waarop hij gezocht heeft. Zonder dit is "niets gevonden" niet te
+    // onderscheiden van "met het verkeerde filter gezocht", en dat kostte op
+    // 20-08-2026 een middag: het scherm liet een gevuld filter zien terwijl de
+    // ronde er een leeg filter uit las.
+    veld: instelling.filterVeld,
+    waarde: instelling.filterWaarde,
+    eigenaar: instelling.eigenaar,
     ok: uitkomst.ok,
     gelezen: uitkomst.gelezen,
     nieuw: uitkomst.nieuweLeads,
