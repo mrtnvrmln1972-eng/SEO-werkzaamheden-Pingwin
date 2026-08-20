@@ -299,19 +299,20 @@ export default function HubSpotBlok() {
 
           {(stand.opruimen?.length || 0) > 0 && (
             <div className="created-box" style={{ marginTop: "var(--s-5)" }}>
-              <div className="created-title">{stand.opruimen?.length} leads die hier waarschijnlijk niet horen</div>
+              <div className="created-title">{stand.opruimen?.length} bedrijven die hier niet horen</div>
               <p>
-                Deze zijn door een ophaalronde aangemaakt en er is verder niets mee gedaan: geen dossier, geen
-                document, geen gesprek en geen bedrag. Meestal zijn het oude deals of contacten die per ongeluk
-                meekwamen. Weggooien raakt alleen deze; alles waar je wél aan gewerkt hebt blijft staan.
+                Deze zijn door een ophaalronde op je <strong>deals</strong> aangemaakt, staan als lead of als
+                &ldquo;niet doorgegaan&rdquo; in je lijst, hebben geen inlog en geen bedrag, en er is verder niets mee
+                gedaan: geen dossier, geen document, geen gesprek. Meestal zijn het oude klusjes uit je HubSpot-historie.
+                Weggooien raakt alleen deze; je eigen klanten en alles waar je wél aan gewerkt hebt blijven staan.
               </p>
               <p className="muted">{stand.opruimen?.slice(0, 12).join(", ")}{(stand.opruimen?.length || 0) > 12 ? ` en nog ${(stand.opruimen?.length || 0) - 12}` : ""}</p>
               <button className="btn btn-danger" disabled={!!bezig}
                 onClick={() => {
-                  if (!window.confirm(`${stand.opruimen?.length} leads verwijderen? Dit kan niet ongedaan gemaakt worden.`)) return;
+                  if (!window.confirm(`${stand.opruimen?.length} bedrijven verwijderen? Dit kan niet ongedaan gemaakt worden.`)) return;
                   stuur({ actie: "opruimen" }, "opruimen");
                 }}>
-                {bezig === "opruimen" ? "Bezig met opruimen…" : `Verwijder deze ${stand.opruimen?.length} leads`}
+                {bezig === "opruimen" ? "Bezig met opruimen…" : `Verwijder deze ${stand.opruimen?.length}`}
               </button>
             </div>
           )}

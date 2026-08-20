@@ -713,16 +713,18 @@ async function gesprekkenNaarDossier(slug: string, id: string, van = "deals"): P
 // ═══════════════════════════════════════════════════════════
 // Op 19-08-2026 stond de koppeling nog op deals en was er geen pijplijn gekozen.
 // Gevolg: élke deal in het HubSpot-account werd een lead, ook tien jaar oude
-// klusjes ("AdWords Diabetes Centrale"), en er stonden er in één ronde 127 in de
-// klantenlijst. Twee dingen zijn daarna veranderd: zonder gekozen pijplijn (of
+// klusjes ("AdWords Diabetes Centrale"). Er stonden er twintig als lead en
+// honderdzeventig als "niet doorgegaan" (want die deals waren in HubSpot verloren
+// afgesloten), samen bijna tweehonderd rijen die er niet horen. Twee dingen zijn daarna veranderd: zonder gekozen pijplijn (of
 // zonder gekozen leadstatus) komt er niets meer binnen, en hieronder staat de
 // knop die de rommel in één keer opruimt.
 //
-// De regel voor wat weg mag is streng, want weggooien is onomkeerbaar: alleen
-// een lead die door een ronde is aangemaakt (er hangt een HubSpot-rij aan),
-// waar niemand iets aan gedaan heeft (geen dossier, geen document, geen
-// gesprek), en waar geen bedrag bij staat. Alles wat daar niet aan voldoet
-// blijft staan, ook als het uit HubSpot kwam.
+// De regel voor wat weg mag is streng, want weggooien is onomkeerbaar. Vijf
+// voorwaarden tegelijk: het is een lead of een afgesloten deal, hij is door de
+// DEAL-ronde aangemaakt (soort "deal"; wat uit je contacten komt blijft altijd
+// staan), er hangt geen inlog aan, er staat geen bedrag bij, en niemand heeft er
+// iets mee gedaan (geen dossier, geen document, geen gesprek). Alles wat daar
+// niet aan voldoet blijft staan.
 // ═══════════════════════════════════════════════════════════
 
 export type OnterechteLead = { slug: string; naam: string; dealNaam: string };
@@ -738,7 +740,10 @@ export async function lijstOnterechteLeads(): Promise<OnterechteLead[]> {
     SELECT c.slug, c.name AS naam, h.deal_naam
     FROM clients c
     JOIN hubspot_lead h ON h.client_slug = c.slug
-    WHERE c.fase = 'lead' AND COALESCE(c.maandbudget, 0) = 0
+    WHERE c.fase IN ('lead', 'verloren')
+      AND h.soort = 'deal'
+      AND COALESCE(c.maandbudget, 0) = 0
+      AND c.login_id IS NULL
     ORDER BY c.name`;
   if (!rows.length) return [];
 
