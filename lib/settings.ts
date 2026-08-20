@@ -4,9 +4,14 @@ import { sql, ensureSchema } from "./db";
 // de factuur-mail). Alleen door de eigenaar te lezen en te wijzigen.
 
 export async function getSetting(key: string): Promise<string | null> {
-  await ensureSchema();
-  const { rows } = await sql`SELECT value FROM app_settings WHERE key = ${key} LIMIT 1`;
-  return (rows[0]?.value as string) || null;
+  // Gaat expres via getSettings hieronder. De oude, rechtstreekse vraag
+  // ("SELECT value ... WHERE key = $1 LIMIT 1") gaf in een verse serverfunctie
+  // leeg terug voor sleutels die er wél stonden: precies dezelfde vraag, een
+  // regel verderop met andere tekst, gaf de waarde wél. Dat is op 20-08-2026 op
+  // productie vastgesteld met een meetpunt in de HubSpot-ronde, en het zorgde
+  // ervoor dat die ronde maandenlang "nog niet ingesteld" meldde terwijl het
+  // filter gevuld was. Eén leesweg voor alle instellingen; nooit meer een tweede.
+  return (await getSettings([key]))[key] || null;
 }
 
 /**
