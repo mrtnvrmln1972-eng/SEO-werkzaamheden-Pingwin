@@ -38,6 +38,11 @@ type Stand = {
   leads: Lead[];
   /** Namen van leads die een ronde heeft aangemaakt en waar niets mee gedaan is. */
   opruimen?: string[];
+  /** Wat de laatste ronde opleverde. */
+  uitkomst?: {
+    tijd: string; ok: boolean; gelezen: number; nieuw: number; bijgewerkt: number;
+    melding: string; volledig: boolean;
+  } | null;
 };
 
 function wanneer(iso: string | null): string {
@@ -174,6 +179,22 @@ export default function HubSpotBlok() {
                 <tr>
                   <td style={{ fontWeight: 600 }}>Laatst opgehaald</td>
                   <td>{wanneer(instelling?.laatsteRonde || null)} (daarna elk kwartier vanzelf)</td>
+                </tr>
+                {/* Wat die ronde opleverde. Zonder deze regel is "hij vond
+                    niemand" niet te onderscheiden van "hij draait niet", en dat
+                    kostte op 20-08-2026 een halve dag zoeken. */}
+                <tr>
+                  <td style={{ fontWeight: 600 }}>Wat die ronde vond</td>
+                  <td>
+                    {!stand.uitkomst ? <span className="muted">nog geen ronde gedraaid</span> : (
+                      <span style={stand.uitkomst.ok ? undefined : { color: "var(--danger)" }}>
+                        {stand.uitkomst.gelezen} contacten uit HubSpot
+                        {stand.uitkomst.volledig ? " (alles opgehaald)" : " (alleen wat gewijzigd was)"},
+                        {" "}{stand.uitkomst.nieuw} nieuw, {stand.uitkomst.bijgewerkt} bijgewerkt.
+                        {stand.uitkomst.melding ? ` ${stand.uitkomst.melding}` : ""}
+                      </span>
+                    )}
+                  </td>
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 600 }}>Gekoppelde leads</td>

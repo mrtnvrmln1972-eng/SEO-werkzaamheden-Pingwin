@@ -37,6 +37,13 @@ import {
 
 export const SETTING_PIJPLIJNEN = "hubspot_pijplijnen";
 export const SETTING_LAATSTE_RONDE = "hubspot_laatste_ronde";
+/**
+ * Wat de laatste ronde opleverde, in gewone taal. Zonder dit is een ronde die
+ * niets vindt niet te onderscheiden van een ronde die niet draait: het scherm
+ * zei alleen wannéér hij gedraaid had. Precies daardoor bleef op 20-08-2026
+ * onzichtbaar dat het filter goed stond maar er nul contacten uitkwamen.
+ */
+export const SETTING_LAATSTE_UITKOMST = "hubspot_laatste_uitkomst";
 export const SETTING_NOTITIES_TERUG = "hubspot_notities_terug";
 export const SETTING_AUTO_LEADS = "hubspot_auto_leads";
 export const SETTING_BRON = "hubspot_bron";
@@ -277,6 +284,17 @@ export async function saveHubspotInstelling(p: Partial<HubspotInstelling>): Prom
   await Promise.all(taken);
 }
 
+/** Wat de laatste ronde opleverde, om op het beheerscherm te laten zien. */
+export type LaatsteUitkomst = {
+  tijd: string; ok: boolean; gelezen: number; nieuw: number; bijgewerkt: number;
+  melding: string; volledig: boolean;
+};
+export async function getLaatsteUitkomst(): Promise<LaatsteUitkomst | null> {
+  const ruw = await getSetting(SETTING_LAATSTE_UITKOMST);
+  if (!ruw) return null;
+  try { return JSON.parse(ruw) as LaatsteUitkomst; } catch { return null; }
+}
+
 /** De pijplijnen zoals ze in HubSpot staan, om ze te kunnen aanvinken. */
 export async function hubspotPijplijnKeuze(): Promise<HsPijplijn[]> {
   return hsPijplijnen();
@@ -393,6 +411,16 @@ export async function syncHubspot(opties: { volledig?: boolean } = {}): Promise<
     ? await syncDeals(instelling, sinds)
     : await syncContacten(instelling, sinds);
   if (uitkomst.ok) await setSetting(SETTING_LAATSTE_RONDE, new Date().toISOString());
+  // Altijd bewaren, ook als de ronde mislukte: juist dán wil je het lezen.
+  await setSetting(SETTING_LAATSTE_UITKOMST, JSON.stringify({
+    tijd: new Date().toISOString(),
+    ok: uitkomst.ok,
+    gelezen: uitkomst.gelezen,
+    nieuw: uitkomst.nieuweLeads,
+    bijgewerkt: uitkomst.bijgewerkt,
+    melding: uitkomst.melding,
+    volledig: sinds === null,
+  })).catch(() => {});
   return uitkomst;
 }
 

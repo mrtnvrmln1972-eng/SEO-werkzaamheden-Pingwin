@@ -4,6 +4,7 @@ import { hubspotConfigured, hubspotHealthCheck } from "../../../../lib/hubspot";
 import {
   getHubspotInstelling, saveHubspotInstelling, hubspotPijplijnKeuze, hubspotVeldKeuze,
   syncHubspot, listHubspotLeads, lijstOnterechteLeads, verwijderOnterechteLeads, hubspotEigenaarKeuze,
+  getLaatsteUitkomst,
   type Veldkoppeling,
 } from "../../../../lib/hubspot-leads";
 
@@ -25,17 +26,18 @@ export async function GET(req: NextRequest) {
   }
   // De pijplijnen zijn alleen nodig als je met deals werkt; mislukt dat (geen
   // dealrecht op de sleutel), dan is dat geen storing maar een lege lijst.
-  const [gezond, velden, pijplijnen, eigenaren, leads, opruimen] = await Promise.all([
+  const [gezond, velden, pijplijnen, eigenaren, leads, opruimen, uitkomst] = await Promise.all([
     hubspotHealthCheck(),
     hubspotVeldKeuze().catch(() => []),
     hubspotPijplijnKeuze().catch(() => []),
     hubspotEigenaarKeuze().catch(() => []),
     listHubspotLeads().catch(() => []),
     lijstOnterechteLeads().catch(() => []),
+    getLaatsteUitkomst().catch(() => null),
   ]);
   return NextResponse.json({
     ok: true, gekoppeld: true, werkt: gezond.ok, melding: gezond.melding,
-    instelling, pijplijnen, eigenaren, leads,
+    instelling, pijplijnen, eigenaren, leads, uitkomst,
     // Leads die een ronde heeft aangemaakt en waar niemand iets aan gedaan heeft.
     opruimen: opruimen.map((l) => l.naam),
     // De veldenlijst staat expres achteraan: dat zijn er vierhonderd en dan is al
