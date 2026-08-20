@@ -8949,7 +8949,11 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   gap: var(--ruimte-groep); align-items: start;
 }
 /* De foto blijft in beeld terwijl je door de bevindingen scrolt: een oordeel
-   dat je niet naast het beeld kunt leggen, kun je niet controleren. */
+   dat je niet naast het beeld kunt leggen, kun je niet controleren.
+   Let op bij het nakijken van dit scherm met /api/admin/kijkbeeld: een foto van
+   de héle pagina wordt in stukken gemaakt, en een sticky blok wordt bij elk stuk
+   opnieuw meegetekend. Op zo'n foto lijkt dit paneel zich te herhalen; in de
+   browser gebeurt dat niet. */
 .pl-fotos { position: sticky; top: var(--ruimte-groep); display: grid; gap: var(--ruimte-regel); }
 .pl-foto-blok { display: grid; gap: var(--ruimte-krap); }
 .pl-foto-naam {

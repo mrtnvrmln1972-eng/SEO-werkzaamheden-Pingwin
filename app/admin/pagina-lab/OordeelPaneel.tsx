@@ -172,6 +172,11 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
             titel={`Wat er als eerste opvalt op ${uit.pagina.titel || uit.oordeel.url}`}
             uitleg={`Beoordeeld op ${tijdstip(uit.oordeel.beoordeeldOp)}. De volgorde is berekend, niet gevoeld: wat mis is en zwaar weegt staat bovenaan.`}
           >
+            {uit.pagina.status !== 200 && (
+              <Signaal soort="let-op">
+                {`Let op: de server gaf status ${uit.pagina.status ?? "onbekend"} terug op ${uit.oordeel.url}. Dan beoordeel je een foutpagina en niet de pagina die je bedoelde.`}
+              </Signaal>
+            )}
             <Chips>
               {uit.oordeel.telling.map((t) => (
                 <Chip key={t.stand} toon={STAND_TOON[t.stand]}>{`${t.aantal}× ${t.stand}`}</Chip>
@@ -184,11 +189,6 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
               />
             ) : (
               <Signaal soort="goed">Er is niets gevonden dat mis is of beter kan. Kijk dan wel even naar de punten die niet vast te stellen waren.</Signaal>
-            )}
-            {uit.pagina.status !== 200 && (
-              <Signaal soort="let-op">
-                {`Let op: de server gaf status ${uit.pagina.status ?? "onbekend"} terug op ${uit.oordeel.url}. Dan beoordeel je een foutpagina en niet de pagina die je bedoelde.`}
-              </Signaal>
             )}
             {!uit.pagina.mobielGelukt && (
               <Signaal soort="let-op">De mobiele opname is niet gelukt, dus dit oordeel gaat alleen over het desktopbeeld.</Signaal>
