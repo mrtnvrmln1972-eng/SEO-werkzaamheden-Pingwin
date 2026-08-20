@@ -209,7 +209,7 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
           en zo staat elk bedrag op precies één plek. */}
       <div className="lead-kaart-invoer">
         <div className="field">
-          <label htmlFor={`lk-budget-${slug}`}>SEO per maand</label>
+          <label htmlFor={`lk-budget-${slug}`}>SEO p/m</label>
           <input
             id={`lk-budget-${slug}`} inputMode="numeric" value={budget.maandbudget}
             onChange={(e) => setBudget({ ...budget, maandbudget: e.target.value })}
@@ -217,7 +217,7 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
           />
         </div>
         <div className="field">
-          <label htmlFor={`lk-ads-${slug}`}>Advertenties per maand</label>
+          <label htmlFor={`lk-ads-${slug}`}>Ads p/m</label>
           <input
             id={`lk-ads-${slug}`} inputMode="numeric" value={geld.feeAds}
             onChange={(e) => setGeld({ ...geld, feeAds: e.target.value })}
@@ -225,7 +225,7 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
           />
         </div>
         <div className="field">
-          <label htmlFor={`lk-link-${slug}`}>Waarvan linkbuilding</label>
+          <label htmlFor={`lk-link-${slug}`}>Linkbuilding p/m</label>
           <input
             id={`lk-link-${slug}`} inputMode="numeric" value={budget.linkbuilding}
             onChange={(e) => setBudget({ ...budget, linkbuilding: e.target.value })}
@@ -233,7 +233,7 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
           />
         </div>
         <div className="field">
-          <label htmlFor={`lk-kosten-${slug}`}>Overige kosten per maand</label>
+          <label htmlFor={`lk-kosten-${slug}`}>Kosten p/m</label>
           <input
             id={`lk-kosten-${slug}`} inputMode="numeric" value={geld.maandkosten}
             onChange={(e) => setGeld({ ...geld, maandkosten: e.target.value })}
@@ -265,7 +265,7 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
           />
         </div>
         <div className="field">
-          <label htmlFor={`lk-maand-${slug}`}>Verwacht klant vanaf</label>
+          <label htmlFor={`lk-maand-${slug}`}>Verwacht klant</label>
           <input
             id={`lk-maand-${slug}`} type="month" value={startMaand}
             onChange={(e) => setStartMaand(e.target.value)}

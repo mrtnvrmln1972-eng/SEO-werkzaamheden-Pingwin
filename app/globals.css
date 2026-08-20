@@ -5711,7 +5711,12 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .lead-kaart-invoer {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--ruimte-regel); margin-top: var(--ruimte-groep);
+  /* De invulvakjes staan op één lijn, ook als het ene label omslaat en het
+     andere niet. Zonder dit sprong elk vakje mee met de hoogte van zijn eigen
+     label en stond de rij scheef (20-08-2026). */
+  align-items: end;
 }
+.lead-kaart-invoer .field { justify-content: flex-end; }
 .lead-kaart-knoppen { margin-top: var(--ruimte-groep); }
 .lead-kaart-koppel { margin-top: var(--ruimte-groep); }
 .lead-kaart-koppel-rij { display: flex; gap: var(--ruimte-naast); align-items: center; flex-wrap: wrap; margin-top: var(--ruimte-regel); }

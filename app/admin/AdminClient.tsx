@@ -678,12 +678,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             </button>
           </div>
         )}
-        <LeadLijst
-          leads={leads} isOwner={isOwner} hubspot={hubspot}
-          sleep={sleep} setSleep={setSleep} sleepVolgorde={sleepVolgorde}
-          openDashboard={openDashboard} setFase={setFase} refresh={refresh}
-          melden={(m) => setNotice(m)} setHertel={setHertel}
-        />
+        {/* Het formulier staat bóven de lijst: met zestien leads eronder zag je
+            hem niet en leek de knop niets te doen (20-08-2026). */}
         {isOwner && showLeadForm && (
           <form className="admin-form" style={{ marginTop: "var(--s-4)" }} onSubmit={onSubmitLead}>
             <div className="form-grid">
@@ -709,6 +705,12 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             </button>
           </form>
         )}
+        <LeadLijst
+          leads={leads} isOwner={isOwner} hubspot={hubspot}
+          sleep={sleep} setSleep={setSleep} sleepVolgorde={sleepVolgorde}
+          openDashboard={openDashboard} setFase={setFase} refresh={refresh}
+          melden={(m) => setNotice(m)} setHertel={setHertel}
+        />
         </Vouwblok>
 
         <MaandStrook isOwner={isOwner} hertel={`${clients.length}-${hertel}`} />
@@ -726,8 +728,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             </button>
           ) : undefined}
         >
-          {clientTable(ownClients, "Nog geen klanten.")}
           {isOwner && showForm && klantForm}
+          {clientTable(ownClients, "Nog geen klanten.")}
         </Vouwblok>
 
         {showGroups && mmcClients.length > 0 && (
