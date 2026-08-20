@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
 import { groepeerKlanten } from "../../lib/klant-groepen";
@@ -11,40 +11,14 @@ import MeldingenMenu from "./MeldingenMenu";
 import BulkOnboarding from "./BulkOnboarding";
 import KlantwaardeBulk from "./KlantwaardeBulk";
 import Vouwblok from "./Vouwblok";
+import LeadLijst, { MaandStrook, type HubspotStand } from "./LeadLijst";
 import KijkSleutel from "./KijkSleutel";
 import { Gebouw, Mensen, PijlRechts, Vlag } from "../_ui/Pijl";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
-// De stand van één lead in HubSpot, voor de kolommen in de leadlijst.
-type HubspotStand = { slug: string; opvolgDatum: string | null; sluitDatum: string | null; faseNaam: string; hubspotUrl: string };
 
-/** Een datum kort en leesbaar: "3 sep". Leeg blijft een streepje. */
-function dagKort(iso: string | null | undefined): string {
-  if (!iso) return "";
-  try { return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return ""; }
-}
 
-/** De drie dingen die je per lead in de lijst zelf invult, als tekst in beeld. */
-type LeadVeld = { kans: string; maand: string; eenmalig: string };
-const LEEG_VELD: LeadVeld = { kans: "", maand: "", eenmalig: "" };
-
-/** Een maand als "2026-10" kort en leesbaar: "okt 2026". */
-function maandKort(maand: string | null | undefined): string {
-  if (!maand) return "";
-  try {
-    return new Date(`${maand}-01T00:00:00`).toLocaleDateString("nl-NL", { month: "short", year: "numeric" });
-  } catch { return maand; }
-}
-
-/** Is dit contactmoment geweest, vandaag, of nog niet? Bepaalt de kleur. */
-function opvolgKlasse(datum: string | null | undefined): string {
-  if (!datum) return "";
-  const vandaag = new Date().toISOString().slice(0, 10);
-  if (datum < vandaag) return " lead-datum-verstreken";
-  if (datum === vandaag) return " lead-datum-vandaag";
-  return "";
-}
 
 
 const EMPTY = {
@@ -91,34 +65,6 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
   // dus hier hoort ook de bezem te staan.
   const [opruimen, setOpruimen] = useState<string[]>([]);
   const [opruimBezig, setOpruimBezig] = useState(false);
-  // Wat je per lead zelf invult en wat niet in de klantrij past: de kans dat het
-  // doorgaat, de maand waarin hij naar verwachting start, en een eenmalig bedrag
-  // (meestal een website). Alle drie staan ze in het dashboard en niet in
-  // HubSpot, want daar werkt Maarten er niet mee. Ze staan hier in de lijst
-  // omdat één rij per lead precies het moment is waarop je erover nadenkt.
-  const [leadVeld, setLeadVeld] = useState<Record<string, LeadVeld>>({});
-  // Wat er van elke lead al bewaard is. Een maandveld verandert al terwijl je
-  // hem aan het kiezen bent, dus zonder dit zou elke klik in zo'n veld een keer
-  // opslaan; nu gebeurt dat alleen als de waarde echt anders is.
-  const bewaardVeld = useRef<Record<string, LeadVeld>>({});
-  const zetLeadVeld = (slug: string, deel: Partial<LeadVeld>) =>
-    setLeadVeld((v) => ({ ...v, [slug]: { ...LEEG_VELD, ...v[slug], ...deel } }));
-  // Welke cel op dit moment wordt weggeschreven, zodat een rij niet twee keer
-  // tegelijk opslaat en je ziet dat er iets gebeurt.
-  const [celBezig, setCelBezig] = useState<string>("");
-
-  /** Eén veld van één lead bewaren en de lijst daarna opnieuw laden. */
-  async function bewaarLead(slug: string, veld: string, body: Record<string, unknown>) {
-    setCelBezig(`${slug}:${veld}`);
-    try {
-      const d = await fetch(`/api/admin/lead-hubspot?slug=${encodeURIComponent(slug)}`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-      }).then((r) => r.json());
-      if (!d?.ok) setNotice({ ok: false, text: d?.error || "Opslaan lukte niet." });
-      else if (veld === "budget") await refresh();
-    } catch { setNotice({ ok: false, text: "Opslaan lukte niet." }); }
-    finally { setCelBezig(""); }
-  }
 
   async function ruimOp() {
     if (!window.confirm(
@@ -176,30 +122,6 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     return () => { alive = false; };
   }, [isOwner]);
 
-  // De kans, de startmaand en het eenmalige bedrag die je zelf hebt ingevuld.
-  // Aparte, lichte route: alleen de regels, geen doorgerekende prognose.
-  useEffect(() => {
-    if (!isOwner) return;
-    let alive = true;
-    (async () => {
-      try {
-        const d = await fetch("/api/admin/prognose?regels=1").then((r) => r.json());
-        if (!d?.ok || !alive || !d.regels) return;
-        const rijen = d.regels as Record<string, { kans: number; startMaand: string | null; eenmaligOmzet: number }>;
-        const map: Record<string, LeadVeld> = {};
-        for (const [slug, r] of Object.entries(rijen)) {
-          map[slug] = {
-            kans: r?.kans === undefined || r?.kans === null ? "" : String(r.kans),
-            maand: r?.startMaand || "",
-            eenmalig: r?.eenmaligOmzet ? String(Math.round(r.eenmaligOmzet)) : "",
-          };
-        }
-        bewaardVeld.current = JSON.parse(JSON.stringify(map)) as Record<string, LeadVeld>;
-        setLeadVeld(map);
-      } catch { /* stil: dan blijven die kolommen leeg */ }
-    })();
-    return () => { alive = false; };
-  }, [isOwner]);
 
   useEffect(() => {
     let alive = true;
@@ -428,210 +350,6 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
   // De optelling onder de leadlijst. Twee getallen per kolom, want ze zeggen
   // iets anders: opgeteld is wat het wordt als alles doorgaat, gewogen is wat je
   // er nuchter van mag verwachten (elk bedrag maal de kans van die lead).
-  const kansVan = (slug: string) => {
-    const t = (leadVeld[slug]?.kans ?? "").trim();
-    const n = Number(t.replace(/[^\d]/g, ""));
-    return t && Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : LEAD_STANDAARD_KANS;
-  };
-  const eenmaligVan = (slug: string) => {
-    const n = Number(String(leadVeld[slug]?.eenmalig ?? "").replace(/[^\d]/g, ""));
-    return Number.isFinite(n) ? n : 0;
-  };
-  const totalen = leads.reduce(
-    (t, c) => {
-      const maand = Math.round(c.budget.maandbudget || 0);
-      const eens = eenmaligVan(c.slug);
-      const w = kansVan(c.slug) / 100;
-      return {
-        maand: t.maand + maand, maandGewogen: t.maandGewogen + maand * w,
-        eens: t.eens + eens, eensGewogen: t.eensGewogen + eens * w,
-      };
-    },
-    { maand: 0, maandGewogen: 0, eens: 0, eensGewogen: 0 },
-  );
-  const euro = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
-
-  const leadTable = (
-    <div className="task-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            {isOwner && <th></th>}<th>Bedrijf</th><th>Website</th>
-            <th>Opvolgen</th><th>Kans</th><th>Budget p/m</th><th>Eenmalig</th><th>Verwacht klant</th><th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {leads.length === 0 && (
-            <tr><td colSpan={isOwner ? 9 : 8} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
-              Nog geen leads. Maak er een aan met alleen een naam en een website.
-            </td></tr>
-          )}
-          {leads.map((c) => (
-            <tr
-              key={c.slug}
-              className={"clickable-row" + (sleep === c.id ? " tw-item-sleept" : "")}
-              onClick={() => openDashboard(c)}
-              title="Open de leadomgeving"
-              onDragOver={isOwner ? (e) => e.preventDefault() : undefined}
-              onDrop={isOwner ? (e) => { e.preventDefault(); void sleepVolgorde(leads, c.id); } : undefined}
-            >
-              {isOwner && (
-                <td onClick={(e) => e.stopPropagation()}>
-                  <span
-                    className="drag-handle tw-greep"
-                    draggable
-                    onDragStart={() => setSleep(c.id)}
-                    onDragEnd={() => setSleep(null)}
-                    title="Sleep om de volgorde te veranderen"
-                  >
-                    ⠿
-                  </span>
-                </td>
-              )}
-              <td><strong>{c.name}</strong> <span className="row-arrow"><PijlRechts /></span></td>
-              <td>
-                {c.domain
-                  ? <a href={`https://${c.domain}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>{c.domain}</a>
-                  : <span className="muted">&mdash;</span>}
-              </td>
-              {/* Wanneer je hem weer moet spreken. Dat is het enige dat uit
-                  HubSpot komt; de kolom die daar "zelf gemaakt" of de leadstatus
-                  liet zien is eruit (20-08-2026), want die stond op elke rij
-                  hetzelfde en zei dus niets. */}
-              <td className={"lead-kolom-datum" + opvolgKlasse(hubspot[c.slug]?.opvolgDatum)}>
-                {hubspot[c.slug]?.opvolgDatum
-                  ? dagKort(hubspot[c.slug]?.opvolgDatum)
-                  : <span className="muted">&mdash;</span>}
-              </td>
-              {/* Kans, maandbedrag, eenmalig bedrag en startmaand: alle vier van
-                  jou, alle vier hier in te vullen. De rij zelf opent de
-                  leadomgeving, dus elke klik in een veld moet daar stoppen. */}
-              <td onClick={(e) => e.stopPropagation()}>
-                {isOwner ? (
-                  <span className="lead-kans-veld">
-                    <input
-                      className="prog-veld lead-veld-kans"
-                      inputMode="numeric"
-                      aria-label={`Hoe kansrijk is ${c.name}`}
-                      value={leadVeld[c.slug]?.kans ?? ""}
-                      placeholder={String(LEAD_STANDAARD_KANS)}
-                      disabled={celBezig === `${c.slug}:kans`}
-                      onChange={(e) => zetLeadVeld(c.slug, { kans: e.target.value.replace(/[^\d]/g, "").slice(0, 3) })}
-                      onBlur={(e) => {
-                        const n = Math.min(100, Math.max(0, Number(e.target.value.replace(/[^\d]/g, "")) || 0));
-                        const tekst = e.target.value.trim() ? String(n) : "";
-                        zetLeadVeld(c.slug, { kans: tekst });
-                        if (tekst === "" || tekst === (bewaardVeld.current[c.slug]?.kans ?? "")) return;
-                        bewaardVeld.current[c.slug] = { ...bewaardVeld.current[c.slug], kans: tekst };
-                        void bewaarLead(c.slug, "kans", { actie: "prognose", kans: n });
-                      }}
-                    />
-                    <span className="lead-kans-teken">%</span>
-                  </span>
-                ) : <span className="muted">{leadVeld[c.slug]?.kans || LEAD_STANDAARD_KANS}%</span>}
-              </td>
-              <td onClick={(e) => e.stopPropagation()}>
-                {isOwner ? (
-                  <input
-                    className="prog-veld lead-veld-geld"
-                    inputMode="numeric"
-                    aria-label={`Beoogd maandbedrag van ${c.name}`}
-                    defaultValue={c.budget.maandbudget ? String(Math.round(c.budget.maandbudget)) : ""}
-                    placeholder="€"
-                    disabled={celBezig === `${c.slug}:budget`}
-                    onBlur={(e) => {
-                      const nieuw = Math.max(0, Math.round(Number(e.target.value.replace(/[^\d]/g, "")) || 0));
-                      if (nieuw === Math.round(c.budget.maandbudget || 0)) return;
-                      void bewaarLead(c.slug, "budget", {
-                        actie: "budget", maandbudget: nieuw, linkbuilding: c.budget.linkbuilding || 0,
-                      });
-                    }}
-                  />
-                ) : c.budget.maandbudget
-                  ? euro(c.budget.maandbudget)
-                  : <span className="muted">&mdash;</span>}
-              </td>
-              {/* Het eenmalige bedrag (meestal een website). Telt in de prognose
-                  één keer mee, in de maand hiernaast. */}
-              <td onClick={(e) => e.stopPropagation()}>
-                {isOwner ? (
-                  <input
-                    className="prog-veld lead-veld-geld"
-                    inputMode="numeric"
-                    aria-label={`Eenmalig bedrag van ${c.name}`}
-                    value={leadVeld[c.slug]?.eenmalig ?? ""}
-                    placeholder="€"
-                    disabled={celBezig === `${c.slug}:eenmalig`}
-                    onChange={(e) => zetLeadVeld(c.slug, { eenmalig: e.target.value.replace(/[^\d]/g, "").slice(0, 7) })}
-                    onBlur={(e) => {
-                      const tekst = e.target.value.replace(/[^\d]/g, "");
-                      if (tekst === (bewaardVeld.current[c.slug]?.eenmalig ?? "")) return;
-                      bewaardVeld.current[c.slug] = { ...bewaardVeld.current[c.slug], eenmalig: tekst };
-                      void bewaarLead(c.slug, "eenmalig", { actie: "prognose", eenmalig: Number(tekst) || 0 });
-                    }}
-                  />
-                ) : eenmaligVan(c.slug)
-                  ? euro(eenmaligVan(c.slug))
-                  : <span className="muted">&mdash;</span>}
-              </td>
-              <td onClick={(e) => e.stopPropagation()}>
-                {isOwner ? (
-                  <input
-                    className="prog-veld lead-veld-maand"
-                    type="month"
-                    aria-label={`Vanaf welke maand telt ${c.name} mee`}
-                    value={leadVeld[c.slug]?.maand ?? ""}
-                    disabled={celBezig === `${c.slug}:maand`}
-                    onChange={(e) => zetLeadVeld(c.slug, { maand: e.target.value })}
-                    onBlur={(e) => {
-                      const nieuw = e.target.value || "";
-                      if (nieuw === (bewaardVeld.current[c.slug]?.maand ?? "")) return;
-                      bewaardVeld.current[c.slug] = { ...bewaardVeld.current[c.slug], maand: nieuw };
-                      void bewaarLead(c.slug, "maand", { actie: "prognose", startMaand: nieuw });
-                    }}
-                  />
-                ) : leadVeld[c.slug]?.maand
-                  ? maandKort(leadVeld[c.slug]?.maand)
-                  : <span className="muted">&mdash;</span>}
-              </td>
-              {/* Één knop om hem weg te zetten, niet twee. "Niet doorgegaan" en
-                  "Verwijder" deden voor Maarten hetzelfde; de eerste blijft, want
-                  die is terug te draaien en houdt de mailwisseling en het dossier
-                  staan. Echt weggooien staat nu in de leadomgeving zelf, onderaan
-                  de leadkaart: zeldzaam en onomkeerbaar, dus een klik dieper. */}
-              <td style={{ whiteSpace: "nowrap" }}>
-                {isOwner ? (
-                  <>
-                    <button className="btn btn-klein" onClick={(e) => setFase(e, c, "klant", `${c.name} omzetten naar klant? Alles blijft staan; alleen het label verandert.`)}>Maak klant</button>{" "}
-                    <button className="btn btn-klein" onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}>Niet doorgegaan</button>
-                  </>
-                ) : <span className="muted">&mdash;</span>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-        {leads.length > 0 && (
-          <tfoot>
-            <tr className="lead-totaalrij">
-              {isOwner && <td></td>}
-              <td colSpan={3}>Alles bij elkaar</td>
-              <td className="lead-totaal-kans">gewogen</td>
-              <td>
-                {euro(totalen.maand)}
-                <span className="lead-totaal-gewogen">{euro(totalen.maandGewogen)} p/m</span>
-              </td>
-              <td>
-                {euro(totalen.eens)}
-                <span className="lead-totaal-gewogen">{euro(totalen.eensGewogen)} eenmalig</span>
-              </td>
-              <td colSpan={2}></td>
-            </tr>
-          </tfoot>
-        )}
-      </table>
-    </div>
-  );
-
   const clientTable = (list: ClientConfig[], emptyText: string) => (
     <div className="task-table-wrap">
       <table>
@@ -905,7 +623,12 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             </button>
           </div>
         )}
-        {leadTable}
+        <LeadLijst
+          leads={leads} isOwner={isOwner} hubspot={hubspot}
+          sleep={sleep} setSleep={setSleep} sleepVolgorde={sleepVolgorde}
+          openDashboard={openDashboard} setFase={setFase} refresh={refresh}
+          melden={(m) => setNotice(m)}
+        />
         {isOwner && showLeadForm && (
           <form className="admin-form" style={{ marginTop: "var(--s-4)" }} onSubmit={onSubmitLead}>
             <div className="form-grid">
@@ -932,6 +655,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           </form>
         )}
         </Vouwblok>
+
+        <MaandStrook isOwner={isOwner} hertel={clients} />
 
         {/* De knop "Nieuwe klant aanmaken" hoort bij de klantenlijst en staat dus
             rechts in de kopbalk van dát blok, niet los onderaan de pagina. */}

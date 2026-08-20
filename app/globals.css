@@ -5751,13 +5751,34 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .lead-veld-maand { width: 12ch; }
 .lead-kans-veld { display: inline-flex; align-items: center; gap: var(--ruimte-krap); white-space: nowrap; }
 .lead-kans-teken { color: var(--label-muted); }
-/* De optelling onderaan: opgeteld boven, gewogen eronder. */
+/* Een kruisje in plaats van een knop met tekst: "niet doorgegaan" is een
+   bedieningsteken naast de hoofdactie, geen tweede knop die om aandacht vraagt. */
+.lead-kruis {
+  background: none; border: 0; cursor: pointer; color: var(--kleur-fout);
+  font-size: var(--type-body); line-height: var(--regel-body);
+  padding: 0 var(--ruimte-naast);
+}
+.lead-kruis:hover { color: var(--kleur-fout); opacity: 0.7; }
+/* De optelling onderaan: opgeteld boven, gewogen eronder. Het bedrag staat in
+   een blokje met precies de maat en de binnenruimte van het invulveld erboven,
+   zodat de cijfers onder elkaar uitlijnen in plaats van er een stukje naast. */
 .lead-totaalrij td { font-weight: 700; white-space: nowrap; }
-.lead-totaal-kans { color: var(--label-muted); font-weight: 600; }
+.lead-totaal-kans { color: var(--label-muted); font-weight: 600; text-align: right; }
+.lead-totaal-bedrag {
+  display: block; width: 8ch; text-align: right;
+  padding: var(--ruimte-krap) var(--ruimte-naast);
+  border: 1px solid transparent;
+  font-variant-numeric: tabular-nums;
+}
 .lead-totaal-gewogen {
-  display: block; font-weight: 600; color: var(--label-muted);
+  font-weight: 600; color: var(--label-muted);
   font-size: var(--type-label); line-height: var(--regel-label);
 }
+/* De strook onder de leads: maanden naast elkaar, bedragen rechts uitgelijnd. */
+.maand-strook th, .maand-strook td { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.maand-strook th:first-child, .maand-strook td:first-child { text-align: left; }
+.maand-strook-totaal td { font-weight: 700; }
+.maand-strook-uitsplitsing td { color: var(--label-muted); }
 .lead-datum-vandaag { color: var(--kleur-let-op); font-weight: 700; }
 .lead-datum-verstreken { color: var(--kleur-fout); font-weight: 700; }
 .lead-tijdregel-tekst { flex: 1; min-width: 0; }

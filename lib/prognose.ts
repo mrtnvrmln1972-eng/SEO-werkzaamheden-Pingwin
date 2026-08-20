@@ -431,6 +431,17 @@ export type MaandUitkomst = {
   /** Kosten uit het kostenmodel die niet aan een klant zijn toegerekend. */
   modelVast: { naam: string; bedrag: number }[];
   omzet: number;
+  /**
+   * De omzet van deze maand uitgesplitst naar waar hij vandaan komt: de
+   * maandfee voor SEO, de fee voor advertenties, en een eenmalig bedrag (een
+   * website) dat alleen in de startmaand meetelt. Allemaal al gewogen met de
+   * kans, precies zoals `omzet` zelf. Losse posten zitten hier NIET in; die
+   * staan in postOmzet, want die hangen niet aan een klant en zijn dus geen
+   * SEO of advertenties.
+   */
+  omzetSeo: number;
+  omzetAds: number;
+  omzetEenmalig: number;
   kosten: number;
   netto: number;
   /** Waar het doel op gemeten wordt (netto of omzet), voor de balk. */
@@ -517,6 +528,7 @@ export function berekenPrognose(
     const maand = maandPlus(vanaf, i);
     const bijdragen: Bijdrage[] = [];
     let zekerOmzet = 0, zekerKosten = 0, verwachtOmzet = 0, verwachtKosten = 0, postOmzet = 0, postKosten = 0;
+    let omzetSeo = 0, omzetAds = 0, omzetEenmalig = 0;
 
     for (const r of regels) {
       if (!actiefIn(r, maand)) continue;
@@ -537,6 +549,11 @@ export function berekenPrognose(
       const kosten = maandKosten * w;
       if (r.fase === "klant") { zekerOmzet += omzet; zekerKosten += kosten; }
       else { verwachtOmzet += omzet; verwachtKosten += kosten; }
+      // Dezelfde weging, maar dan uitgesplitst, zodat een scherm kan laten zien
+      // waar de maand uit bestaat zonder het hier nog eens uit te rekenen.
+      omzetSeo += r.bedrag * w;
+      omzetAds += r.extraOmzet * w;
+      if (eenmaligNu) omzetEenmalig += r.eenmaligOmzet * w;
       bijdragen.push({
         slug: r.slug, naam: r.naam, soort: r.fase === "klant" ? "klant" : "lead",
         kans: r.fase === "klant" ? 100 : r.kans,
@@ -572,7 +589,7 @@ export function berekenPrognose(
       zekerOmzet, zekerKosten, verwachtOmzet, verwachtKosten, postOmzet, postKosten,
       vasteLasten: instelling.vasteLasten,
       modelVast: kosten.vast,
-      omzet, kosten: kostenTotaal, netto, opDoel,
+      omzet, omzetSeo, omzetAds, omzetEenmalig, kosten: kostenTotaal, netto, opDoel,
       haaltDoel: opDoel >= instelling.target,
       bijdragen: bijdragen.sort((a, b) => b.netto - a.netto),
     });

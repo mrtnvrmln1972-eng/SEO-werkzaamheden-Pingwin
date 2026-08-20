@@ -71,6 +71,11 @@ export const HOOFDSTUK: Hoofdstuk = {
         "niet voor honderd. Onder de lijst staat wat het bij elkaar is: het opgetelde bedrag en daaronder " +
         "het gewogen bedrag, dus elk bedrag maal de kans van die lead. Dat tweede getal is wat je nuchter " +
         "mag verwachten.\n\n" +
+        "Daaronder staat een strook met de komende zes maanden naast elkaar: wat komt er binnen van je " +
+        "bestaande klanten, wat komt er gewogen bij van je leads, en wat is dat bij elkaar per maand. " +
+        "Daaronder waar dat bedrag uit bestaat: SEO, advertenties en een eenmalig bedrag. Het zijn " +
+        "dezelfde cijfers als in de volledige prognose, alleen korter; wie hier zelf zou optellen krijgt " +
+        "vroeg of laat een ander getal dan daar.\n\n" +
         "Daaronder staat de mailwisseling met dat bedrijf, met dezelfde knop om te antwoorden of een nieuwe mail " +
         "te sturen als bij een klant. Die mail komt uit de mailbox en niet uit het CRM: daar staat de hele draad, " +
         "ook wat er nooit gelogd is. En er is een tijdlijn waarin alles op datum onder elkaar staat: mails, " +

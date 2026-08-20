@@ -39,6 +39,26 @@ export async function GET(req: NextRequest) {
     if (req.nextUrl.searchParams.get("regels")) {
       return NextResponse.json({ ok: true, regels: await getRegelsPerSlug() });
     }
+    // ?strip=6 geeft alleen de eerste zes maanden terug, zonder de bijdragen per
+    // klant. Dat is de strook onder de leadlijst op het klantenoverzicht: wat
+    // wordt de omzet per maand, en waar bestaat hij uit. Bewust dezelfde
+    // berekening als de volledige prognose op /admin/financien; wie hier zelf
+    // gaat optellen krijgt vroeg of laat een ander getal dan daar.
+    const strip = Number(req.nextUrl.searchParams.get("strip")) || 0;
+    if (strip > 0) {
+      const klanten = await listClients();
+      const uit = await getPrognose(
+        klanten.map((k) => ({ slug: k.slug, name: k.name, fase: k.fase, grp: k.grp, budget: k.budget })),
+      );
+      return NextResponse.json({
+        ok: true,
+        maanden: uit.maanden.slice(0, Math.min(18, strip)).map((m) => ({
+          maand: m.maand, label: m.label,
+          zekerOmzet: m.zekerOmzet, verwachtOmzet: m.verwachtOmzet, postOmzet: m.postOmzet,
+          omzet: m.omzet, omzetSeo: m.omzetSeo, omzetAds: m.omzetAds, omzetEenmalig: m.omzetEenmalig,
+        })),
+      });
+    }
     return await stuurPrognose();
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });
