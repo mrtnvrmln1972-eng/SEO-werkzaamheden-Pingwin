@@ -404,10 +404,22 @@ async function syncContacten(instelling: HubspotInstelling, sinds: Date | null):
 
   for (const c of contacten) {
     try {
-      // Het bedrijf is wat we in het dashboard neerzetten; staat er geen
-      // bedrijfsnaam, dan is de naam van de persoon het beste wat we hebben.
-      const bedrijfNaam = c.bedrijf || c.naam || "Naamloze lead";
-      const domein = normalizeDomain(c.domein || "") || domeinUitMail(c.mail);
+      // Het bedrijf is wat we in het dashboard neerzetten. Drie bronnen, in
+      // volgorde: het veld op het contact, het bedrijf dat eraan gekoppeld is, en
+      // anders de naam van de persoon. In HubSpot staat "Company Name" vaak op
+      // "Onbekend" terwijl er rechts wél een bedrijf aan hangt; dan hoort dat
+      // bedrijf in het dashboard te staan, niet "Onbekend".
+      let bedrijfNaam = (c.bedrijf || "").trim();
+      let domein = normalizeDomain(c.domein || "") || "";
+      if (!bedrijfNaam || bedrijfNaam.toLowerCase() === "onbekend" || !domein) {
+        const bedrijf = await hsBedrijfVanDeal(c.id, "contacts").catch(() => null);
+        if (bedrijf) {
+          if (!bedrijfNaam || bedrijfNaam.toLowerCase() === "onbekend") bedrijfNaam = bedrijf.naam || bedrijfNaam;
+          if (!domein) domein = normalizeDomain(bedrijf.domein || "") || "";
+        }
+      }
+      if (!bedrijfNaam) bedrijfNaam = c.naam || "Naamloze lead";
+      if (!domein) domein = domeinUitMail(c.mail);
 
       let klant = vindKlantVoorContact(klanten, gekoppeld, c.id, bedrijfNaam, domein);
       if (!klant) {
@@ -751,7 +763,13 @@ export async function lijstOnterechteLeads(): Promise<OnterechteLead[]> {
   const vul = async (query: Promise<{ rows: { client_slug: string }[] }>) => {
     try { for (const r of (await query).rows) bezet.add(r.client_slug); } catch { /* tabel bestaat nog niet */ }
   };
-  await vul(sql<{ client_slug: string }>`SELECT DISTINCT client_slug FROM lead_dossier`);
+  // Alleen wat een MENS heeft toegevoegd telt. De ronde zette bij elk van die
+  // oude deals ook de HubSpot-notities in het dossier, en met "heeft een dossier,
+  // dus blijf eraf" bleef daardoor bijna de hele rommel staan. Wat de koppeling
+  // zelf heeft aangemaakt (bron begint met "hubspot:") beschermt niets.
+  await vul(sql<{ client_slug: string }>`
+    SELECT DISTINCT client_slug FROM lead_dossier
+    WHERE bron IS NULL OR bron NOT LIKE 'hubspot:%'`);
   await vul(sql<{ client_slug: string }>`SELECT DISTINCT client_slug FROM lead_docs`);
   await vul(sql<{ client_slug: string }>`SELECT DISTINCT client_slug FROM client_chat`);
 

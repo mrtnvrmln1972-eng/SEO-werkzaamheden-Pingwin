@@ -89,6 +89,10 @@ export default function HubSpotBlok() {
   const keuzeVelden = (stand?.velden || []).filter((v) => v.soort === "enumeration" || v.soort === "string");
   const gekozenVeld = (stand?.velden || []).find((v) => v.naam === instelling?.filterVeld) || null;
   const datumVelden = (stand?.velden || []).filter((v) => v.soort === "date" || v.soort === "datetime");
+  // De naam zoals hij in HubSpot op je scherm staat, niet de technische naam.
+  const veldLabel = (naam: string) => (stand?.velden || []).find((v) => v.naam === naam)?.label || naam;
+  const waardeLabel = (waarde: string) =>
+    gekozenVeld?.opties.find((o) => o.waarde === waarde)?.label || waarde;
 
   return (
     <>
@@ -150,6 +154,18 @@ export default function HubSpotBlok() {
                 <tr>
                   <td style={{ fontWeight: 600 }}>Verbinding</td>
                   <td>{stand.werkt ? stand.melding : <span style={{ color: "var(--danger)" }}>{stand.melding}</span>}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 600 }}>Wat er binnenkomt</td>
+                  <td>
+                    {instelling?.bron === "deals"
+                      ? (instelling.pijplijnen.length
+                        ? `Deals uit ${instelling.pijplijnen.length} gekozen pijplijn(en).`
+                        : "Nog niets: kies hieronder welke pijplijnen als lead tellen.")
+                      : (instelling?.filterVeld && instelling?.filterWaarde
+                        ? `Contacten waarbij ${veldLabel(instelling.filterVeld)} gelijk is aan "${waardeLabel(instelling.filterWaarde)}". Verder niets.`
+                        : <span style={{ color: "var(--danger)" }}>Nog niets: kies hieronder het veld en de waarde (bijvoorbeeld Lead status is HOTHOTHOT).</span>)}
+                  </td>
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 600 }}>Laatst opgehaald</td>

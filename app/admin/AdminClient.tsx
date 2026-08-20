@@ -499,12 +499,12 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         <thead>
           <tr>
             {isOwner && <th></th>}<th>Bedrijf</th><th>Website</th>
-            <th>Opvolgen</th><th>Budget p/m</th><th>Verwacht klant</th><th></th>
+            <th>Uit HubSpot</th><th>Opvolgen</th><th>Budget p/m</th><th>Verwacht klant</th><th></th>
           </tr>
         </thead>
         <tbody>
           {leads.length === 0 && (
-            <tr><td colSpan={isOwner ? 7 : 6} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
+            <tr><td colSpan={isOwner ? 8 : 7} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
               Nog geen leads. Maak er een aan met alleen een naam en een website.
             </td></tr>
           )}
@@ -540,6 +540,14 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                   wanneer je hem weer moet spreken, wat het gaat worden, en
                   wanneer hij begint. De eerste twee komen uit HubSpot, het
                   budget zet je zelf in de leadomgeving. */}
+              {/* Waar deze lead vandaan komt. Een lead zonder status is met de
+                  hand aangemaakt; staat er een status, dan komt hij uit HubSpot en
+                  zie je meteen of hij aan jouw filter voldoet. */}
+              <td>
+                {hubspot[c.slug]?.faseNaam
+                  ? <span className="chip">{hubspot[c.slug]?.faseNaam}</span>
+                  : <span className="muted">zelf gemaakt</span>}
+              </td>
               <td className={"lead-kolom-datum" + opvolgKlasse(hubspot[c.slug]?.opvolgDatum)}>
                 {hubspot[c.slug]?.opvolgDatum
                   ? dagKort(hubspot[c.slug]?.opvolgDatum)
@@ -587,7 +595,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         </thead>
         <tbody>
           {list.length === 0 && (
-            <tr><td colSpan={isOwner ? 7 : 6} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
+            <tr><td colSpan={isOwner ? 8 : 7} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
           )}
           {list.map((c) => (
             <Fragment key={c.slug}>
