@@ -58,14 +58,18 @@ export async function GET(req: NextRequest) {
   // van kaal "Copy", dus hier op het voorvoegsel matchen, niet op een vaste tekst.
   const copyLink = beschikbaar.find((d) => /^Copy(:|\s\()/.test(d.label))?.url || "";
 
-  // De links uit de kaarttekst en de aantekeningen erbij. Dat handgeschreven veld
-  // bevat meestal precies wat de sitebouwer nodig heeft (een stappenplan, de
-  // bespreekpunten, adressen), en er ging tot 20-08-2026 niets van mee: het
-  // doorzet-venster toonde alleen de documenten uit de pijplijn. Ze staan
-  // standaard aan, want ze zijn er niet voor niets bij gezet.
+  // De stukken waar de kaart naar verwijst: het stappenplan, de bespreekpunten,
+  // een locatie. Dat handgeschreven veld bevat meestal precies wat de sitebouwer
+  // nodig heeft, en er ging tot 20-08-2026 niets van mee: het doorzet-venster
+  // toonde alleen de documenten uit de pijplijn. Ze staan standaard aan, want ze
+  // zijn er niet voor niets bij gezet.
+  //
+  // Het label is de naam zoals hij op de kaart staat, zonder voorvoegsel. Dat
+  // stond er eerst wél ("Uit de kaart: stappenplan"), en dat las in het
+  // mailvenster als een rijtje systeemregels in plaats van als de stukken zelf.
+  // Waar iets vandaan komt is voor de ontvanger niet interessant; wát het is wel.
   const uitKaart = kaartLinks(kaart.toelichting || "", kaart.notitie || "")
-    .filter((l) => l.url !== kaart.url && !beschikbaar.some((d) => d.url === l.url))
-    .map((l) => ({ label: `Uit de kaart: ${l.label}`, url: l.url }));
+    .filter((l) => l.url !== kaart.url && !beschikbaar.some((d) => d.url === l.url));
   const alles = [...beschikbaar, ...uitKaart];
 
   return NextResponse.json({

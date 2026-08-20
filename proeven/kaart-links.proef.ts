@@ -55,9 +55,20 @@ check("een kaal adres in de lopende tekst telt ook mee",
   urls.some((u) => u === "https://novio-oogzorg.nl/vestigingen"),
   "Een adres zonder <a> eromheen is net zo goed een link waar de developer heen moet.");
 
-check("mailadressen worden aanklikbaar",
-  urls.includes("mailto:oosterhof@oogwereld.nl") && urls.includes("mailto:nijmegen@novio-oogzorg.nl"),
-  "In dit soort aantekeningen (vestigingen, contactpersonen) staan de mailadressen die hij nodig heeft.");
+// Dit is de correctie van 20-08-2026, en hij is de belangrijkste toets in dit
+// bestand. De eerste versie oogstte óók mailadressen, en het mailvenster kreeg
+// meteen zeven vinkjes waarvan er vijf een vestigingsadres waren, met onderaan de
+// mail een rijtje "oosterhof@oogwereld.nl, nijmegen@novio-oogzorg.nl…".
+// Maartens oordeel: "die heeft niet 96 e-mails nodig; die adressen staan al in de
+// context die meekomt." Ze staan er inderdaad al in, via notitieTekst hieronder,
+// bij de vestiging waar ze horen. Als losse link drukken ze de échte stukken weg.
+check("mailadressen worden GEEN losse link",
+  !urls.some((u) => u.startsWith("mailto:")) && !urls.some((u) => u.includes("@")),
+  "Alleen dingen die je kunt openen: een document, een pagina, een locatie.");
+
+check("de meesturen-lijst blijft klein en gaat alleen over stukken",
+  gevonden.length === 4,
+  `Gevonden: ${gevonden.length} (${gevonden.map((l) => l.label).join(", ")}). Verwacht: stappenplan, de locatie, de vestigingenpagina en de bespreekpunten.`);
 
 check("de laatste link onderaan valt er niet af",
   gevonden.some((l) => l.label === "bespreekpunten, oogwereld"),
@@ -76,6 +87,10 @@ const tekst = notitieTekst(NOTITIE);
 check("de aantekeningen worden leesbare tekst met regels",
   tekst.includes("Oogwereld Eindhoven") && tekst.includes("Elzentlaan 143") && tekst.split("\n").length > 3,
   "Voor de mail moet dit gewone tekst zijn, met de opsomming nog als opsomming.");
+
+check("de mailadressen staan wél gewoon in die context",
+  tekst.includes("oosterhof@oogwereld.nl") && tekst.includes("nijmegen@novio-oogzorg.nl"),
+  "Ze horen bij de vestiging waar ze bij staan, niet als losse regel onderaan een mail.");
 
 check("er blijft geen HTML in die tekst staan", !/<[a-z]/i.test(tekst),
   "Ruwe markup in een mail is precies wat de opmaakregel verbiedt.");
@@ -120,6 +135,10 @@ check("het doorzet-venster biedt de links uit de kaart aan",
 check("die links staan standaard aan",
   /uitKaart\.map\(\(l\) => l\.url\)/.test(doorzet),
   "Ze zijn er niet voor niets bij gezet; standaard uit betekent dat ze vergeten worden.");
+
+check("ze heten naar wat ze zijn, zonder voorvoegsel",
+  !/Uit de kaart: \$\{/.test(doorzet),
+  'Een rijtje "Uit de kaart: …" las in het mailvenster als systeemregels in plaats van als de stukken zelf.');
 
 const explain = lees("app/api/admin/task/explain/route.ts");
 check("de mailschrijver kent de aantekeningen",

@@ -26,11 +26,26 @@ export type KaartLink = {
   url: string;
 };
 
-/** Wat telt als een link die een developer kan openen. */
+/**
+ * Wat telt als een link die meegaat: iets dat je kunt ópenen. Een document, een
+ * pagina, een locatie.
+ *
+ * **Nadrukkelijk geen mailadressen en telefoonnummers.** De eerste versie pakte
+ * die wél, en het resultaat was meteen te zien: het mailvenster kreeg zeven
+ * vinkjes waarvan er vijf een mailadres van een vestiging waren, en onderaan de
+ * mail stond een rijtje "oosterhof@oogwereld.nl, nijmegen@novio-oogzorg.nl,
+ * gorinchem@novio-oogzorg.nl…". Maartens oordeel: "die heeft niet 96 e-mails
+ * nodig; die adressen staan al in de context die meekomt."
+ *
+ * En dat klopt: de aantekeningen gaan in hun geheel mee (`notitieTekst`), dus
+ * daar staan die adressen gewoon in, op de plek waar ze horen, bij de vestiging
+ * waar ze bij horen. Als losse link zijn ze alleen ruis die de échte stukken
+ * (het stappenplan, de bespreekpunten, de locatie) wegdrukt.
+ */
 function bruikbaar(href: string): boolean {
   const h = href.trim();
   if (!h || h.startsWith("#")) return false;
-  return /^(https?:\/\/|mailto:|tel:)/i.test(h);
+  return /^https?:\/\//i.test(h);
 }
 
 const ENTITEITEN: [RegExp, string][] = [
@@ -48,12 +63,12 @@ function alsTekst(html: string): string {
 }
 
 /**
- * Alle links uit een stuk kaarttekst of aantekeningen.
+ * Alle stukken uit een kaarttekst of aantekeningen die je kunt openen.
  *
  * Werkt op allebei de vormen die op een kaart voorkomen: opgemaakte HTML (wat
- * het rijke tekstveld opslaat) en platte tekst met kale adressen erin. Een kaal
- * adres in de tekst is net zo goed een link waar de developer heen moet; die
- * viel er anders tussenuit omdat er geen `<a>` omheen stond.
+ * het rijke tekstveld opslaat) en platte tekst met kale webadressen erin. Een
+ * kaal adres in de tekst is net zo goed een stuk waar de developer heen moet;
+ * dat viel er anders tussenuit omdat er geen `<a>` omheen stond.
  *
  * Dubbele adressen komen er maar één keer uit, en het langste (dus meest
  * zeggende) label wint: "Elzentlaan 143, 5611 LL Eindhoven" is bruikbaarder dan
@@ -86,9 +101,6 @@ export function kaartLinks(...stukken: (string | null | undefined)[]): KaartLink
     const zonderAnkers = html.replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, " ");
     const kaal = alsTekst(zonderAnkers);
     for (const m of kaal.matchAll(/https?:\/\/[^\s<>"')\]]+/gi)) zet(m[0], m[0]);
-    // Mailadressen: een developer moet die kunnen aanklikken, en in dit soort
-    // aantekeningen (vestigingen, contactpersonen) staan ze er standaard in.
-    for (const m of kaal.matchAll(/\b[\w.+-]+@[\w-]+\.[\w.-]{2,}\b/g)) zet(`mailto:${m[0]}`, m[0]);
   }
 
   return [...perUrl.entries()].map(([url, label]) => ({ label, url }));
