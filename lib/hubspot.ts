@@ -88,11 +88,19 @@ async function hs(pad: string, methode: Methode = "GET", body?: unknown, params:
   }
 }
 
-/** Werkt de koppeling? Eén klein verzoek, voor het gezondheidsscherm. */
+/**
+ * Werkt de koppeling? Eén klein verzoek, voor het gezondheidsscherm.
+ *
+ * Bewust de pijplijnen en niet de accountgegevens: de accountgegevens vragen een
+ * eigen recht dat je voor deze koppeling verder nergens nodig hebt, en dan zou
+ * een sleutel die alles kan wat wij doen tóch als "storing" op het scherm staan.
+ * Dit verzoek gebruikt precies het recht dat de koppeling zelf nodig heeft.
+ */
 export async function hubspotHealthCheck(): Promise<{ ok: boolean; melding: string }> {
   try {
-    const info = (await hs("/account-info/v3/details")) as { portalId?: number; uiDomain?: string };
-    return { ok: true, melding: info?.portalId ? `Verbonden met HubSpot-account ${info.portalId}.` : "Verbonden met HubSpot." };
+    const d = (await hs("/crm/v3/pipelines/deals")) as { results?: unknown[] };
+    const aantal = (d.results || []).length;
+    return { ok: true, melding: `Verbonden met HubSpot (${aantal} pijplijn${aantal === 1 ? "" : "en"} gevonden).` };
   } catch (e) {
     return { ok: false, melding: (e as Error).message };
   }

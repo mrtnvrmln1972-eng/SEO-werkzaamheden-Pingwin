@@ -99,6 +99,22 @@ export default function HubSpotBlok() {
             de naam <code>HUBSPOT_TOKEN</code>. Eén keer opnieuw deployen en deze pagina laat de stand zien.
           </p>
           <p>
+            Welke rechten (scopes) je aanvinkt, gevonden via het zoekveld in dat scherm. De eerste drie zijn genoeg om
+            te beginnen; de rest maakt het compleet. Staat een naam er niet bij, sla hem dan over.
+          </p>
+          <ul>
+            <li><code>crm.objects.deals.read</code> &mdash; de deals zelf, hun fase, bedrag en sluitingsdatum</li>
+            <li><code>crm.objects.companies.read</code> &mdash; bedrijfsnaam en website, om de lead te herkennen</li>
+            <li><code>crm.objects.contacts.read</code> &mdash; contactpersoon en mailadres</li>
+            <li><code>crm.objects.tasks.read</code> &mdash; je openstaande taken, oftewel het eerstvolgende contactmoment</li>
+            <li><code>crm.objects.notes.read</code>, <code>crm.objects.calls.read</code>, <code>crm.objects.meetings.read</code> &mdash; je notities en gespreksverslagen voor het dossier</li>
+            <li><code>crm.objects.owners.read</code> &mdash; alleen om de naam van de eigenaar te tonen in plaats van een nummer</li>
+          </ul>
+          <p>
+            Mist er straks toch een recht, dan zegt dit scherm precies welke: de foutmelding van HubSpot noemt hem bij naam.
+            Zet je later &ldquo;notities gaan ook naar HubSpot&rdquo; aan, dan komt daar <code>crm.objects.notes.write</code> bij.
+          </p>
+          <p>
             Kom je bij Private apps uit en krijg je daar een waarschuwing over &ldquo;legacy&rdquo;: neem de service key,
             dat is precies waarvoor die bedoeld is. Een legacy private app kan één ding extra (meteen een seintje krijgen
             bij elke wijziging) en dat gebruiken we hier niet; het dashboard kijkt zelf elk kwartier.
