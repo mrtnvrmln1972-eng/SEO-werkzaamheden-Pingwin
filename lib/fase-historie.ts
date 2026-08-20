@@ -53,6 +53,18 @@ export type FaseSinds = Record<string, Partial<Record<FaseSleutel, string>>>;
 export async function registreerFases(
   slug: string,
   pages: Record<string, Partial<Record<FaseSleutel, boolean>>>,
+  /**
+   * De ECHTE datums uit de database (lib/fase-datum.ts), voor fases die al af
+   * waren voordat deze tabel bestond.
+   *
+   * Zonder dit kreeg zo'n fase bij de eerste uitlezing de datum van vandaag, en
+   * dat is precies het verkeerde antwoord: bij /hovenier-oss/ stonden analyse,
+   * blauwdruk en copy van 2 augustus, en die zouden dan "vandaag" gaan heten,
+   * terwijl de vraag juist is of je naar oud of nieuw werk kijkt. Een datum
+   * verzinnen is erger dan er geen hebben; een datum die er écht is, is beter
+   * dan allebei.
+   */
+  echteDatums: Partial<Record<string, Partial<Record<FaseSleutel, string>>>> = {},
 ): Promise<FaseSinds> {
   const uit: FaseSinds = {};
   try {
@@ -71,12 +83,17 @@ export async function registreerFases(
         const af = !!standen[f];
         const eerder = bekend.get(`${k}|${f}`);
         if (eerder && eerder.af === af) { uit[k]![f] = eerder.sinds; continue; }
-        // Nieuw of omgeslagen: vanaf nu.
-        uit[k]![f] = new Date().toISOString();
+        // Nieuw of omgeslagen. Kennen we het echte moment (het document dat
+        // gemaakt werd, de strategie die vastgelegd is, het advies dat is
+        // doorgegeven), dan telt dat; anders vanaf nu. Alleen bij de eerste
+        // stempel: slaat een fase later om, dan is "nu" wél het juiste moment.
+        const echt = !eerder && af ? echteDatums[k]?.[f] : "";
+        const wanneer = echt || new Date().toISOString();
+        uit[k]![f] = wanneer;
         schrijf.push(sql`
           INSERT INTO page_phase_history (client_slug, url_key, fase, af, sinds)
-          VALUES (${slug}, ${k}, ${f}, ${af}, now())
-          ON CONFLICT (client_slug, url_key, fase) DO UPDATE SET af = EXCLUDED.af, sinds = now()`);
+          VALUES (${slug}, ${k}, ${f}, ${af}, ${wanneer})
+          ON CONFLICT (client_slug, url_key, fase) DO UPDATE SET af = EXCLUDED.af, sinds = EXCLUDED.sinds`);
       }
     }
     // Het antwoord hangt NIET op deze schrijfacties: de datums die we

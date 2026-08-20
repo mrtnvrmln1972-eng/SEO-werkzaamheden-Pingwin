@@ -8,6 +8,7 @@ import { splitsBestaandeKaarten } from "../../../../lib/weekplan-splitsen";
 import { verkortTitels } from "../../../../lib/weekplan-titel";
 import { urlKey } from "../../../../lib/url-key";
 import { registreerFases } from "../../../../lib/fase-historie";
+import { getFaseDatumsAll } from "../../../../lib/fase-datum";
 
 export const runtime = "nodejs";
 
@@ -72,7 +73,11 @@ export async function GET(req: NextRequest) {
   // Sinds wanneer staat elke fase zo? Wordt hier bijgehouden omdat de standen
   // grotendeels afgeleid zijn (copy live, schema aanwezig): er is geen moment
   // waarop iemand "klaar" aanklikt. Elke uitlezing vergelijkt met de vorige.
-  const sinds = await registreerFases(slug, pages);
+  // De echte datums erbij: wanneer leverde elke fase voor het laatst iets op?
+  // Zonder die lijst zou een fase die al maanden af is bij de eerste uitlezing
+  // "vandaag" gaan heten.
+  const echteDatums = await getFaseDatumsAll(slug).catch(() => ({}));
+  const sinds = await registreerFases(slug, pages, echteDatums);
   // De datums reizen mee ín de pagina zelf. Ze los meesturen betekende dat elk
   // scherm ze apart moest doorgeven aan elke kaart, en dan komen ze ergens
   // onderweg niet aan; zo heeft alles wat de pagina al kent ze automatisch.

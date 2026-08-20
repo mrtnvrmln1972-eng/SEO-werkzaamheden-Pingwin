@@ -2,6 +2,22 @@ import type { Uitklapper } from "../types";
 
 export const BLOKKEN: Uitklapper[] = [
   {
+    titel: "Elke fase zegt wanneer hij voor het laatst iets opleverde",
+    kern: "Vijf groene vinkjes zeggen niets als drie ervan van vóór de herziene strategie zijn.",
+    tekst:
+      "Achter elke fase staat een datum: het moment waarop die stap voor het laatst iets " +
+      "opleverde. Voor de strategie is dat wanneer hij is vastgelegd, voor gelieerde pagina's " +
+      "wanneer het advies is doorgegeven, en voor analyse, blauwdruk en copy wanneer het " +
+      "document gemaakt is. Staat een fase nog open, dan zie je hoe lang hij al wacht.\n\n" +
+      "Waarom dat er is: bij een locatiepagina stonden strategie, gelieerde pagina's, analyse, " +
+      "blauwdruk en copy alle vijf op groen. Vijf vinkjes, en niets dat verraadde dat de " +
+      "strategie van diezelfde ochtend was en de drie documenten van drie weken eerder, dus van " +
+      "vóór de herziening. De pagina zag er af uit terwijl de inhoud van een achterhaald " +
+      "uitgangspunt kwam.\n\n" +
+      "De datum komt uit de database zelf, niet uit een teller die pas begint te lopen zodra " +
+      "iemand kijkt. Een fase die in juli af was, heet dus ook juli.",
+  },
+  {
     titel: "De zeven fases per pagina",
     kern: "Eén vaste route, dus altijd duidelijk wat de volgende stap is.",
     tekst:

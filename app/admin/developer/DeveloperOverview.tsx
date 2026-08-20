@@ -373,30 +373,17 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         {!/naar dev/i.test(r.status || "") && statusBadge(r.status)}
         {r.uren ? <span className="dev-task-uren">{r.uren} min</span> : null}
         {r.link && /^https?:/i.test(r.link) ? <a href={r.link} target="_blank" rel="noreferrer" className="dev-task-doc" onClick={(e) => e.stopPropagation()}>pagina ↗</a> : null}
-        {/* De volledige opmerking (kan een flink stuk instructie zijn) hoort niet
-            in dit compacte kaartje: de titel hierboven is genoeg om de taak te
-            herkennen. Dit stipje laat alleen zien dát er een opmerking is; de
-            hele tekst lees je via "Bewerk". */}
-        {(stripText(r.toelichting) || stripText(r.kaartOpm)) && (
-          <button type="button" className="dev-opm-link"
-            onClick={(e) => { e.stopPropagation(); setVenster({ taak: r, clientSlug: r.clientSlug, clientName: r.clientName }); }}
-            title="De hele opmerking lezen (opent de taak)">Bekijk de opmerkingen</button>
-        )}
       </div>
-      {/* De documenten die bij deze taak horen. Een opdracht als "zet de nieuwe
-          copy live" zonder de copy erbij is geen opdracht; dan moet de
-          sitebouwer alsnog gaan mailen. */}
-      {/* Alleen de documenten. De stukken uit de aantekeningen stonden hier ook
-          even bij, en toen werd een kaartje in de weekplanning een lijst van
-          zeven regels waar de titel onder wegviel. Ze staan waar je ze zoekt:
-          achter "Bekijk", samen met de aantekeningen zelf (20-08-2026). */}
-      {r.docs && r.docs.length > 0 && (
-        <div className="dev-task-docs" onClick={(e) => e.stopPropagation()}>
-          {r.docs.map((d) => (
-            <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label}>{d.label}</a>
-          ))}
-        </div>
-      )}
+      {/* ── Wat hier NIET meer staat, en waarom (20-08-2026) ──
+          Een kaartje in de weekplanning is een kaartje, geen dossier. Er stonden
+          een knopje "Bekijk de opmerkingen", de documentlinks en even zelfs de
+          stukken uit de aantekeningen; samen werd dat zeven regels waar de titel
+          onder wegviel. Maartens woorden: "de titel en de klant, en dan de
+          knopjes klaar, afgerond, bekijken en mail. Maar de opmerkingen hoef ik
+          niet te zien."
+          Alles wat hier weg is, staat achter "Bekijk": de opmerking, de
+          aantekeningen van de kaart, de documenten en de losse links. Eén plek,
+          en het is de plek waar je hem toch al opent om te beginnen. */}
       <div className="dev-task-actions" onClick={(e) => e.stopPropagation()}>
         <label className="dev-check-label"><input type="checkbox" checked={r.devDone} onChange={(e) => toggleDone(idx, e.target.checked)} /> Klaar</label>
         <label className="dev-check-label dev-check-afgerond"><input type="checkbox" checked={r.ownerDone} onChange={(e) => toggleAfgerond(idx, e.target.checked)} /> Afgerond</label>

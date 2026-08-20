@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { cleanPastedHtml, lijktOpMarkdown, linkifyPlainText } from "../../lib/rich-paste";
+import { benoemDriveLinks } from "../../lib/drive-naam";
 import { mdToHtml } from "../../lib/markdown";
 import { Ketting, Omlaag, Vink } from "../_ui/Pijl";
 import {
@@ -271,6 +272,18 @@ export default function RijkTekstVeld({
     meld();
   }
 
+  /**
+   * Na het plakken: geef elke Google-link de naam van zijn document.
+   *
+   * Apart van herstelEnMeld omdat het opzoeken een rondje naar Drive kost, en
+   * dat mag het plakken zelf niet ophouden. De tekst staat er dus meteen; een
+   * seconde later staat de naam er in plaats van het adres. Lukt het niet, dan
+   * blijft de link staan zoals hij was.
+   */
+  function benoemEnMeld() {
+    void benoemDriveLinks(editorRef.current).then((veranderd) => { if (veranderd) meld(); });
+  }
+
   function cmd(command: string, value?: string) {
     editorRef.current?.focus();
     document.execCommand(command, false, value);
@@ -533,7 +546,7 @@ export default function RijkTekstVeld({
     // waar je hem vandaan kopieerde; zie de uitleg in lib/rich-paste.ts.
     if (pasteHtml && /<\w/.test(pasteHtml)) {
       const cleaned = cleanPastedHtml(pasteHtml, { keepTables: true, rich: true });
-      if (cleaned) { e.preventDefault(); document.execCommand("insertHTML", false, cleaned); herstelEnMeld(); return; }
+      if (cleaned) { e.preventDefault(); document.execCommand("insertHTML", false, cleaned); herstelEnMeld(); benoemEnMeld(); return; }
     }
     // Platte tekst die markdown ís (`## kop`, `- punt`, `1. punt`, een tabel met
     // pipes): meteen renderen. Zonder dit staan de hekjes en de sterretjes
@@ -544,6 +557,7 @@ export default function RijkTekstVeld({
       e.preventDefault();
       document.execCommand("insertHTML", false, mdToHtml(pasteText));
       herstelEnMeld();
+      benoemEnMeld();
       return;
     }
     // Platte tekst met URL's: regels behouden en de URL's meteen klikbaar maken.
@@ -551,9 +565,10 @@ export default function RijkTekstVeld({
       e.preventDefault();
       document.execCommand("insertHTML", false, linkifyPlainText(pasteText));
       herstelEnMeld();
+      benoemEnMeld();
       return;
     }
-    setTimeout(herstelEnMeld, 0);
+    setTimeout(() => { herstelEnMeld(); benoemEnMeld(); }, 0);
   }
 
   // Verlaat je het veld, dan is dat het rustigste moment om de vorm recht te
