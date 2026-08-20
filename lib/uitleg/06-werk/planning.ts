@@ -24,11 +24,14 @@ export const BLOKKEN: Uitklapper[] = [
       "boven de regel waar je boven hangt, en daar landt hij ook; loslaten in de lege ruimte onder de lijst " +
       "zet hem achteraan.\n\n" +
       "**Waar een taak ligt, zet je op de regel zelf.** Rechts op elke regel staat een keuzelijstje met vier " +
-      "standen: **gepland** (ligt bij ons), **bij developer**, **bij klant** en **afgerond**. Daar stond " +
+      "standen: **gepland** (ligt bij ons), **dev**, **bij klant** en **afgerond**. Daar stond " +
       "alleen het woord \"gepland\", dus je las de stand wel maar kon hem niet zetten; dat kon alleen in de " +
-      "opengeklapte kaart. Kies je \"bij developer\", dan komt de kaart ook echt op de developerlijst te " +
+      "opengeklapte kaart. Kies je \"dev\", dan komt de kaart ook echt op de developerlijst te " +
       "staan (dat is dezelfde vlag als de knop op de kaart), en haal je hem daar weer af door een andere " +
-      "stand te kiezen.\n\n" +
+      "stand te kiezen. Die stand heette eerst \"bij developer\" en de datumknop ernaast \"dag kiezen\"; " +
+      "samen aten die twee woorden ruim zestig pixels van de titel op, precies waar een lang pad als " +
+      "/lensimplantatie/refractive-pro-art-lens/ staat. Wat een stand betekent lees je nu door erover te " +
+      "gaan staan.\n\n" +
       "**Afgerond haalt de taak uit de lijst en zet hem twee plekken neer.** Onderaan de planning, in een " +
       "blok **Afgeronde taken** dat dicht begint (je wilt het kunnen terugzien, niet er elke dag langs " +
       "scrollen), en met datum in **Wat we doen**, voor de verantwoording naar de klant en voor de eigen " +

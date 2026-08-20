@@ -22,6 +22,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { nieuweVolgordeInLijst, nieuweVolgorde } from "../lib/weekplan-slepen";
+import { STANDEN } from "../lib/taak-stand";
 
 const WORTEL = path.resolve(__dirname, "..");
 const lees = (p: string) => fs.readFileSync(path.join(WORTEL, p), "utf8");
@@ -126,6 +127,18 @@ checkWaar("de keuzelijst heeft opmaak", /\.wb-stand-kies\s*\{/.test(css),
   "Planning.tsx zet de klasse wb-stand-kies, maar er is geen stijlregel. Dan staat er een kale browserlijst in de regel.");
 checkWaar("het oude vinkje is echt weg", !/wb-vink/.test(planning) && !/\.wb-vink\s*\{/.test(css),
   "Laat geen tweede knop voor 'afgerond' in dezelfde regel staan; dan bestaan er twee wegen naar dezelfde stand.");
+
+// De kolom is de ruimte die de taaktitel NIET krijgt, dus het langste label
+// bepaalt hoeveel titel je kwijt bent. "bij developer" en "dag kiezen" aten
+// samen ruim zestig pixels op, precies waar een pad als
+// /lensimplantatie/refractive-pro-art-lens/ moet staan (gemeld 20-08-2026).
+// Vandaar een grens: schrijf een label langer, dan word je hier rood in plaats
+// van dat de browser hem stilletjes afkapt.
+const langste = STANDEN.reduce((a, s) => Math.max(a, s.label.length), 0);
+checkWaar(`het langste label past in de kolom (${langste} letters)`, langste <= 8,
+  "Een label van meer dan acht letters past niet in de kolom naast de titel. Zet de uitleg in `uitleg`, dat verschijnt als je erover gaat staan.");
+checkWaar("de datumknop heeft een kort label", /: "datum"/.test(lees("app/admin/client/[slug]/DatumKiezer.tsx")),
+  "Dit knopje staat op elke regel zonder datum; \"dag kiezen\" was vijf letters te lang.");
 
 console.log("\n── Afgevinkt werk komt in 'Wat we doen' ──");
 const weekplan = lees("lib/weekplan.ts");

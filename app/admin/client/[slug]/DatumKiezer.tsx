@@ -107,7 +107,7 @@ export default function DatumKiezer({
         className={"dk-veld" + (isVandaag ? " dk-vandaag" : "") + (open ? " dk-veld-open" : "")}
         title={iso ? `Staat op ${langDatum(iso)}. Klik om te wijzigen.` : "Klik om een dag te kiezen"}
         onClick={() => setOpen(!open)}>
-        <span className="dk-tekst">{iso ? kortDatum(iso) : "dag kiezen"}</span>
+        <span className="dk-tekst">{iso ? kortDatum(iso) : "datum"}</span>
         <svg className="dk-pijl" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
       </button>
 

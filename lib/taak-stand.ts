@@ -21,16 +21,27 @@
 
 export type Stand = "gepland" | "dev" | "klant" | "klaar";
 
-/** De vier standen zoals ze in het keuzelijstje staan, in deze volgorde. */
+/**
+ * De vier standen zoals ze in het keuzelijstje staan, in deze volgorde.
+ *
+ * De labels zijn bewust kort. Dit lijstje staat op elke regel van de planning,
+ * naast de taaktitel, en het langste label bepaalt hoe breed die kolom moet zijn:
+ * "bij developer" kostte veertig pixels die van de titel afgingen, terwijl een
+ * pad als /lensimplantatie/refractive-pro-art-lens/ juist ruimte nodig heeft.
+ * Wat het precies betekent staat in `uitleg`, en dat verschijnt als je erover
+ * gaat staan. Vier woorden van hooguit acht letters, en dat is een grens die
+ * `proeven/taken-slepen-afvinken.proef.ts` narekent: wordt er een label langer,
+ * dan past het niet meer in de kolom en kapt de browser het stilletjes af.
+ */
 export const STANDEN: { key: Stand; label: string; uitleg: string }[] = [
   { key: "gepland", label: "gepland", uitleg: "Staat op de planning, ligt bij ons" },
-  { key: "dev", label: "bij developer", uitleg: "Doorgezet naar de sitebouwer; komt op de developerlijst te staan" },
-  { key: "klant", label: "bij klant", uitleg: "We wachten op de klant" },
+  { key: "dev", label: "dev", uitleg: "Doorgezet naar de sitebouwer; komt op de developerlijst te staan" },
+  { key: "klant", label: "klant", uitleg: "We wachten op de klant" },
   { key: "klaar", label: "afgerond", uitleg: "Gebeurd; gaat naar Afgeronde taken en naar Wat we doen" },
 ];
 
 export const STAND_LABEL: Record<Stand, string> = {
-  gepland: "gepland", dev: "bij developer", klant: "bij klant", klaar: "afgerond",
+  gepland: "gepland", dev: "dev", klant: "klant", klaar: "afgerond",
 };
 
 /** Wat er in de status-kolom staat als een taak bij de klant ligt. */

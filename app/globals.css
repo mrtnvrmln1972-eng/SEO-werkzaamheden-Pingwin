@@ -5978,7 +5978,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
      18-08-2026 opgegaan in de keuzelijst met de stand, want "afgerond" is daar
      een van de vier keuzes en twee knoppen voor dezelfde handeling in dezelfde
      regel is er één te veel. */
-  grid-template-columns: 20px minmax(0, 1fr) auto 132px 96px 22px;
+  grid-template-columns: 20px minmax(0, 1fr) auto 92px 72px 22px;
   align-items: center; gap: var(--ruimte-regel);
   padding: var(--ruimte-naast); border-bottom: 1px solid var(--kleur-rand-zacht); cursor: pointer;
 }
@@ -6072,7 +6072,7 @@ a.wb-pad:hover { text-decoration: underline; }
    Safari en Firefox geen kalender. Nu een eigen maandkalender die uitklapt. */
 .dk { position: relative; justify-self: end; }
 .dk-veld {
-  display: inline-flex; align-items: center; gap: var(--ruimte-krap); min-width: 88px; height: 24px;
+  display: inline-flex; align-items: center; gap: var(--ruimte-krap); min-width: 66px; height: 24px;
   padding: 0 var(--ruimte-naast); border: 1px solid var(--kleur-rand-zacht); background: var(--kleur-kaart);
   border-radius: var(--ronding-pil); cursor: pointer; color: var(--kleur-tekst-stil);
 }
@@ -6082,7 +6082,7 @@ a.wb-pad:hover { text-decoration: underline; }
 .dk-pijl { width: 8px; height: 5px; flex: 0 0 auto; opacity: 0.7; }
 .dk-veld.dk-vandaag { border-color: var(--kleur-rand-accent); background: var(--kleur-accent-vlak); }
 .dk-veld.dk-vandaag .dk-tekst { color: var(--kleur-accent-diep); }
-.dk-klein .dk-veld { min-width: 74px; }
+.dk-klein .dk-veld { min-width: 58px; }
 
 .dk-doos {
   position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
