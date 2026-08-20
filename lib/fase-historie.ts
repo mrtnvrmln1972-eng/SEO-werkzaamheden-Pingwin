@@ -82,13 +82,37 @@ export async function registreerFases(
       for (const f of FASE_SLEUTELS) {
         const af = !!standen[f];
         const eerder = bekend.get(`${k}|${f}`);
+        // ── Het echte moment wint altijd (20-08-2026) ──
+        // Deze tabel is een terugval: hij onthoudt wannéér we een verandering
+        // zágen, want voor de meeste fases is er geen knop waarop iemand "klaar"
+        // drukt. Maar voor een afgeronde fase is er meestal wél een echt moment
+        // in de database: het document dat gemaakt is, de strategie die is
+        // vastgelegd, het advies dat is doorgegeven. Dat moment is de waarheid en
+        // deze tabel de schatting, dus de waarheid gaat voor.
+        //
+        // Eerst gold dat alleen bij de allereerste stempel, en dat was te weinig:
+        // rijen die al een (verkeerde) datum hadden bleven er precies zo bij
+        // staan. Op /hovenier-oss/ stond bij strategie, analyse, blauwdruk en
+        // copy alle vier "5 aug 16:32", terwijl de strategie die ochtend om 10:25
+        // was vastgelegd en de documenten van 2 augustus waren. Nu corrigeert hij
+        // zichzelf: klopt de opgeslagen datum niet met het echte moment, dan
+        // wordt hij bijgetrokken.
+        const echt = af ? (echteDatums[k]?.[f] || "") : "";
+        if (echt) {
+          uit[k]![f] = echt;
+          if (!eerder || eerder.af !== af || eerder.sinds !== echt) {
+            schrijf.push(sql`
+              INSERT INTO page_phase_history (client_slug, url_key, fase, af, sinds)
+              VALUES (${slug}, ${k}, ${f}, ${af}, ${echt})
+              ON CONFLICT (client_slug, url_key, fase) DO UPDATE SET af = EXCLUDED.af, sinds = EXCLUDED.sinds`);
+          }
+          continue;
+        }
         if (eerder && eerder.af === af) { uit[k]![f] = eerder.sinds; continue; }
-        // Nieuw of omgeslagen. Kennen we het echte moment (het document dat
-        // gemaakt werd, de strategie die vastgelegd is, het advies dat is
-        // doorgegeven), dan telt dat; anders vanaf nu. Alleen bij de eerste
-        // stempel: slaat een fase later om, dan is "nu" wél het juiste moment.
-        const echt = !eerder && af ? echteDatums[k]?.[f] : "";
-        const wanneer = echt || new Date().toISOString();
+        // Geen echt moment te vinden (een fase die nog niet af is, of eentje die
+        // geen spoor in de database achterlaat): dan telt vanaf nu. Dat is waar
+        // deze tabel voor bedoeld is.
+        const wanneer = new Date().toISOString();
         uit[k]![f] = wanneer;
         schrijf.push(sql`
           INSERT INTO page_phase_history (client_slug, url_key, fase, af, sinds)

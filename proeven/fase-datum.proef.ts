@@ -61,9 +61,18 @@ check("de echte datum wordt ook zo weggeschreven",
   /VALUES \(\$\{slug\}, \$\{k\}, \$\{f\}, \$\{af\}, \$\{wanneer\}\)/.test(historie),
   "Werd hier now() weggeschreven terwijl het antwoord de echte datum gaf, dan lopen scherm en database uiteen.");
 
-check("hij geldt alleen als eerste stempel, niet bij elke omslag",
-  /const echt = !eerder && af \? echteDatums\[k\]\?\.\[f\] : ""/.test(historie),
-  "Slaat een fase later om, dan is 'nu' juist wél het goede moment.");
+check("het echte moment wint ALTIJD, ook van een datum die er al stond",
+  /const echt = af \? \(echteDatums\[k\]\?\.\[f\] \|\| ""\) : ""/.test(historie),
+  "Gold dit alleen bij de eerste stempel, dan bleven verkeerde datums staan: op /hovenier-oss/\n"
+  + "       stond bij vier fases '5 aug 16:32' terwijl de strategie van die ochtend 10:25 was.");
+
+check("een bijgetrokken datum wordt ook echt weggeschreven",
+  /if \(!eerder \|\| eerder\.af !== af \|\| eerder\.sinds !== echt\)/.test(historie),
+  "Anders staat het scherm goed en de database fout, en is het bij de volgende ronde weer mis.");
+
+check("een fase die nog niet af is houdt zijn eigen teller",
+  /Geen echt moment te vinden/.test(historie),
+  '"Wacht 14 dagen" komt uit deze tabel; daar is geen echt moment voor.');
 
 check("het bord geeft die datums mee",
   /getFaseDatumsAll\(slug\)/.test(lees("app/api/admin/weekplan/route.ts")),
