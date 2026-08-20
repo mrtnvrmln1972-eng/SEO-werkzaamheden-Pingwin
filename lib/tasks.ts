@@ -271,16 +271,39 @@ export async function setClientDocLink(slug: string, pageUrl: string, stepKind: 
 // een link naar waar die strategie staat".
 export const STRATEGIE_STAP = "chat_analyse";
 
-/** De strategie-documentlink van elke pagina van deze klant, in één query. */
+/**
+ * De strategie-documentlink van elke pagina van deze klant, in één query.
+ *
+ * Waarom dit breder kijkt dan `step_kind`: bij /hovenier-oss/ stond de taak
+ * "Strategie: /hovenier-oss/" er wél, met het document als link ín de titel,
+ * maar zonder step_kind en zonder doc_link. Dat is de oude vorm, van vóór de
+ * omzetting naar "Titel (link)". Zoeken op step_kind alleen liet die rij dus
+ * links liggen en de fase bleef zonder linkje staan, terwijl het document er
+ * gewoon was. Daarom drie wegen, in volgorde van betrouwbaarheid: de
+ * klantversie-link, de interne link, en anders het adres dat in de titel zelf
+ * staat. Dat laatste is precies de terugval die `migrateStepTaskLinks` hierboven
+ * ook gebruikt.
+ */
 export async function getStrategieLinksAll(slug: string): Promise<Record<string, string>> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT page_url, COALESCE(client_doc_link, doc_link) AS link
+    SELECT page_url, taak, doc_link, client_doc_link
     FROM client_tasks
-    WHERE client_slug = ${slug} AND step_kind = ${STRATEGIE_STAP} AND page_url IS NOT NULL
-      AND COALESCE(client_doc_link, doc_link) IS NOT NULL`;
+    WHERE client_slug = ${slug} AND page_url IS NOT NULL
+      AND (step_kind = ${STRATEGIE_STAP} OR taak ILIKE '%Strategie:%')`;
   const uit: Record<string, string> = {};
-  for (const r of rows) uit[urlKey(String(r.page_url))] = String(r.link || "");
+  for (const r of rows) {
+    const k = urlKey(String(r.page_url));
+    // Een rij met een echte link wint van een rij die alleen een titel heeft;
+    // een pagina kan meerdere strategie-rijen hebben uit verschillende rondes.
+    if (uit[k]) continue;
+    let link = String(r.client_doc_link || r.doc_link || "").trim();
+    if (!link) {
+      const m = String(r.taak || "").match(/href="([^"]+)"/i);
+      if (m) link = m[1].replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+    }
+    if (link) uit[k] = link;
+  }
   return uit;
 }
 

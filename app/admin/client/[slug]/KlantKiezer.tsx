@@ -24,7 +24,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { groepeerKlanten, isAfgesloten, isLead, isMmc } from "../../../../lib/klant-groepen";
+import { groepeerKlanten, isLead, isMmc } from "../../../../lib/klant-groepen";
 
 export type KiezerKlant = {
   slug: string;
@@ -60,8 +60,10 @@ export default function KlantKiezer({ klanten, huidig, onKies, onVooruit }: {
     // De indeling komt uit lib/klant-groepen.ts. Stond hier als eigen regel
     // ("alles wat geen lead is, is een klant") en zette daardoor elke verloren
     // HubSpot-deal onder "Mijn eigen klanten".
+    // verloren en oud komen hier niet in beeld: een kiezer is om naar een klant
+    // te springen waar je werk voor doet, niet om door afgesloten deals te
+    // bladeren. Ze blijven gewoon in de database staan.
     const g = groepeerKlanten(klanten);
-    const afgesloten = [...g.verloren, ...g.oud];
     const lijst: Groep[] = [
       { sleutel: "eigen", label: "Mijn eigen klanten", klanten: g.eigen, standaardOpen: true },
       {
@@ -72,10 +74,6 @@ export default function KlantKiezer({ klanten, huidig, onKies, onVooruit }: {
       {
         sleutel: "leads", label: "Leads", klanten: g.leads,
         standaardOpen: !!hier && isLead(hier),
-      },
-      {
-        sleutel: "afgesloten", label: "Niet doorgegaan en oud", klanten: afgesloten,
-        standaardOpen: !!hier && isAfgesloten(hier),
       },
     ];
     return lijst.filter((g2) => g2.klanten.length > 0);

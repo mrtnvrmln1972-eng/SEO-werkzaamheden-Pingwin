@@ -61,7 +61,6 @@ export default function FundamentClient({ rijen }: { rijen: FundamentRij[] }) {
       { sleutel: "eigen", label: "Mijn eigen klanten", rijen: g.eigen, standaardOpen: true },
       { sleutel: "leads", label: "Leads", rijen: g.leads, standaardOpen: true },
       { sleutel: "mmc", label: "Multimedia Concepts", rijen: g.mmc, standaardOpen: false },
-      { sleutel: "afgesloten", label: "Niet doorgegaan en oud", rijen: [...g.verloren, ...g.oud], standaardOpen: false },
     ].filter((g2) => g2.rijen.length > 0);
   }, [rijen]);
 

@@ -489,9 +489,9 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
   const leads = groepen.leads;
   const ownClients = groepen.eigen;
   const mmcClients = groepen.mmc;
-  // Niet doorgegaan en oud-klanten: bewaard, maar in hun eigen blok dat dicht
-  // staat. Ze horen niet in een lijst waar je je werk van vandaag zoekt.
-  const afgesloten = [...groepen.verloren, ...groepen.oud];
+  // De afgesloten deals en oud-klanten die groepeerKlanten teruggeeft worden hier
+  // bewust NIET getoond: ze horen niet in een lijst waar je je werk van vandaag
+  // zoekt, en ook niet in een dichtgeklapt blok eronder.
 
   const leadTable = (
     <div className="task-table-wrap">
@@ -875,17 +875,15 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           </Vouwblok>
         )}
 
-        {/* Niet doorgegaan en oud-klanten. Dicht, want dit is naslag: de deals
-            die HubSpot als verloren markeert stonden tot 20-08-2026 gewoon
-            tussen de lopende klanten, en dat waren er meer dan honderd. Ze
-            blijven wél bestaan; de mails, notities en dealwaarde zijn precies
-            de reden dat ze bewaard zijn. */}
-        {afgesloten.length > 0 && (
-          <Vouwblok titel="Niet doorgegaan en oud" aantal={afgesloten.length} icoon={<Gebouw />}
-            sub="Verloren deals en oud-klanten. Blijven bewaard, staan alleen niet tussen je lopende klanten.">
-            {clientTable(afgesloten, "Niets afgesloten.")}
-          </Vouwblok>
-        )}
+        {/* Hier stond even een dichtgeklapt blok met de afgesloten deals en
+            oud-klanten erin. Dat is er weer uit (20-08-2026): "ik heb niks aan
+            oude klanten, ik heb niks aan deals die door HubSpot aangeleverd
+            worden." Een blok dat je nooit opent is geen naslag maar een regel
+            ruis op je startscherm.
+            Ze zijn niet weg uit de database; opruimen kan met de knop op
+            /admin/beheer, die precies de leads weghaalt waar niets mee gedaan
+            is. En de kraan zelf staat nu dicht: de HubSpot-ronde levert geen
+            deals meer aan (zie lib/hubspot-leads.ts). */}
 
         {isOwner && <BulkOnboarding />}
 

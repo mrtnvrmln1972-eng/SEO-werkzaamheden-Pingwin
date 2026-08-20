@@ -361,9 +361,16 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
         <span className="dev-task-client">{r.clientName}</span>
         {r.fase && <span className="dev-task-fase">{r.fase}</span>}
       </div>
-      <div className="dev-task-desc dev-1regel" title={stripText(r.taak)} dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} />
+      {/* De titel volledig, ook als hij over twee regels loopt. Stond op één
+          regel met puntjes erachter ("GMB vestigingen maken …"), en dan moest je
+          de kaart openen om te zien waar hij over ging. Op een weekplanning is
+          juist die titel het enige dat telt (20-08-2026). */}
+      <div className="dev-task-desc" title={stripText(r.taak)} dangerouslySetInnerHTML={{ __html: safeHtml(r.taak) }} />
       <div className="dev-task-meta">
-        {statusBadge(r.status)}
+        {/* Alleen een stand die iets tóevoegt. "Naar dev" op een kaart in de
+            developerplanning zegt precies wat je al ziet, en nam een regel in
+            beslag die de titel nodig had. Klaar en Bezig blijven wél staan. */}
+        {!/naar dev/i.test(r.status || "") && statusBadge(r.status)}
         {r.uren ? <span className="dev-task-uren">{r.uren} min</span> : null}
         {r.link && /^https?:/i.test(r.link) ? <a href={r.link} target="_blank" rel="noreferrer" className="dev-task-doc" onClick={(e) => e.stopPropagation()}>pagina ↗</a> : null}
         {/* De volledige opmerking (kan een flink stuk instructie zijn) hoort niet
@@ -379,16 +386,14 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
       {/* De documenten die bij deze taak horen. Een opdracht als "zet de nieuwe
           copy live" zonder de copy erbij is geen opdracht; dan moet de
           sitebouwer alsnog gaan mailen. */}
-      {((r.docs && r.docs.length > 0) || (r.kaartLinks && r.kaartLinks.length > 0)) && (
+      {/* Alleen de documenten. De stukken uit de aantekeningen stonden hier ook
+          even bij, en toen werd een kaartje in de weekplanning een lijst van
+          zeven regels waar de titel onder wegviel. Ze staan waar je ze zoekt:
+          achter "Bekijk", samen met de aantekeningen zelf (20-08-2026). */}
+      {r.docs && r.docs.length > 0 && (
         <div className="dev-task-docs" onClick={(e) => e.stopPropagation()}>
-          {(r.docs || []).map((d) => (
+          {r.docs.map((d) => (
             <a key={d.url} href={d.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={d.label}>{d.label}</a>
-          ))}
-          {/* De links uit de aantekeningen staan hier gewoon naast: voor wie de
-              taak moet uitvoeren is er geen verschil tussen "een document uit de
-              pijplijn" en "het stappenplan waar Maarten naar verwees". */}
-          {(r.kaartLinks || []).map((l) => (
-            <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={l.url}>{l.label}</a>
           ))}
         </div>
       )}

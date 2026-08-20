@@ -345,7 +345,22 @@ export async function syncHubspot(opties: { volledig?: boolean } = {}): Promise<
     // exact gelijk en een gemiste wijziging komt anders nooit meer binnen.
     : new Date(new Date(instelling.laatsteRonde).getTime() - 5 * 60 * 1000);
 
-  const uitkomst = instelling.bron === "deals"
+  // ── Deals leveren geen leads meer (20-08-2026) ──
+  // De ronde stond op deals en er was geen pijplijn gekozen, dus élke deal in het
+  // account werd een lead: 127 stuks in de klantenlijst, tot tien jaar oude
+  // klusjes aan toe. Bij Pingwin is een lead een contact met een leadstatus, niet
+  // een deal; Maarten: "HubSpot moet helemaal geen deals aanleveren, alleen
+  // contacten die op leadstatus hot staan."
+  //
+  // Daarom levert alleen de contacten-weg nog leads op. De deal-weg blijft in de
+  // code staan (een ander bureau kan er wél mee werken en het dashboard wordt een
+  // product), maar hij moet dan bewust aangezet worden mét gekozen pijplijnen. De
+  // combinatie "deals, alles" bestaat niet meer: dat is precies wat er misging.
+  const dealsMag = instelling.bron === "deals" && instelling.pijplijnen.length > 0;
+  if (instelling.bron === "deals" && !dealsMag) {
+    return { ...LEEG, ok: true, melding: "De ronde staat op deals zonder gekozen pijplijn, en dan zou élke deal in je account een lead worden. Er is niets opgehaald. Zet op Beheer de bron op contacten (leadstatus), of kies eerst de pijplijnen die als lead tellen." };
+  }
+  const uitkomst = dealsMag
     ? await syncDeals(instelling, sinds)
     : await syncContacten(instelling, sinds);
   if (uitkomst.ok) await setSetting(SETTING_LAATSTE_RONDE, new Date().toISOString());
