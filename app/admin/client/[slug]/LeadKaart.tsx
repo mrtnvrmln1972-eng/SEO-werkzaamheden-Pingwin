@@ -294,8 +294,8 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
 
       {!stand.gekoppeld && (
         <div className="hint">
-          HubSpot is in deze omgeving nog niet gekoppeld. Maak in HubSpot een private app met leesrechten en zet de sleutel in
-          Vercel als HUBSPOT_TOKEN; op <a href="/admin/beheer">Beheer</a> staat de stand en de knop om op te halen.
+          HubSpot is in deze omgeving nog niet gekoppeld. Maak in HubSpot een service key met leesrechten en zet hem in
+          Vercel als HUBSPOT_TOKEN; op <a href="/admin/beheer">Beheer</a> staat de klikroute, de stand en de knop om op te halen.
         </div>
       )}
     </div>

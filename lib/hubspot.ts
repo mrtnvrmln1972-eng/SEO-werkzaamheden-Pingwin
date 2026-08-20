@@ -3,7 +3,9 @@ import { logBronGebeurtenis } from "./bron-gezondheid";
 // ═══════════════════════════════════════════════════════════
 // HUBSPOT API v3/v4 — de verkoopkant, vrijwel alleen lezen
 // ═══════════════════════════════════════════════════════════
-// Vereist HUBSPOT_TOKEN in Vercel (de sleutel van een private app in HubSpot).
+// Vereist HUBSPOT_TOKEN in Vercel: een service key uit HubSpot (instellingen,
+// Integraties, Service keys). Een oudere private app-sleutel werkt ook; het is
+// dezelfde Bearer-sleutel met dezelfde scopes.
 // De sleutel staat nooit in een bestand; hier staat alleen de naam.
 //
 // DEZE LAAG LEEST. Er is precies één schrijfactie in dit bestand
@@ -31,10 +33,10 @@ function token(): string {
 
 /** Vertaalt een HubSpot-fout naar een zin die op het scherm te begrijpen is. */
 function leesbareFout(status: number, body: string): string {
-  if (status === 401) return "HubSpot: de sleutel is ongeldig of ingetrokken (401). Maak een nieuwe private app-sleutel en zet hem in Vercel als HUBSPOT_TOKEN.";
+  if (status === 401) return "HubSpot: de sleutel is ongeldig of ingetrokken (401). Maak in HubSpot een nieuwe service key en zet hem in Vercel als HUBSPOT_TOKEN.";
   if (status === 403) {
     const mist = /required (?:granular )?scopes?: ?([^"]+)/i.exec(body);
-    return `HubSpot: de app mist leesrechten (403)${mist ? ` op ${mist[1]}` : ""}. Vink in HubSpot bij de private app de ontbrekende scopes aan en maak de sleutel opnieuw.`;
+    return `HubSpot: de sleutel mist leesrechten (403)${mist ? ` op ${mist[1]}` : ""}. Vink in HubSpot bij deze service key de ontbrekende scopes aan.`;
   }
   if (status === 429) return "HubSpot: te veel verzoeken (429). De volgende ronde pakt het vanzelf weer op.";
   return `HubSpot gaf ${status}: ${body.slice(0, 300)}`;
@@ -49,7 +51,7 @@ type Methode = "GET" | "POST";
 async function hs(pad: string, methode: Methode = "GET", body?: unknown, params: Record<string, string> = {}): Promise<unknown> {
   if (!hubspotConfigured()) {
     await logBronGebeurtenis("hubspot", false, "HUBSPOT_TOKEN ontbreekt.");
-    throw new Error("HUBSPOT_TOKEN ontbreekt. Zet de sleutel van je private app in Vercel.");
+    throw new Error("HUBSPOT_TOKEN ontbreekt. Zet je HubSpot service key in Vercel.");
   }
   const url = new URL(`${BASE}${pad}`);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);

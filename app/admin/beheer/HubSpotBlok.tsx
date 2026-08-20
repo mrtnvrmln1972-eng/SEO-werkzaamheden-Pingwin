@@ -93,10 +93,15 @@ export default function HubSpotBlok() {
         <div className="created-box">
           <div className="created-title">Nog niet gekoppeld</div>
           <p>
-            In HubSpot: instellingen, Integraties, Private apps, Create a private app. Geef hem leesrechten op deals,
-            bedrijven, contacten, taken, notities en e-mail. Kopieer de sleutel die je dan krijgt en zet hem in Vercel
-            bij het project onder Settings, Environment Variables, met de naam <code>HUBSPOT_TOKEN</code>. Eén keer
-            opnieuw deployen en deze pagina laat de stand zien.
+            In HubSpot: instellingen, Integraties, <strong>Service keys</strong>, Create a service key. Geef hem een
+            naam en vink de leesrechten aan op deals, bedrijven, contacten, taken, notities en e-mail. Kopieer de
+            sleutel die je dan krijgt en zet hem in Vercel bij het project onder Settings, Environment Variables, met
+            de naam <code>HUBSPOT_TOKEN</code>. Eén keer opnieuw deployen en deze pagina laat de stand zien.
+          </p>
+          <p>
+            Kom je bij Private apps uit en krijg je daar een waarschuwing over &ldquo;legacy&rdquo;: neem de service key,
+            dat is precies waarvoor die bedoeld is. Een legacy private app kan één ding extra (meteen een seintje krijgen
+            bij elke wijziging) en dat gebruiken we hier niet; het dashboard kijkt zelf elk kwartier.
           </p>
         </div>
       )}

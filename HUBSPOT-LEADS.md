@@ -131,8 +131,10 @@ merken.
 
 ## Wat ik van jou nodig heb
 
-Eén ding, twee minuten: in HubSpot een private app aanmaken met leesrechten op deals, bedrijven,
-contacten, notities, taken en e-mail, en de sleutel die je dan krijgt in Vercel zetten. Ik kan dat
+Eén ding, twee minuten: in HubSpot een service key aanmaken (instellingen, Integraties, Service keys) met
+leesrechten op deals, bedrijven, contacten, notities, taken en e-mail, en die sleutel in Vercel zetten.
+Private apps heten daar sinds februari 2026 "legacy" en waarschuwen dat ook; een service key is precies
+hetzelfde soort sleutel voor precies dit doel, en mist alleen webhooks, die we hier niet gebruiken. Ik kan dat
 niet zelf, want ik kan niet in jouw HubSpot en niet in Vercel inloggen. De volledige klikroute
 staat in het scherm zelf zodra stap 1 live is, dus je hoeft hem niet ergens op te zoeken.
 
