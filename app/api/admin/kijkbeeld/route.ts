@@ -5,7 +5,12 @@ import { magVensterPad, vensterGeweigerd } from "../../../../lib/klantvenster";
 import { richtingOpNaam } from "../../../../lib/proefstijl";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Ruim, en dat is nodig sinds er schermen zijn die zich pas na een paar minuten
+// vullen (het oordeel van het Pagina-lab bezoekt eerst twee keer een pagina van
+// een klant). Op 60 seconden viel de server er middenin uit en kreeg je een
+// foto van een leeg scherm, of helemaal niets. Het is een plafond en geen
+// wachttijd: een gewone schermfoto is nog steeds binnen een seconde klaar.
+export const maxDuration = 300;
 
 // ═══════════════════════════════════════════════════════════
 // EEN FOTO VAN ÉÉN SCHERM, OP AFROEP

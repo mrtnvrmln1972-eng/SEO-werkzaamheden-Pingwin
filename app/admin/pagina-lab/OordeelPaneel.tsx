@@ -79,8 +79,11 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
 
   const klant = klanten.find((k) => k.slug === slug) || null;
 
-  const beoordeel = useCallback(async (adres: string, klantSlug: string) => {
-    if (!adres.trim()) { setFout("Vul eerst het volledige webadres in, met https:// ervoor."); return; }
+  const beoordeel = useCallback(async (ingevuld: string, klantSlug: string) => {
+    // Een adres zonder https:// ervoor is geen fout van Maarten maar van het
+    // veld: iedereen plakt "kamsteeg.nl/hovenier". Dus zetten we het er zelf voor.
+    const adres = ingevuld.trim() && !/^https?:\/\//i.test(ingevuld.trim()) ? `https://${ingevuld.trim()}` : ingevuld.trim();
+    if (!adres) { setFout("Vul eerst het webadres van de pagina in."); return; }
     setBezig(true);
     setFout("");
     setUit(null);
@@ -88,7 +91,7 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
       const res = await fetch("/api/admin/pagina-lab/oordeel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: adres.trim(), slug: klantSlug }),
+        body: JSON.stringify({ url: adres, slug: klantSlug }),
       });
       const data = await res.json();
       if (!data.ok) setFout(data.error || "Het beoordelen lukte niet.");
@@ -151,7 +154,7 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
             soort="url"
             waarde={url}
             zet={setUrl}
-            plaatshouder={klant?.domein ? `https://${klant.domein.replace(/^www\./i, "")}/` : "https://voorbeeld.nl/pagina/"}
+            plaatshouder={klant?.domein ? `${klant.domein.replace(/^www\./i, "")}/pagina/` : "voorbeeld.nl/pagina/"}
           />
         </Veldrij>
         {bezig && (
