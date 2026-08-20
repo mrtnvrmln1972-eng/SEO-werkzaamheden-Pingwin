@@ -7,7 +7,10 @@
 
 export type WpTask = { id: number; thread: string; taak: string; toelichting: string; wie: string; url: string; taaktype: string; copyUrl: string; bronMail: string; weekYear: number; weekNo: number; status: string; sortOrder: number; naarDev?: boolean; archiefAantal?: number; ruw?: boolean; notitie?: string };
 
-export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string; strategie?: string } };
+export type WpPageInfo = { url: string; live: boolean; klikken?: number; vertoningen?: number; doorgevoerd?: boolean | null; strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean; bouw: boolean; structured: boolean; structuredStatus: string; next: string; links: { analyse: string; blauwdruk: string; copy: string; strategie?: string };
+  /** Sinds wanneer elke fase zo staat: voor een afgeronde fase is dat het moment
+      waarop hij vastgelegd is. Komt uit lib/fase-historie.ts. */
+  sinds?: Partial<Record<string, string>> };
 
 // De zeven fases hebben één bron: lib/fase-volgorde.ts. De kaart schreef die
 // lijst zelf nog een keer uit, en dat is precies hoe twee lijsten uit elkaar gaan

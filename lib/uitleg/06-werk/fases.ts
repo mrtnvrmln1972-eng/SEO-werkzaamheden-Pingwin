@@ -15,6 +15,10 @@ export const BLOKKEN: Uitklapper[] = [
       "| Copy | De volledige tekst, getoetst aan de criteria |\n" +
       "| Implementatie | Het bouwen en live zetten |\n" +
       "| Structured data | Het schema-blok voor deze pagina |\n\n" +
+      "**Achter elke fase staat wanneer hij is vastgelegd**, met datum en tijd. Dat is de bevestiging dat de " +
+      "volgende stap met de verse versie werkt en niet met een oude, en het laat in één blik zien waar je " +
+      "gebleven was. Staat een fase langer dan een dag stil zonder af te zijn, dan zie je in plaats daarvan " +
+      "hoe lang hij al wacht.\n\n" +
       "Uit die stand volgt automatisch twee dingen: wat de volgende stap is, en wie er aan zet is (het " +
       "bureau of de developer). Dat wordt op één plek berekend, want eerder deden de kaart en de server dat " +
       "elk apart en dan zei de ene 'volgende: strategie' terwijl de knop ernaast een blauwdruk startte.\n\n" +

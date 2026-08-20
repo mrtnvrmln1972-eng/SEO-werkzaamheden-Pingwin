@@ -19,6 +19,31 @@ import type { FaseKey, WpTask, WpPageInfo } from "./types";
 
 type RunInfo = { status: string; steps: Record<string, string>; links: Record<string, string>; error?: string } | null;
 
+/**
+ * Wanneer deze fase voor het laatst is vastgelegd, in gewone taal.
+ *
+ * Voor een afgeronde fase is dat het moment waarop hij op klaar kwam te staan:
+ * de bevestiging dat er met de verse versie verder gewerkt wordt en niet met een
+ * oude. Voor een fase die nog niet af is, staat er hoe lang hij al wacht.
+ */
+function faseMoment(iso: string | undefined, af: boolean): { kort: string; uitleg: string } | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const dagen = Math.floor((Date.now() - d.getTime()) / 86400000);
+  const datum = d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+  const tijd = d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+  const volledig = `${d.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })} om ${tijd}`;
+  if (af) {
+    return {
+      kort: dagen === 0 ? `vandaag ${tijd}` : `${datum} ${tijd}`,
+      uitleg: `Vastgelegd op ${volledig}. Vanaf dat moment werkt de volgende stap met deze versie.`,
+    };
+  }
+  if (dagen < 1) return null;
+  return { kort: `wacht ${dagen} d`, uitleg: `Staat sinds ${volledig} op deze stand.` };
+}
+
 /** Dichtgeklapt: compacte fase-chips. Klik = de kaart openen. */
 export function FaseChips({ page, onToggleOpen }: { page: WpPageInfo; onToggleOpen: () => void }) {
   return (
@@ -432,6 +457,10 @@ export default function KaartFases({
                     kaart. Een klein linkje achter de naam doet hetzelfde en houdt
                     de rij rustig. */}
                 {link && <a className="wp-fase-doclink" href={link} target="_blank" rel="noreferrer" title="Open het document">(link)</a>}
+                {(() => {
+                  const m = faseMoment(page?.sinds?.[f.key], !!page?.[f.key]);
+                  return m ? <span className={"wp-fase-datum" + (page?.[f.key] ? "" : " wacht")} title={m.uitleg}>{m.kort}</span> : null;
+                })()}
                 {sturingNuttig && (
                   <button type="button" className="wp-fase-uitleg"
                     title={sturingOpen ? "Verberg de sturing voor deze stap" : "Toon de sturing voor deze stap"}

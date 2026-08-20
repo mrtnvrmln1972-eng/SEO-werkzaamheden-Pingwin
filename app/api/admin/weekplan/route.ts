@@ -73,7 +73,13 @@ export async function GET(req: NextRequest) {
   // grotendeels afgeleid zijn (copy live, schema aanwezig): er is geen moment
   // waarop iemand "klaar" aanklikt. Elke uitlezing vergelijkt met de vorige.
   const sinds = await registreerFases(slug, pages);
-  return NextResponse.json({ ok: true, tasks, current: isoWeek(now), pages, sinds });
+  // De datums reizen mee ín de pagina zelf. Ze los meesturen betekende dat elk
+  // scherm ze apart moest doorgeven aan elke kaart, en dan komen ze ergens
+  // onderweg niet aan; zo heeft alles wat de pagina al kent ze automatisch.
+  const paginasMetDatum = Object.fromEntries(
+    Object.entries(pages).map(([k, v]) => [k, { ...v, sinds: sinds[k] || {} }]),
+  );
+  return NextResponse.json({ ok: true, tasks, current: isoWeek(now), pages: paginasMetDatum, sinds });
 }
 
 // POST: één taak bijwerken (week/status/volgorde) of verwijderen.
