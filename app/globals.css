@@ -5781,6 +5781,17 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   font-weight: 600; color: var(--label-muted);
   font-size: var(--type-label); line-height: var(--regel-label);
 }
+/* De voorstellen om twee rijen van hetzelfde bedrijf samen te voegen. */
+.dubbel-lijst { display: flex; flex-direction: column; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-regel); }
+.dubbel-paar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-groep);
+  flex-wrap: wrap; padding: var(--ruimte-regel) var(--ruimte-groep);
+  border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop);
+  background: var(--kleur-kaart);
+  font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
+}
+.dubbel-tekst { flex: 1; min-width: 0; }
+
 /* Een extra regel onder een klant of lead: dezelfde vakjes, ingesprongen, met
    een streepje ervoor zodat je ziet dat hij bij de rij erboven hoort. */
 .regel-rij td { padding-top: var(--ruimte-krap); padding-bottom: var(--ruimte-krap); }

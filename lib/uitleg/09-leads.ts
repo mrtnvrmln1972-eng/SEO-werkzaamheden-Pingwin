@@ -78,6 +78,11 @@ export const HOOFDSTUK: Hoofdstuk = {
         "\u201cbestaande klanten\u201d of \u201cleads\u201d en de regel klapt open: dan zie je per bedrijf wat het per " +
         "maand bijdraagt, en bij een lead met welke kans dat gerekend is. Het zijn dezelfde cijfers als in " +
         "de volledige prognose, alleen korter.\n\n" +
+        "Staat een bedrijf twee keer in de lijst, bijvoorbeeld omdat jij het zelf had aangemaakt en het daarna " +
+        "ook uit HubSpot binnenkwam, dan ziet het dashboard dat en zet het de paren op een rij. Met \u00e9\u00e9n knop " +
+        "voeg je ze samen: de rij met jouw bedragen blijft staan, lege velden worden aangevuld uit de andere, " +
+        "en het dossier, de documenten, de mail en de HubSpot-koppeling verhuizen mee. Samenvoegen gebeurt " +
+        "nooit vanzelf, want het is niet terug te draaien.\n\n" +
         "Bij \u00e9\u00e9n bedrijf lopen vaak meer dingen tegelijk. Met de knop \u201c+ regel\u201d komt er een tweede rij " +
         "voor hetzelfde bedrijf: dezelfde naam, dezelfde link naar hun site, precies dezelfde kolommen, " +
         "maar leeg. Je vult zelf in waar die regel over gaat (SEO, advertenties, website of overig), wanneer " +

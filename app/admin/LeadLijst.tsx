@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ClientConfig } from "../../lib/clients";
 import { LEAD_STANDAARD_KANS } from "../../lib/prognose-kans";
 import Vouwblok from "./Vouwblok";
@@ -38,6 +38,14 @@ type StripMaand = {
   maand: string; label: string;
   zekerOmzet: number; verwachtOmzet: number; postOmzet: number;
   omzet: number; omzetSeo: number; omzetAds: number; omzetEenmalig: number; omzetOverig: number;
+};
+
+/** Twee rijen die hetzelfde bedrijf lijken te zijn. */
+type DubbelPaar = {
+  behoud: { slug: string; naam: string; domein: string | null; bedrag: number; fase: string };
+  weg: { slug: string; naam: string; domein: string | null; bedrag: number; fase: string };
+  waarom: string;
+  meeneemt: string[];
 };
 
 /** Eén klant, lead of losse post in de opbouw onder de strook. */
@@ -108,6 +116,39 @@ export default function LeadLijst({
   // De extra regels onder een lead (een website, advertenties). Ze rekenen mee
   // in de prognose, dus na elke wijziging mag de maandstrook opnieuw tellen.
   const extra = useExtraRegels(isOwner, () => setHertel((n) => n + 1));
+
+  // Bedrijven die twee keer in de lijst staan: één keer met de hand, één keer
+  // uit HubSpot. Zoeken gebeurt vanzelf; samenvoegen alleen op een knop.
+  const [dubbel, setDubbel] = useState<DubbelPaar[]>([]);
+  const [toonDubbel, setToonDubbel] = useState(false);
+  const [voegBezig, setVoegBezig] = useState("");
+
+  const laadDubbelen = useCallback(async () => {
+    if (!isOwner) return;
+    try {
+      const d = await fetch("/api/admin/dubbelen").then((r) => r.json());
+      if (d?.ok && Array.isArray(d.paren)) setDubbel(d.paren as DubbelPaar[]);
+    } catch { /* stil: dan staat de balk er niet */ }
+  }, [isOwner]);
+  useEffect(() => { void laadDubbelen(); }, [laadDubbelen, leads.length]);
+
+  async function voegSamen(p: DubbelPaar) {
+    if (!window.confirm(
+      `"${p.weg.naam}" opnemen in "${p.behoud.naam}"?\n\n`
+      + `Alles van ${p.weg.naam} verhuist mee (dossier, documenten, mail, de HubSpot-koppeling). `
+      + `Wat bij ${p.behoud.naam} al ingevuld staat blijft staan. Dit kun je niet terugdraaien.`,
+    )) return;
+    setVoegBezig(p.weg.slug);
+    try {
+      const d = await fetch("/api/admin/dubbelen", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ behoud: p.behoud.slug, weg: p.weg.slug }),
+      }).then((r) => r.json());
+      if (d?.ok) { melden({ ok: true, text: d.melding }); await refresh(); await laadDubbelen(); setHertel((n) => n + 1); }
+      else melden({ ok: false, text: d?.error || d?.melding || "Samenvoegen lukte niet." });
+    } catch { melden({ ok: false, text: "Samenvoegen lukte niet." }); }
+    finally { setVoegBezig(""); }
+  }
 
   /**
    * Een veld dat in de klantrij zelf staat (het maandbedrag, de kosten, de
@@ -199,6 +240,40 @@ export default function LeadLijst({
     { maand: 0, maandGewogen: 0, kosten: 0, kostenGewogen: 0, eens: 0, eensGewogen: 0 },
   );
   const euro = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
+
+  const dubbelBalk = isOwner && dubbel.length > 0 && (
+    <div className="lead-opruimbalk">
+      <span>
+        <strong>{dubbel.length} bedrijven</strong> staan er twee keer in: één keer zoals jij ze had staan en één keer
+        zoals ze uit HubSpot kwamen. Samenvoegen houdt alles wat er staat.
+      </span>
+      <button type="button" className="btn btn-klein" onClick={() => setToonDubbel((v) => !v)}>
+        {toonDubbel ? "Sluiten" : `Bekijk de ${dubbel.length}`}
+      </button>
+    </div>
+  );
+
+  const dubbelLijst = isOwner && toonDubbel && dubbel.length > 0 && (
+    <div className="dubbel-lijst">
+      {dubbel.map((p) => (
+        <div key={p.weg.slug} className="dubbel-paar">
+          <div className="dubbel-tekst">
+            <strong>{p.behoud.naam}</strong> blijft staan
+            {p.behoud.bedrag > 0 ? ` (${euro(p.behoud.bedrag)} p/m)` : ""},
+            {" "}<strong>{p.weg.naam}</strong> gaat daarin op.
+            <span className="muted"> Gevonden op: {p.waarom}.</span>
+            {p.meeneemt.length > 0 && (
+              <span className="muted"> Meeverhuist: {p.meeneemt.join(", ")}.</span>
+            )}
+          </div>
+          <button type="button" className="btn btn-klein btn-primary" disabled={voegBezig === p.weg.slug}
+            onClick={() => voegSamen(p)}>
+            {voegBezig === p.weg.slug ? "Bezig…" : "Samenvoegen"}
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 
   const leadTable = (
     <div className="task-table-wrap">
@@ -444,7 +519,7 @@ export default function LeadLijst({
     </div>
   );
 
-  return leadTable;
+  return (<>{dubbelBalk}{dubbelLijst}{leadTable}</>);
 }
 
 /**
