@@ -12,8 +12,9 @@ import BulkOnboarding from "./BulkOnboarding";
 import KlantwaardeBulk from "./KlantwaardeBulk";
 import Vouwblok from "./Vouwblok";
 import LeadLijst, { MaandStrook, type HubspotStand } from "./LeadLijst";
+import { BedragVeld } from "./RijVeld";
 import KijkSleutel from "./KijkSleutel";
-import { Gebouw, Mensen, PijlRechts, Vlag } from "../_ui/Pijl";
+import { Gebouw, Kruis, Mensen, PijlRechts, Vlag } from "../_ui/Pijl";
 
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
@@ -48,9 +49,6 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
   const [leadForm, setLeadForm] = useState({ name: "", domain: "", email: "" });
   const [leadBusy, setLeadBusy] = useState(false);
   // Budget bewerken per klant (maandfee, linkbuilding, uurtarief, uren)
-  const [editSlug, setEditSlug] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ maandbudget: "", linkbuilding: "", uurtarief: "" });
-  const [editBusy, setEditBusy] = useState(false);
   // Facturen-signaal per klant (uit Moneybird): aantal + bedrag >30 dagen open.
   const [overdue, setOverdue] = useState<Record<string, { count: number; total: number }>>({});
   // Onboarding-signaal per klant: hoeveel stappen staan er, en wat loopt achter.
@@ -137,40 +135,21 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     return () => { alive = false; };
   }, []);
 
-  function openEdit(e: React.MouseEvent, c: ClientConfig) {
-    e.stopPropagation();
-    setEditSlug(c.slug);
-    setEditForm({
-      maandbudget: String(c.budget.maandbudget),
-      linkbuilding: String(c.budget.linkbuilding),
-      uurtarief: String(c.budget.uurtarief),
-    });
-  }
-  async function saveBudget(e: React.MouseEvent, c: ClientConfig) {
-    e.stopPropagation();
-    setEditBusy(true); setError("");
+  /** Eén bedrag uit een klantrij bewaren en de lijst opnieuw laden. */
+  async function bewaarBedrag(slug: string, body: Record<string, unknown>) {
+    setError("");
     try {
-      const res = await fetch("/api/admin/clients", {
+      const d = await fetch("/api/admin/clients", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          slug: c.slug, action: "setBudget",
-          maandbudget: Number(editForm.maandbudget) || 0,
-          linkbuilding: Number(editForm.linkbuilding) || 0,
-          uurtarief: Number(editForm.uurtarief) || 0,
-          // Beschikbare uren zijn afgeleid (maandbudget − linkbuilding) / uurtarief.
-          beschikbareUren: Number(editForm.uurtarief) > 0
-            ? Math.round(((Number(editForm.maandbudget) || 0) - (Number(editForm.linkbuilding) || 0)) / Number(editForm.uurtarief))
-            : 0,
-        }),
-      });
-      const data = await res.json();
-      if (data.ok) { setEditSlug(null); await refresh(); setNotice({ ok: true, text: `Budget bijgewerkt voor ${c.name}.` }); }
-      else setError(data.error || "Budget bijwerken mislukt.");
-    } catch { setError("Budget bijwerken mislukt."); } finally { setEditBusy(false); }
+        body: JSON.stringify({ slug, ...body }),
+      }).then((r) => r.json());
+      if (!d?.ok) setNotice({ ok: false, text: d?.error || "Opslaan lukte niet." });
+      else await refresh();
+    } catch { setNotice({ ok: false, text: "Opslaan lukte niet." }); }
   }
-  function editSet(field: keyof typeof editForm, value: string) {
-    setEditForm((f) => ({ ...f, [field]: value }));
-  }
+
+  /** Een bedrag zoals het in een lijst hoort: "€ 1.500", nul blijft "€ 0". */
+  const euroKort = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -277,20 +256,6 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     window.location.href = "/admin/login";
   }
 
-  // Genereert een nieuw wachtwoord voor een klant (om te mailen); toont het één keer.
-  async function resetPw(e: React.MouseEvent, c: ClientConfig) {
-    e.stopPropagation();
-    if (!window.confirm(`Nieuw wachtwoord voor ${c.name}? Het oude werkt daarna niet meer.`)) return;
-    try {
-      const res = await fetch("/api/admin/clients", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug: c.slug, action: "resetPassword" }) });
-      const data = await res.json();
-      if (data.ok) {
-        setCreated({ name: c.name, loginId: c.loginId, password: data.password, loginUrl: `${window.location.origin}/login` });
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else setError(data.error || "Wachtwoord genereren mislukt.");
-    } catch { setError("Wachtwoord genereren mislukt."); }
-  }
-
   async function remove(e: React.MouseEvent, c: ClientConfig) {
     e.stopPropagation();
     const vraag = c.fase === "lead"
@@ -358,15 +323,15 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             {isOwner && <th></th>}
             <th>Bedrijf</th>
             <th>Inlognaam</th>
-            <th>E-mail</th>
             <th>Maandfee</th>
-            <th>Uurtarief</th>
+            <th>Kosten p/m</th>
+            <th>Netto p/m</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           {list.length === 0 && (
-            <tr><td colSpan={isOwner ? 8 : 7} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
+            <tr><td colSpan={isOwner ? 7 : 6} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
           )}
           {list.map((c) => (
             <Fragment key={c.slug}>
@@ -412,49 +377,58 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                   {" "}<span className="row-arrow"><PijlRechts /></span>
                 </td>
                 <td>{c.loginEnabled ? c.loginId : <span className="muted">geen login</span>}</td>
-                <td>{c.email || <span className="muted">&mdash;</span>}</td>
-                <td>&euro;{c.budget.maandbudget.toFixed(0)}{c.budget.linkbuilding ? <span className="muted"> (w.v. &euro;{c.budget.linkbuilding.toFixed(0)} LB)</span> : null}</td>
-                <td>&euro;{c.budget.uurtarief.toFixed(0)}</td>
+                {/* De maandfee en de kosten vul je hier in de rij in, net als bij
+                    de leads; netto rekent zichzelf uit. Het uitklapvak met
+                    maandfee, linkbuilding en uurtarief is daarmee weg
+                    (20-08-2026), en het uurtarief ook: dat stuurde alleen de
+                    berekende uren en Maarten stuurt op geld, niet op uren. */}
+                <td>
+                  {isOwner ? (
+                    <BedragVeld
+                      waarde={c.budget.maandbudget}
+                      label={`Maandfee van ${c.name}`}
+                      opslaan={(n) => bewaarBedrag(c.slug, { action: "setBedragen", maandbudget: n })}
+                    />
+                  ) : <>&euro;{c.budget.maandbudget.toFixed(0)}</>}
+                </td>
+                <td>
+                  {isOwner ? (
+                    <BedragVeld
+                      waarde={c.budget.linkbuilding}
+                      label={`Kosten per maand voor ${c.name}`}
+                      opslaan={(n) => bewaarBedrag(c.slug, { action: "setBedragen", linkbuilding: n })}
+                    />
+                  ) : <>&euro;{c.budget.linkbuilding.toFixed(0)}</>}
+                </td>
+                <td>
+                  <span className="lead-totaal-bedrag">{euroKort(c.budget.maandbudget - c.budget.linkbuilding)}</span>
+                </td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   {isOwner ? (
-                    <>
-                      <button className="btn btn-klein" onClick={(e) => openEdit(e, c)}>Budget</button>{" "}
-                      <button className="btn btn-klein" onClick={(e) => resetPw(e, c)}>Nieuw wachtwoord</button>{" "}
-                      <button className="btn btn-klein" onClick={(e) => remove(e, c)}>Verwijder</button>
-                    </>
+                    <button className="lead-kruis" title="Verwijder deze klant"
+                      aria-label={`${c.name} verwijderen`} onClick={(e) => remove(e, c)}><Kruis /></button>
                   ) : (
                     <span className="muted">&mdash;</span>
                   )}
                 </td>
               </tr>
-              {editSlug === c.slug && (
-                <tr onClick={(e) => e.stopPropagation()}>
-                  <td colSpan={7} style={{ background: "var(--gray-light)" }}>
-                    <div className="budget-edit">
-                      <div className="budget-edit-title">Budget aanpassen voor {c.name}</div>
-                      <div className="budget-edit-grid">
-                        <label>Maandfee (&euro;, incl. linkbuilding)
-                          <input type="number" value={editForm.maandbudget} onChange={(e) => editSet("maandbudget", e.target.value)} />
-                        </label>
-                        <label>Standaard linkbuilding per maand (&euro;)
-                          <input type="number" value={editForm.linkbuilding} onChange={(e) => editSet("linkbuilding", e.target.value)} />
-                        </label>
-                        <label>Uurtarief (&euro;)
-                          <input type="number" value={editForm.uurtarief} onChange={(e) => editSet("uurtarief", e.target.value)} />
-                        </label>
-                      </div>
-                      <div className="hint" style={{ marginTop: "var(--s-2)" }}>De beschikbare uren worden per maand berekend uit (maandfee &minus; linkbuilding) / uurtarief. Wil je de linkbuilding voor één specifieke maand afwijkend zetten, doe dat in de Werkzaamheden-tab bij die maand; dan passen alleen de uren van die maand zich aan.</div>
-                      <div className="budget-edit-actions">
-                        <button className="btn btn-primary btn-klein" onClick={(e) => saveBudget(e, c)} disabled={editBusy}>{editBusy ? "Opslaan…" : "Opslaan"}</button>
-                        <button className="btn btn-klein" onClick={(e) => { e.stopPropagation(); setEditSlug(null); }}>Annuleren</button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </Fragment>
           ))}
         </tbody>
+        {/* Dezelfde optelling als onder de leads: wat komt er per maand binnen,
+            wat gaat eraf, en wat blijft er over. */}
+        {list.length > 0 && (
+          <tfoot>
+            <tr className="lead-totaalrij">
+              {isOwner && <td></td>}
+              <td colSpan={2}>Alles bij elkaar</td>
+              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.maandbudget || 0), 0))}</span></td>
+              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.linkbuilding || 0), 0))}</span></td>
+              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.maandbudget || 0) - (c.budget.linkbuilding || 0), 0))}</span></td>
+              <td></td>
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   );

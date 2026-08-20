@@ -77,6 +77,12 @@ export type ClientConfig = {
   // Toont het blok "Ontwikkeling deze maand" op het klantdashboard. Standaard
   // uit; Maarten zet hem aan vanuit de voorbeeldweergave zodra hij hem goedkeurt.
   toonOntwikkeling: boolean;
+  /**
+   * Wanneer je dit bedrijf weer moet spreken, als "JJJJ-MM-DD". Staat de
+   * HubSpot-koppeling aan en heeft die een datum, dan wint die; anders is dit
+   * wat je zelf in de leadlijst hebt ingevuld.
+   */
+  opvolgDatum: string | null;
   budget: ClientBudget;
   cockpit: ClientCockpit;
 };
@@ -106,6 +112,7 @@ type ClientRow = {
   ahrefs_key_ref: string | null;
   backend_url: string | null;
   toon_ontwikkeling: boolean | null;
+  opvolg_datum: string | null;
   email_domain: string | null;
   dev_name: string | null;
   work_doc_url: string | null;
@@ -145,6 +152,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     ahrefsKeyRef: r.ahrefs_key_ref || null,
     backendUrl: r.backend_url || null,
     toonOntwikkeling: !!r.toon_ontwikkeling,
+    opvolgDatum: r.opvolg_datum ? String(r.opvolg_datum).slice(0, 10) : null,
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),
@@ -362,6 +370,18 @@ export async function setPositioneringUrl(slug: string, url: string): Promise<bo
 export async function setToonOntwikkeling(slug: string, aan: boolean): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await sql`UPDATE clients SET toon_ontwikkeling = ${aan} WHERE slug = ${slug}`;
+  return !!rowCount && rowCount > 0;
+}
+
+/**
+ * De datum waarop je dit bedrijf weer moet spreken, met de hand gezet in de
+ * leadlijst. Eigen smalle functie, net als de velden hierboven: de cockpit-PATCH
+ * overschrijft al zijn velden tegelijk en zou deze dus wissen.
+ */
+export async function setClientOpvolgDatum(slug: string, datum: string | null): Promise<boolean> {
+  await ensureSchema();
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String(datum || "")) ? datum : null;
+  const { rowCount } = await sql`UPDATE clients SET opvolg_datum = ${d} WHERE slug = ${slug}`;
   return !!rowCount && rowCount > 0;
 }
 

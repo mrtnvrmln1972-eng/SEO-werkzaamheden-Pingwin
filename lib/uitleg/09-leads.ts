@@ -65,9 +65,10 @@ export const HOOFDSTUK: Hoofdstuk = {
         "kosten die eraan vastzitten, een eenmalig bedrag voor een website met de kosten daarvan, de kans, en " +
         "vanaf welke maand het gaat lopen. Het eenmalige bedrag telt precies één keer mee, in die startmaand; " +
         "de maandbedragen tellen vanaf dan elke maand. In de leadlijst op je startscherm zie je per rij wanneer " +
-        "je moet opvolgen, en daar vul je de kans, het maandbedrag, het eenmalige bedrag en de startmaand " +
-        "ook meteen in, zonder de lead te openen; wat je daar typt is hetzelfde als op de leadkaart en telt " +
-        "direct mee in de prognose. Een lead die je nog niet beoordeeld hebt telt voor dertig procent mee, " +
+        "je moet opvolgen, en daar vul je de kans, het maandbedrag, de kosten, het eenmalige bedrag en de " +
+        "startmaand ook meteen in, zonder de lead te openen; wat je daar typt is hetzelfde als op de " +
+        "leadkaart en telt direct mee in de prognose. Heeft HubSpot een opvolgdatum, dan staat die er; " +
+        "zo niet, dan zet je die datum daar zelf. Een lead die je nog niet beoordeeld hebt telt voor dertig procent mee, " +
         "niet voor honderd. Onder de lijst staat wat het bij elkaar is: het opgetelde bedrag en daaronder " +
         "het gewogen bedrag, dus elk bedrag maal de kans van die lead. Dat tweede getal is wat je nuchter " +
         "mag verwachten.\n\n" +

@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9048,
-    "stijlregels": 4411,
-    "classnamen": 3007
+    "regels": 9049,
+    "stijlregels": 4412,
+    "classnamen": 3008
   },
   "kleuren": {
     "verschillend": 40,
@@ -533,7 +533,7 @@
     },
     {
       "naam": "Invoervelden",
-      "aantal": 55,
+      "aantal": 56,
       "namen": [
         "add-month-select",
         "ag-checkbox-field",
@@ -558,6 +558,7 @@
         "kpi-period-select",
         "kw-veld",
         "lead-kans-veld",
+        "lead-veld-datum",
         "lead-veld-geld",
         "lead-veld-kans",
         "lead-veld-maand",
@@ -594,7 +595,7 @@
     }
   ],
   "inline": {
-    "totaal": 643,
+    "totaal": 641,
     "metVasteWaarde": 0,
     "perBestand": []
   },

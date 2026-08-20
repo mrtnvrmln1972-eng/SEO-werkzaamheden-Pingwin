@@ -5756,6 +5756,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    2026"); smaller en de browser kapt hem af, en dan sta je te raden welk jaar
    er staat. */
 .prog-veld.lead-veld-maand { width: 17ch; }
+.prog-veld.lead-veld-datum { width: 13ch; }
 .lead-kans-veld { display: inline-flex; align-items: center; gap: var(--ruimte-krap); white-space: nowrap; }
 .lead-kans-teken { color: var(--label-muted); }
 /* Een kruisje in plaats van een knop met tekst: "niet doorgegaan" is een

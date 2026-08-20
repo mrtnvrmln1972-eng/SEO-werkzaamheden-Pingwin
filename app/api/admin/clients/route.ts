@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
 import { opruimWeesOrgData } from "../../../../lib/org-data";
-import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, setPositioneringUrl, setToonOntwikkeling, setHuisstijlUrl, setAdsAccountUrl, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
+import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, setPositioneringUrl, setToonOntwikkeling, setHuisstijlUrl, setAdsAccountUrl, setClientOpvolgDatum, getClientBySlug, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
 
@@ -158,6 +158,32 @@ export async function PATCH(req: NextRequest) {
       uurtarief: Number(body.uurtarief) || 0,
       beschikbareUren: Number(body.beschikbareUren) || 0,
     });
+    if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Eén of twee bedragen uit een lijstrij bijwerken (de maandfee, de kosten die
+  // aan die klant vasthangen). Anders dan setBudget hierboven laat dit alles wat
+  // je niet meestuurt met rust; in een rij vul je één vakje in, niet vier.
+  if (body.action === "setBedragen") {
+    const huidig = await getClientBySlug(slug);
+    if (!huidig) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
+    const getal = (v: unknown, terugval: number) =>
+      v === undefined || v === null ? terugval : Math.max(0, Math.round(Number(v) || 0));
+    await setClientBudget(slug, {
+      maandbudget: getal(body.maandbudget, huidig.budget.maandbudget),
+      linkbuilding: getal(body.linkbuilding, huidig.budget.linkbuilding),
+      uurtarief: huidig.budget.uurtarief,
+      beschikbareUren: huidig.budget.beschikbareUren,
+    });
+    return NextResponse.json({ ok: true });
+  }
+
+  // De datum waarop je dit bedrijf weer moet spreken, met de hand gezet in de
+  // leadlijst. Staat de HubSpot-koppeling aan en heeft die een datum, dan wint
+  // die op het scherm; dit is wat er staat zolang HubSpot niets levert.
+  if (body.action === "opvolgDatum") {
+    const ok = await setClientOpvolgDatum(slug, String(body.opvolgDatum || "").trim() || null);
     if (!ok) return NextResponse.json({ ok: false, error: "Klant niet gevonden." }, { status: 404 });
     return NextResponse.json({ ok: true });
   }

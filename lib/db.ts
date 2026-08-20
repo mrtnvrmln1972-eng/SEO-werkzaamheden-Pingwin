@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "kern-8ba6e231";
+export const KERN_SCHEMA_VERSIE = "kern-25539e26";
 
 async function init(): Promise<void> {
   await sql`
@@ -196,6 +196,10 @@ async function init(): Promise<void> {
   // Standaard uit: niets gaat automatisch naar de klant, ook al bestaat het
   // blok al in de voorbeeldweergave. Maarten zet hem per klant zelf aan.
   await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS toon_ontwikkeling BOOLEAN NOT NULL DEFAULT false`;
+  // Wanneer je dit bedrijf weer moet spreken. Komt uit HubSpot zodra die
+  // koppeling aan staat; is er geen HubSpot-datum, dan zet je hem hier zelf in
+  // de leadlijst. HubSpot wint als hij een datum heeft, zodat er één baas is.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS opvolg_datum DATE`;
 
   // ── KPI-trend per klant (gevuld door de nachtelijke cron client-trends) ──
   // Voor de "mooie ontwikkeling"-selectie in de klanten-dropdown: per klant en

@@ -5,6 +5,7 @@ import type { ClientConfig } from "../../lib/clients";
 import { LEAD_STANDAARD_KANS } from "../../lib/prognose-kans";
 import Vouwblok from "./Vouwblok";
 import { Kruis, Munt, PijlRechts, Vlag } from "../_ui/Pijl";
+import { BedragVeld, DatumVeld } from "./RijVeld";
 
 // ═══════════════════════════════════════════════════════════
 // DE LEADLIJST OP HET KLANTENOVERZICHT
@@ -90,6 +91,24 @@ export default function LeadLijst({
   // tegelijk opslaat en je ziet dat er iets gebeurt.
   const [celBezig, setCelBezig] = useState<string>("");
 
+  /**
+   * Een veld dat in de klantrij zelf staat (het maandbedrag, de kosten, de
+   * opvolgdatum). Gaat naar /api/admin/clients, want daar staan die velden; de
+   * lijst wordt daarna opnieuw geladen zodat de optelling eronder klopt.
+   */
+  async function bewaarKlant(slug: string, veld: string, body: Record<string, unknown>) {
+    setCelBezig(`${slug}:${veld}`);
+    try {
+      const d = await fetch("/api/admin/clients", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, ...body }),
+      }).then((r) => r.json());
+      if (!d?.ok) melden({ ok: false, text: d?.error || "Opslaan lukte niet." });
+      else await refresh();
+    } catch { melden({ ok: false, text: "Opslaan lukte niet." }); }
+    finally { setCelBezig(""); }
+  }
+
   /** Eén veld van één lead bewaren en de lijst daarna opnieuw laden. */
   async function bewaarLead(slug: string, veld: string, body: Record<string, unknown>) {
     setCelBezig(`${slug}:${veld}`);
@@ -141,14 +160,16 @@ export default function LeadLijst({
   const totalen = leads.reduce(
     (t, c) => {
       const maand = Math.round(c.budget.maandbudget || 0);
+      const kosten = Math.round(c.budget.linkbuilding || 0);
       const eens = eenmaligVan(c.slug);
       const w = kansVan(c.slug) / 100;
       return {
         maand: t.maand + maand, maandGewogen: t.maandGewogen + maand * w,
+        kosten: t.kosten + kosten, kostenGewogen: t.kostenGewogen + kosten * w,
         eens: t.eens + eens, eensGewogen: t.eensGewogen + eens * w,
       };
     },
-    { maand: 0, maandGewogen: 0, eens: 0, eensGewogen: 0 },
+    { maand: 0, maandGewogen: 0, kosten: 0, kostenGewogen: 0, eens: 0, eensGewogen: 0 },
   );
   const euro = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
 
@@ -158,12 +179,12 @@ export default function LeadLijst({
         <thead>
           <tr>
             {isOwner && <th></th>}<th>Bedrijf</th>
-            <th>Opvolgen</th><th>Kans</th><th>Budget p/m</th><th>Eenmalig</th><th>Verwacht klant</th><th></th>
+            <th>Opvolgen</th><th>Kans</th><th>Budget p/m</th><th>Kosten p/m</th><th>Eenmalig</th><th>Verwacht klant</th><th></th>
           </tr>
         </thead>
         <tbody>
           {leads.length === 0 && (
-            <tr><td colSpan={isOwner ? 8 : 7} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
+            <tr><td colSpan={isOwner ? 9 : 8} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
               Nog geen leads. Maak er een aan met alleen een naam en een website.
             </td></tr>
           )}
@@ -203,10 +224,16 @@ export default function LeadLijst({
                   HubSpot komt; de kolom die daar "zelf gemaakt" of de leadstatus
                   liet zien is eruit (20-08-2026), want die stond op elke rij
                   hetzelfde en zei dus niets. */}
-              <td className={"lead-kolom-datum" + opvolgKlasse(hubspot[c.slug]?.opvolgDatum)}>
-                {hubspot[c.slug]?.opvolgDatum
-                  ? dagKort(hubspot[c.slug]?.opvolgDatum)
-                  : <span className="muted">&mdash;</span>}
+              <td className={"lead-kolom-datum" + opvolgKlasse(hubspot[c.slug]?.opvolgDatum || c.opvolgDatum)}>
+                {hubspot[c.slug]?.opvolgDatum ? (
+                  <span title="Deze datum komt uit HubSpot">{dagKort(hubspot[c.slug]?.opvolgDatum)}</span>
+                ) : isOwner ? (
+                  <DatumVeld
+                    waarde={c.opvolgDatum || ""}
+                    label={`Wanneer spreek je ${c.name} weer`}
+                    opslaan={(d) => bewaarKlant(c.slug, "opvolg", { action: "opvolgDatum", opvolgDatum: d })}
+                  />
+                ) : c.opvolgDatum ? dagKort(c.opvolgDatum) : <span className="muted">&mdash;</span>}
               </td>
               {/* Kans, maandbedrag, eenmalig bedrag en startmaand: alle vier van
                   jou, alle vier hier in te vullen. De rij zelf opent de
@@ -235,25 +262,29 @@ export default function LeadLijst({
                   </span>
                 ) : <span className="muted">{leadVeld[c.slug]?.kans || LEAD_STANDAARD_KANS}%</span>}
               </td>
-              <td onClick={(e) => e.stopPropagation()}>
+              <td>
                 {isOwner ? (
-                  <input
-                    className="prog-veld lead-veld-geld"
-                    inputMode="numeric"
-                    aria-label={`Beoogd maandbedrag van ${c.name}`}
-                    defaultValue={c.budget.maandbudget ? String(Math.round(c.budget.maandbudget)) : ""}
-                    placeholder="€"
-                    disabled={celBezig === `${c.slug}:budget`}
-                    onBlur={(e) => {
-                      const nieuw = Math.max(0, Math.round(Number(e.target.value.replace(/[^\d]/g, "")) || 0));
-                      if (nieuw === Math.round(c.budget.maandbudget || 0)) return;
-                      void bewaarLead(c.slug, "budget", {
-                        actie: "budget", maandbudget: nieuw, linkbuilding: c.budget.linkbuilding || 0,
-                      });
-                    }}
+                  <BedragVeld
+                    waarde={c.budget.maandbudget}
+                    label={`Beoogd maandbedrag van ${c.name}`}
+                    opslaan={(n) => bewaarKlant(c.slug, "budget", { action: "setBedragen", maandbudget: n })}
                   />
                 ) : c.budget.maandbudget
                   ? euro(c.budget.maandbudget)
+                  : <span className="muted">&mdash;</span>}
+              </td>
+              {/* De kosten die aan dit bedrijf vastzitten (linkbuilding, content,
+                  een freelancer). Zelfde veld als in de prognose, dus wat je hier
+                  typt telt daar meteen mee. */}
+              <td>
+                {isOwner ? (
+                  <BedragVeld
+                    waarde={c.budget.linkbuilding}
+                    label={`Kosten per maand voor ${c.name}`}
+                    opslaan={(n) => bewaarKlant(c.slug, "kosten", { action: "setBedragen", linkbuilding: n })}
+                  />
+                ) : c.budget.linkbuilding
+                  ? euro(c.budget.linkbuilding)
                   : <span className="muted">&mdash;</span>}
               </td>
               {/* Het eenmalige bedrag (meestal een website). Telt in de prognose
@@ -321,10 +352,20 @@ export default function LeadLijst({
             <tr className="lead-totaalrij">
               {isOwner && <td></td>}
               <td colSpan={2}>Alles bij elkaar</td>
-              <td className="lead-totaal-kans">gewogen</td>
+              {/* Twee regels per bedrag: opgeteld boven, gewogen met de kans
+                  eronder. Het woordje "gewogen" staat in de kanskolom en lijnt
+                  rechts uit, precies zoals de bedragen ernaast. */}
+              <td>
+                <span className="lead-totaal-bedrag">&nbsp;</span>
+                <span className="lead-totaal-bedrag lead-totaal-kans">gewogen</span>
+              </td>
               <td>
                 <span className="lead-totaal-bedrag">{euro(totalen.maand)}</span>
                 <span className="lead-totaal-bedrag lead-totaal-gewogen">{euro(totalen.maandGewogen)}</span>
+              </td>
+              <td>
+                <span className="lead-totaal-bedrag">{euro(totalen.kosten)}</span>
+                <span className="lead-totaal-bedrag lead-totaal-gewogen">{euro(totalen.kostenGewogen)}</span>
               </td>
               <td>
                 <span className="lead-totaal-bedrag">{euro(totalen.eens)}</span>
