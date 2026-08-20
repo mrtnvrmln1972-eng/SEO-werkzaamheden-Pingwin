@@ -325,11 +325,40 @@ export async function updateWeekplanTask(slug: string, id: number, patch: { week
  * stond, dus na de overstap was mailen het enige wat er nog over was. Dit hangt de
  * draad terug.
  */
+/**
+ * Welke titel de sitebouwer ziet.
+ *
+ * Bij het doorzetten mag je de opdracht anders formuleren dan op de kaart staat
+ * ("Locaties aanhaken" op de kaart, "GMB vestigingen maken voor 1e 5 vestigingen"
+ * voor de bouwer). Die eigen formulering hoort te blijven staan, want daar is
+ * over nagedacht.
+ *
+ * Maar hij hoort niet te blijven staan als de kaart intussen iets ánders is
+ * geworden. Dat was wél zo: de aantekeningen liepen mee (die worden live gelezen)
+ * en de titel niet, dus je paste de kaart aan en de developer bleef de oude
+ * formulering zien, zonder dat iets dat verraadde (gemeld 20-08-2026).
+ *
+ * Daarom onthouden we bij het doorzetten de kaarttitel van dat moment. Is de
+ * kaart sindsdien veranderd, dan is de eigen formulering ingehaald en wint de
+ * kaart weer. Formuleer je opnieuw, dan wint die weer, want dan schuift de basis
+ * mee. Zonder basis (doorgezet van vóór deze regel) blijft het zoals het was.
+ */
+export function devTaakNu(kaartTaak: string, devTaak: string, basis: string): string {
+  const kaart = String(kaartTaak || "").trim();
+  const eigen = String(devTaak || "").trim();
+  if (!eigen) return kaart;
+  const b = String(basis || "").trim();
+  if (b && b !== kaart) return kaart;   // de kaart is opgeschoven, de eigen tekst is ingehaald
+  return eigen;
+}
+
 export async function setWeekplanNaarDev(
   slug: string,
   id: number,
   naarDev: boolean,
-  dev?: { taak?: string; toelichting?: string; docs?: { label: string; url: string }[]; punten?: string[] },
+  dev?: { taak?: string; toelichting?: string; docs?: { label: string; url: string }[]; punten?: string[];
+    /** De kaarttitel op het moment van doorzetten (zie dev_taak_basis). */
+    kaartTaak?: string },
 ): Promise<void> {
   await ensureSchema();
   await sql`UPDATE client_weekplan SET naar_dev = ${naarDev}, naar_dev_at = ${naarDev ? new Date().toISOString() : null}, updated_at = now()
@@ -338,12 +367,17 @@ export async function setWeekplanNaarDev(
   // De doorgeefversie: alleen zetten wat is meegegeven, zodat je later één veld
   // kunt bijstellen zonder de rest kwijt te raken.
   const taak = dev.taak === undefined ? null : dev.taak.trim().slice(0, 300);
+  // De kaarttitel van dit moment erbij: daar is de doorgeefversie op gebaseerd.
+  // Verandert de kaarttitel later, dan weten we dat die eigen formulering is
+  // ingehaald en tonen we weer de kaart (zie devTaakNu hieronder).
+  const basis = dev.taak === undefined ? null : String(dev.kaartTaak || "").trim().slice(0, 300);
   const toel = dev.toelichting === undefined ? null : dev.toelichting.trim().slice(0, 4000);
   const docs = dev.docs === undefined ? null : JSON.stringify(dev.docs.slice(0, 8));
   const punten = dev.punten === undefined ? null : JSON.stringify(dev.punten.slice(0, 8));
   await sql`
     UPDATE client_weekplan SET
       dev_taak        = COALESCE(${taak}, dev_taak),
+      dev_taak_basis  = COALESCE(${basis}, dev_taak_basis),
       dev_toelichting = COALESCE(${toel}, dev_toelichting),
       dev_docs        = COALESCE(${docs}::jsonb, dev_docs),
       dev_punten      = COALESCE(${punten}::jsonb, dev_punten),
@@ -355,12 +389,12 @@ export async function setWeekplanNaarDev(
 export async function getWeekplanDev(slug: string, id: number): Promise<{ taak: string; toelichting: string; docs: { label: string; url: string }[]; punten: string[] } | null> {
   await ensureSchema();
   const { rows } = await sql`
-    SELECT taak, toelichting, dev_taak, dev_toelichting, dev_docs, dev_punten
+    SELECT taak, toelichting, dev_taak, dev_taak_basis, dev_toelichting, dev_docs, dev_punten
     FROM client_weekplan WHERE client_slug = ${slug} AND id = ${id} LIMIT 1`;
   const r = rows[0];
   if (!r) return null;
   return {
-    taak: String(r.dev_taak || r.taak || ""),
+    taak: devTaakNu(r.taak as string, r.dev_taak as string, r.dev_taak_basis as string),
     toelichting: String(r.dev_toelichting || ""),
     docs: Array.isArray(r.dev_docs) ? (r.dev_docs as { label: string; url: string }[]) : [],
     punten: Array.isArray(r.dev_punten) ? (r.dev_punten as string[]) : [],

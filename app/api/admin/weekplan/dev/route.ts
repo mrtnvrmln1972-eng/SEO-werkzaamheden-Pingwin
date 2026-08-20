@@ -114,7 +114,12 @@ export async function POST(req: NextRequest) {
     .filter((d) => d.url);
 
   const naarDev = body.naarDev !== false;
+  // De kaarttitel van dit moment gaat mee als basis onder de eigen formulering.
+  // Verandert de kaart later, dan weet het dashboard dat die formulering is
+  // ingehaald en toont het weer de kaart (zie devTaakNu in lib/weekplan.ts).
+  const huidigeKaart = (await getWeekplan(slug)).find((k) => k.id === id);
   await setWeekplanNaarDev(slug, id, naarDev, {
+    kaartTaak: huidigeKaart?.taak || "",
     taak: body.taak === undefined ? undefined : String(body.taak),
     toelichting: body.toelichting === undefined ? undefined : String(body.toelichting),
     docs,

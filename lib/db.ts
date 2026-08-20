@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "kern-c95569e7";
+export const KERN_SCHEMA_VERSIE = "kern-8ba6e231";
 
 async function init(): Promise<void> {
   await sql`
@@ -327,6 +327,12 @@ async function init(): Promise<void> {
   // gehouden van taak/toelichting, want de kaart is van Maarten en dit is de
   // doorgeefversie; die twee mogen uit elkaar lopen zonder elkaar te overschrijven.
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_taak TEXT`;
+  // De kaarttitel zoals hij was toen de doorgeefversie werd geschreven. Zonder dit
+  // bleef een eigen titel voor de sitebouwer eeuwig staan: pas je daarna de kaart
+  // aan, dan zag hij nog de oude formulering, terwijl de aantekeningen wél
+  // meeliepen. Met deze kolom kan het dashboard zien of de doorgeefversie nog bij
+  // de huidige kaart hoort of dat hij is ingehaald (20-08-2026).
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_taak_basis TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_toelichting TEXT`;
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS dev_docs JSONB`;
   // Wat er meetbaar af moet zijn als de sitebouwer klaar is (["live","koppen",…]).

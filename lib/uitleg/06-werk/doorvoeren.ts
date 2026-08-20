@@ -29,6 +29,11 @@ export const BLOKKEN: Uitklapper[] = [
       "sitebouwer heeft geen lijst met mailadressen nodig, hij heeft de stukken nodig. En die adressen " +
       "zijn niet kwijt: ze staan gewoon in de aantekeningen die meegaan, bij de vestiging waar ze bij " +
       "horen.\n\n" +
+      "**En de titel loopt mee met de kaart.** Formuleer je de opdracht bij het doorzetten anders dan " +
+      "op de kaart staat, dan blijft die formulering staan: daar is over nagedacht. Maar pas je daarna " +
+      "de kaart zelf aan, dan is die eigen tekst ingehaald en ziet de sitebouwer weer de kaarttitel. " +
+      "Dat liep eerst uit elkaar: de aantekeningen kwamen wél mee en de titel bleef hangen op de oude " +
+      "formulering, zonder dat iets dat verraadde.\n\n" +
       "**In de mail hetzelfde.** De links komen als klikbare regels in de mail, de aantekeningen als " +
       "gewone tekst eronder (een mail blijft simpel: aanhef, korte alinea's, geen tabellen), en de " +
       "assistent die de mail schrijft kent ze nu ook. Hij schrijft dus niet langer om adressen en namen " +

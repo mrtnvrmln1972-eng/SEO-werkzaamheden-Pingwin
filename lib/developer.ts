@@ -2,6 +2,7 @@ import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
 import { meldingToevoegen, meldingIntrekken } from "./meldingen";
 import { kaartLinks } from "./kaart-links";
+import { devTaakNu } from "./weekplan";
 
 // ═══════════════════════════════════════════════════════════
 // DEVELOPER OVERVIEW (alle dev-taken over alle klanten heen)
@@ -377,7 +378,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
   // developerpagina hangen op werk van vóór de overstap.
   const wp = await sql`
     SELECT w.id, w.client_slug, w.taak, w.toelichting, w.notitie, w.url, w.week_year, w.week_no, w.status,
-           w.dev_taak, w.dev_toelichting, w.dev_docs,
+           w.dev_taak, w.dev_taak_basis, w.dev_toelichting, w.dev_docs,
            c.name AS client_name
     FROM client_weekplan w
     LEFT JOIN clients c ON c.slug = w.client_slug
@@ -407,9 +408,10 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       clientSlug: slug,
       clientName: (r.client_name as string) ?? slug,
       taskKey: key,
-      // De doorgeefversie wint: die heeft Maarten bij het doorzetten zelf
-      // bijgesteld. Staat die er niet, dan de kaart zelf.
-      taak: (r.dev_taak as string) || (r.taak as string) || "",
+      // De doorgeefversie wint, tenzij de kaart intussen is opgeschoven; dan is
+      // die eigen formulering ingehaald. Eén regel, in lib/weekplan.ts, want dit
+      // scherm en het doorzet-venster moeten dezelfde titel tonen.
+      taak: devTaakNu(r.taak as string, r.dev_taak as string, r.dev_taak_basis as string),
       // Alleen wat er bij het doorzetten zelf is getypt. Stond hier niets, dan
       // blijft dit leeg: de kaarttekst hoort niet in Maartens eigen invulveld,
       // maar in `kaartOpm` ernaast.
