@@ -4,8 +4,9 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import type { ClientConfig } from "../../lib/clients";
 import { LEAD_STANDAARD_KANS } from "../../lib/prognose-kans";
 import Vouwblok from "./Vouwblok";
-import { Kruis, Munt, PijlRechts, Vlag } from "../_ui/Pijl";
+import { Kruis, Munt, Omlaag, PijlRechts, Uitklap, Vlag } from "../_ui/Pijl";
 import { BedragVeld, DatumVeld } from "./RijVeld";
+import { useExtraRegels, RegelNaam, RegelBedrag, RegelWeg } from "./ExtraRegels";
 
 // ═══════════════════════════════════════════════════════════
 // DE LEADLIJST OP HET KLANTENOVERZICHT
@@ -36,8 +37,11 @@ function dagKort(iso: string | null | undefined): string {
 type StripMaand = {
   maand: string; label: string;
   zekerOmzet: number; verwachtOmzet: number; postOmzet: number;
-  omzet: number; omzetSeo: number; omzetAds: number; omzetEenmalig: number;
+  omzet: number; omzetSeo: number; omzetAds: number; omzetEenmalig: number; omzetOverig: number;
 };
+
+/** Eén klant, lead of losse post in de opbouw onder de strook. */
+type StripOpbouw = { slug: string; naam: string; soort: string; kans: number; bedragen: number[] };
 
 /** De drie dingen die je per lead in de lijst zelf invult, als tekst in beeld. */
 type LeadVeld = { kans: string; maand: string; eenmalig: string };
@@ -61,7 +65,7 @@ function opvolgKlasse(datum: string | null | undefined): string {
 }
 
 export default function LeadLijst({
-  leads, isOwner, hubspot, sleep, setSleep, sleepVolgorde, openDashboard, setFase, refresh, melden,
+  leads, isOwner, hubspot, sleep, setSleep, sleepVolgorde, openDashboard, setFase, refresh, melden, setHertel,
 }: {
   leads: ClientConfig[];
   isOwner: boolean;
@@ -74,6 +78,8 @@ export default function LeadLijst({
   /** De lijst opnieuw laden nadat een bedrag is weggeschreven. */
   refresh: () => Promise<void> | void;
   melden: (m: { ok: boolean; text: string }) => void;
+  /** Verhoogt een teller zodra er iets is bewaard, zodat de strook hertelt. */
+  setHertel: React.Dispatch<React.SetStateAction<number>>;
 }) {
   // Wat je per lead zelf invult en wat niet in de klantrij past: de kans dat het
   // doorgaat, de maand waarin hij naar verwachting start, en een eenmalig bedrag
@@ -90,6 +96,10 @@ export default function LeadLijst({
   // Welke cel op dit moment wordt weggeschreven, zodat een rij niet twee keer
   // tegelijk opslaat en je ziet dat er iets gebeurt.
   const [celBezig, setCelBezig] = useState<string>("");
+
+  // De extra regels onder een lead (een website, advertenties). Ze rekenen mee
+  // in de prognose, dus na elke wijziging mag de maandstrook opnieuw tellen.
+  const extra = useExtraRegels(isOwner, () => setHertel((n) => n + 1));
 
   /**
    * Een veld dat in de klantrij zelf staat (het maandbedrag, de kosten, de
@@ -159,14 +169,22 @@ export default function LeadLijst({
   };
   const totalen = leads.reduce(
     (t, c) => {
-      const maand = Math.round(c.budget.maandbudget || 0);
-      const kosten = Math.round(c.budget.linkbuilding || 0);
-      const eens = eenmaligVan(c.slug);
       const w = kansVan(c.slug) / 100;
+      // De rij zelf plus alles wat er onder hangt: anders klopt de optelling niet
+      // meer zodra je een website of advertenties als eigen regel neerzet.
+      const eigen = extra.perSlug(c.slug);
+      const maand = Math.round(c.budget.maandbudget || 0) + eigen.reduce((n, r) => n + r.bedrag, 0);
+      const kosten = Math.round(c.budget.linkbuilding || 0) + eigen.reduce((n, r) => n + r.kosten, 0);
+      const eens = eenmaligVan(c.slug) + eigen.reduce((n, r) => n + r.eenmaligOmzet, 0);
+      const gewogen = (basis: number, regelDeel: (r: typeof eigen[number]) => number) =>
+        basis * w + eigen.reduce((n, r) => n + regelDeel(r) * ((r.kans === null ? kansVan(c.slug) : r.kans) / 100), 0);
       return {
-        maand: t.maand + maand, maandGewogen: t.maandGewogen + maand * w,
-        kosten: t.kosten + kosten, kostenGewogen: t.kostenGewogen + kosten * w,
-        eens: t.eens + eens, eensGewogen: t.eensGewogen + eens * w,
+        maand: t.maand + maand,
+        maandGewogen: t.maandGewogen + gewogen(Math.round(c.budget.maandbudget || 0), (r) => r.bedrag),
+        kosten: t.kosten + kosten,
+        kostenGewogen: t.kostenGewogen + gewogen(Math.round(c.budget.linkbuilding || 0), (r) => r.kosten),
+        eens: t.eens + eens,
+        eensGewogen: t.eensGewogen + gewogen(eenmaligVan(c.slug), (r) => r.eenmaligOmzet),
       };
     },
     { maand: 0, maandGewogen: 0, kosten: 0, kostenGewogen: 0, eens: 0, eensGewogen: 0 },
@@ -189,8 +207,8 @@ export default function LeadLijst({
             </td></tr>
           )}
           {leads.map((c) => (
+            <Fragment key={c.slug}>
             <tr
-              key={c.slug}
               className={"clickable-row" + (sleep === c.id ? " tw-item-sleept" : "")}
               onClick={() => openDashboard(c)}
               title="Open de leadomgeving"
@@ -339,12 +357,31 @@ export default function LeadLijst({
                 {isOwner ? (
                   <>
                     <button className="btn btn-klein" onClick={(e) => setFase(e, c, "klant", `${c.name} omzetten naar klant? Alles blijft staan; alleen het label verandert.`)}>Maak klant</button>{" "}
+                    <button className="btn btn-klein" title="Een regel erbij voor dit bedrijf, bijvoorbeeld de website of Google Ads"
+                      onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>{" "}
                     <button className="lead-kruis" title="Niet doorgegaan" aria-label={`${c.name} op niet doorgegaan zetten`}
                       onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}><Kruis /></button>
                   </>
                 ) : <span className="muted">&mdash;</span>}
               </td>
             </tr>
+            {/* De extra regels van deze lead: eigen naam, eigen bedrag, eigen
+                kosten. Ze tellen mee met de kans van de lead erboven, tenzij je
+                op de leadkaart een eigen kans zet. */}
+            {extra.perSlug(c.slug).map((r) => (
+              <tr key={`r-${r.id}`} className="regel-rij">
+                {isOwner && <td></td>}
+                <td><RegelNaam regel={r} bewaar={extra.bewaar} /></td>
+                <td></td>
+                <td className="regel-kans">{r.kans === null ? "" : `${r.kans}%`}</td>
+                <td><RegelBedrag regel={r} veld="bedrag" label={`Bedrag per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
+                <td><RegelBedrag regel={r} veld="kosten" label={`Kosten per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
+                <td><RegelBedrag regel={r} veld="eenmaligOmzet" label={`Eenmalig bedrag van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
+                <td></td>
+                <td><RegelWeg regel={r} verwijder={extra.verwijder} /></td>
+              </tr>
+            ))}
+          </Fragment>
           ))}
         </tbody>
         {leads.length > 0 && (
@@ -388,6 +425,9 @@ export default function LeadLijst({
  */
 export function MaandStrook({ isOwner, hertel }: { isOwner: boolean; hertel: unknown }) {
   const [strip, setStrip] = useState<StripMaand[]>([]);
+  const [opbouw, setOpbouw] = useState<StripOpbouw[]>([]);
+  // Welke regel je hebt opengeklapt om te zien waar het bedrag uit bestaat.
+  const [open, setOpen] = useState<"klant" | "lead" | "">("");
   const euro = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
 
   // Ná de lijst opgehaald, zodat het scherm er nooit op wacht.
@@ -399,6 +439,7 @@ export function MaandStrook({ isOwner, hertel }: { isOwner: boolean; hertel: unk
         const d = await fetch("/api/admin/prognose?strip=6").then((r) => r.json());
         if (!d?.ok || !alive || !Array.isArray(d.maanden)) return;
         setStrip(d.maanden as StripMaand[]);
+        setOpbouw(Array.isArray(d.opbouw) ? (d.opbouw as StripOpbouw[]) : []);
       } catch { /* stil: dan staat de strook er niet */ }
     })();
     return () => { alive = false; };
@@ -427,14 +468,31 @@ export function MaandStrook({ isOwner, hertel }: { isOwner: boolean; hertel: unk
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td>Bestaande klanten</td>
+            {/* Klik op een van deze twee regels en je ziet waar het bedrag uit
+                bestaat: welke klant of lead, met welke kans, in welke maand.
+                Dezelfde cijfers, alleen uitgeklapt. */}
+            <tr className="strook-klapbaar" onClick={() => setOpen((v) => (v === "klant" ? "" : "klant"))}
+              title="Klik om te zien welke klanten dit zijn">
+              <td><span className="strook-caret">{open === "klant" ? <Omlaag /> : <Uitklap />}</span> Bestaande klanten</td>
               {strip.map((m) => <td key={m.maand}>{euro(m.zekerOmzet)}</td>)}
             </tr>
-            <tr>
-              <td>Leads, gewogen met de kans</td>
+            {open === "klant" && opbouw.filter((o) => o.soort === "klant").map((o) => (
+              <tr key={o.slug} className="strook-opbouw">
+                <td>{o.naam}</td>
+                {o.bedragen.map((b, i) => <td key={i}>{euro(b)}</td>)}
+              </tr>
+            ))}
+            <tr className="strook-klapbaar" onClick={() => setOpen((v) => (v === "lead" ? "" : "lead"))}
+              title="Klik om te zien welke leads dit zijn en met welke kans ze meetellen">
+              <td><span className="strook-caret">{open === "lead" ? <Omlaag /> : <Uitklap />}</span> Leads, gewogen met de kans</td>
               {strip.map((m) => <td key={m.maand}>{euro(m.verwachtOmzet)}</td>)}
             </tr>
+            {open === "lead" && opbouw.filter((o) => o.soort === "lead").map((o) => (
+              <tr key={o.slug} className="strook-opbouw">
+                <td>{o.naam} <span className="strook-kans">{o.kans}%</span></td>
+                {o.bedragen.map((b, i) => <td key={i}>{euro(b)}</td>)}
+              </tr>
+            ))}
             {heeftPosten && (
               <tr>
                 <td>Losse posten</td>
@@ -453,6 +511,12 @@ export function MaandStrook({ isOwner, hertel }: { isOwner: boolean; hertel: unk
               <td>waarvan advertenties</td>
               {strip.map((m) => <td key={m.maand}>{euro(m.omzetAds)}</td>)}
             </tr>
+            {strip.some((m) => m.omzetOverig + m.postOmzet > 0) && (
+              <tr className="maand-strook-uitsplitsing">
+                <td>waarvan overig</td>
+                {strip.map((m) => <td key={m.maand}>{euro(m.omzetOverig + m.postOmzet)}</td>)}
+              </tr>
+            )}
             {heeftEenmalig && (
               <tr className="maand-strook-uitsplitsing">
                 <td>waarvan eenmalig</td>

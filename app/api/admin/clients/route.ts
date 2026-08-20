@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminScope, canAccessSlug, guardOwner } from "../../../../lib/admin-scope";
 import { opruimWeesOrgData } from "../../../../lib/org-data";
+import { verwijderRegelsVanKlant } from "../../../../lib/klant-regels";
 import { listClients, createClient, createLead, setClientFase, deleteClient, updateClientCockpit, updateClientCore, parseSheetUrl, resetClientPassword, setClientBudget, setClientBackendUrl, setClientDevName, setPositioneringUrl, setToonOntwikkeling, setHuisstijlUrl, setAdsAccountUrl, setClientOpvolgDatum, getClientBySlug, getOrCreateShareToken, FASES, type Fase } from "../../../../lib/clients";
 
 export const runtime = "nodejs";
@@ -260,5 +261,8 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   }
   const removed = await deleteClient(slug);
+  // De extra regels van dit bedrijf gaan mee; anders blijven ze als wees in de
+  // prognose meetellen zonder dat je ze ergens nog ziet staan.
+  if (removed) await verwijderRegelsVanKlant(slug).catch(() => {});
   return NextResponse.json({ ok: removed });
 }

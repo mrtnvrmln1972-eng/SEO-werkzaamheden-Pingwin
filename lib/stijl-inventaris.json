@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9049,
-    "stijlregels": 4412,
-    "classnamen": 3008
+    "regels": 9068,
+    "stijlregels": 4424,
+    "classnamen": 3018
   },
   "kleuren": {
     "verschillend": 40,
@@ -533,7 +533,7 @@
     },
     {
       "naam": "Invoervelden",
-      "aantal": 56,
+      "aantal": 58,
       "namen": [
         "add-month-select",
         "ag-checkbox-field",
@@ -577,6 +577,8 @@
         "prog-instel-veld",
         "prog-veld",
         "psc-input",
+        "regel-naam-veld",
+        "regel-soort-veld",
         "reply-to-input",
         "selected",
         "selection-body",
@@ -1918,7 +1920,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8579,
-    "schaalGebruik": 1474
+    "gebruik": 8589,
+    "schaalGebruik": 1476
   }
 }

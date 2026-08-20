@@ -13,6 +13,7 @@ import KlantwaardeBulk from "./KlantwaardeBulk";
 import Vouwblok from "./Vouwblok";
 import LeadLijst, { MaandStrook, type HubspotStand } from "./LeadLijst";
 import { BedragVeld } from "./RijVeld";
+import { useExtraRegels, RegelNaam, RegelBedrag, RegelWeg } from "./ExtraRegels";
 import KijkSleutel from "./KijkSleutel";
 import { Gebouw, Kruis, Mensen, PijlRechts, Vlag } from "../_ui/Pijl";
 
@@ -135,6 +136,12 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     return () => { alive = false; };
   }, []);
 
+  // Elke keer dat er een bedrag verandert telt de maandstrook opnieuw. Eén
+  // teller, gedeeld door de leadlijst en de klantenlijst, zodat er niet twee
+  // manieren ontstaan om hetzelfde te zeggen.
+  const [hertel, setHertel] = useState(0);
+  const extra = useExtraRegels(isOwner, () => setHertel((n) => n + 1));
+
   /** Eén bedrag uit een klantrij bewaren en de lijst opnieuw laden. */
   async function bewaarBedrag(slug: string, body: Record<string, unknown>) {
     setError("");
@@ -144,7 +151,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         body: JSON.stringify({ slug, ...body }),
       }).then((r) => r.json());
       if (!d?.ok) setNotice({ ok: false, text: d?.error || "Opslaan lukte niet." });
-      else await refresh();
+      else { await refresh(); setHertel((n) => n + 1); }
     } catch { setNotice({ ok: false, text: "Opslaan lukte niet." }); }
   }
 
@@ -405,13 +412,31 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
                   {isOwner ? (
-                    <button className="lead-kruis" title="Verwijder deze klant"
-                      aria-label={`${c.name} verwijderen`} onClick={(e) => remove(e, c)}><Kruis /></button>
+                    <>
+                      <button className="btn btn-klein" title="Een regel erbij voor dit bedrijf, bijvoorbeeld de website of Google Ads"
+                        onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>{" "}
+                      <button className="lead-kruis" title="Verwijder deze klant"
+                        aria-label={`${c.name} verwijderen`} onClick={(e) => remove(e, c)}><Kruis /></button>
+                    </>
                   ) : (
                     <span className="muted">&mdash;</span>
                   )}
                 </td>
               </tr>
+              {/* Wat er bij dit bedrijf nog meer loopt: de website, advertenties,
+                  hosting. Eigen bedrag en eigen kosten, en de prognose rekent
+                  ermee alsof het een eigen klant is. */}
+              {extra.perSlug(c.slug).map((r) => (
+                <tr key={`r-${r.id}`} className="regel-rij">
+                  {isOwner && <td></td>}
+                  <td><RegelNaam regel={r} bewaar={extra.bewaar} /></td>
+                  <td></td>
+                  <td><RegelBedrag regel={r} veld="bedrag" label={`Bedrag per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
+                  <td><RegelBedrag regel={r} veld="kosten" label={`Kosten per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
+                  <td><span className="lead-totaal-bedrag">{euroKort(r.bedrag - r.kosten)}</span></td>
+                  <td><RegelWeg regel={r} verwijder={extra.verwijder} /></td>
+                </tr>
+              ))}
             </Fragment>
           ))}
         </tbody>
@@ -422,9 +447,10 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             <tr className="lead-totaalrij">
               {isOwner && <td></td>}
               <td colSpan={2}>Alles bij elkaar</td>
-              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.maandbudget || 0), 0))}</span></td>
-              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.linkbuilding || 0), 0))}</span></td>
-              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.maandbudget || 0) - (c.budget.linkbuilding || 0), 0))}</span></td>
+              {/* De extra regels tellen mee, anders klopt de streep eronder niet. */}
+              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.maandbudget || 0) + extra.perSlug(c.slug).reduce((n, r) => n + r.bedrag, 0), 0))}</span></td>
+              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.linkbuilding || 0) + extra.perSlug(c.slug).reduce((n, r) => n + r.kosten, 0), 0))}</span></td>
+              <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.maandbudget || 0) - (c.budget.linkbuilding || 0) + extra.perSlug(c.slug).reduce((n, r) => n + r.bedrag - r.kosten, 0), 0))}</span></td>
               <td></td>
             </tr>
           </tfoot>
@@ -601,7 +627,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           leads={leads} isOwner={isOwner} hubspot={hubspot}
           sleep={sleep} setSleep={setSleep} sleepVolgorde={sleepVolgorde}
           openDashboard={openDashboard} setFase={setFase} refresh={refresh}
-          melden={(m) => setNotice(m)}
+          melden={(m) => setNotice(m)} setHertel={setHertel}
         />
         {isOwner && showLeadForm && (
           <form className="admin-form" style={{ marginTop: "var(--s-4)" }} onSubmit={onSubmitLead}>
@@ -630,7 +656,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         )}
         </Vouwblok>
 
-        <MaandStrook isOwner={isOwner} hertel={clients} />
+        <MaandStrook isOwner={isOwner} hertel={`${clients.length}-${hertel}`} />
 
         {/* De knop "Nieuwe klant aanmaken" hoort bij de klantenlijst en staat dus
             rechts in de kopbalk van dát blok, niet los onderaan de pagina. */}

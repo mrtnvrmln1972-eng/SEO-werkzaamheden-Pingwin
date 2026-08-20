@@ -3,6 +3,7 @@ import { LEAD_STANDAARD_KANS } from "./prognose-kans";
 import { eenmalig } from "./schema-stand";
 import { getSetting, setSetting } from "./settings";
 import { listKostenregels, pasKostenmodelToe, type KostenRegel } from "./kostenmodel";
+import { listKlantRegels } from "./klant-regels";
 
 // ═══════════════════════════════════════════════════════════
 // PROGNOSE: WAT VERDIENEN WE DE KOMENDE MAANDEN
@@ -394,6 +395,13 @@ export type PrognoseRegel = {
   /** Waarschuwing voor op het scherm, bijvoorbeeld een lead zonder bedrag. */
   gat: string;
   /**
+   * Waar deze omzet onder valt in de uitsplitsing. De klantrij zelf is SEO (dat
+   * is de maandfee); een extra regel kiest het zelf (website, advertenties).
+   */
+  regelSoort: "seo" | "ads" | "website" | "overig";
+  /** Bij een extra regel: de klant of lead waar hij onder hangt. */
+  ouderSlug: string | null;
+  /**
    * Kosten die uit het kostenmodel komen (een percentage van de omzet, of een
    * deel van een leveranciersfactuur). Staat hier iets in, dan is dát de
    * kostenkant van deze klant en telt zijn eigen linkbuildingbedrag NIET mee.
@@ -442,6 +450,8 @@ export type MaandUitkomst = {
   omzetSeo: number;
   omzetAds: number;
   omzetEenmalig: number;
+  /** Wat niet onder SEO of advertenties valt: een website, hosting, overig. */
+  omzetOverig: number;
   kosten: number;
   netto: number;
   /** Waar het doel op gemeten wordt (netto of omzet), voor de balk. */
@@ -470,6 +480,20 @@ type KlantBron = {
   budget: { maandbudget: number; linkbuilding: number };
 };
 
+/** Een extra regel bij een bedrijf, zoals lib/klant-regels.ts hem bewaart. */
+export type ExtraRegelBron = {
+  id: number;
+  clientSlug: string;
+  naam: string;
+  soort: "seo" | "ads" | "website" | "overig";
+  bedrag: number;
+  kosten: number;
+  eenmaligOmzet: number;
+  eenmaligKosten: number;
+  startMaand: Maand | null;
+  kans: number | null;
+};
+
 /** Telt een regel mee in deze maand? Leeg begin = loopt al, leeg eind = doorlopend. */
 function actiefIn(r: { startMaand: Maand | null; eindMaand: Maand | null }, maand: Maand): boolean {
   if (r.startMaand && maand < r.startMaand) return false;
@@ -492,6 +516,10 @@ export function berekenPrognose(
   // puur rekenwerk blijft en zonder database te toetsen is.
   kosten: { perKlant: Map<string, { naam: string; bedrag: number }[]>; vast: { naam: string; bedrag: number }[] }
     = { perKlant: new Map(), vast: [] },
+  // De extra regels per bedrijf (een website, advertenties, hosting). Ze horen
+  // bij een klant of lead, erven zijn levensfase, en tellen hier gewoon mee als
+  // eigen regel. Zie lib/klant-regels.ts.
+  extraRegels: ExtraRegelBron[] = [],
 ): PrognoseUitkomst {
   const regels: PrognoseRegel[] = klanten
     .filter((k) => k.fase === "klant" || k.fase === "lead")
@@ -519,16 +547,49 @@ export function berekenPrognose(
         opmerking: e?.opmerking || "",
         gat: bedrag <= 0 && !(e?.extraOmzet || e?.eenmaligOmzet) ? "nog geen maandbedrag ingevuld" : "",
         modelKosten: kosten.perKlant.get(k.slug) || [],
+        regelSoort: "seo" as const,
+        ouderSlug: null,
       };
     })
     .sort((a, b) => (a.fase === b.fase ? b.bedrag - a.bedrag : a.fase === "klant" ? -1 : 1));
+
+  // De extra regels erachteraan: eigen bedrag, eigen kosten, eigen soort, en de
+  // levensfase van het bedrijf waar ze onder hangen. Een regel bij een lead telt
+  // dus mee met de kans van die lead, tenzij hij een eigen kans heeft.
+  for (const x of extraRegels) {
+    const ouder = klanten.find((k) => k.slug === x.clientSlug);
+    if (!ouder || (ouder.fase !== "klant" && ouder.fase !== "lead")) continue;
+    const e = extras.get(ouder.slug);
+    const ouderKans = e ? e.kans : ouder.fase === "lead" ? LEAD_STANDAARD_KANS : 100;
+    regels.push({
+      slug: `${x.clientSlug}#${x.id}`,
+      naam: `${ouder.name} · ${x.naam || "extra regel"}`,
+      fase: ouder.fase,
+      bedrag: x.bedrag,
+      linkbuilding: x.kosten,
+      extraKosten: 0,
+      extraOmzet: 0,
+      eenmaligOmzet: x.eenmaligOmzet,
+      eenmaligKosten: x.eenmaligKosten,
+      kans: x.kans === null ? ouderKans : x.kans,
+      startMaand: x.startMaand || e?.startMaand || null,
+      eindMaand: null,
+      opmerking: "",
+      gat: "",
+      // Een extra regel heeft nooit kosten uit het kostenmodel: die hangen aan
+      // het bedrijf als geheel en zitten al bij de klantrij.
+      modelKosten: [],
+      regelSoort: x.soort,
+      ouderSlug: x.clientSlug,
+    });
+  }
 
   const maanden: MaandUitkomst[] = [];
   for (let i = 0; i < instelling.horizon; i++) {
     const maand = maandPlus(vanaf, i);
     const bijdragen: Bijdrage[] = [];
     let zekerOmzet = 0, zekerKosten = 0, verwachtOmzet = 0, verwachtKosten = 0, postOmzet = 0, postKosten = 0;
-    let omzetSeo = 0, omzetAds = 0, omzetEenmalig = 0;
+    let omzetSeo = 0, omzetAds = 0, omzetEenmalig = 0, omzetOverig = 0;
 
     for (const r of regels) {
       if (!actiefIn(r, maand)) continue;
@@ -551,7 +612,9 @@ export function berekenPrognose(
       else { verwachtOmzet += omzet; verwachtKosten += kosten; }
       // Dezelfde weging, maar dan uitgesplitst, zodat een scherm kan laten zien
       // waar de maand uit bestaat zonder het hier nog eens uit te rekenen.
-      omzetSeo += r.bedrag * w;
+      if (r.regelSoort === "ads") omzetAds += r.bedrag * w;
+      else if (r.regelSoort === "seo") omzetSeo += r.bedrag * w;
+      else omzetOverig += r.bedrag * w;
       omzetAds += r.extraOmzet * w;
       if (eenmaligNu) omzetEenmalig += r.eenmaligOmzet * w;
       bijdragen.push({
@@ -589,7 +652,7 @@ export function berekenPrognose(
       zekerOmzet, zekerKosten, verwachtOmzet, verwachtKosten, postOmzet, postKosten,
       vasteLasten: instelling.vasteLasten,
       modelVast: kosten.vast,
-      omzet, omzetSeo, omzetAds, omzetEenmalig, kosten: kostenTotaal, netto, opDoel,
+      omzet, omzetSeo, omzetAds, omzetEenmalig, omzetOverig, kosten: kostenTotaal, netto, opDoel,
       haaltDoel: opDoel >= instelling.target,
       bijdragen: bijdragen.sort((a, b) => b.netto - a.netto),
     });
@@ -617,11 +680,12 @@ export async function getPrognose(
   // zien; zijn horizon op /admin/financien gaat daar niet over.
   minimaalMaanden = 0,
 ): Promise<PrognoseUitkomst & { kostenregels: KostenRegel[]; kostenMeldingen: string[] }> {
-  const [instellingRuw, extras, posten, kostenregels] = await Promise.all([
+  const [instellingRuw, extras, posten, kostenregels, extraRegels] = await Promise.all([
     getPrognoseInstelling(),
     getRegelExtras(),
     listPosten(),
     listKostenregels().catch(() => [] as KostenRegel[]),
+    listKlantRegels().catch(() => []),
   ]);
   const instelling = minimaalMaanden > instellingRuw.horizon
     ? { ...instellingRuw, horizon: minimaalMaanden }
@@ -630,6 +694,6 @@ export async function getPrognose(
     klanten.map((k) => ({ ...k, grp: k.grp ?? null })),
     kostenregels,
   );
-  const uit = berekenPrognose(klanten, extras, posten, instelling, maandNu(), model);
+  const uit = berekenPrognose(klanten, extras, posten, instelling, maandNu(), model, extraRegels);
   return { ...uit, kostenregels, kostenMeldingen: model.meldingen };
 }

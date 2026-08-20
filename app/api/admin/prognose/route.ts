@@ -52,13 +52,33 @@ export async function GET(req: NextRequest) {
         klanten.map((k) => ({ slug: k.slug, name: k.name, fase: k.fase, grp: k.grp, budget: k.budget })),
         hoeveel,
       );
+      const zichtbaar = uit.maanden.slice(0, hoeveel);
+      // De opbouw achter de twee regels "bestaande klanten" en "leads": wie
+      // levert in welke maand wat op. Komt uit dezelfde berekening, dus het telt
+      // per definitie op tot het bedrag dat erboven staat.
+      const opbouw = new Map<string, { slug: string; naam: string; soort: string; kans: number; bedragen: number[] }>();
+      zichtbaar.forEach((m, i) => {
+        for (const b of m.bijdragen) {
+          let r = opbouw.get(b.slug);
+          if (!r) {
+            r = { slug: b.slug, naam: b.naam, soort: b.soort, kans: b.kans, bedragen: new Array(zichtbaar.length).fill(0) };
+            opbouw.set(b.slug, r);
+          }
+          r.bedragen[i] = b.omzet;
+        }
+      });
       return NextResponse.json({
         ok: true,
-        maanden: uit.maanden.slice(0, hoeveel).map((m) => ({
+        maanden: zichtbaar.map((m) => ({
           maand: m.maand, label: m.label,
           zekerOmzet: m.zekerOmzet, verwachtOmzet: m.verwachtOmzet, postOmzet: m.postOmzet,
-          omzet: m.omzet, omzetSeo: m.omzetSeo, omzetAds: m.omzetAds, omzetEenmalig: m.omzetEenmalig,
+          omzet: m.omzet, omzetSeo: m.omzetSeo, omzetAds: m.omzetAds,
+          omzetEenmalig: m.omzetEenmalig, omzetOverig: m.omzetOverig,
         })),
+        opbouw: [...opbouw.values()].sort((a, b) => {
+          const som = (x: number[]) => x.reduce((n, v) => n + v, 0);
+          return som(b.bedragen) - som(a.bedragen);
+        }),
       });
     }
     return await stuurPrognose();

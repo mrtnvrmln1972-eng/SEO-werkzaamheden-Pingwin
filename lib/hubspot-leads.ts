@@ -267,6 +267,13 @@ export async function saveHubspotInstelling(p: Partial<HubspotInstelling>): Prom
   if (p.pijplijnen !== undefined) taken.push(setSetting(SETTING_PIJPLIJNEN, p.pijplijnen.join(",")));
   if (p.notitiesTerug !== undefined) taken.push(setSetting(SETTING_NOTITIES_TERUG, p.notitiesTerug ? "aan" : "uit"));
   if (p.autoLeads !== undefined) taken.push(setSetting(SETTING_AUTO_LEADS, p.autoLeads ? "aan" : "uit"));
+  // Verander je aan wie of wat een lead is, dan begint de telling opnieuw: de
+  // eerstvolgende ronde haalt alles op in plaats van alleen wat er sindsdien
+  // gewijzigd is. Anders zoekt een nieuw filter alleen in de laatste vijftien
+  // minuten en lijkt het alsof er niemand aan voldoet.
+  if (p.bron !== undefined || p.filterVeld !== undefined || p.filterWaarde !== undefined || p.eigenaar !== undefined) {
+    taken.push(setSetting(SETTING_LAATSTE_RONDE, ""));
+  }
   await Promise.all(taken);
 }
 
@@ -351,7 +358,17 @@ export async function syncHubspot(opties: { volledig?: boolean } = {}): Promise<
   }
   await ensureTable();
   const instelling = await getHubspotInstelling();
-  const sinds = opties.volledig || !instelling.laatsteRonde
+  // Staat er nog geen enkele lead uit contacten in het dashboard, dan is dit de
+  // eerste ronde met deze instelling en moet hij ALLES ophalen. Anders vraagt hij
+  // alleen wie er in het laatste kwartier gewijzigd is, en dat is precies wat er
+  // op 20-08-2026 misging: het filter stond goed (leadstatus HOTHOTHOT, eigenaar
+  // Maarten), de ronde draaide elk kwartier, en er kwam nooit iemand binnen omdat
+  // die contacten al maanden niet aangeraakt waren. Zonder deze regel moet je
+  // zelf op "Alles opnieuw ophalen" drukken en dat kun je niet weten.
+  const { rows: alBinnen } = await sql<{ n: number }>`
+    SELECT COUNT(*)::int AS n FROM hubspot_lead WHERE soort = 'contact'`;
+  const eersteRonde = !(alBinnen[0]?.n > 0);
+  const sinds = opties.volledig || !instelling.laatsteRonde || eersteRonde
     ? null
     // Vijf minuten marge, want de klok van HubSpot en die van ons lopen nooit
     // exact gelijk en een gemiste wijziging komt anders nooit meer binnen.

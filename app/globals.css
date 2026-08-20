@@ -5781,11 +5781,30 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   font-weight: 600; color: var(--label-muted);
   font-size: var(--type-label); line-height: var(--regel-label);
 }
+/* Een extra regel onder een klant of lead: dezelfde vakjes, ingesprongen, met
+   een streepje ervoor zodat je ziet dat hij bij de rij erboven hoort. */
+.regel-rij td { padding-top: var(--ruimte-krap); padding-bottom: var(--ruimte-krap); }
+.regel-naam { display: inline-flex; align-items: center; gap: var(--ruimte-naast); }
+.regel-tak {
+  display: inline-block; width: var(--ruimte-groep); height: 1px;
+  background: var(--kleur-rand); margin-left: var(--ruimte-regel);
+}
+.prog-veld.regel-naam-veld { width: 18ch; text-align: left; }
+.prog-veld.regel-soort-veld { width: 14ch; text-align: left; }
+.regel-kans { color: var(--label-muted); text-align: right; }
+
 /* De strook onder de leads: maanden naast elkaar, bedragen rechts uitgelijnd. */
 .maand-strook th, .maand-strook td { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .maand-strook th:first-child, .maand-strook td:first-child { text-align: left; }
 .maand-strook-totaal td { font-weight: 700; }
 .maand-strook-uitsplitsing td { color: var(--label-muted); }
+/* De twee regels die je kunt openklappen om de opbouw te zien. */
+.strook-klapbaar { cursor: pointer; }
+.strook-klapbaar:hover td { background: var(--kleur-rustig); }
+.strook-caret { display: inline-flex; vertical-align: middle; color: var(--kleur-accent); }
+.strook-opbouw td { color: var(--label-muted); }
+.strook-opbouw td:first-child { padding-left: var(--ruimte-kaart); }
+.strook-kans { color: var(--kleur-accent); }
 .lead-datum-vandaag { color: var(--kleur-let-op); font-weight: 700; }
 .lead-datum-verstreken { color: var(--kleur-fout); font-weight: 700; }
 .lead-tijdregel-tekst { flex: 1; min-width: 0; }
