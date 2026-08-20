@@ -45,6 +45,7 @@ import { createPortal } from "react-dom";
 import { herzetAanhef } from "../../../../lib/aanhef";
 import AdresVeld from "./AdresVeld";
 import { mailUitTekst } from "../../../../lib/mail-uit-gesprek";
+import { zichtbaar, type VersieDoc } from "../../../../lib/laatste-versie";
 import { type WpTask, type WpPageInfo } from "./WeekplanCard";
 
 function shortUrl(url: string): string { try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; } }
@@ -80,7 +81,12 @@ export default function MailUitKaart({
   // Alle documenten die bij de pagina van deze kaart horen, inclusief de teksten
   // die de klant terugstuurde. De kaart zelf kent alleen analyse, blauwdruk en
   // copy, dus juist de herziene versie kon je anders niet meesturen.
-  const [docs, setDocs] = useState<{ label: string; url: string }[]>([]);
+  const [docs, setDocs] = useState<VersieDoc[]>([]);
+  // Van elke soort staat alleen de laatste versie in beeld. Elke ronde levert een
+  // nieuw document op, dus na een paar rondes stonden er negen vakjes waarvan er
+  // twee "Copy" heetten en je niet kon zien welke de nieuwste was. Het archief is
+  // er nog, één klik verderop.
+  const [toonOud, setToonOud] = useState(false);
   // Een screenshot erbij: slepen of plakken (zelfde patroon als MailPopup), in de
   // browser verkleind naar max 1400px (JPEG) en pas bij versturen als <img>
   // onderaan de mail gezet. Los van de tekst houden voorkomt gerommel met de
@@ -183,14 +189,14 @@ export default function MailUitKaart({
 
   // Alles wat je vanuit deze kaart kunt meesturen, inclusief de pagina zelf: de
   // developer moet weten wáár de tekst naartoe moet.
-  function docLinks(): { key: string; label: string; url: string }[] {
-    const uit: { key: string; label: string; url: string }[] = [];
+  function docLinks(): { key: string; label: string; url: string; ouder?: boolean }[] {
+    const uit: { key: string; label: string; url: string; ouder?: boolean }[] = [];
     const gezien = new Set<string>();
-    const voegToe = (key: string, label: string, url: string) => {
+    const voegToe = (key: string, label: string, url: string, ouder?: boolean) => {
       const u = (url || "").trim();
       if (!u || gezien.has(u)) return;
       gezien.add(u);
-      uit.push({ key, label, url: u });
+      uit.push({ key, label, url: u, ouder });
     };
     if (t.url) voegToe("pagina", "De pagina", t.url);
     // `docs` komt van dezelfde server-lijst als het doorzet-venster naar de
@@ -201,7 +207,7 @@ export default function MailUitKaart({
     // pijplijn-copy. Vroeger bouwde dit scherm daar zelf nog een tweede,
     // generiek gelabelde "Copy-doc"-regel bovenop, en dan kon je niet meer
     // zien of dat hetzelfde bestand was als "Copy" of iets anders.
-    for (const d of docs) voegToe(d.url, d.label, d.url);
+    for (const d of docs) voegToe(d.url, d.label, d.url, d.ouder);
     return uit;
   }
 
@@ -368,6 +374,9 @@ export default function MailUitKaart({
   }
 
   const lijst = docLinks();
+  // Alleen tellen wat er ook echt verstopt zit: een oudere versie die je zelf
+  // hebt aangevinkt blijft staan, en hoort dan niet in het knopje mee te tellen.
+  const aantalOud = lijst.filter((l) => l.ouder && !links[l.key]).length;
 
   if (typeof document === "undefined") return null;
 
@@ -400,12 +409,19 @@ export default function MailUitKaart({
         {lijst.length > 0 && (
           <div className="wp-mail-links">
             <span className="muted">Meesturen:</span>
-            {lijst.map((l) => (
-              <label key={l.key} className="wp-mail-linkchip">
+            {zichtbaar(lijst, (l) => !!links[l.key], toonOud).map((l) => (
+              <label key={l.key} className={"wp-mail-linkchip" + (l.ouder ? " wp-mail-chip-oud" : "")}>
                 <input type="checkbox" checked={!!links[l.key]} onChange={(e) => setLinks({ ...links, [l.key]: e.target.checked })} />
                 {l.label}
               </label>
             ))}
+            {aantalOud > 0 && (
+              <button type="button" className="btn btn-quiet btn-klein"
+                title="Van elke soort staat de laatste versie in beeld; hieronder staan de eerdere rondes"
+                onClick={() => setToonOud((v) => !v)}>
+                {toonOud ? "Verberg oudere versies" : `Oudere versies (${aantalOud})`}
+              </button>
+            )}
           </div>
         )}
         <div className="wp-mail-instrrij">

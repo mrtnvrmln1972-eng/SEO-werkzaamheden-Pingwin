@@ -99,7 +99,13 @@ export const HOOFDSTUK: Hoofdstuk = {
         "die \"Zet copy als concept in de site\" oppakt. Ligt er maar één document van een soort, dan is die " +
         "het vanzelf. Pas als er een tweede bij komt, verschijnt het vinkje **geldt** en kies je zelf. Dat was " +
         "eerder altijd een leeg vinkje dat je moest aanzetten, ook als er niets te kiezen viel, en vergat je " +
-        "het dan viel de rest stil zonder te zeggen waarom.",
+        "het dan viel de rest stil zonder te zeggen waarom.\n\n" +
+        "**En je kiest niet meer uit een waslijst.** Elke ronde levert een nieuw document op en er wordt nooit " +
+        "iets weggegooid, dus na een paar rondes stonden er in het mailvenster negen aanvinkvakjes waarvan er " +
+        "twee \"Copy\" heetten. Nu staat van elke soort alleen de versie die geldt in beeld, dus meestal drie " +
+        "regels: analyse, blauwdruk, copy. De eerdere rondes zitten achter een knopje **Oudere versies**, dus " +
+        "ze zijn er nog, ze vragen alleen geen aandacht meer. Hetzelfde geldt in het venster waarmee je een " +
+        "kaart doorzet naar de sitebouwer, en op zijn werklijst staan sowieso alleen de geldende versies.",
     },
     {
       titel: "Wat de klant krijgt is al perfect gemaakt, niet alleen beoordeeld",

@@ -1219,6 +1219,9 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .dev-doc-optie { display: flex; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); }
 .dev-doc-naam { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dev-doc-open { font-size: var(--type-label); color: var(--pingwin); text-decoration: underline; }
+/* Een eerdere ronde die je zelf openklapt: hij staat er, maar hij vraagt geen
+   aandacht. Zo blijft zichtbaar welke regel de geldende versie is. */
+.dev-doc-oud { opacity: .7; }
 
 /* De kaarttitel bijstellen: potloodje in de kop, invulveld als je klikt. */
 .wp-titel-pen { border: 0; background: none; padding: 0 var(--ruimte-krap); margin-left: var(--ruimte-krap); color: var(--kleur-tekst-stil); cursor: pointer; font-size: var(--type-label); opacity: 0; transition: opacity .12s ease; }
@@ -4310,6 +4313,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 .wp-mail-links { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ruimte-naast); margin: var(--ruimte-krap) 0; font-size: var(--type-label); }
 .wp-mail-linkchip { display: inline-flex; align-items: center; gap: var(--ruimte-krap); font-size: var(--type-label); font-weight: 600; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-naast); cursor: pointer; background: var(--kleur-kaart); }
 .wp-mail-linkchip input { accent-color: var(--kleur-accent); }
+.wp-mail-chip-oud { opacity: .7; border-style: dashed; }
 .wp-mail-instrrij { display: flex; gap: var(--ruimte-krap); margin: var(--ruimte-krap) 0 var(--ruimte-krap); }
 .wp-mail-instr { flex: 1; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-naast); font-size: var(--type-bijschrift); font-family: inherit; }
 .wp-mail-instr:focus { outline: none; border-color: var(--kleur-rand-accent); }

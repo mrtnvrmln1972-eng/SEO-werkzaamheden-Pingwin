@@ -3,6 +3,7 @@ import { eenmalig } from "./schema-stand";
 import { meldingToevoegen, meldingIntrekken } from "./meldingen";
 import { kaartLinks } from "./kaart-links";
 import { devTaakNu } from "./weekplan";
+import { markeerOudeVersies, soortUitKind, RANG, type DocSoort, type VersieDoc, type VersieKandidaat } from "./laatste-versie";
 
 // ═══════════════════════════════════════════════════════════
 // DEVELOPER OVERVIEW (alle dev-taken over alle klanten heen)
@@ -78,7 +79,7 @@ export type DevTask = {
    * sitebouwer een opdracht als "zet de nieuwe copy live" zonder de copy erbij,
    * en moest hij die alsnog per mail opvragen.
    */
-  docs: { label: string; url: string }[];
+  docs: VersieDoc[];
   /** Met de hand aangemaakt in het developer-scherm (staat in geen andere tabel). */
   eigen?: boolean;
   /** De tekst is met de hand bijgesteld ten opzichte van de oorspronkelijke taak. */
@@ -211,15 +212,18 @@ async function pijplijnLabel(categorie: string, link: string): Promise<string> {
   return naam ? `${categorie}: ${kortNaam(naam)}` : categorie;
 }
 
-export async function docsVoorPagina(slug: string, url: string, extra: { categorie: string; url: string }[] = []): Promise<{ label: string; url: string }[]> {
+export async function docsVoorPagina(slug: string, url: string, extra: { categorie: string; url: string }[] = []): Promise<VersieDoc[]> {
   if (!url) return [];
-  const uit: { label: string; url: string }[] = [];
+  const kandidaten: VersieKandidaat[] = [];
   const gezien = new Set<string>();
-  const voegToe = (label: string, link: string) => {
+  // `soort` en `rang` bepalen samen of dit de geldende versie is of archief; zie
+  // lib/laatste-versie.ts. Zonder soort doet een document daar niet aan mee en
+  // staat het dus altijd in beeld.
+  const voegToe = (label: string, link: string, soort: DocSoort = "", rang: number = RANG.archief, datum = "") => {
     const l = (link || "").trim();
     if (!l || gezien.has(l)) return;
     gezien.add(l);
-    uit.push({ label, url: l });
+    kandidaten.push({ label, url: l, soort, rang, datum });
   };
 
   // De pagina zelf staat vooraan en is de standaardkeuze: de sitebouwer moet
@@ -252,10 +256,10 @@ export async function docsVoorPagina(slug: string, url: string, extra: { categor
       { kind: "copy" as const, categorie: "Copy" }, { kind: "blauwdruk" as const, categorie: "Blauwdruk" }, { kind: "analyse" as const, categorie: "Analyse" },
     ];
     for (const k of alleKinden) {
-      if (s[k.kind]) voegToe(await pijplijnLabel(k.categorie, s[k.kind]), s[k.kind]);
+      if (s[k.kind]) voegToe(await pijplijnLabel(k.categorie, s[k.kind]), s[k.kind], k.kind, RANG.keten);
     }
     for (const e of extra) {
-      if (e.url) voegToe(await pijplijnLabel(e.categorie, e.url), e.url);
+      if (e.url) voegToe(await pijplijnLabel(e.categorie, e.url), e.url, soortUitKind(e.categorie), RANG.kaart);
     }
     // Is een stap wel gegenereerd maar staat er geen Drive-link bij (er was toen
     // geen map gekozen), dan blijft de tekst zonder deze terugval onvindbaar in
@@ -268,7 +272,7 @@ export async function docsVoorPagina(slug: string, url: string, extra: { categor
       const outputs = await getPageDocOutputs(slug, url).catch(() => ({} as Record<string, string>));
       for (const k of ontbreekt) {
         if ((outputs[k.kind] || "").trim()) {
-          voegToe(`${k.categorie} (nog niet in Drive)`, `/admin/client/${slug}/document?kind=${k.kind}&url=${encodeURIComponent(url)}`);
+          voegToe(`${k.categorie} (nog niet in Drive)`, `/admin/client/${slug}/document?kind=${k.kind}&url=${encodeURIComponent(url)}`, k.kind, RANG.keten);
         }
       }
     }
@@ -276,9 +280,11 @@ export async function docsVoorPagina(slug: string, url: string, extra: { categor
 
   try {
     const { rows } = await sql`
-      SELECT naam, drive_link, status, source FROM page_doc_versions
+      SELECT naam, drive_link, status, source, kind, goedgekeurd,
+             COALESCE(inhoud_datum, created_at) AS datum
+      FROM page_doc_versions
       WHERE client_slug = ${slug} AND url = ${url} AND drive_link IS NOT NULL AND drive_link <> ''
-      ORDER BY created_at DESC LIMIT 8`;
+      ORDER BY created_at DESC LIMIT 12`;
     // Ontdubbeld op BESTANDSNAAM, niet op link. Hetzelfde document komt vaak twee
     // keer binnen (dezelfde bijlage in twee mails van hetzelfde gesprek), elke
     // keer met een eigen Drive-link. In de lijst stond hij dan twee keer met
@@ -290,11 +296,23 @@ export async function docsVoorPagina(slug: string, url: string, extra: { categor
       if (perNaam.has(sleutel)) continue;
       perNaam.add(sleutel);
       const klant = String(r.source || "") === "klant" || String(r.status || "") === "voorstel";
-      voegToe(kortLabel(naam, klant), String(r.drive_link));
+      voegToe(
+        kortLabel(naam, klant), String(r.drive_link),
+        soortUitKind(String(r.kind || "")),
+        r.goedgekeurd ? RANG.goedgekeurd : RANG.archief,
+        r.datum ? new Date(r.datum as string).toISOString() : "",
+      );
     }
   } catch { /* zonder klantversies verder */ }
 
-  return uit.slice(0, 8);
+  // Van elke soort geldt er één versie; de rest krijgt een vlaggetje en staat in
+  // de schermen dichtgeklapt onder "oudere versies". Het maximum telt daarom
+  // alleen voor dat archief: de geldende documenten vallen nooit meer af, want
+  // dát waren precies de documenten die je mee wilde sturen.
+  const alles = markeerOudeVersies(kandidaten);
+  const geldend = alles.filter((d) => !d.ouder);
+  const archief = alles.filter((d) => d.ouder).slice(0, 8);
+  return alles.filter((d) => geldend.includes(d) || archief.includes(d));
 }
 
 export async function getDeveloperTasks(): Promise<DevTask[]> {
@@ -393,12 +411,16 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
   // van allemaal.
   const wpDocs = await Promise.all(wp.map((r) => {
     const dd = r.dev_docs;
-    if (Array.isArray(dd) && dd.length) return Promise.resolve(dd as { label: string; url: string }[]);
+    if (Array.isArray(dd) && dd.length) return Promise.resolve(dd as VersieDoc[]);
     // Dezelfde sleutel als de kaart gebruikt om documenten te bewaren
     // (WeekplanCard: `t.url || "taak:" + t.id`). Zonder die terugval zag de
     // developer niets bij een taak die niet aan een pagina hangt, terwijl er
     // wél documenten aan waren gehangen: de kolom bleef leeg op een streepje.
-    return docsVoorPagina(r.client_slug as string, (r.url as string) || `taak:${Number(r.id)}`);
+    // Is er niets gekozen, dan tonen we alleen de geldende versies. De sitebouwer
+    // heeft aan een blauwdruk van vorige maand niets; die staat gewoon in het
+    // documentenoverzicht van de pagina als je hem nodig hebt.
+    return docsVoorPagina(r.client_slug as string, (r.url as string) || `taak:${Number(r.id)}`)
+      .then((d) => d.filter((x) => !x.ouder));
   }));
   wp.forEach((r, i) => {
     const slug = r.client_slug as string;

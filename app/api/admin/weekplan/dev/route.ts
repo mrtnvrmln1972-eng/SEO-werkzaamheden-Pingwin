@@ -53,10 +53,13 @@ export async function GET(req: NextRequest) {
   // een kaart naar de developer (of een mail aan hem) zonder de copy erbij, en
   // moest hij die alsnog los opvragen. Gepakt uit `beschikbaar` (niet los
   // opnieuw opgezocht): die lijst wijst ook naar de interne documentweergave
-  // als er nog geen Drive-link is, en dan moet precies díe link aanstaan. Het
-  // label is nu "Copy: <bestandsnaam>" of "Copy (nog niet in Drive)" in plaats
-  // van kaal "Copy", dus hier op het voorvoegsel matchen, niet op een vaste tekst.
-  const copyLink = beschikbaar.find((d) => /^Copy(:|\s\()/.test(d.label))?.url || "";
+  // als er nog geen Drive-link is, en dan moet precies díe link aanstaan.
+  //
+  // Het gaat om de GELDENDE copy, dus om de soort en niet om het label. Op het
+  // label matchen ("Copy: …") pakte de eerste regel die zo heette, en dat kon
+  // een oudere ronde zijn zodra er meerdere copy-documenten bij een pagina
+  // stonden. Wélke versie geldt staat in lib/laatste-versie.ts.
+  const copyLink = beschikbaar.find((d) => d.soort === "copy" && !d.ouder)?.url || "";
 
   // De stukken waar de kaart naar verwijst: het stappenplan, de bespreekpunten,
   // een locatie. Dat handgeschreven veld bevat meestal precies wat de sitebouwer

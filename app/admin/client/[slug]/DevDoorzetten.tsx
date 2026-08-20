@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { zichtbaar, type VersieDoc } from "../../../../lib/laatste-versie";
 
 // ═══════════════════════════════════════════════════════════
 // DOORZETTEN NAAR DE DEVELOPER
@@ -18,7 +19,11 @@ import { createPortal } from "react-dom";
 // anders formuleren zonder dat je eigen kaart verandert.
 // ═══════════════════════════════════════════════════════════
 
-type Doc = { label: string; url: string };
+// De documenten komen van de server met een vlaggetje erbij: van elke soort
+// (analyse, blauwdruk, copy) geldt er één versie, de rest is een eerdere ronde.
+// Die eerdere rondes staan dichtgeklapt, want anders kies je uit negen vakjes
+// waarvan er twee "Copy" heten. Welke versie geldt: lib/laatste-versie.ts.
+type Doc = VersieDoc;
 
 export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }: {
   slug: string;
@@ -33,6 +38,7 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
   const [hintTaak, setHintTaak] = useState("");
   const [docs, setDocs] = useState<Doc[]>([]);
   const [gekozen, setGekozen] = useState<Record<string, boolean>>({});
+  const [toonOud, setToonOud] = useState(false);
   // Wat er straks meetbaar af moet zijn. Dit is het verschil tussen een afspraak
   // en een belofte: hierna kun je met één knop nameten of het gebeurd is.
   const [puntKeuzes, setPuntKeuzes] = useState<{ id: string; label: string }[]>([]);
@@ -99,6 +105,9 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
   }
 
   const aantal = docs.filter((d) => gekozen[d.url]).length;
+  // Alleen wat er ook echt verstopt zit: een oudere versie die je zelf aanvinkt
+  // blijft staan en telt dus niet mee in het knopje.
+  const aantalOud = docs.filter((d) => d.ouder && !gekozen[d.url]).length;
 
   // Buiten de kaart om, rechtstreeks in de pagina gehangen. Dit venster hing in de
   // kaart zelf en kroop daardoor net wel, net niet onder de kopbalk vandaan; los
@@ -152,14 +161,21 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
                 ? <div className="muted">Er zijn nog geen documenten bij deze pagina.</div>
                 : (
                   <div className="dev-doc-keuze">
-                    {docs.map((d) => (
-                      <label key={d.url} className="dev-doc-optie">
+                    {zichtbaar(docs, (d) => !!gekozen[d.url], toonOud).map((d) => (
+                      <label key={d.url} className={"dev-doc-optie" + (d.ouder ? " dev-doc-oud" : "")}>
                         <input type="checkbox" checked={!!gekozen[d.url]}
                           onChange={(e) => setGekozen((v) => ({ ...v, [d.url]: e.target.checked }))} />
                         <span className="dev-doc-naam">{d.label}</span>
                         <a href={d.url} target="_blank" rel="noreferrer" className="dev-doc-open" onClick={(e) => e.stopPropagation()}>bekijk</a>
                       </label>
                     ))}
+                    {aantalOud > 0 && (
+                      <button type="button" className="btn btn-quiet btn-klein"
+                        title="Van elke soort staat de laatste versie in beeld; hieronder staan de eerdere rondes"
+                        onClick={() => setToonOud((v) => !v)}>
+                        {toonOud ? "Verberg oudere versies" : `Oudere versies (${aantalOud})`}
+                      </button>
+                    )}
                   </div>
                 )}
             </div>

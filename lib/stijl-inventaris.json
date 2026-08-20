@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9041,
-    "stijlregels": 4409,
-    "classnamen": 3005
+    "regels": 9045,
+    "stijlregels": 4411,
+    "classnamen": 3007
   },
   "kleuren": {
     "verschillend": 40,
@@ -416,7 +416,7 @@
     },
     {
       "naam": "Labels en badges",
-      "aantal": 110,
+      "aantal": 111,
       "namen": [
         "act-edit-label",
         "ag-hour-label",
@@ -522,6 +522,7 @@
         "wp-fase-alles-label",
         "wp-fase-chip",
         "wp-fase-label",
+        "wp-mail-chip-oud",
         "wp-mail-linkchip",
         "wp-mail-onderwerp-label",
         "wp-sectie-label",
