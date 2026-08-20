@@ -105,14 +105,17 @@ export default function HubSpotBlok() {
           <ul>
             <li><code>crm.objects.deals.read</code> &mdash; de deals zelf, hun fase, bedrag en sluitingsdatum</li>
             <li><code>crm.objects.companies.read</code> &mdash; bedrijfsnaam en website, om de lead te herkennen</li>
-            <li><code>crm.objects.contacts.read</code> &mdash; contactpersoon en mailadres</li>
-            <li><code>crm.objects.tasks.read</code> &mdash; je openstaande taken, oftewel het eerstvolgende contactmoment</li>
-            <li><code>crm.objects.notes.read</code>, <code>crm.objects.calls.read</code>, <code>crm.objects.meetings.read</code> &mdash; je notities en gespreksverslagen voor het dossier</li>
-            <li><code>crm.objects.owners.read</code> &mdash; alleen om de naam van de eigenaar te tonen in plaats van een nummer</li>
+            <li><code>crm.objects.contacts.read</code> &mdash; contactpersoon en mailadres, en in de meeste accounts ook je taken, notities en gespreksverslagen</li>
           </ul>
           <p>
-            Mist er straks toch een recht, dan zegt dit scherm precies welke: de foutmelding van HubSpot noemt hem bij naam.
-            Zet je later &ldquo;notities gaan ook naar HubSpot&rdquo; aan, dan komt daar <code>crm.objects.notes.write</code> bij.
+            Deze drie zijn genoeg. Zoek daarnaast op <em>tasks</em>, <em>notes</em>, <em>calls</em>, <em>meetings</em> en
+            <em>owners</em>: bestaat er een <code>.read</code>-recht met die naam, vink het dan aan. Bestaat het niet, dan
+            is dat geen fout maar de normale situatie; die gegevens zitten dan bij het contacten-recht in.
+          </p>
+          <p>
+            Er ontbreekt nooit stilzwijgend iets: kan de koppeling de taken niet lezen, dan pakt hij het eerstvolgende
+            contactmoment uit de deal zelf. En mist er echt een recht, dan noemt de foutmelding hierboven hem bij naam.
+            Zet je later &ldquo;notities gaan ook naar HubSpot&rdquo; aan, dan heb je een schrijfrecht op notities nodig.
           </p>
           <p>
             Kom je bij Private apps uit en krijg je daar een waarschuwing over &ldquo;legacy&rdquo;: neem de service key,
