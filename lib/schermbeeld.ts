@@ -153,7 +153,12 @@ export async function maakSchermafbeelding(
       await page.$$eval(klik, (els: any[]) => els.forEach((e) => (e as HTMLElement).click())).catch(() => {});
       await new Promise((r) => setTimeout(r, 300));
     }
-    await new Promise((r) => setTimeout(r, Math.max(0, Math.min(20000, wachtMs))));
+    // Het plafond stond op twintig seconden en dat was te krap geworden: een
+    // scherm dat zichzelf vult met werk van een paar minuten (het oordeel van het
+    // Pagina-lab bezoekt eerst twee keer een pagina van een klant) werd dan altijd
+    // halverwege gefotografeerd, met "bezig" in beeld. Vier minuten is het nieuwe
+    // plafond, en het is alleen een plafond: wie niets meegeeft wacht 600 ms.
+    await new Promise((r) => setTimeout(r, Math.max(0, Math.min(240000, wachtMs))));
     await anonimiseerPagina(page, vervang);
     const shot = await page.screenshot({ type: "png", fullPage: true });
     return shot as Buffer;
