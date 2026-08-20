@@ -2,6 +2,31 @@ import type { Uitklapper } from "../types";
 
 export const BLOKKEN: Uitklapper[] = [
   {
+    titel: "Wat er meegaat naar de developer",
+    kern: "De aantekeningen bij een taak zijn het verhaal; die gaan mee, met alle links erin.",
+    tekst:
+      "Een taak doorzetten naar de sitebouwer stuurt meer mee dan de titel. Wat hij krijgt:\n\n" +
+      "- de opdracht zoals jij hem formuleert in het doorzet-venster;\n" +
+      "- de pagina waar het om gaat;\n" +
+      "- de documenten die je aanvinkt (copy, blauwdruk, analyse, een teruggekregen klantversie);\n" +
+      "- **de aantekeningen bij de taak, volledig**, opgemaakt zoals ze op de kaart staan, dus met " +
+      "werkende links en uitklappers;\n" +
+      "- **elke link uit de kaart en de aantekeningen**, nog eens los op een rij.\n\n" +
+      "Dat laatste is nieuw sinds 20 augustus 2026, en het was een echt gat. De aantekeningen zijn het " +
+      "enige veld op een kaart dat geen enkele automatische stap aanraakt: wat daar staat, staat er " +
+      "bewust. Bij een taak over het aanhaken van vestigingen stond daar het hele verhaal (vijf " +
+      "vestigingen met adressen en mailadressen, een link naar het stappenplan, een link naar de " +
+      "bespreekpunten), en de sitebouwer kreeg daar niets van te zien. Hij las \"kun jij die vijf " +
+      "vestigingen aanmaken?\" en moest de gegevens alsnog opvragen.\n\n" +
+      "In het doorzet-venster staan die links tussen de documenten, met een vinkje. Ze staan standaard " +
+      "aan, want je hebt ze er niet voor niets bij gezet. Ook een kaal webadres of mailadres in de tekst " +
+      "telt mee; daar hoeft geen link omheen te staan.\n\n" +
+      "**In de mail hetzelfde.** De links komen als klikbare regels in de mail, de aantekeningen als " +
+      "gewone tekst eronder (een mail blijft simpel: aanhef, korte alinea's, geen tabellen), en de " +
+      "assistent die de mail schrijft kent ze nu ook. Hij schrijft dus niet langer om adressen en namen " +
+      "heen die er gewoon staan.",
+  },
+  {
     titel: "Doorvoeren op de site en nameten",
     kern: "Wijziging, terugcontrole, en daarna het effect.",
     tekst:

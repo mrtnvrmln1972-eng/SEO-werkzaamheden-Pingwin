@@ -7,6 +7,7 @@ import { goedgekeurdeVersies } from "../../../../../lib/doc-versions";
 import { ALLE_PUNTEN, voorstelPunten, type PuntId } from "../../../../../lib/dev-punten";
 import { devSturing } from "../../../../../lib/developer";
 import { planOpvolging } from "../../../../../lib/mail-opvolg";
+import { kaartLinks } from "../../../../../lib/kaart-links";
 
 export const runtime = "nodejs";
 
@@ -57,6 +58,16 @@ export async function GET(req: NextRequest) {
   // van kaal "Copy", dus hier op het voorvoegsel matchen, niet op een vaste tekst.
   const copyLink = beschikbaar.find((d) => /^Copy(:|\s\()/.test(d.label))?.url || "";
 
+  // De links uit de kaarttekst en de aantekeningen erbij. Dat handgeschreven veld
+  // bevat meestal precies wat de sitebouwer nodig heeft (een stappenplan, de
+  // bespreekpunten, adressen), en er ging tot 20-08-2026 niets van mee: het
+  // doorzet-venster toonde alleen de documenten uit de pijplijn. Ze staan
+  // standaard aan, want ze zijn er niet voor niets bij gezet.
+  const uitKaart = kaartLinks(kaart.toelichting || "", kaart.notitie || "")
+    .filter((l) => l.url !== kaart.url && !beschikbaar.some((d) => d.url === l.url))
+    .map((l) => ({ label: `Uit de kaart: ${l.label}`, url: l.url }));
+  const alles = [...beschikbaar, ...uitKaart];
+
   return NextResponse.json({
     ok: true,
     // Alleen wat er eerder is doorgezet. De velden beginnen bewust LEEG: Maarten
@@ -65,9 +76,10 @@ export async function GET(req: NextRequest) {
     // developerlijst terug op de kaart, dus er gaat nooit een lege taak de deur uit.
     taak: opgeslagen?.taak && opgeslagen.taak !== kaart.taak ? opgeslagen.taak : "",
     toelichting: opgeslagen?.toelichting || "",
-    docs: beschikbaar,
-    // De pagina en het copy-document staan standaard aan; de rest kies je zelf.
-    gekozen: gekozen.length ? gekozen.map((d) => d.url) : Array.from(new Set([...(kaart.url ? [kaart.url] : []), ...geldend, ...(copyLink ? [copyLink] : [])])),
+    docs: alles,
+    // De pagina, het copy-document en de links uit de kaart staan standaard aan;
+    // de rest kies je zelf.
+    gekozen: gekozen.length ? gekozen.map((d) => d.url) : Array.from(new Set([...(kaart.url ? [kaart.url] : []), ...geldend, ...(copyLink ? [copyLink] : []), ...uitKaart.map((l) => l.url)])),
     voorstelTaak: kaart.taak || "",
     voorstelToelichting: devSturing(kaart.toelichting || ""),
     url: kaart.url || "",

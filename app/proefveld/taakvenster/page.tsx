@@ -19,7 +19,7 @@ const TAAK = {
   clientSlug: "voorbeeld", clientName: "Voorbeeldklant", taskKey: "wp:1",
   taak: "/hovenier/etten-leur/ · herstellen",
   toelichting: "",
-  kaartOpm: "Bouw: controleer waarom /hovenier/etten-leur/ een 404 geeft (verkeerde slug, niet gepubliceerd, redirect-fout), herstel publicatie, zet de gereedliggende copy live inclusief meta-title en meta-description.\nStructured data: FAQ-schema opstellen op basis van de bestaande H2's.",
+  kaartNotitie: "", kaartLinks: [], kaartOpm: "Bouw: controleer waarom /hovenier/etten-leur/ een 404 geeft (verkeerde slug, niet gepubliceerd, redirect-fout), herstel publicatie, zet de gereedliggende copy live inclusief meta-title en meta-description.\nStructured data: FAQ-schema opstellen op basis van de bestaande H2's.",
   uren: null, status: "naar dev", maand: "", link: "https://kamsteegtuinen.nl/hovenier/etten-leur/",
   fase: "", execDate: "", position: 0, devDone: false, devNote: "", ownerDone: false,
   docs: [

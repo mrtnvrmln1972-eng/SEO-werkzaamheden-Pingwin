@@ -320,7 +320,9 @@ export default function MailUitKaart({
     try {
       const d = await fetch("/api/admin/task/explain", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, url: t.url, audience: aud, instructie: instr, links: mee, to: adres }),
+        // De aantekeningen gaan mee als context: daar staan de concrete gegevens
+        // (adressen, namen, verwijzingen) die de ontvanger nodig heeft.
+        body: JSON.stringify({ slug, taak: t.taak, toelichting: t.toelichting, notitie: t.notitie || "", url: t.url, audience: aud, instructie: instr, links: mee, to: adres }),
       }).then((r) => r.json());
       if (d?.ok && d.text) {
         // De onderwerpregel hoort niet in de body maar in een eigen veld: zo zie

@@ -8,6 +8,7 @@ import { striptToeschrijvingen } from "../../../../../lib/herkomst";
 import { getEmails } from "../../../../../lib/snapshots";
 import { getSchrijfstijl, schrijfstijlBlok } from "../../../../../lib/schrijfstijl";
 import { bouwMailContext, klantBlok, kiesWerkwijze, werkwijzeBlok } from "../../../../../lib/mail-context";
+import { notitieTekst } from "../../../../../lib/kaart-links";
 
 export const runtime = "nodejs";
 
@@ -169,10 +170,18 @@ export async function POST(req: NextRequest) {
     klantTekst ? `\n${klantTekst}` : (profiel && audience === "klant" ? `\nContext over de klant (gebruik subtiel om de toon te raken, niet letterlijk overnemen):\n${profiel}` : ``),
   ].filter(Boolean).join("\n");
 
+  // De aantekeningen van de kaart gaan mee. Dat is het veld dat Maarten met de
+  // hand vult, en daar staat vaak precies wat de ontvanger nodig heeft om te
+  // kunnen beginnen: vijf vestigingen met hun adressen en mailadressen, een
+  // verwijzing naar het stappenplan, de bespreekpunten. Zonder dit schreef de
+  // assistent "kun jij die vijf vestigingen aanmaken?" en moest de ontvanger de
+  // gegevens alsnog opvragen (20-08-2026).
+  const notitie = notitieTekst(String(body.notitie || ""), 3000);
   const user = [
     `Taak: ${taak}`,
     url ? `Pagina: ${url}` : ``,
     toelichting ? `Achtergrond en waarom (intern; gebruik wat relevant is voor deze ontvanger):\n${toelichting}` : `Er is nog geen aparte onderbouwing; schrijf op basis van de taak zelf.`,
+    notitie ? `Aantekeningen bij deze taak (met de hand geschreven; hierin staan de concrete gegevens. Neem over wat de ontvanger nodig heeft om te kunnen beginnen, zoals adressen, namen en verwijzingen, en verzin er niets bij):\n${notitie}` : ``,
   ].filter(Boolean).join("\n");
 
   try {

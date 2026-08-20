@@ -1,6 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
 import { meldingToevoegen, meldingIntrekken } from "./meldingen";
+import { kaartLinks } from "./kaart-links";
 
 // ═══════════════════════════════════════════════════════════
 // DEVELOPER OVERVIEW (alle dev-taken over alle klanten heen)
@@ -38,6 +39,22 @@ export type DevTask = {
    * de sitebouwer hem gewoon blijft zien.
    */
   kaartOpm: string;
+  /**
+   * De aantekeningen van de kaart, precies zoals ze daar staan (opgemaakte HTML).
+   *
+   * Dit veld raakt geen enkele automatische stap aan: wat hier staat heeft
+   * Maarten er bewust neergezet, en juist dat bleef tot 20-08-2026 achter bij het
+   * doorzetten. Bij "Locaties aanhaken" stond hier het hele verhaal (vijf
+   * vestigingen met adressen en mailadressen, een link naar het stappenplan, een
+   * link naar de bespreekpunten) en de developer kreeg daar niets van te zien.
+   */
+  kaartNotitie: string;
+  /**
+   * Elke link uit de kaarttekst én de aantekeningen, klaar om aan te klikken.
+   * Uit lib/kaart-links.ts, zodat de developerlijst, het doorzet-venster en de
+   * mail allemaal dezelfde lijst gebruiken.
+   */
+  kaartLinks: { label: string; url: string }[];
   uren: number | null;
   status: string;
   maand: string;
@@ -337,6 +354,10 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       // vult Maarten daar zelf in; dat is dus wél zijn eigen tekst.
       toelichting: (r.toelichting as string) ?? "",
       kaartOpm: "",
+      kaartNotitie: "",
+      // Ook een gewone taak uit Werkzaamheden kan een link in zijn tekst hebben
+      // staan; die hoort de developer net zo goed te kunnen openen.
+      kaartLinks: kaartLinks(r.taak as string, r.toelichting as string, r.link as string),
       uren: r.uren === null ? null : Number(r.uren),
       status: (r.status as string) ?? "",
       maand: (r.maand as string) ?? "",
@@ -355,7 +376,7 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
   // een andere tabel dan de oude taken, dus ze moeten er apart bij; anders blijft de
   // developerpagina hangen op werk van vóór de overstap.
   const wp = await sql`
-    SELECT w.id, w.client_slug, w.taak, w.toelichting, w.url, w.week_year, w.week_no, w.status,
+    SELECT w.id, w.client_slug, w.taak, w.toelichting, w.notitie, w.url, w.week_year, w.week_no, w.status,
            w.dev_taak, w.dev_toelichting, w.dev_docs,
            c.name AS client_name
     FROM client_weekplan w
@@ -397,6 +418,14 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
       // achtergrond, cijfers en de aanpak per fase; een sitebouwer heeft daar niets
       // aan en moet gewoon weten wát hij moet doen.
       kaartOpm: devSturing((r.toelichting as string) ?? ""),
+      // De aantekeningen gaan volledig mee. `devSturing` hierboven knijpt de
+      // kaarttekst terug tot de bouwregels, en dat klopt voor die tekst: daar
+      // staat achtergrond en cijfers in waar een sitebouwer niets aan heeft. De
+      // aantekeningen zijn het tegenovergestelde: handgeschreven, en meestal
+      // precies de gegevens die hij nodig heeft (adressen, mailadressen, links
+      // naar een stappenplan of bespreekpunten). Daar valt niets weg te laten.
+      kaartNotitie: (r.notitie as string) ?? "",
+      kaartLinks: kaartLinks(r.toelichting as string, r.notitie as string),
       uren: null,
       // Een doorgezette kaart telt als open dev-werk, tenzij de developer hem afvinkte.
       status: mm?.devDone ? "klaar" : "naar dev",
@@ -433,6 +462,10 @@ export async function getDeveloperTasks(): Promise<DevTask[]> {
         taak: mm.taakEdit,
         toelichting: mm.toelEdit,
         kaartOpm: "",
+        kaartNotitie: "",
+        // Een zelf aangemaakte taak heeft geen kaart, maar de opmerking die je er
+        // zelf bij typt kan net zo goed een link bevatten.
+        kaartLinks: kaartLinks(mm.taakEdit, mm.toelEdit, mm.linkEdit),
         uren: null,
         status: mm.devDone ? "klaar" : "naar dev",
         maand: "",
