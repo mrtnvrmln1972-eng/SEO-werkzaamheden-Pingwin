@@ -230,6 +230,28 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
   const [sleep, setSleep] = useState<number | null>(null);
   // Per lead de stand van zijn HubSpot-deal (opvolgdatum, verwachte startdatum).
   const [hubspot, setHubspot] = useState<Record<string, HubspotStand>>({});
+  // Bedrijven die een ophaalronde heeft aangemaakt en waar niets mee gedaan is.
+  // De knop staat hier en niet alleen op Beheer: je ziet de rommel in deze lijst,
+  // dus hier hoort ook de bezem te staan.
+  const [opruimen, setOpruimen] = useState<string[]>([]);
+  const [opruimBezig, setOpruimBezig] = useState(false);
+
+  async function ruimOp() {
+    if (!window.confirm(
+      `${opruimen.length} bedrijven verwijderen die uit een ophaalronde kwamen en waar niets mee gedaan is?\n\n`
+      + "Je eigen klanten en alles waar je aan gewerkt hebt blijven staan. Dit kan niet ongedaan gemaakt worden.",
+    )) return;
+    setOpruimBezig(true);
+    try {
+      const d = await fetch("/api/admin/hubspot", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actie: "opruimen" }),
+      }).then((r) => r.json());
+      if (d?.ok) { setNotice({ ok: true, text: `${d.verwijderd} bedrijven opgeruimd.` }); setOpruimen([]); await refresh(); }
+      else setNotice({ ok: false, text: d?.error || "Opruimen lukte niet." });
+    } catch { setNotice({ ok: false, text: "Opruimen lukte niet." }); }
+    finally { setOpruimBezig(false); }
+  }
 
   useEffect(() => {
     if (!isOwner) return;
@@ -264,6 +286,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         const map: Record<string, HubspotStand> = {};
         for (const l of d.leads as HubspotStand[]) map[l.slug] = l;
         setHubspot(map);
+        setOpruimen(Array.isArray(d.opruimen) ? (d.opruimen as string[]) : []);
       } catch { /* stil: geen stand, volgende paginalading opnieuw */ }
     })();
     return () => { alive = false; };
@@ -833,6 +856,17 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
             </button>
           ) : undefined}
         >
+        {isOwner && opruimen.length > 0 && (
+          <div className="lead-opruimbalk">
+            <span>
+              <strong>{opruimen.length} bedrijven</strong> hieronder komen uit een oude ophaalronde op je deals en horen
+              hier niet: er is niets mee gedaan en er staat geen bedrag bij.
+            </span>
+            <button type="button" className="btn btn-danger btn-klein" disabled={opruimBezig} onClick={ruimOp}>
+              {opruimBezig ? "Bezig met opruimen…" : `Opruimen (${opruimen.length})`}
+            </button>
+          </div>
+        )}
         {leadTable}
         {isOwner && showLeadForm && (
           <form className="admin-form" style={{ marginTop: "var(--s-4)" }} onSubmit={onSubmitLead}>

@@ -5719,6 +5719,15 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   color: var(--kleur-tekst-stil); white-space: nowrap;
 }
 .wp-fase-datum.wacht { color: var(--kleur-let-op); }
+/* De opruimbalk boven de leadlijst: een melding met de knop ernaast. */
+.lead-opruimbalk {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-groep);
+  flex-wrap: wrap; margin-bottom: var(--ruimte-regel);
+  padding: var(--ruimte-regel) var(--ruimte-groep);
+  border: 1px solid var(--kleur-let-op-rand); border-radius: var(--ronding-knop);
+  background: var(--kleur-let-op-vlak);
+  font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
+}
 .lead-kolom-datum { white-space: nowrap; }
 .lead-datum-vandaag { color: var(--kleur-let-op); font-weight: 700; }
 .lead-datum-verstreken { color: var(--kleur-fout); font-weight: 700; }
