@@ -3,7 +3,8 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getEmails, getVerborgenMails, type EmailSnapshot } from "../../../../lib/snapshots";
 import { getClientBySlug } from "../../../../lib/clients";
-import { msStatus, msSearchClientEmails } from "../../../../lib/ms-graph";
+import { msStatus, msSearchClientEmails, msSearchMail } from "../../../../lib/ms-graph";
+import { zoektermenUitVraag, corrigeerNaam } from "../../../../lib/mail-zoektermen";
 import { isRuisMail } from "../../../../lib/mail-tekst";
 import { callClaude } from "../../../../lib/anthropic";
 
@@ -52,7 +53,39 @@ export async function POST(req: NextRequest) {
   // Dit veld las alleen die database, en dus kreeg je "er hangen nog geen mails
   // in het dashboard" terwijl er een kolom verderop tientallen mails stonden.
   // Nu eerst de mailbox, met de opgeslagen mails als terugval.
-  const emails = await liveMails(slug).catch(() => [] as Awaited<ReturnType<typeof getEmails>>);
+  const klantMails = await liveMails(slug).catch(() => [] as Awaited<ReturnType<typeof getEmails>>);
+  // ── En nu ook zoeken op de vraag zelf (20-08-2026) ──
+  // Hierboven staan de recentste mails van deze klant. Dat is een goed begin en
+  // een slecht einde: de mail die je zoekt is vaak juist een oudere, en dan
+  // bestaat hij voor het antwoord niet. Maarten vroeg naar "mail van pehlevian"
+  // en kreeg één wisseling terug, terwijl de thread die hij zocht (drie weken
+  // ouder) gewoon in de mailbox stond.
+  //
+  // Dus: de woorden uit de vraag worden zoekopdrachten in de mailbox, en een
+  // verschreven naam wordt eerst bijgetrokken tegen de mensen met wie deze klant
+  // echt mailt ("pehlevian" → "Pehlivan").
+  const namen = Array.from(new Set(klantMails.flatMap((e) => [e.fromName || "", e.fromAddress || ""]).filter(Boolean)));
+  const termen = zoektermenUitVraag(vraag).map((t) => corrigeerNaam(t, namen));
+  const gezocht: string[] = [];
+  const extra = new Map<string, EmailSnapshot>();
+  const status = await msStatus().catch(() => ({ connected: false, account: "" }));
+  if (status.connected && termen.length) {
+    const rondes = await Promise.all(termen.slice(0, 3).map(async (t) => {
+      const r = await msSearchMail(`"${t}"`, status.account || "", 20, t).catch(() => null);
+      return { term: t, mails: r || [] };
+    }));
+    for (const r of rondes) {
+      if (!r.mails.length) continue;
+      gezocht.push(r.term);
+      for (const m of r.mails) if (!isRuisMail(m)) extra.set(String(m.id), m as unknown as EmailSnapshot);
+    }
+  }
+  // De klantmails eerst (dat is de context waarin je de vraag stelt), daarna wat
+  // het zoeken opleverde. Dubbele mails vallen weg op hun id.
+  const samen = new Map<string, EmailSnapshot>();
+  for (const m of klantMails) samen.set(String(m.id), m);
+  for (const [id, m] of extra) if (!samen.has(id)) samen.set(id, m);
+  const emails = Array.from(samen.values());
   if (!emails.length) {
     return NextResponse.json({
       ok: false,
@@ -69,10 +102,12 @@ export async function POST(req: NextRequest) {
 Regels:
 - Antwoord kort en concreet in het Nederlands, in nette markdown (geen emoji, geen jargonmuur): wat is er gevonden en wat moet Maarten ermee. Verwijs naar mails als "de mail van [datum] over [onderwerp]".
 - Baseer je UITSLUITEND op de meegegeven mails; staat het er niet in, zeg dat dan eerlijk en adviseer de Superhuman-zoekknop voor het volledige archief.
+- Je krijgt de recente mails van deze klant PLUS wat het zoeken op de woorden uit de vraag opleverde. Is er op een naam of woord gezocht dat anders gespeld was dan in de vraag, dan staat dat bij ZOCHT OP; noem die schrijfwijze in je antwoord, zodat duidelijk is waar het antwoord vandaan komt.
 - "mailIds": de id's van de mails die het antwoord onderbouwen, relevantste eerst (maximaal 5; leeg als niets relevant is).
 Antwoord met UITSLUITEND geldige JSON: {"antwoord_md":"...","mailIds":["..."]}`;
   try {
-    const raw = await callClaude(sys, [{ role: "user", content: `VRAAG: ${vraag}\n\nMAILS:\n${lijst.slice(0, 40000)}` }], 1600, { slug, action: "mail-vraag" });
+    const zochtOp = gezocht.length ? `ZOCHT OP: ${gezocht.join(", ")}\n\n` : "";
+    const raw = await callClaude(sys, [{ role: "user", content: `VRAAG: ${vraag}\n\n${zochtOp}MAILS:\n${lijst.slice(0, 40000)}` }], 1600, { slug, action: "mail-vraag" });
     const clean = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const p = JSON.parse(clean.slice(clean.indexOf("{"), clean.lastIndexOf("}") + 1)) as { antwoord_md?: string; mailIds?: unknown };
     const bekend = new Set(emails.map((e) => String(e.id)));

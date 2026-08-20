@@ -29,6 +29,15 @@ export const HOOFDSTUK: Hoofdstuk = {
         "nog geen mails in het dashboard voor deze klant\" terug terwijl er een kolom verderop tientallen mails " +
         "stonden. Het veld las alleen de opgeslagen mail, en die tabel wordt sinds de Microsoft-koppeling niet " +
         "meer gevuld. Nu gaat de vraag over de mails die je ook echt ziet.\n\n" +
+        "**En het vraagveld zoekt nu ook echt (20 augustus 2026).** Tot die dag legde het alleen de zestig " +
+        "recentste mails van die klant aan de assistent voor; met de woorden uit je vraag gebeurde niets. Een " +
+        "mail van drie weken terug bestond dus niet voor het antwoord: je vroeg naar een mailwisseling die in " +
+        "Superhuman gewoon zichtbaar was, en kreeg te horen dat er maar één was. Nu worden de woorden uit je " +
+        "vraag echte zoekopdrachten in de mailbox, en komt wat dat oplevert bovenop de recente mails.\n\n" +
+        "Daar hoort één slimmigheid bij: een verschreven naam wordt eerst bijgetrokken tegen de mensen met wie " +
+        "je bij deze klant écht mailt. Typ je \"pehlevian\", dan wordt er gezocht op \"Pehlivan\", omdat die " +
+        "naam in de correspondentie voorkomt. Een gewoon woord wordt nooit stiekem een achternaam, en is er op " +
+        "een andere schrijfwijze gezocht dan je typte, dan staat dat in het antwoord.\n\n" +
         "**Onderaan de lijst staat \"Meer mails\".** De lijst begint bij de laatste vijftien; elke klik haalt " +
         "er twintig bij, tot de mailbox niets ouders meer teruggeeft. Dan verdwijnt de knop. Voor het volledige " +
         "archief blijft de Superhuman-zoekknop bovenaan de snelste weg.",
