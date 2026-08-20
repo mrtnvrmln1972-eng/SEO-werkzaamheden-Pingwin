@@ -179,6 +179,60 @@ export async function callClaudeImages(system: string, tekst: string, images: Vi
   return (j.content || []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
 }
 
+// ── Kijken én een vaste vorm terugkrijgen: beelden plus één verplichte tool ──
+//
+// callClaudeImages geeft vrije tekst terug en callClaudeForcedTool geeft een
+// vaste vorm terug maar kan niet kijken. Het Pagina-lab heeft ze allebei tegelijk
+// nodig: een oordeel over vormgeving vraagt de foto, en dat oordeel moet per
+// criterium terugkomen in plaats van als verhaal, anders is het niet na te rekenen.
+export async function callClaudeImagesForcedTool(
+  system: string,
+  tekst: string,
+  images: VisionImage[],
+  tool: ToolDef,
+  ctx?: UsageCtx,
+  maxTokens = 4000,
+  model = MODEL,
+): Promise<Record<string, unknown> | null> {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error("ANTHROPIC_API_KEY ontbreekt (voeg hem toe in Vercel).");
+  const bruikbaar = images.filter((i) => (i.base64 && i.mediaType) || beeldGeschikt(i.url));
+  if (!bruikbaar.length) throw new Error("Geen bruikbare afbeeldingen om te tonen.");
+  const content: Record<string, unknown>[] = [];
+  for (const i of bruikbaar) {
+    content.push({ type: "text", text: i.label });
+    content.push(i.base64 && i.mediaType
+      ? { type: "image", source: { type: "base64", media_type: i.mediaType, data: i.base64 } }
+      : { type: "image", source: { type: "url", url: i.url } });
+  }
+  content.push({ type: "text", text: tekst });
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 300000);
+  let res: Response;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+      body: JSON.stringify({
+        model, max_tokens: maxTokens, system: systemBlocks(system),
+        messages: [{ role: "user", content }],
+        tools: [tool], tool_choice: { type: "tool", name: tool.name },
+      }),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw new Error("Claude reageerde niet binnen de tijdslimiet (time-out).");
+    throw e;
+  } finally { clearTimeout(timer); }
+  if (!res.ok) { const t = await res.text().catch(() => ""); throw new Error(`Claude-fout ${res.status}: ${t.slice(0, 300)}`); }
+  const j = await res.json();
+  await logClaudeUsage(ctx, j.usage, model);
+  const blokken: Block[] = j.content || [];
+  const tu = blokken.find((c) => c.type === "tool_use" && c.name === tool.name);
+  return tu?.input || null;
+}
+
 // ── Agentische variant: Claude mag tools aanroepen (bv. Ahrefs) ──
 export type ToolDef = { name: string; description: string; input_schema: Record<string, unknown> };
 export type ToolRunner = (name: string, input: Record<string, unknown>) => Promise<string>;

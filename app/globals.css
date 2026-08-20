@@ -8938,3 +8938,32 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
 }
 .proefstijl-tekst { margin-right: auto; }
 .proefstijl-knop { text-decoration: none; }
+
+/* ── Pagina-lab: het oordeel met de foto ernaast ──
+   Alleen plaatsing en ruimte. Het uiterlijk van de blokken, chips en tekst
+   erbinnen komt uit de gedeelde bouwstenen (app/_ui/Uitkomst.tsx); dat wordt
+   hier bewust niet overgedaan, want dan ziet dezelfde bouwsteen er op dit ene
+   scherm anders uit dan overal elders. */
+.pl-naast {
+  display: grid; grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  gap: var(--ruimte-groep); align-items: start;
+}
+/* De foto blijft in beeld terwijl je door de bevindingen scrolt: een oordeel
+   dat je niet naast het beeld kunt leggen, kun je niet controleren. */
+.pl-fotos { position: sticky; top: var(--ruimte-groep); display: grid; gap: var(--ruimte-regel); }
+.pl-foto-blok { display: grid; gap: var(--ruimte-krap); }
+.pl-foto-naam {
+  font-size: var(--type-label); line-height: var(--regel-label);
+  font-weight: 700; color: var(--kleur-tekst-stil); cursor: pointer;
+}
+.pl-foto {
+  display: block; width: 100%; height: auto;
+  border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-kaart);
+}
+.pl-foto-lang { max-height: 60vh; overflow-y: auto; border-radius: var(--ronding-kaart); }
+.pl-lijst { display: grid; gap: var(--ruimte-regel); min-width: 0; }
+.pl-detail { font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
+@media (max-width: 900px) {
+  .pl-naast { grid-template-columns: minmax(0, 1fr); }
+  .pl-fotos { position: static; }
+}

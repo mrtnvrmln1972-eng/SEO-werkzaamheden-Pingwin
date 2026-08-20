@@ -44,7 +44,7 @@ const MOBIELE_UA =
 // tot de server er de stekker uit trok (op deze site vier en een halve minuut,
 // zonder foto). Een smalle breedte plus een mobiele user-agent levert hetzelfde
 // beeld op, want daar reageert een responsive site op, en het werkt wél.
-const APPARATEN: Record<Apparaat, { breedte: number; hoogte: number; ua?: string }> = {
+export const APPARATEN: Record<Apparaat, { breedte: number; hoogte: number; ua?: string }> = {
   desktop: { breedte: 1440, hoogte: 900 },
   mobiel: { breedte: 390, hoogte: 844, ua: MOBIELE_UA },
 };
@@ -60,7 +60,7 @@ const APPARATEN: Record<Apparaat, { breedte: number; hoogte: number; ua?: string
  * verder met wat er staat.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function gaNaar(page: any, url: string): Promise<any> {
+export async function gaNaar(page: any, url: string): Promise<any> {
   try {
     return await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
   } catch {
@@ -102,7 +102,7 @@ const COOKIE_KNOPPEN = [
  * verandert er niets; het geldt alleen voor deze ene browsersessie.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function klikCookieWeg(page: any): Promise<boolean> {
+export async function klikCookieWeg(page: any): Promise<boolean> {
   const gelukt = await page.evaluate((namen: string[]) => {
     for (const naam of namen) {
       const el = document.querySelector(naam) as HTMLElement | null;
@@ -196,16 +196,95 @@ export async function waaromNiet(ruw: string): Promise<string | null> {
   return null;
 }
 
+/** Het scherm van dit apparaat instellen: breedte, hoogte, user-agent. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function zetScherm(page: any, apparaat: Apparaat): Promise<void> {
+  const scherm = APPARATEN[apparaat];
+  await page.setViewport({ width: scherm.breedte, height: scherm.hoogte });
+  await page.setUserAgent(scherm.ua || BEZOEKER_UA);
+}
+
+/**
+ * Wat er in het document staat, uit een pagina die al open is.
+ *
+ * Apart van `leesPagina` omdat de meting (`meting.ts`) hetzelfde document leest
+ * in hetzelfde bezoek: lezen, meten en fotograferen in één keer scheelt twee
+ * paginabezoeken, en belangrijker, het is dan gegarandeerd dezelfde pagina. Twee
+ * bezoeken kunnen zomaar twee verschillende pagina's opleveren (een A/B-test,
+ * een wisselende kop), en dan slaat een oordeel op iets anders dan de foto laat
+ * zien. Dus één bron voor het lezen, en die staat hier.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function leesDocument(page: any): Promise<Omit<PaginaBron, "url" | "eindUrl" | "status" | "woorden">> {
+  return await page.evaluate(() => {
+    const tekstVan = (el: Element | null): string => (el?.textContent || "").replace(/\s+/g, " ").trim();
+    const meta = (naam: string): string =>
+      (document.querySelector(`meta[name="${naam}"]`) as HTMLMetaElement | null)?.content?.trim() || "";
+    // Zichtbaar en waar op de pagina. Beide zijn nodig om niet te gokken: een
+    // site zet vaak een tweede kop klaar voor mobiel die op desktop verborgen
+    // is, en dan lijkt het op twee H1's terwijl een bezoeker er één ziet.
+    const koppen = Array.from(document.querySelectorAll("h1,h2,h3,h4,h5,h6"))
+      .map((h) => {
+        const el = h as HTMLElement;
+        const vak = el.getBoundingClientRect();
+        const zichtbaar = el.offsetParent !== null && vak.width > 0 && vak.height > 0;
+        return {
+          niveau: Number(h.tagName.slice(1)),
+          tekst: tekstVan(h),
+          zichtbaar,
+          y: Math.round(vak.top + window.scrollY),
+        };
+      })
+      .filter((k) => k.tekst.length > 0);
+    const hier = location.origin;
+    const links = Array.from(document.querySelectorAll("a[href]"))
+      .map((a) => {
+        const el = a as HTMLAnchorElement;
+        const href = el.href || "";
+        let pad = href;
+        let extern = true;
+        try {
+          const u = new URL(href);
+          extern = u.origin !== hier;
+          pad = extern ? href : u.pathname + u.search;
+        } catch { /* mailto, tel, javascript: blijven zoals ze zijn */ }
+        return { pad, tekst: tekstVan(el), extern };
+      })
+      .filter((l) => l.pad && !l.pad.startsWith("javascript:"));
+    const beelden = Array.from(document.querySelectorAll("img")).map((i) => {
+      const el = i as HTMLImageElement;
+      return { bron: el.currentSrc || el.src || "", alt: el.getAttribute("alt") ?? "", breedte: el.naturalWidth || 0, hoogte: el.naturalHeight || 0 };
+    });
+    const knoppen = Array.from(document.querySelectorAll("button, a.button, a.btn, [role=button], input[type=submit]"))
+      .map((b) => tekstVan(b) || (b as HTMLInputElement).value || "")
+      .filter((t) => t.length > 0);
+    const velden = document.querySelectorAll("form input:not([type=hidden]):not([type=submit]), form select, form textarea").length;
+    const body = document.body ? (document.body.innerText || "") : "";
+    return {
+      titel: document.title || "",
+      omschrijving: meta("description"),
+      canoniek: (document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null)?.href || "",
+      robots: meta("robots"),
+      taal: document.documentElement.getAttribute("lang") || "",
+      koppen,
+      tekst: body.replace(/\n{3,}/g, "\n\n").trim(),
+      links,
+      beelden,
+      knoppen,
+      formulierVelden: velden,
+      hoogte: Math.round(document.documentElement.scrollHeight || 0),
+    };
+  });
+}
+
 /**
  * Wat er op die pagina staat: de tekst, de structuur, de links, de beelden.
  * Met een echte browser, dus inclusief alles wat JavaScript nabezorgt, want dat
  * is ook wat een bezoeker ziet.
  */
 export async function leesPagina(url: string, apparaat: Apparaat = "desktop"): Promise<PaginaBron | null> {
-  const scherm = APPARATEN[apparaat];
   return await metBrowser(async (page) => {
-    await page.setViewport({ width: scherm.breedte, height: scherm.hoogte });
-    await page.setUserAgent(scherm.ua || BEZOEKER_UA);
+    await zetScherm(page, apparaat);
     const resp = await gaNaar(page, url);
     await new Promise((r) => setTimeout(r, 900));
     const eindUrl: string = page.url();
@@ -216,65 +295,7 @@ export async function leesPagina(url: string, apparaat: Apparaat = "desktop"): P
     // van de cookiemelder tussen de knoppen van de pagina, en telt zijn kop mee
     // in de koppenstructuur. Dat vervuilt elk oordeel dat erop volgt.
     await klikCookieWeg(page);
-    const gelezen = await page.evaluate(() => {
-      const tekstVan = (el: Element | null): string => (el?.textContent || "").replace(/\s+/g, " ").trim();
-      const meta = (naam: string): string =>
-        (document.querySelector(`meta[name="${naam}"]`) as HTMLMetaElement | null)?.content?.trim() || "";
-      // Zichtbaar en waar op de pagina. Beide zijn nodig om niet te gokken: een
-      // site zet vaak een tweede kop klaar voor mobiel die op desktop verborgen
-      // is, en dan lijkt het op twee H1's terwijl een bezoeker er één ziet.
-      const koppen = Array.from(document.querySelectorAll("h1,h2,h3,h4,h5,h6"))
-        .map((h) => {
-          const el = h as HTMLElement;
-          const vak = el.getBoundingClientRect();
-          const zichtbaar = el.offsetParent !== null && vak.width > 0 && vak.height > 0;
-          return {
-            niveau: Number(h.tagName.slice(1)),
-            tekst: tekstVan(h),
-            zichtbaar,
-            y: Math.round(vak.top + window.scrollY),
-          };
-        })
-        .filter((k) => k.tekst.length > 0);
-      const hier = location.origin;
-      const links = Array.from(document.querySelectorAll("a[href]"))
-        .map((a) => {
-          const el = a as HTMLAnchorElement;
-          const href = el.href || "";
-          let pad = href;
-          let extern = true;
-          try {
-            const u = new URL(href);
-            extern = u.origin !== hier;
-            pad = extern ? href : u.pathname + u.search;
-          } catch { /* mailto, tel, javascript: blijven zoals ze zijn */ }
-          return { pad, tekst: tekstVan(el), extern };
-        })
-        .filter((l) => l.pad && !l.pad.startsWith("javascript:"));
-      const beelden = Array.from(document.querySelectorAll("img")).map((i) => {
-        const el = i as HTMLImageElement;
-        return { bron: el.currentSrc || el.src || "", alt: el.getAttribute("alt") ?? "", breedte: el.naturalWidth || 0, hoogte: el.naturalHeight || 0 };
-      });
-      const knoppen = Array.from(document.querySelectorAll("button, a.button, a.btn, [role=button], input[type=submit]"))
-        .map((b) => tekstVan(b) || (b as HTMLInputElement).value || "")
-        .filter((t) => t.length > 0);
-      const velden = document.querySelectorAll("form input:not([type=hidden]):not([type=submit]), form select, form textarea").length;
-      const body = document.body ? (document.body.innerText || "") : "";
-      return {
-        titel: document.title || "",
-        omschrijving: meta("description"),
-        canoniek: (document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null)?.href || "",
-        robots: meta("robots"),
-        taal: document.documentElement.getAttribute("lang") || "",
-        koppen,
-        tekst: body.replace(/\n{3,}/g, "\n\n").trim(),
-        links,
-        beelden,
-        knoppen,
-        formulierVelden: velden,
-        hoogte: Math.round(document.documentElement.scrollHeight || 0),
-      };
-    });
+    const gelezen = await leesDocument(page);
     return {
       url,
       eindUrl,

@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 8941,
-    "stijlregels": 4379,
-    "classnamen": 2981
+    "regels": 8970,
+    "stijlregels": 4390,
+    "classnamen": 2988
   },
   "kleuren": {
     "verschillend": 40,
@@ -1912,7 +1912,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8544,
+    "gebruik": 8558,
     "schaalGebruik": 1470
   }
 }

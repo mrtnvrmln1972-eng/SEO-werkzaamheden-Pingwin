@@ -12,6 +12,7 @@ import AdminKop from "../AdminKop";
 import { PijlRechts } from "../../_ui/Pijl";
 import { Chip, Chips, Paneel, Signaal, Tekst, Veldrij } from "../../_ui/Uitkomst";
 import GedragPaneel from "./GedragPaneel";
+import OordeelPaneel from "./OordeelPaneel";
 import type { KlantStand } from "./GedragPaneel";
 import {
   CRITERIA,
@@ -91,7 +92,7 @@ function VakoordeelBlok({ v }: { v: Vakoordeel }) {
   );
 }
 
-type Deel = "kennisbank" | "gedrag";
+type Deel = "kennisbank" | "gedrag" | "oordeel";
 
 export default function PaginaLabClient({ klanten, magSchrijven }: { klanten: KlantStand[]; magSchrijven: boolean }) {
   const [deel, setDeel] = useState<Deel>("kennisbank");
@@ -101,7 +102,7 @@ export default function PaginaLabClient({ klanten, magSchrijven }: { klanten: Kl
   // de schermfoto-route (die kan niet klikken).
   useEffect(() => {
     const uit = new URLSearchParams(window.location.search).get("deel");
-    if (uit === "gedrag" || uit === "kennisbank") setDeel(uit);
+    if (uit === "gedrag" || uit === "kennisbank" || uit === "oordeel") setDeel(uit);
   }, []);
 
   function kies(nieuw: Deel) {
@@ -140,8 +141,9 @@ export default function PaginaLabClient({ klanten, magSchrijven }: { klanten: Kl
     <>
       <AdminKop titel="Pagina-lab" />
       <div className="beheer-container">
-        {/* De twee helften van het lab: waartegen we een pagina houden, en wat
-            bezoekers er werkelijk deden. */}
+        {/* De drie delen van het lab: waartegen we een pagina houden, wat
+            bezoekers er werkelijk deden, en het oordeel dat die twee samen met de
+            foto oplevert. */}
         <Veldrij>
           <button
             className={"btn btn-klein " + (deel === "kennisbank" ? "btn-primary" : "btn-ghost")}
@@ -155,9 +157,16 @@ export default function PaginaLabClient({ klanten, magSchrijven }: { klanten: Kl
           >
             Gedrag: Analytics en Clarity
           </button>
+          <button
+            className={"btn btn-klein " + (deel === "oordeel" ? "btn-primary" : "btn-ghost")}
+            onClick={() => kies("oordeel")}
+          >
+            Oordeel over één pagina
+          </button>
         </Veldrij>
 
         {deel === "gedrag" && <GedragPaneel klanten={klanten} magSchrijven={magSchrijven} />}
+        {deel === "oordeel" && <OordeelPaneel klanten={klanten} />}
         {deel === "kennisbank" && (
         <>
         <Paneel

@@ -77,7 +77,7 @@ export const SCHERMEN: { pad: string; naam: string; waarvoor: string; groep: Gro
   { pad: "/admin/schermafbeeldingen", naam: "Schermafbeeldingen", waarvoor: "De beelden die /uitleg gebruikt: het dashboard fotografeert zichzelf, anoniem.", groep: "Beheer en controle" },
   { pad: "/admin/veld-herstel", naam: "Veld terugzetten", waarvoor: "Eerdere versies van 'Overzicht' en 'Top Prio's', met één klik terug te zetten.", groep: "Beheer en controle" },
   { pad: "/admin/verhuizen", naam: "Verhuizen", waarvoor: "Een klant met alles erin uit een losse omgeving hierheen halen, of andersom.", groep: "Beheer en controle" },
-  { pad: "/admin/pagina-lab", naam: "Pagina-lab", waarvoor: "De kennisbank waartegen een pagina straks beoordeeld wordt op conversie, bruikbaarheid, vormgeving en interactie, met de bron erbij.", groep: "Ontwikkeling van het dashboard" },
+  { pad: "/admin/pagina-lab", naam: "Pagina-lab", waarvoor: "Eén pagina laten beoordelen op conversie, bruikbaarheid, vormgeving en interactie, met de criteria, de meting en de foto naast elkaar. Plus de kennisbank waar dat oordeel op rust en wat bezoekers er deden.", groep: "Ontwikkeling van het dashboard" },
   { pad: "/admin/claude-werkwijze", naam: "Claude-werkwijze", waarvoor: "Geheugensteun voor het werken met Claude zelf: repo's aanhaken, model en denkstand, traagheid herkennen, kosten laag houden.", groep: "Ontwikkeling van het dashboard" },
 ];
 

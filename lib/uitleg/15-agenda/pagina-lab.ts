@@ -21,9 +21,43 @@ export const BLOKKEN: Uitklapper[] = [
       "1. **De brug.** Het dashboard kan elke pagina buiten dit domein ophalen én fotograferen, op desktop " +
       "en op mobiel, met de cookiemelding weggeklikt. Een oordeel over vormgeving haal je namelijk niet uit " +
       "HTML, dat moet je zien.\n" +
-      "2. **De kennisbank.** Waartegen we een pagina houden, te zien op `/admin/pagina-lab`.\n\n" +
-      "**Wat er nog niet staat:** het oordeel zelf. Het lab meet en kijkt, het beoordeelt nog niet, en er " +
-      "gaat nog geen bevinding of taak uit voort.",
+      "2. **De kennisbank.** Waartegen we een pagina houden, te zien op `/admin/pagina-lab`.\n" +
+      "3. **Gedrag.** Wat bezoekers er werkelijk deden, uit Analytics en Clarity.\n" +
+      "4. **Het oordeel.** Sinds 20 augustus 2026 beoordeelt het lab één pagina zelf, met die drie lagen " +
+      "naast elkaar. Zie de uitklapper hieronder.\n\n" +
+      "**Wat er nog niet is:** er komt geen taak uit voort en er wordt niets bewaard. Elke beoordeling is " +
+      "een nieuwe, en het lab schrijft nergens iets weg zolang het naast het SEO-werk staat.",
+  },
+  {
+    titel: "Het oordeel: criteria, meting en foto naast elkaar",
+    kern: "Per criterium één bevinding, met eronder waar hij op rust. Wat niet te meten valt, heet ook zo.",
+    tekst:
+      "Op `/admin/pagina-lab` staat onder Oordeel een veld voor één adres. Het lab bezoekt die pagina twee " +
+      "keer, op een desktopscherm en op een telefoon, en doet per bezoek drie dingen tegelijk: lezen, meten " +
+      "en fotograferen. Tegelijk, want twee losse bezoeken kunnen twee verschillende pagina's opleveren, en " +
+      "dan gaat het oordeel over iets anders dan de foto laat zien.\n\n" +
+      "**Wat er nu gemeten wordt.** Het contrast van elke soort tekst tegen de achtergrond waar hij " +
+      "werkelijk op ligt, de tekstgrootte en de regellengte, het aantal invulvelden en hoeveel daarvan een " +
+      "zichtbaar label hebben, of je kunt inzoomen, of de inhoud op een smal scherm past, knoppen die te " +
+      "klein zijn om te raken, links die zelf niet zeggen waar ze heen gaan, wat er bij binnenkomst over de " +
+      "pagina heen ligt, beweging die vanzelf doorgaat, en de laadtijd plus het verspringen tijdens het " +
+      "opbouwen.\n\n" +
+      "**Drie grenzen zitten in de code, niet in een afspraak.** Een bevinding zonder geldige criteriumcode " +
+      "wordt weggegooid, want anders komt er een zesendertigste criterium bij dat plausibel klinkt en " +
+      "nergens op rust. Een criterium dat uit een meting hoort te komen terwijl die meting er niet is, wordt " +
+      "\"niet vast te stellen\" in plaats van een indruk in de vorm van een cijfer. En het waarom plus het " +
+      "bronadres onder een bevinding komen letterlijk uit de kennisbank, nooit uit het model, zodat een " +
+      "advies aan een klant geen verzonnen onderzoek als onderbouwing kan meekrijgen. " +
+      "`proeven/pagina-lab-oordeel.proef.ts` voert bij elke bouw precies die vier fouten in om te zien of de " +
+      "poort dichtzit.\n\n" +
+      "**Wat er eerlijk in beeld blijft.** Onderaan staat wat er is afgevallen en waarom, met naam en " +
+      "toenaam van de criteria die niet beoordeeld zijn; die zijn dus niet stilzwijgend goedgekeurd. De " +
+      "snelheidscijfers zeggen erbij dat ze uit onze eigen browser op een server komen en niet van echte " +
+      "bezoekers, want Google kijkt naar dat laatste en dat valt vrijwel altijd trager uit. En de volgorde " +
+      "van de bevindingen is berekend uit de stand en het gewicht van het criterium, niet gevoeld, dus hij " +
+      "is elke keer hetzelfde en uit te leggen.\n\n" +
+      "**Eén ding blijft nog een grens:** er wordt niets bewaard en er komt geen taak uit voort. Zolang het " +
+      "lab naast het lopende SEO-werk staat, leest het alleen mee.",
   },
   {
     titel: "Gedrag: wat bezoekers werkelijk deden, naast wat je ziet",
