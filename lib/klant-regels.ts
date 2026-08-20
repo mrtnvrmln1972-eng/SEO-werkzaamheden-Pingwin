@@ -51,16 +51,18 @@ export type KlantRegel = {
   startMaand: string | null;
   /** Leeg = de kans van het bedrijf zelf. */
   kans: number | null;
+  /** Wanneer je hierover weer contact hebt. Mag anders zijn dan bij de rij erboven. */
+  opvolgDatum: string | null;
 };
 
 type Rij = {
   id: number; client_slug: string; naam: string; soort: string;
   bedrag: string | number; kosten: string | number;
   eenmalig_omzet: string | number; eenmalig_kosten: string | number;
-  start_maand: string | null; kans: number | null;
+  start_maand: string | null; kans: number | null; opvolg_datum: string | null;
 };
 
-const SCHEMA_VERSIE = "klant-regel-e965a624";
+const SCHEMA_VERSIE = "klant-regel-a28a4ce5";
 
 function ensureTable(): Promise<void> {
   return eenmalig("klant-regel", SCHEMA_VERSIE, doEnsure);
@@ -79,6 +81,7 @@ async function doEnsure(): Promise<void> {
       eenmalig_kosten NUMERIC NOT NULL DEFAULT 0,
       start_maand     TEXT,
       kans            INTEGER,
+      opvolg_datum    DATE,
       created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
   await sql`CREATE INDEX IF NOT EXISTS ix_klant_regel_slug ON klant_regel (client_slug)`;
@@ -98,6 +101,7 @@ function naarRegel(r: Rij): KlantRegel {
     eenmaligKosten: Number(r.eenmalig_kosten) || 0,
     startMaand: r.start_maand || null,
     kans: r.kans === null || r.kans === undefined ? null : Math.min(100, Math.max(0, Number(r.kans))),
+    opvolgDatum: r.opvolg_datum ? String(r.opvolg_datum).slice(0, 10) : null,
   };
 }
 
@@ -105,7 +109,7 @@ function naarRegel(r: Rij): KlantRegel {
 export async function listKlantRegels(): Promise<KlantRegel[]> {
   await ensureTable();
   const { rows } = await sql<Rij>`
-    SELECT id, client_slug, naam, soort, bedrag, kosten, eenmalig_omzet, eenmalig_kosten, start_maand, kans
+    SELECT id, client_slug, naam, soort, bedrag, kosten, eenmalig_omzet, eenmalig_kosten, start_maand, kans, opvolg_datum
     FROM klant_regel ORDER BY client_slug, id`;
   return rows.map(naarRegel);
 }
@@ -116,7 +120,7 @@ export async function addKlantRegel(slug: string, naam = "", soort: RegelSoort =
   const { rows } = await sql<Rij>`
     INSERT INTO klant_regel (client_slug, naam, soort)
     VALUES (${slug}, ${naam}, ${soort})
-    RETURNING id, client_slug, naam, soort, bedrag, kosten, eenmalig_omzet, eenmalig_kosten, start_maand, kans`;
+    RETURNING id, client_slug, naam, soort, bedrag, kosten, eenmalig_omzet, eenmalig_kosten, start_maand, kans, opvolg_datum`;
   return naarRegel(rows[0]);
 }
 
@@ -124,7 +128,7 @@ export async function addKlantRegel(slug: string, naam = "", soort: RegelSoort =
 export async function saveKlantRegel(id: number, p: Partial<Omit<KlantRegel, "id" | "clientSlug">>): Promise<void> {
   await ensureTable();
   const { rows } = await sql<Rij>`
-    SELECT id, client_slug, naam, soort, bedrag, kosten, eenmalig_omzet, eenmalig_kosten, start_maand, kans
+    SELECT id, client_slug, naam, soort, bedrag, kosten, eenmalig_omzet, eenmalig_kosten, start_maand, kans, opvolg_datum
     FROM klant_regel WHERE id = ${id} LIMIT 1`;
   if (!rows[0]) return;
   const h = naarRegel(rows[0]);
@@ -145,7 +149,8 @@ export async function saveKlantRegel(id: number, p: Partial<Omit<KlantRegel, "id
       eenmalig_omzet  = ${getal(p.eenmaligOmzet, h.eenmaligOmzet)},
       eenmalig_kosten = ${getal(p.eenmaligKosten, h.eenmaligKosten)},
       start_maand     = ${maand},
-      kans            = ${kans}
+      kans            = ${kans},
+      opvolg_datum    = ${p.opvolgDatum === undefined ? h.opvolgDatum : (/^\d{4}-\d{2}-\d{2}$/.test(String(p.opvolgDatum || "")) ? p.opvolgDatum : null)}
     WHERE id = ${id}`;
 }
 

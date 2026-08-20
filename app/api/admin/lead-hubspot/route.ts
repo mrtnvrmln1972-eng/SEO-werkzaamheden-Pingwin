@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     actie?: string; maandbudget?: number; linkbuilding?: number; kans?: number;
     startMaand?: string; dealId?: string; tekst?: string; dagen?: number;
+    soort?: "seo" | "ads" | "website" | "overig";
     feeAds?: number; maandkosten?: number; eenmalig?: number; eenmaligKosten?: number;
   };
 
@@ -95,6 +96,7 @@ export async function POST(req: NextRequest) {
         ...(versLead ? { kans: LEAD_STANDAARD_KANS } : {}),
         ...(body.kans !== undefined ? { kans: Number(body.kans) } : {}),
         ...(body.startMaand !== undefined ? { startMaand: body.startMaand || null } : {}),
+        ...(body.soort !== undefined ? { soort: body.soort } : {}),
         ...(body.feeAds !== undefined ? { extraOmzet: getal(body.feeAds) } : {}),
         ...(body.maandkosten !== undefined ? { extraKosten: getal(body.maandkosten) } : {}),
         ...(body.eenmalig !== undefined ? { eenmaligOmzet: getal(body.eenmalig) } : {}),

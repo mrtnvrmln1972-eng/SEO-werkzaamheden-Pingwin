@@ -71,7 +71,7 @@ export function normMaand(v: string | null | undefined): Maand | null {
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "prognose-60cf3123";
+const SCHEMA_VERSIE = "prognose-ce8418ad";
 
 function ensureTable(): Promise<void> {
   return eenmalig("prognose", SCHEMA_VERSIE, doEnsure);
@@ -103,6 +103,10 @@ async function doEnsure(): Promise<void> {
   await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS extra_omzet NUMERIC NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS eenmalig_omzet NUMERIC NOT NULL DEFAULT 0`;
   await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS eenmalig_kosten NUMERIC NOT NULL DEFAULT 0`;
+  // Waar het maandbedrag van deze klant of lead onder valt: SEO (de gewone
+  // maandfee), advertenties, een website of overig. Leeg telt als SEO, zodat
+  // alles wat er al stond blijft doen wat het deed.
+  await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS soort TEXT`;
   // Losse posten die niet aan een klant hangen (een website, een abonnement).
   await sql`
     CREATE TABLE IF NOT EXISTS prognose_post (
@@ -175,6 +179,8 @@ export type RegelExtra = {
   opmerking: string;
   /** Andere maandomzet dan SEO, bijvoorbeeld de fee voor advertenties. */
   extraOmzet: number;
+  /** Waar het maandbedrag onder valt: seo, ads, website of overig. */
+  soort: "seo" | "ads" | "website" | "overig";
   /** Een eenmalig bedrag (een website), in de maand dat het traject start. */
   eenmaligOmzet: number;
   /** De kosten die aan dat eenmalige bedrag vastzitten. */
@@ -182,7 +188,7 @@ export type RegelExtra = {
 };
 
 type RegelRow = {
-  client_slug: string; kans: number; start_maand: string | null;
+  client_slug: string; kans: number; start_maand: string | null; soort: string | null;
   eind_maand: string | null; extra_kosten: string | number; opmerking: string | null;
   extra_omzet: string | number; eenmalig_omzet: string | number; eenmalig_kosten: string | number;
 };
@@ -204,7 +210,7 @@ async function getRegelExtras(): Promise<Map<string, RegelExtra>> {
   await ensureTable();
   const { rows } = await sql<RegelRow>`
     SELECT client_slug, kans, start_maand, eind_maand, extra_kosten, opmerking,
-           extra_omzet, eenmalig_omzet, eenmalig_kosten FROM prognose_regel`;
+           extra_omzet, eenmalig_omzet, eenmalig_kosten, soort FROM prognose_regel`;
   const map = new Map<string, RegelExtra>();
   for (const r of rows) {
     map.set(r.client_slug, {
@@ -214,6 +220,7 @@ async function getRegelExtras(): Promise<Map<string, RegelExtra>> {
       extraKosten: Number(r.extra_kosten) || 0,
       opmerking: r.opmerking || "",
       extraOmzet: Number(r.extra_omzet) || 0,
+      soort: (["seo", "ads", "website", "overig"] as const).includes(r.soort as "seo") ? (r.soort as "seo") : "seo",
       eenmaligOmzet: Number(r.eenmalig_omzet) || 0,
       eenmaligKosten: Number(r.eenmalig_kosten) || 0,
     });
@@ -236,19 +243,20 @@ export async function saveRegelExtra(slug: string, p: Partial<RegelExtra>): Prom
     extraKosten: p.extraKosten !== undefined ? Math.max(0, p.extraKosten) : huidig?.extraKosten ?? 0,
     opmerking: p.opmerking !== undefined ? String(p.opmerking).slice(0, 500) : huidig?.opmerking ?? "",
     extraOmzet: p.extraOmzet !== undefined ? Math.max(0, p.extraOmzet) : huidig?.extraOmzet ?? 0,
+    soort: p.soort !== undefined ? p.soort : huidig?.soort ?? "seo",
     eenmaligOmzet: p.eenmaligOmzet !== undefined ? Math.max(0, p.eenmaligOmzet) : huidig?.eenmaligOmzet ?? 0,
     eenmaligKosten: p.eenmaligKosten !== undefined ? Math.max(0, p.eenmaligKosten) : huidig?.eenmaligKosten ?? 0,
   };
   await sql`
     INSERT INTO prognose_regel (client_slug, kans, start_maand, eind_maand, extra_kosten, opmerking,
-                                extra_omzet, eenmalig_omzet, eenmalig_kosten, bron, updated_at)
+                                extra_omzet, eenmalig_omzet, eenmalig_kosten, soort, bron, updated_at)
     VALUES (${slug}, ${n.kans}, ${n.startMaand}, ${n.eindMaand}, ${n.extraKosten}, ${n.opmerking || null},
-            ${n.extraOmzet}, ${n.eenmaligOmzet}, ${n.eenmaligKosten}, 'handmatig', now())
+            ${n.extraOmzet}, ${n.eenmaligOmzet}, ${n.eenmaligKosten}, ${n.soort}, 'handmatig', now())
     ON CONFLICT (client_slug) DO UPDATE SET
       kans = ${n.kans}, start_maand = ${n.startMaand}, eind_maand = ${n.eindMaand},
       extra_kosten = ${n.extraKosten}, opmerking = ${n.opmerking || null},
       extra_omzet = ${n.extraOmzet}, eenmalig_omzet = ${n.eenmaligOmzet}, eenmalig_kosten = ${n.eenmaligKosten},
-      bron = 'handmatig', updated_at = now()`;
+      soort = ${n.soort}, bron = 'handmatig', updated_at = now()`;
 }
 
 /**
@@ -547,7 +555,7 @@ export function berekenPrognose(
         opmerking: e?.opmerking || "",
         gat: bedrag <= 0 && !(e?.extraOmzet || e?.eenmaligOmzet) ? "nog geen maandbedrag ingevuld" : "",
         modelKosten: kosten.perKlant.get(k.slug) || [],
-        regelSoort: "seo" as const,
+        regelSoort: e?.soort || "seo",
         ouderSlug: null,
       };
     })

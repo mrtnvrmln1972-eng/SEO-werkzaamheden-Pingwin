@@ -29,6 +29,7 @@ export type ExtraRegel = {
   eenmaligKosten: number;
   startMaand: string | null;
   kans: number | null;
+  opvolgDatum: string | null;
 };
 
 const SOORTEN: { waarde: ExtraRegel["soort"]; label: string }[] = [
@@ -54,15 +55,16 @@ export function useExtraRegels(actief: boolean, naWijziging?: () => void) {
   const perSlug = (slug: string) => regels.filter((r) => r.clientSlug === slug);
 
   /**
-   * Een regel erbij. Wat je meegeeft is de rij waar je op stond, dus de nieuwe
-   * regel is een kopie: zelfde bedrag, zelfde kosten, zelfde eenmalige bedrag,
-   * zelfde startmaand. Daarna pas je er één van aan tot het klopt, bijvoorbeeld
-   * de ene regel op de website en de andere op de SEO.
+   * Een regel erbij: dezelfde rij als erboven (zelfde bedrijf, zelfde link,
+   * dezelfde kolommen), maar leeg. Je vult zelf in waar hij over gaat en wat
+   * hij oplevert; de ene regel wordt zo de SEO en de andere de website.
+   * Bewust géén bedragen kopiëren: dan zou alles twee keer meetellen tot je het
+   * zelf hebt rechtgezet, en dat is precies het soort fout dat klopt lijkt.
    */
-  async function voegToe(slug: string, kopie: Partial<ExtraRegel> = {}) {
+  async function voegToe(slug: string) {
     await fetch("/api/admin/klant-regels", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, naam: "", soort: "overig", ...kopie }),
+      body: JSON.stringify({ slug, naam: "", soort: "overig" }),
     }).catch(() => null);
     await laad();
     naWijziging?.();
@@ -87,19 +89,19 @@ export function useExtraRegels(actief: boolean, naWijziging?: () => void) {
   return { regels, perSlug, voegToe, bewaar, verwijder, herlaad: laad };
 }
 
-/** Waar deze regel over gaat, in de kolom onder de bedrijfsnaam. */
-export function RegelNaam({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
+/**
+ * De bedrijfsnaam van de regel erboven, met dezelfde link naar hun site. Een
+ * extra regel is een kopie van die rij, dus hij hoort er ook zo uit te zien;
+ * waar de regel over gaat lees je in de kolom Soort ernaast.
+ */
+export function RegelNaam({ naam, domein }: { naam: string; domein?: string | null }) {
   return (
     <span className="regel-naam">
       <span className="regel-tak" aria-hidden="true" />
-      <input
-        className="prog-veld regel-naam-veld"
-        defaultValue={regel.naam}
-        placeholder="Waarvoor is dit?"
-        aria-label="Naam van deze regel"
-        onClick={(e) => e.stopPropagation()}
-        onBlur={(e) => { if (e.target.value !== regel.naam) bewaar(regel.id, { naam: e.target.value }); }}
-      />
+      {domein ? (
+        <a href={`https://${domein}`} target="_blank" rel="noreferrer"
+          title={`Open ${domein}`} onClick={(e) => e.stopPropagation()}><strong>{naam}</strong></a>
+      ) : <strong>{naam}</strong>}
     </span>
   );
 }
@@ -132,6 +134,46 @@ export function RegelMaand({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: 
         const nieuw = e.target.value || "";
         if (nieuw === (regel.startMaand || "")) return;
         bewaar(regel.id, { startMaand: nieuw || null });
+      }}
+    />
+  );
+}
+
+/** De kans van deze regel. Leeg = dezelfde kans als het bedrijf erboven. */
+export function RegelKans({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
+  return (
+    <span className="lead-kans-veld">
+      <input
+        className="prog-veld lead-veld-kans"
+        inputMode="numeric"
+        aria-label="Hoe kansrijk is deze regel"
+        defaultValue={regel.kans === null ? "" : String(regel.kans)}
+        onClick={(e) => e.stopPropagation()}
+        onBlur={(e) => {
+          const tekst = e.target.value.replace(/[^\d]/g, "");
+          const nieuw = tekst === "" ? null : Math.min(100, Math.max(0, Number(tekst)));
+          if (nieuw === regel.kans) return;
+          bewaar(regel.id, { kans: nieuw });
+        }}
+      />
+      <span className="lead-kans-teken">%</span>
+    </span>
+  );
+}
+
+/** Wanneer je hierover weer contact hebt. Mag anders zijn dan bij de rij erboven. */
+export function RegelOpvolg({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
+  return (
+    <input
+      className="prog-veld lead-veld-datum"
+      type="date"
+      aria-label="Wanneer spreek je ze hierover weer"
+      defaultValue={regel.opvolgDatum || ""}
+      onClick={(e) => e.stopPropagation()}
+      onBlur={(e) => {
+        const nieuw = e.target.value || "";
+        if (nieuw === (regel.opvolgDatum || "")) return;
+        bewaar(regel.id, { opvolgDatum: nieuw || null });
       }}
     />
   );

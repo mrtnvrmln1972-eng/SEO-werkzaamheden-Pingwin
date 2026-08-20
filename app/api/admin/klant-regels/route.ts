@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     id?: number; naam?: string; soort?: RegelSoort;
     bedrag?: number; kosten?: number; eenmaligOmzet?: number; eenmaligKosten?: number;
-    startMaand?: string | null; kans?: number | null;
+    startMaand?: string | null; kans?: number | null; opvolgDatum?: string | null;
   };
   const id = Number(body.id) || 0;
   if (!id) return NextResponse.json({ ok: false, error: "Geen regel opgegeven." }, { status: 400 });

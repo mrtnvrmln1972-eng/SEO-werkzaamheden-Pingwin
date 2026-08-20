@@ -43,7 +43,7 @@ const extras = (paren: [string, Partial<RegelExtra>][]) => {
   for (const [slug, p] of paren) {
     m.set(slug, {
       kans: 100, startMaand: null, eindMaand: null, extraKosten: 0, opmerking: "",
-      extraOmzet: 0, eenmaligOmzet: 0, eenmaligKosten: 0, ...p,
+      extraOmzet: 0, soort: "seo", eenmaligOmzet: 0, eenmaligKosten: 0, ...p,
     });
   }
   return m;

@@ -17,6 +17,15 @@ import { useExtraRegels, RegelNaam, RegelSoortKeuze, RegelBedrag, RegelWeg } fro
 import KijkSleutel from "./KijkSleutel";
 import { Gebouw, Kruis, Mensen, PijlRechts, Vlag } from "../_ui/Pijl";
 
+/** De vier soorten waar een regel onder kan vallen. */
+type SoortKeuze = "seo" | "ads" | "website" | "overig";
+const SOORT_KEUZE: { waarde: SoortKeuze; label: string }[] = [
+  { waarde: "seo", label: "SEO" },
+  { waarde: "ads", label: "Advertenties" },
+  { waarde: "website", label: "Website" },
+  { waarde: "overig", label: "Overig" },
+];
+
 type Created = { name: string; loginId: string; password: string; loginUrl: string; shareUrl?: string };
 
 
@@ -136,11 +145,43 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     return () => { alive = false; };
   }, []);
 
+  // Waar de maandfee van een klant onder valt (SEO, advertenties, website of
+  // overig). Staat in de prognose-regel van die klant, want daar rekent de
+  // uitsplitsing van de maandstrook mee.
+  const [soortVan, setSoortVan] = useState<Record<string, SoortKeuze>>({});
+
+  async function bewaarSoort(slug: string, soort: SoortKeuze) {
+    setSoortVan((m) => ({ ...m, [slug]: soort }));
+    await fetch(`/api/admin/lead-hubspot?slug=${encodeURIComponent(slug)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actie: "prognose", soort }),
+    }).catch(() => null);
+    setHertel((n) => n + 1);
+  }
+
   // Elke keer dat er een bedrag verandert telt de maandstrook opnieuw. Eén
   // teller, gedeeld door de leadlijst en de klantenlijst, zodat er niet twee
   // manieren ontstaan om hetzelfde te zeggen.
   const [hertel, setHertel] = useState(0);
   const extra = useExtraRegels(isOwner, () => setHertel((n) => n + 1));
+
+  // De soorten van de klantrijen ophalen; het staat bij de prognose-regels.
+  useEffect(() => {
+    if (!isOwner) return;
+    let alive = true;
+    (async () => {
+      try {
+        const d = await fetch("/api/admin/prognose?regels=1").then((r) => r.json());
+        if (!d?.ok || !alive || !d.regels) return;
+        const map: Record<string, SoortKeuze> = {};
+        for (const [slug, r] of Object.entries(d.regels as Record<string, { soort?: SoortKeuze }>)) {
+          if (r?.soort) map[slug] = r.soort;
+        }
+        setSoortVan(map);
+      } catch { /* stil: dan staat overal SEO */ }
+    })();
+    return () => { alive = false; };
+  }, [isOwner]);
 
   /** Eén bedrag uit een klantrij bewaren en de lijst opnieuw laden. */
   async function bewaarBedrag(slug: string, body: Record<string, unknown>) {
@@ -384,7 +425,18 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                   )}
                   {" "}<span className="row-arrow"><PijlRechts /></span>
                 </td>
-                <td className="regel-soort-vast" title="Het maandbedrag in deze rij is de SEO-fee">SEO</td>
+                <td onClick={(e) => e.stopPropagation()}>
+                  {isOwner ? (
+                    <select
+                      className="prog-veld regel-soort-veld"
+                      aria-label={`Waar valt de maandfee van ${c.name} onder`}
+                      value={soortVan[c.slug] || "seo"}
+                      onChange={(e) => bewaarSoort(c.slug, e.target.value as SoortKeuze)}
+                    >
+                      {SOORT_KEUZE.map((s) => <option key={s.waarde} value={s.waarde}>{s.label}</option>)}
+                    </select>
+                  ) : <span className="muted">{soortVan[c.slug] || "seo"}</span>}
+                </td>
                 <td>{c.loginEnabled ? c.loginId : <span className="muted">geen login</span>}</td>
                 {/* De maandfee en de kosten vul je hier in de rij in, net als bij
                     de leads; netto rekent zichzelf uit. Het uitklapvak met
@@ -415,14 +467,8 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 <td style={{ whiteSpace: "nowrap" }}>
                   {isOwner ? (
                     <>
-                      <button className="btn btn-klein" title="Deze rij dupliceren: zelfde bedragen, zodat je er bijvoorbeeld de website of Google Ads van kunt maken"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void extra.voegToe(c.slug, {
-                            bedrag: Math.round(c.budget.maandbudget || 0),
-                            kosten: Math.round(c.budget.linkbuilding || 0),
-                          });
-                        }}>+ regel</button>{" "}
+                      <button className="btn btn-klein" title="Nog een regel voor dit bedrijf: dezelfde rij, leeg, zodat je er de website of Google Ads van kunt maken"
+                        onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>{" "}
                       <button className="lead-kruis" title="Verwijder deze klant"
                         aria-label={`${c.name} verwijderen`} onClick={(e) => remove(e, c)}><Kruis /></button>
                     </>
@@ -437,7 +483,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
               {extra.perSlug(c.slug).map((r) => (
                 <tr key={`r-${r.id}`} className="regel-rij">
                   {isOwner && <td></td>}
-                  <td><RegelNaam regel={r} bewaar={extra.bewaar} /></td>
+                  <td><RegelNaam naam={c.name} domein={c.domain} /></td>
                   <td><RegelSoortKeuze regel={r} bewaar={extra.bewaar} /></td>
                   <td></td>
                   <td><RegelBedrag regel={r} veld="bedrag" label={`Bedrag per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>

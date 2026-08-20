@@ -78,10 +78,12 @@ export const HOOFDSTUK: Hoofdstuk = {
         "\u201cbestaande klanten\u201d of \u201cleads\u201d en de regel klapt open: dan zie je per bedrijf wat het per " +
         "maand bijdraagt, en bij een lead met welke kans dat gerekend is. Het zijn dezelfde cijfers als in " +
         "de volledige prognose, alleen korter.\n\n" +
-        "Bij \u00e9\u00e9n bedrijf lopen vaak meer dingen tegelijk. Met de knop \u201c+ regel\u201d zet je er een regel bij: " +
-        "de website op de ene regel, de SEO op de andere, advertenties op een derde, elk met een eigen " +
-        "bedrag en eigen kosten. Zo\u2019n regel telt gewoon mee in de prognose, met dezelfde kans als het " +
-        "bedrijf waar hij onder hangt.\n\n" +
+        "Bij \u00e9\u00e9n bedrijf lopen vaak meer dingen tegelijk. Met de knop \u201c+ regel\u201d komt er een tweede rij " +
+        "voor hetzelfde bedrijf: dezelfde naam, dezelfde link naar hun site, precies dezelfde kolommen, " +
+        "maar leeg. Je vult zelf in waar die regel over gaat (SEO, advertenties, website of overig), wanneer " +
+        "je erover moet opvolgen, hoe groot de kans is, wat hij per maand oplevert, wat hij kost en in welke " +
+        "maand hij start. Zo staat de SEO op de ene regel en de website op de andere, met elk hun eigen " +
+        "cijfers. Alles telt mee in de prognose; laat je de kans leeg, dan geldt de kans van het bedrijf.\n\n" +
         "Daaronder staat de mailwisseling met dat bedrijf, met dezelfde knop om te antwoorden of een nieuwe mail " +
         "te sturen als bij een klant. Die mail komt uit de mailbox en niet uit het CRM: daar staat de hele draad, " +
         "ook wat er nooit gelogd is. En er is een tijdlijn waarin alles op datum onder elkaar staat: mails, " +
