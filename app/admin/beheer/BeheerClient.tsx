@@ -363,6 +363,7 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
         <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-2) 0 var(--s-2)" }}>Klanten</h2>
         <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
           Naam, website, e-mail en of de klant-login openstaat. Budget en Google Sheet blijven in de cockpit.
+          Leads staan hier niet tussen; die hebben hun eigen blok op <a href="/admin">het klantenoverzicht</a>.
         </p>
 
         <div className="task-table-wrap">

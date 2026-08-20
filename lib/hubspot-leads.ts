@@ -729,17 +729,30 @@ export type OnterechteLead = { slug: string; naam: string; dealNaam: string };
 
 export async function lijstOnterechteLeads(): Promise<OnterechteLead[]> {
   await ensureTable();
+  // Bewust in losse stappen en niet als één grote query met JOIN's: die tabellen
+  // worden pas aangemaakt zodra iemand ze voor het eerst gebruikt, en een query
+  // over een tabel die nog niet bestaat mislukt in zijn geheel. Dan zou deze
+  // lijst leeg lijken terwijl er honderd leads staan, en dat is precies wat er
+  // op 19-08-2026 gebeurde: de opruimknop verscheen niet.
   const { rows } = await sql<{ slug: string; naam: string; deal_naam: string }>`
     SELECT c.slug, c.name AS naam, h.deal_naam
     FROM clients c
     JOIN hubspot_lead h ON h.client_slug = c.slug
-    WHERE c.fase = 'lead'
-      AND COALESCE(c.maandbudget, 0) = 0
-      AND NOT EXISTS (SELECT 1 FROM lead_dossier d WHERE d.client_slug = c.slug)
-      AND NOT EXISTS (SELECT 1 FROM lead_docs   l WHERE l.client_slug = c.slug)
-      AND NOT EXISTS (SELECT 1 FROM client_chat t WHERE t.client_slug = c.slug)
+    WHERE c.fase = 'lead' AND COALESCE(c.maandbudget, 0) = 0
     ORDER BY c.name`;
-  return rows.map((r) => ({ slug: r.slug, naam: r.naam, dealNaam: r.deal_naam || "" }));
+  if (!rows.length) return [];
+
+  const bezet = new Set<string>();
+  const vul = async (query: Promise<{ rows: { client_slug: string }[] }>) => {
+    try { for (const r of (await query).rows) bezet.add(r.client_slug); } catch { /* tabel bestaat nog niet */ }
+  };
+  await vul(sql<{ client_slug: string }>`SELECT DISTINCT client_slug FROM lead_dossier`);
+  await vul(sql<{ client_slug: string }>`SELECT DISTINCT client_slug FROM lead_docs`);
+  await vul(sql<{ client_slug: string }>`SELECT DISTINCT client_slug FROM client_chat`);
+
+  return rows
+    .filter((r) => !bezet.has(r.slug))
+    .map((r) => ({ slug: r.slug, naam: r.naam, dealNaam: r.deal_naam || "" }));
 }
 
 export async function verwijderOnterechteLeads(): Promise<{ verwijderd: number; namen: string[] }> {

@@ -20,7 +20,10 @@ export default async function BeheerPage() {
 
   return (
     <BeheerClient
-      clients={clients.map((c) => ({
+      // Alleen echte klanten. Leads staan in hun eigen blok op /admin, en toen er
+      // op 19-08-2026 door een verkeerde HubSpot-ronde 127 leads bij kwamen, was
+      // dit scherm een lijst van 324 rijen waarin je je eigen klanten kwijtraakte.
+      clients={clients.filter((c) => c.fase !== "lead").map((c) => ({
         slug: c.slug,
         name: c.name,
         email: c.email,
