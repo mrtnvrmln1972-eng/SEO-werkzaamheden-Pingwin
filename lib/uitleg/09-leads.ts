@@ -39,29 +39,32 @@ export const HOOFDSTUK: Hoofdstuk = {
         "Drive, een map, een link naar een ander portaal), dan is dat geen fout meer: het blijft die link.",
     },
     {
-      titel: "HubSpot: de deal komt hierheen, het budget zet je hier",
-      kern: "Fase, verwachte startdatum, eerstvolgend contactmoment en de notities komen vanzelf binnen.",
+      titel: "HubSpot: wie hot is komt hierheen, het geld zet je hier",
+      kern: "Elk kwartier komen je warme leads binnen, met contactgegevens en opvolgdatum.",
       tekst:
-        "Staat de verkoop in HubSpot, dan hoeft niemand meer twee keer te typen. Elk kwartier komen de deals " +
-        "binnen als lead: de fase waarin hij zit, het bedrag, de datum waarop hij naar verwachting klant wordt, " +
-        "het eerstvolgende contactmoment (de eerstvolgende openstaande taak daar), en de notities en " +
-        "gespreksverslagen die erbij horen. Die notities landen in het dossier, dus het gesprek over deze lead " +
-        "weet vanaf dat moment wat er besproken is.\n\n" +
-        "Eén regel houdt dit simpel: elk veld heeft één baas. HubSpot is de baas over de pijplijn en de data. " +
-        "Het dashboard is de baas over het beoogde maandbudget, want een bedrag in HubSpot is meestal het " +
-        "totaal van een traject en de prognose rekent met maandbedragen. Zet je de kans of de startmaand zelf, " +
-        "dan blijft die staan; de koppeling schrijft nooit over een eigen keuze heen.\n\n" +
-        "Andersom gebeurt er bijna niets: het dashboard wijzigt in HubSpot geen fase, geen bedrag en geen datum. " +
-        "Alleen als je het aanzet komt een notitie die je hier typt ook als notitie bij de deal te staan.",
+        "Staat je verkoop in HubSpot, dan hoeft niemand meer twee keer te typen. Elk kwartier komt iedereen " +
+        "binnen die daar de leadstatus heeft die jij hebt aangewezen (bijvoorbeeld hot): met naam en bedrijf, " +
+        "mailadres en telefoon, de website, wanneer je ze weer moet spreken, en de notities en gespreksverslagen " +
+        "die erbij horen. Die notities landen in het dossier, dus het gesprek over deze lead weet vanaf dat " +
+        "moment wat er besproken is. Werk je wél met een dealpijplijn, dan kan de koppeling ook die kant op " +
+        "kijken; dat is een knop op het beheerscherm.\n\n" +
+        "Eén regel houdt dit simpel: elk veld heeft één baas. HubSpot is de baas over wie er warm is, wie je " +
+        "spreekt en wanneer. Het dashboard is de baas over het geld en over de maand waarin een lead naar " +
+        "verwachting start, want daar rekent de prognose ermee en zo staat elk bedrag op precies één plek.\n\n" +
+        "Andersom gebeurt er bijna niets: het dashboard wijzigt in HubSpot geen status, geen bedrag en geen " +
+        "datum. Alleen als je het aanzet komt een notitie die je hier typt ook in HubSpot te staan.",
     },
     {
       titel: "De leadkaart, de mailwisseling en de tijdlijn",
       kern: "Alles wat je voor een gesprek nodig hebt, zonder te zoeken.",
       tekst:
-        "Bovenaan een lead staat de stand: wanneer je hem weer moet spreken (rood als die dag geweest is), " +
-        "wanneer hij naar verwachting begint, hoe groot de kans is, wat het beoogde maandbudget is, en wanneer " +
-        "je voor het laatst contact had. In de leadlijst zie je diezelfde drie dingen per rij, dus die lijst is " +
-        "een belactielijst in plaats van een lijstje namen.\n\n" +
+        "Bovenaan een lead staat de stand: wanneer je hem weer moet spreken (rood als die dag geweest is), wie " +
+        "je contactpersoon is, wanneer je voor het laatst contact had, en wat het per maand gaat worden. " +
+        "Daaronder vul je in wat de prognose moet weten: het SEO-bedrag per maand, advertenties per maand, de " +
+        "kosten die eraan vastzitten, een eenmalig bedrag voor een website met de kosten daarvan, de kans, en " +
+        "vanaf welke maand het gaat lopen. Het eenmalige bedrag telt precies één keer mee, in die startmaand; " +
+        "de maandbedragen tellen vanaf dan elke maand. In de leadlijst zie je per rij wanneer je moet opvolgen, " +
+        "wat het budget is en wanneer hij verwacht wordt.\n\n" +
         "Daaronder staat de mailwisseling met dat bedrijf, met dezelfde knop om te antwoorden of een nieuwe mail " +
         "te sturen als bij een klant. Die mail komt uit de mailbox en niet uit het CRM: daar staat de hele draad, " +
         "ook wat er nooit gelogd is. En er is een tijdlijn waarin alles op datum onder elkaar staat: mails, " +

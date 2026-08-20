@@ -38,6 +38,10 @@ export async function GET(req: NextRequest) {
     prognose: {
       kans: regel?.kans ?? null,
       startMaand: regel?.startMaand ?? null,
+      feeAds: regel?.extraOmzet ?? 0,
+      maandkosten: regel?.extraKosten ?? 0,
+      eenmalig: regel?.eenmaligOmzet ?? 0,
+      eenmaligKosten: regel?.eenmaligKosten ?? 0,
       // "hubspot" = automatisch gevuld, "handmatig" = Maarten heeft hem gezet.
       bron: bron || "",
     },
@@ -55,6 +59,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     actie?: string; maandbudget?: number; linkbuilding?: number; kans?: number;
     startMaand?: string; dealId?: string; tekst?: string; dagen?: number;
+    feeAds?: number; maandkosten?: number; eenmalig?: number; eenmaligKosten?: number;
   };
 
   switch (body.actie) {
@@ -73,12 +78,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Kans of startmaand met de hand zetten. Vanaf dat moment laat de
-    // HubSpot-ronde deze regel met rust; zie saveRegelUitBron in lib/prognose.ts.
+    // Alles wat de prognose van deze lead moet weten en wat NIET uit HubSpot
+    // komt: wanneer hij naar verwachting start, hoe groot de kans is, de fee voor
+    // advertenties, de kosten per maand, en een eenmalig bedrag (een website) met
+    // de kosten daarvan. Zodra Maarten hier iets zet is deze regel van hem en
+    // laat de HubSpot-ronde hem met rust; zie saveRegelUitBron in lib/prognose.ts.
     case "prognose": {
+      const getal = (v: unknown) => Math.max(0, Math.round(Number(v) || 0));
       await saveRegelExtra(slug, {
         ...(body.kans !== undefined ? { kans: Number(body.kans) } : {}),
         ...(body.startMaand !== undefined ? { startMaand: body.startMaand || null } : {}),
+        ...(body.feeAds !== undefined ? { extraOmzet: getal(body.feeAds) } : {}),
+        ...(body.maandkosten !== undefined ? { extraKosten: getal(body.maandkosten) } : {}),
+        ...(body.eenmalig !== undefined ? { eenmaligOmzet: getal(body.eenmalig) } : {}),
+        ...(body.eenmaligKosten !== undefined ? { eenmaligKosten: getal(body.eenmaligKosten) } : {}),
       });
       return NextResponse.json({ ok: true, bron: await getRegelBron(slug) });
     }

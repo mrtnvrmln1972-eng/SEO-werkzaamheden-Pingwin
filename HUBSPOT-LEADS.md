@@ -3,11 +3,21 @@
 Plan, 19 augustus 2026. Geschreven in gewone taal, zodat je het kunt beoordelen zonder de code
 te kennen. Onderaan staan twee regels techniek voor de chat die het bouwt.
 
-**Stand: gebouwd op 19 augustus 2026, alle drie de stappen.** Wat hieronder als plan staat, staat
-nu in het dashboard. Het enige dat nog moet gebeuren voordat er iets binnenkomt: de sleutel in
-Vercel (zie "Wat ik van jou nodig heb") en aanvinken welke pijplijnen als lead tellen, op
-`/admin/beheer`. Zolang die sleutel er niet is, doet de koppeling niets en zegt dat ook zo op het
-scherm; er gaat niets stuk en er verandert niets aan de bestaande leads.
+**Stand: gebouwd op 19 augustus 2026, en diezelfde dag omgebouwd naar hoe Maarten echt werkt.**
+
+Hij gebruikt geen deals. Zijn leads zijn contacten met een leadstatus, en de bedragen zet hij niet in
+HubSpot maar in het dashboard. De koppeling haalt daarom op: iedereen met de leadstatus die hij
+aanwijst (bijvoorbeeld "hot"), de contactgegevens, de opvolgdatum en de notities. In het dashboard
+staan het SEO-bedrag per maand, advertenties per maand, de kosten, een eenmalig bedrag met de kosten
+daarvan, de kans en de maand waarin het gaat lopen; daar rekent de prognose mee.
+
+De tekst hieronder is het oorspronkelijke plan. Waar die over deals en over bedragen uit HubSpot
+spreekt, geldt de indeling hierboven. De dealkant is blijven bestaan als keuze op `/admin/beheer`,
+voor wie wél met een pijplijn werkt.
+
+Wat er nog moet gebeuren voordat er iets binnenkomt: de sleutel in Vercel (zie "Wat ik van jou nodig
+heb"), en op `/admin/beheer` aanwijzen welk veld en welke waarde een lead maken. Zolang dat niet
+staat komt er niets binnen, zegt het scherm dat ook, en verandert er niets aan de bestaande leads.
 
 ## Waar dit over gaat
 

@@ -69,7 +69,7 @@ export function normMaand(v: string | null | undefined): Maand | null {
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "prognose-e7e834c8";
+const SCHEMA_VERSIE = "prognose-60cf3123";
 
 function ensureTable(): Promise<void> {
   return eenmalig("prognose", SCHEMA_VERSIE, doEnsure);
@@ -92,6 +92,15 @@ async function doEnsure(): Promise<void> {
   // kolom al stond met rust gelaten wordt. Een koppeling overschrijft nooit een
   // handmatige waarde; zie saveRegelUitBron().
   await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS bron TEXT`;
+  // Wat er naast de SEO-fee aan een klant of lead hangt. Bewust vier losse
+  // velden en niet één opgeteld bedrag: advertenties, de kosten die eraan
+  // vastzitten en een eenmalige website zijn verschillende dingen, en zodra je
+  // ze optelt kun je op het scherm niet meer laten zien waar een getal vandaan
+  // komt. Het maandbedrag voor SEO blijft in de klantrij staan, waar de rest van
+  // het dashboard hem ook leest.
+  await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS extra_omzet NUMERIC NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS eenmalig_omzet NUMERIC NOT NULL DEFAULT 0`;
+  await sql`ALTER TABLE prognose_regel ADD COLUMN IF NOT EXISTS eenmalig_kosten NUMERIC NOT NULL DEFAULT 0`;
   // Losse posten die niet aan een klant hangen (een website, een abonnement).
   await sql`
     CREATE TABLE IF NOT EXISTS prognose_post (
@@ -162,17 +171,25 @@ export type RegelExtra = {
   eindMaand: Maand | null;
   extraKosten: number;
   opmerking: string;
+  /** Andere maandomzet dan SEO, bijvoorbeeld de fee voor advertenties. */
+  extraOmzet: number;
+  /** Een eenmalig bedrag (een website), in de maand dat het traject start. */
+  eenmaligOmzet: number;
+  /** De kosten die aan dat eenmalige bedrag vastzitten. */
+  eenmaligKosten: number;
 };
 
 type RegelRow = {
   client_slug: string; kans: number; start_maand: string | null;
   eind_maand: string | null; extra_kosten: string | number; opmerking: string | null;
+  extra_omzet: string | number; eenmalig_omzet: string | number; eenmalig_kosten: string | number;
 };
 
 async function getRegelExtras(): Promise<Map<string, RegelExtra>> {
   await ensureTable();
   const { rows } = await sql<RegelRow>`
-    SELECT client_slug, kans, start_maand, eind_maand, extra_kosten, opmerking FROM prognose_regel`;
+    SELECT client_slug, kans, start_maand, eind_maand, extra_kosten, opmerking,
+           extra_omzet, eenmalig_omzet, eenmalig_kosten FROM prognose_regel`;
   const map = new Map<string, RegelExtra>();
   for (const r of rows) {
     map.set(r.client_slug, {
@@ -181,6 +198,9 @@ async function getRegelExtras(): Promise<Map<string, RegelExtra>> {
       eindMaand: normMaand(r.eind_maand),
       extraKosten: Number(r.extra_kosten) || 0,
       opmerking: r.opmerking || "",
+      extraOmzet: Number(r.extra_omzet) || 0,
+      eenmaligOmzet: Number(r.eenmalig_omzet) || 0,
+      eenmaligKosten: Number(r.eenmalig_kosten) || 0,
     });
   }
   return map;
@@ -200,13 +220,20 @@ export async function saveRegelExtra(slug: string, p: Partial<RegelExtra>): Prom
     eindMaand: p.eindMaand !== undefined ? normMaand(p.eindMaand) : huidig?.eindMaand ?? null,
     extraKosten: p.extraKosten !== undefined ? Math.max(0, p.extraKosten) : huidig?.extraKosten ?? 0,
     opmerking: p.opmerking !== undefined ? String(p.opmerking).slice(0, 500) : huidig?.opmerking ?? "",
+    extraOmzet: p.extraOmzet !== undefined ? Math.max(0, p.extraOmzet) : huidig?.extraOmzet ?? 0,
+    eenmaligOmzet: p.eenmaligOmzet !== undefined ? Math.max(0, p.eenmaligOmzet) : huidig?.eenmaligOmzet ?? 0,
+    eenmaligKosten: p.eenmaligKosten !== undefined ? Math.max(0, p.eenmaligKosten) : huidig?.eenmaligKosten ?? 0,
   };
   await sql`
-    INSERT INTO prognose_regel (client_slug, kans, start_maand, eind_maand, extra_kosten, opmerking, bron, updated_at)
-    VALUES (${slug}, ${n.kans}, ${n.startMaand}, ${n.eindMaand}, ${n.extraKosten}, ${n.opmerking || null}, 'handmatig', now())
+    INSERT INTO prognose_regel (client_slug, kans, start_maand, eind_maand, extra_kosten, opmerking,
+                                extra_omzet, eenmalig_omzet, eenmalig_kosten, bron, updated_at)
+    VALUES (${slug}, ${n.kans}, ${n.startMaand}, ${n.eindMaand}, ${n.extraKosten}, ${n.opmerking || null},
+            ${n.extraOmzet}, ${n.eenmaligOmzet}, ${n.eenmaligKosten}, 'handmatig', now())
     ON CONFLICT (client_slug) DO UPDATE SET
       kans = ${n.kans}, start_maand = ${n.startMaand}, eind_maand = ${n.eindMaand},
-      extra_kosten = ${n.extraKosten}, opmerking = ${n.opmerking || null}, bron = 'handmatig', updated_at = now()`;
+      extra_kosten = ${n.extraKosten}, opmerking = ${n.opmerking || null},
+      extra_omzet = ${n.extraOmzet}, eenmalig_omzet = ${n.eenmaligOmzet}, eenmalig_kosten = ${n.eenmaligKosten},
+      bron = 'handmatig', updated_at = now()`;
 }
 
 /**
@@ -219,7 +246,7 @@ export async function saveRegelExtra(slug: string, p: Partial<RegelExtra>): Prom
  */
 export async function saveRegelUitBron(
   slug: string,
-  p: { kans?: number | null; startMaand?: string | null },
+  p: { kans?: number | null; startMaand?: string | null; extraKosten?: number | null },
   bron = "hubspot",
 ): Promise<boolean> {
   await ensureTable();
@@ -229,17 +256,33 @@ export async function saveRegelUitBron(
 
   const kans = p.kans === null || p.kans === undefined ? null : Math.min(100, Math.max(0, Math.round(p.kans)));
   const maand = normMaand(p.startMaand ?? null);
-  if (kans === null && maand === null) return false;
+  const kosten = p.extraKosten === null || p.extraKosten === undefined ? null : Math.max(0, Math.round(p.extraKosten));
+  if (kans === null && maand === null && kosten === null) return false;
 
   const huidig = rows.length ? (await getRegelExtras()).get(slug) : undefined;
   const nieuweKans = kans ?? huidig?.kans ?? 100;
   const nieuweMaand = maand ?? huidig?.startMaand ?? null;
+  const nieuweKosten = kosten ?? huidig?.extraKosten ?? 0;
   await sql`
-    INSERT INTO prognose_regel (client_slug, kans, start_maand, bron, updated_at)
-    VALUES (${slug}, ${nieuweKans}, ${nieuweMaand}, ${bron}, now())
+    INSERT INTO prognose_regel (client_slug, kans, start_maand, extra_kosten, bron, updated_at)
+    VALUES (${slug}, ${nieuweKans}, ${nieuweMaand}, ${nieuweKosten}, ${bron}, now())
     ON CONFLICT (client_slug) DO UPDATE SET
-      kans = ${nieuweKans}, start_maand = ${nieuweMaand}, bron = ${bron}, updated_at = now()`;
+      kans = ${nieuweKans}, start_maand = ${nieuweMaand}, extra_kosten = ${nieuweKosten},
+      bron = ${bron}, updated_at = now()`;
   return true;
+}
+
+/**
+ * Haalt een losse post weg op zijn naam. Gebruikt door de HubSpot-ronde: staat er
+ * geen bedrag meer voor de advertentie-fee of de eenmalige post, dan hoort die
+ * regel ook uit de prognose te verdwijnen in plaats van als oude waarheid te
+ * blijven staan.
+ */
+export async function verwijderPostOpNaam(naam: string): Promise<void> {
+  await ensureTable();
+  const schoon = String(naam || "").trim().slice(0, 120);
+  if (!schoon) return;
+  await sql`DELETE FROM prognose_post WHERE naam = ${schoon}`;
 }
 
 /** Wie de prognoseregel van deze klant gezet heeft: "handmatig" of "hubspot". */
@@ -325,6 +368,11 @@ export type PrognoseRegel = {
   linkbuilding: number;
   /** Overige maandkosten die aan deze klant hangen. */
   extraKosten: number;
+  /** Andere maandomzet dan SEO (advertenties). */
+  extraOmzet: number;
+  /** Een eenmalig bedrag plus de kosten daarvan, in de startmaand. */
+  eenmaligOmzet: number;
+  eenmaligKosten: number;
   kans: number;
   startMaand: Maand | null;
   eindMaand: Maand | null;
@@ -437,11 +485,14 @@ export function berekenPrognose(
         bedrag,
         linkbuilding: Number(k.budget.linkbuilding) || 0,
         extraKosten: e?.extraKosten || 0,
+        extraOmzet: e?.extraOmzet || 0,
+        eenmaligOmzet: e?.eenmaligOmzet || 0,
+        eenmaligKosten: e?.eenmaligKosten || 0,
         kans,
         startMaand: e?.startMaand || null,
         eindMaand: e?.eindMaand || null,
         opmerking: e?.opmerking || "",
-        gat: bedrag <= 0 ? "nog geen maandbedrag ingevuld" : "",
+        gat: bedrag <= 0 && !(e?.extraOmzet || e?.eenmaligOmzet) ? "nog geen maandbedrag ingevuld" : "",
         modelKosten: kosten.perKlant.get(k.slug) || [],
       };
     })
@@ -459,16 +510,23 @@ export function berekenPrognose(
       // eigen linkbuildingbedrag niet ook nog eens mee. Nooit allebei.
       const uitModel = r.modelKosten.reduce((s, m) => s + m.bedrag, 0);
       const eigenKosten = (r.modelKosten.length ? uitModel : r.linkbuilding) + r.extraKosten;
-      if (r.bedrag <= 0 && eigenKosten <= 0) continue;
+      // Het eenmalige bedrag (een website) telt in de maand dat het traject
+      // start, en verder nooit; zonder startmaand in de eerste maand van de
+      // tabel, want dan is het nu aan de orde.
+      const startMaand = r.startMaand || vanaf;
+      const eenmaligNu = maand === startMaand;
+      const maandOmzet = r.bedrag + r.extraOmzet + (eenmaligNu ? r.eenmaligOmzet : 0);
+      const maandKosten = eigenKosten + (eenmaligNu ? r.eenmaligKosten : 0);
+      if (maandOmzet <= 0 && maandKosten <= 0) continue;
       const w = r.fase === "klant" ? 1 : r.kans / 100;
-      const omzet = r.bedrag * w;
-      const kosten = eigenKosten * w;
+      const omzet = maandOmzet * w;
+      const kosten = maandKosten * w;
       if (r.fase === "klant") { zekerOmzet += omzet; zekerKosten += kosten; }
       else { verwachtOmzet += omzet; verwachtKosten += kosten; }
       bijdragen.push({
         slug: r.slug, naam: r.naam, soort: r.fase === "klant" ? "klant" : "lead",
         kans: r.fase === "klant" ? 100 : r.kans,
-        omzet, kosten, netto: omzet - kosten, bruto: r.bedrag - eigenKosten,
+        omzet, kosten, netto: omzet - kosten, bruto: maandOmzet - maandKosten,
       });
     }
 

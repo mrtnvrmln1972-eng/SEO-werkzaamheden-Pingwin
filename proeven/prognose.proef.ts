@@ -41,7 +41,10 @@ const lead = (slug: string, maandbudget: number, linkbuilding = 0) =>
 const extras = (paren: [string, Partial<RegelExtra>][]) => {
   const m = new Map<string, RegelExtra>();
   for (const [slug, p] of paren) {
-    m.set(slug, { kans: 100, startMaand: null, eindMaand: null, extraKosten: 0, opmerking: "", ...p });
+    m.set(slug, {
+      kans: 100, startMaand: null, eindMaand: null, extraKosten: 0, opmerking: "",
+      extraOmzet: 0, eenmaligOmzet: 0, eenmaligKosten: 0, ...p,
+    });
   }
   return m;
 };
@@ -170,6 +173,43 @@ check("leeg blijft leeg", normMaand(""), "null");
   // gaat over lopende klanten en niet over leads die nog niet getekend zijn.
   check("het gemiddelde per klant kijkt naar netto, en alleen naar klanten", u.gemiddeldPerKlant, (900 + 2500) / 2);
 }
+
+// ── 9. Advertenties lopen elke maand mee, een eenmalig bedrag maar één keer ──
+// Maarten zet per lead vier bedragen: de SEO-fee (in de klantrij), de fee voor
+// advertenties, de kosten die eraan vastzitten, en een eenmalig bedrag voor een
+// website plus de kosten daarvan. De eerste twee horen in élke maand vanaf de
+// start; het eenmalige bedrag hoort er precies één keer in te zitten. Dat is
+// het soort fout dat je pas maanden later ziet, dus staat hij hier.
+{
+  const u = berekenPrognose(
+    [lead("web", 1000)],
+    extras([["web", {
+      kans: 100, startMaand: "2026-09",
+      extraOmzet: 400, extraKosten: 100,
+      eenmaligOmzet: 3000, eenmaligKosten: 1200,
+    }]]),
+    [], INSTELLING, VANAF,
+  );
+  check("vóór de startmaand telt hij niet mee", u.maanden[0].omzet, 0);
+  check("in de startmaand komt alles samen", u.maanden[1].omzet, 1000 + 400 + 3000);
+  check("en de kosten van dat eenmalige ook", u.maanden[1].kosten, 100 + 1200);
+  check("de maand erna blijven alleen de maandbedragen staan", u.maanden[2].omzet, 1400);
+  check("en alleen de maandkosten", u.maanden[2].kosten, 100);
+}
+
+// ── 10. Een lead met alleen een eenmalig bedrag telt gewoon mee ──
+// Een website zonder maandfee is een echte opdracht. Vóór deze regel viel hij
+// uit de prognose omdat er "geen maandbedrag" stond.
+{
+  const u = berekenPrognose(
+    [lead("alleen-site", 0)],
+    extras([["alleen-site", { kans: 50, startMaand: "2026-08", eenmaligOmzet: 4000 }]]),
+    [], INSTELLING, VANAF,
+  );
+  check("de helft van vierduizend telt mee", u.maanden[0].omzet, 2000);
+  check("hij wordt niet als gat gemeld", u.regels[0].gat, "");
+}
+
 
 console.log(fouten === 0 ? "\nDe prognose rekent goed.\n" : `\n${fouten} fout(en) in de prognose.\n`);
 process.exit(fouten === 0 ? 0 : 1);

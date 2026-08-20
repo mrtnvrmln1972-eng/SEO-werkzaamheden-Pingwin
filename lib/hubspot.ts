@@ -98,9 +98,9 @@ async function hs(pad: string, methode: Methode = "GET", body?: unknown, params:
  */
 export async function hubspotHealthCheck(): Promise<{ ok: boolean; melding: string }> {
   try {
-    const d = (await hs("/crm/v3/pipelines/deals")) as { results?: unknown[] };
+    const d = (await hs("/crm/v3/properties/contacts")) as { results?: unknown[] };
     const aantal = (d.results || []).length;
-    return { ok: true, melding: `Verbonden met HubSpot (${aantal} pijplijn${aantal === 1 ? "" : "en"} gevonden).` };
+    return { ok: true, melding: `Verbonden met HubSpot (${aantal} contactvelden gevonden).` };
   } catch (e) {
     return { ok: false, melding: (e as Error).message };
   }
@@ -116,6 +116,12 @@ export function hubspotPortaal(): Promise<string> {
       .catch(() => "");
   }
   return portaalBelofte;
+}
+
+/** De link naar het contact in HubSpot zelf. */
+export async function hsContactLink(contactId: string): Promise<string> {
+  const portaal = await hubspotPortaal();
+  return portaal ? `https://app.hubspot.com/contacts/${portaal}/record/0-1/${contactId}` : "";
 }
 
 /** De link naar de deal in HubSpot zelf, zodat je er met één klik heen kunt. */
@@ -160,6 +166,121 @@ export async function hsPijplijnen(): Promise<HsPijplijn[]> {
       }),
   }));
 }
+
+// ── De velden van een object ────────────────────────────────
+// Elk HubSpot-account heeft zijn eigen velden, met eigen namen. Niets ervan
+// raden dus: het dashboard leest ze uit en laat Maarten kiezen welk veld welke
+// betekenis heeft. Dat is de enige manier waarop deze koppeling ook bij een
+// tweede bureau werkt zonder dat er iemand in de code hoeft.
+
+export type HsVeld = {
+  naam: string;
+  label: string;
+  /** string, number, date, enumeration, bool */
+  soort: string;
+  /** Bij een keuzelijst: de mogelijke waarden. */
+  opties: { waarde: string; label: string }[];
+};
+
+export async function hsVelden(objectSoort: "contacts" | "deals" | "companies" = "contacts"): Promise<HsVeld[]> {
+  const d = (await hs(`/crm/v3/properties/${objectSoort}`)) as {
+    results?: { name: string; label: string; type: string; hidden?: boolean; options?: { value: string; label: string; hidden?: boolean }[] }[];
+  };
+  return (d.results || [])
+    .filter((p) => !p.hidden)
+    .map((p) => ({
+      naam: String(p.name),
+      label: String(p.label || p.name),
+      soort: String(p.type || "string"),
+      opties: (p.options || []).filter((o) => !o.hidden).map((o) => ({ waarde: String(o.value), label: String(o.label || o.value) })),
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, "nl"));
+}
+
+// ── Contacten ───────────────────────────────────────────────
+// Niet elk bureau werkt met deals. Bij Pingwin staan de leads als contact, met
+// een leadstatus die zegt of ze warm zijn. Deze functie haalt precies die
+// contacten op: het veld en de waarde kiest Maarten zelf op /admin/beheer.
+
+export type HsContactLead = {
+  id: string;
+  naam: string;
+  bedrijf: string;
+  domein: string;
+  mail: string;
+  telefoon: string;
+  status: string;
+  volgendeActie: string | null;
+  laatsteContact: string | null;
+  gewijzigdOp: string | null;
+  eigenaarId: string | null;
+  /** De waarden van de velden die Maarten heeft gekoppeld (bedragen, datums). */
+  extra: Record<string, string | null>;
+};
+
+const CONTACT_VELDEN = [
+  "firstname", "lastname", "email", "phone", "company", "website", "jobtitle",
+  "hs_lead_status", "lifecyclestage", "notes_next_activity_date", "notes_last_contacted",
+  "lastmodifieddate", "hubspot_owner_id",
+];
+
+/**
+ * De contacten die volgens het gekozen veld een lead zijn.
+ *
+ * `filter` is bijvoorbeeld { veld: "hs_lead_status", waarde: "hot" }. Laat je
+ * hem leeg, dan komt er niets binnen: liever niets dan je hele adresboek als
+ * lead in het dashboard.
+ */
+export async function hsContacten(
+  sinds: Date | null,
+  filter: { veld: string; waarde: string },
+  extraVelden: string[] = [],
+  maximum = 300,
+): Promise<HsContactLead[]> {
+  if (!filter.veld || !filter.waarde) return [];
+  const filters: Record<string, unknown>[] = [{ propertyName: filter.veld, operator: "EQ", value: filter.waarde }];
+  if (sinds) filters.push({ propertyName: "lastmodifieddate", operator: "GTE", value: String(sinds.getTime()) });
+
+  const velden = [...new Set([...CONTACT_VELDEN, filter.veld, ...extraVelden.filter(Boolean)])];
+  const uit: HsContactLead[] = [];
+  let na: string | undefined;
+  for (let ronde = 0; ronde < 10 && uit.length < maximum; ronde++) {
+    const d = (await hs("/crm/v3/objects/contacts/search", "POST", {
+      filterGroups: [{ filters }],
+      properties: velden,
+      sorts: [{ propertyName: "lastmodifieddate", direction: "DESCENDING" }],
+      limit: 100,
+      ...(na ? { after: na } : {}),
+    })) as { results?: { id: string; properties?: Record<string, string | null> }[]; paging?: { next?: { after?: string } } };
+
+    for (const r of d.results || []) {
+      const p = r.properties || {};
+      const extra: Record<string, string | null> = {};
+      for (const v of extraVelden.filter(Boolean)) extra[v] = p[v] ?? null;
+      uit.push({
+        id: String(r.id),
+        naam: [p.firstname, p.lastname].map((x) => String(x || "").trim()).filter(Boolean).join(" "),
+        bedrijf: String(p.company || "").trim(),
+        domein: String(p.website || "").trim(),
+        mail: String(p.email || "").trim(),
+        telefoon: String(p.phone || "").trim(),
+        status: String(p[filter.veld] || "").trim(),
+        volgendeActie: alsDatum(p.notes_next_activity_date),
+        laatsteContact: alsDatum(p.notes_last_contacted),
+        gewijzigdOp: p.lastmodifieddate ? new Date(Number(p.lastmodifieddate) || Date.parse(p.lastmodifieddate)).toISOString() : null,
+        eigenaarId: p.hubspot_owner_id ? String(p.hubspot_owner_id) : null,
+        extra,
+      });
+    }
+    na = d.paging?.next?.after;
+    if (!na) break;
+  }
+  return uit.slice(0, maximum);
+}
+
+/** Leest één gekoppeld veld als datum (JJJJ-MM-DD) of als bedrag. */
+export const veldAlsDatum = (v: string | null | undefined): string | null => alsDatum(v);
+export const veldAlsGetal = (v: string | null | undefined): number | null => alsGetal(v);
 
 // ── Deals ───────────────────────────────────────────────────
 
@@ -243,9 +364,15 @@ export async function hsDeals(sinds: Date | null, pijplijnen: string[] = [], max
 
 // ── Wat er aan een deal hangt ───────────────────────────────
 
-/** De id's van de gekoppelde objecten (bedrijven, contacten, notities, taken). */
-async function hsGekoppeld(dealId: string, soort: string, limiet = 50): Promise<string[]> {
-  const d = (await hs(`/crm/v4/objects/deals/${encodeURIComponent(dealId)}/associations/${soort}`, "GET", undefined, { limit: String(limiet) })) as {
+/**
+ * De id's van de gekoppelde objecten (bedrijven, contacten, notities, taken).
+ *
+ * `van` is het soort waar je vandaan kijkt: "deals" of "contacts". Beide komen
+ * voor, want niet elk bureau werkt met deals; bij Pingwin hangen de leads aan
+ * contacten. De rest van deze laag is daardoor voor allebei hetzelfde.
+ */
+async function hsGekoppeld(vanId: string, soort: string, limiet = 50, van = "deals"): Promise<string[]> {
+  const d = (await hs(`/crm/v4/objects/${van}/${encodeURIComponent(vanId)}/associations/${soort}`, "GET", undefined, { limit: String(limiet) })) as {
     results?: { toObjectId?: string | number }[];
   };
   return (d.results || []).map((r) => String(r.toObjectId || "")).filter(Boolean);
@@ -265,8 +392,8 @@ async function hsBatchLees(soort: string, ids: string[], velden: string[]): Prom
 export type HsBedrijf = { id: string; naam: string; domein: string };
 export type HsContact = { id: string; naam: string; mail: string; telefoon: string };
 
-export async function hsBedrijfVanDeal(dealId: string): Promise<HsBedrijf | null> {
-  const ids = await hsGekoppeld(dealId, "companies", 5);
+export async function hsBedrijfVanDeal(dealId: string, van = "deals"): Promise<HsBedrijf | null> {
+  const ids = await hsGekoppeld(dealId, "companies", 5, van);
   if (!ids.length) return null;
   const rijen = await hsBatchLees("companies", ids.slice(0, 1), ["name", "domain", "website"]);
   const id = ids[0];
@@ -278,8 +405,8 @@ export async function hsBedrijfVanDeal(dealId: string): Promise<HsBedrijf | null
   };
 }
 
-export async function hsContactenVanDeal(dealId: string): Promise<HsContact[]> {
-  const ids = await hsGekoppeld(dealId, "contacts", 10);
+export async function hsContactenVanDeal(dealId: string, van = "deals"): Promise<HsContact[]> {
+  const ids = await hsGekoppeld(dealId, "contacts", 10, van);
   if (!ids.length) return [];
   const rijen = await hsBatchLees("contacts", ids, ["firstname", "lastname", "email", "phone", "jobtitle"]);
   return ids.map((id) => {
@@ -302,10 +429,10 @@ export type HsGesprek = {
 };
 
 /** Notities, telefoongesprekken en afspraakverslagen die aan de deal hangen. */
-export async function hsGesprekkenVanDeal(dealId: string): Promise<HsGesprek[]> {
+export async function hsGesprekkenVanDeal(dealId: string, van = "deals"): Promise<HsGesprek[]> {
   const uit: HsGesprek[] = [];
 
-  const notitieIds = await hsGekoppeld(dealId, "notes", 50).catch(() => []);
+  const notitieIds = await hsGekoppeld(dealId, "notes", 50, van).catch(() => []);
   if (notitieIds.length) {
     const rijen = await hsBatchLees("notes", notitieIds, ["hs_note_body", "hs_timestamp"]);
     for (const id of notitieIds) {
@@ -315,7 +442,7 @@ export async function hsGesprekkenVanDeal(dealId: string): Promise<HsGesprek[]> 
     }
   }
 
-  const gesprekIds = await hsGekoppeld(dealId, "calls", 50).catch(() => []);
+  const gesprekIds = await hsGekoppeld(dealId, "calls", 50, van).catch(() => []);
   if (gesprekIds.length) {
     const rijen = await hsBatchLees("calls", gesprekIds, ["hs_call_title", "hs_call_body", "hs_timestamp"]);
     for (const id of gesprekIds) {
@@ -325,7 +452,7 @@ export async function hsGesprekkenVanDeal(dealId: string): Promise<HsGesprek[]> 
     }
   }
 
-  const afspraakIds = await hsGekoppeld(dealId, "meetings", 50).catch(() => []);
+  const afspraakIds = await hsGekoppeld(dealId, "meetings", 50, van).catch(() => []);
   if (afspraakIds.length) {
     const rijen = await hsBatchLees("meetings", afspraakIds, ["hs_meeting_title", "hs_meeting_body", "hs_meeting_start_time", "hs_timestamp"]);
     for (const id of afspraakIds) {
@@ -341,8 +468,8 @@ export async function hsGesprekkenVanDeal(dealId: string): Promise<HsGesprek[]> 
 export type HsTaak = { id: string; titel: string; datum: string | null; afgerond: boolean };
 
 /** De openstaande taken bij een deal: hieruit komt het eerstvolgende contactmoment. */
-export async function hsTakenVanDeal(dealId: string): Promise<HsTaak[]> {
-  const ids = await hsGekoppeld(dealId, "tasks", 30).catch(() => []);
+export async function hsTakenVanDeal(dealId: string, van = "deals"): Promise<HsTaak[]> {
+  const ids = await hsGekoppeld(dealId, "tasks", 30, van).catch(() => []);
   if (!ids.length) return [];
   const rijen = await hsBatchLees("tasks", ids, ["hs_task_subject", "hs_task_status", "hs_timestamp"]);
   return ids.map((id) => {

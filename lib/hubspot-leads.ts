@@ -7,8 +7,9 @@ import { meldingToevoegen } from "./meldingen";
 import { saveRegelUitBron } from "./prognose";
 import {
   hubspotConfigured, hsDeals, hsPijplijnen, hsBedrijfVanDeal, hsContactenVanDeal,
-  hsGesprekkenVanDeal, hsTakenVanDeal, hsEigenaren, hsDealLink,
-  type HsDeal, type HsPijplijn,
+  hsGesprekkenVanDeal, hsTakenVanDeal, hsEigenaren, hsDealLink, hsContactLink,
+  hsContacten, hsVelden, veldAlsDatum,
+  type HsDeal, type HsPijplijn, type HsVeld,
 } from "./hubspot";
 
 // ═══════════════════════════════════════════════════════════
@@ -38,11 +39,40 @@ export const SETTING_PIJPLIJNEN = "hubspot_pijplijnen";
 export const SETTING_LAATSTE_RONDE = "hubspot_laatste_ronde";
 export const SETTING_NOTITIES_TERUG = "hubspot_notities_terug";
 export const SETTING_AUTO_LEADS = "hubspot_auto_leads";
+export const SETTING_BRON = "hubspot_bron";
+export const SETTING_FILTER_VELD = "hubspot_filter_veld";
+export const SETTING_FILTER_WAARDE = "hubspot_filter_waarde";
+export const SETTING_VELDEN = "hubspot_velden";
+export const SETTING_KANS = "hubspot_kans";
+
+/**
+ * Welke betekenis welk HubSpot-veld heeft. Leeg = dat gegeven komt niet uit
+ * HubSpot, en dan blijft het gewoon in het dashboard te zetten.
+ *
+ * Bewust een koppeling en geen vaste veldnaam: elk HubSpot-account heeft zijn
+ * eigen velden met eigen namen, en een gegokte naam levert stilletjes lege
+ * kolommen op. Maarten kiest ze op /admin/beheer uit zijn eigen lijst.
+ */
+export type Veldkoppeling = {
+  /** Datumveld: wanneer verwacht je dat ze klant worden. */
+  startDatum: string;
+  /** Datumveld: wanneer spreek je ze weer (leeg = de openstaande taak in HubSpot). */
+  opvolgDatum: string;
+};
+
+const LEGE_VELDEN: Veldkoppeling = { startDatum: "", opvolgDatum: "" };
+
+// Bewust GEEN bedragen uit HubSpot. Dat was het eerste ontwerp, en het is er op
+// 19-08-2026 weer uit gehaald omdat Maarten ze zelf in het dashboard zet: de
+// SEO-fee, de advertentiefee, de kosten per maand en een eenmalig bedrag voor
+// een website. HubSpot levert wie er hot is, de contactgegevens en de twee
+// datums; het geld staat op de plek waar de prognose ermee rekent. Eén baas per
+// veld, en de baas van het geld is hier.
 
 // De tabellen worden één keer gebouwd per database, niet bij elke koude server
 // opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(), hoog dan
 // het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "hubspot-leads-115f5280";
+const SCHEMA_VERSIE = "hubspot-leads-b70e17cf";
 
 function ensureTable(): Promise<void> {
   return eenmalig("hubspot-leads", SCHEMA_VERSIE, doEnsure);
@@ -76,12 +106,16 @@ async function doEnsure(): Promise<void> {
       bijgewerkt_op   TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS ux_hubspot_lead_deal ON hubspot_lead (deal_id)`;
+  // Waar deze lead vandaan komt: "contact" (de gewone weg bij Pingwin) of "deal".
+  await sql`ALTER TABLE hubspot_lead ADD COLUMN IF NOT EXISTS soort TEXT NOT NULL DEFAULT 'deal'`;
 }
 
 // ── De stand van één lead, voor op het scherm ───────────────
 
 export type HubspotLead = {
   slug: string;
+  /** "contact" of "deal": waar deze lead in HubSpot vandaan komt. */
+  soort: string;
   dealId: string;
   dealNaam: string;
   pijplijnNaam: string;
@@ -108,6 +142,7 @@ type LeadRow = {
   gesloten: boolean; gewonnen: boolean; opvolg_datum: string | null; opvolg_titel: string;
   laatste_contact: string | null; contact_naam: string; contact_mail: string;
   bedrijf_naam: string; eigenaar: string; hubspot_url: string; bijgewerkt_op: string;
+  soort: string;
 };
 
 const alsDag = (v: string | null): string | null => (v ? new Date(v).toISOString().slice(0, 10) : null);
@@ -115,6 +150,7 @@ const alsDag = (v: string | null): string | null => (v ? new Date(v).toISOString
 function toLead(r: LeadRow): HubspotLead {
   return {
     slug: r.client_slug,
+    soort: r.soort || "deal",
     dealId: r.deal_id,
     dealNaam: r.deal_naam,
     pijplijnNaam: r.pijplijn_naam,
@@ -141,7 +177,7 @@ export async function getHubspotLead(slug: string): Promise<HubspotLead | null> 
   const { rows } = await sql<LeadRow>`
     SELECT client_slug, deal_id, deal_naam, pijplijn_naam, fase_naam, bedrag, kans, sluit_datum,
            gesloten, gewonnen, opvolg_datum, opvolg_titel, laatste_contact, contact_naam, contact_mail,
-           bedrijf_naam, eigenaar, hubspot_url, bijgewerkt_op
+           bedrijf_naam, eigenaar, hubspot_url, bijgewerkt_op, soort
     FROM hubspot_lead WHERE client_slug = ${slug} LIMIT 1`;
   return rows[0] ? toLead(rows[0]) : null;
 }
@@ -152,7 +188,7 @@ export async function listHubspotLeads(): Promise<HubspotLead[]> {
   const { rows } = await sql<LeadRow>`
     SELECT client_slug, deal_id, deal_naam, pijplijn_naam, fase_naam, bedrag, kans, sluit_datum,
            gesloten, gewonnen, opvolg_datum, opvolg_titel, laatste_contact, contact_naam, contact_mail,
-           bedrijf_naam, eigenaar, hubspot_url, bijgewerkt_op
+           bedrijf_naam, eigenaar, hubspot_url, bijgewerkt_op, soort
     FROM hubspot_lead ORDER BY opvolg_datum NULLS LAST`;
   return rows.map(toLead);
 }
@@ -165,6 +201,19 @@ export async function ontkoppelLead(slug: string): Promise<void> {
 // ── Instellingen ────────────────────────────────────────────
 
 export type HubspotInstelling = {
+  /**
+   * Waar de leads vandaan komen. "contacten" is de standaard: niet elk bureau
+   * werkt met deals, en bij Pingwin staan de leads als contact met een
+   * leadstatus. "deals" is er voor wie de pijplijn wél gebruikt.
+   */
+  bron: "contacten" | "deals";
+  /** Bij contacten: welk veld en welke waarde een lead maken (bijvoorbeeld leadstatus = hot). */
+  filterVeld: string;
+  filterWaarde: string;
+  /** Welke velden welke betekenis hebben. */
+  velden: Veldkoppeling;
+  /** De kans die een verse lead uit HubSpot krijgt, tot Maarten hem bijstelt. */
+  kans: number;
   /** Welke pijplijnen als lead tellen. Leeg = alle. */
   pijplijnen: string[];
   /** Mag het dashboard een notitie terugschrijven naar HubSpot? Standaard uit. */
@@ -175,13 +224,26 @@ export type HubspotInstelling = {
 };
 
 export async function getHubspotInstelling(): Promise<HubspotInstelling> {
-  const [p, n, a, r] = await Promise.all([
+  const [p, n, a, r, bron, fv, fw, velden, kans] = await Promise.all([
     getSetting(SETTING_PIJPLIJNEN),
     getSetting(SETTING_NOTITIES_TERUG),
     getSetting(SETTING_AUTO_LEADS),
     getSetting(SETTING_LAATSTE_RONDE),
+    getSetting(SETTING_BRON),
+    getSetting(SETTING_FILTER_VELD),
+    getSetting(SETTING_FILTER_WAARDE),
+    getSetting(SETTING_VELDEN),
+    getSetting(SETTING_KANS),
   ]);
+  let gekoppeld = LEGE_VELDEN;
+  try { gekoppeld = { ...LEGE_VELDEN, ...(velden ? JSON.parse(velden) : {}) }; } catch { /* stukke instelling telt als leeg */ }
+  const k = Number(kans);
   return {
+    bron: bron === "deals" ? "deals" : "contacten",
+    filterVeld: fv || "",
+    filterWaarde: fw || "",
+    velden: gekoppeld,
+    kans: Number.isFinite(k) && k >= 0 && k <= 100 ? Math.round(k) : 50,
     pijplijnen: String(p || "").split(",").map((x) => x.trim()).filter(Boolean),
     notitiesTerug: n === "aan",
     autoLeads: a !== "uit",
@@ -191,6 +253,11 @@ export async function getHubspotInstelling(): Promise<HubspotInstelling> {
 
 export async function saveHubspotInstelling(p: Partial<HubspotInstelling>): Promise<void> {
   const taken: Promise<void>[] = [];
+  if (p.bron !== undefined) taken.push(setSetting(SETTING_BRON, p.bron === "deals" ? "deals" : "contacten"));
+  if (p.filterVeld !== undefined) taken.push(setSetting(SETTING_FILTER_VELD, p.filterVeld));
+  if (p.filterWaarde !== undefined) taken.push(setSetting(SETTING_FILTER_WAARDE, p.filterWaarde));
+  if (p.velden !== undefined) taken.push(setSetting(SETTING_VELDEN, JSON.stringify({ ...LEGE_VELDEN, ...p.velden })));
+  if (p.kans !== undefined) taken.push(setSetting(SETTING_KANS, String(Math.min(100, Math.max(0, Math.round(p.kans))))));
   if (p.pijplijnen !== undefined) taken.push(setSetting(SETTING_PIJPLIJNEN, p.pijplijnen.join(",")));
   if (p.notitiesTerug !== undefined) taken.push(setSetting(SETTING_NOTITIES_TERUG, p.notitiesTerug ? "aan" : "uit"));
   if (p.autoLeads !== undefined) taken.push(setSetting(SETTING_AUTO_LEADS, p.autoLeads ? "aan" : "uit"));
@@ -200,6 +267,11 @@ export async function saveHubspotInstelling(p: Partial<HubspotInstelling>): Prom
 /** De pijplijnen zoals ze in HubSpot staan, om ze te kunnen aanvinken. */
 export async function hubspotPijplijnKeuze(): Promise<HsPijplijn[]> {
   return hsPijplijnen();
+}
+
+/** De contactvelden zoals ze in HubSpot staan, om ze te kunnen kiezen. */
+export async function hubspotVeldKeuze(): Promise<HsVeld[]> {
+  return hsVelden("contacts");
 }
 
 // ── De ronde zelf ───────────────────────────────────────────
@@ -252,10 +324,18 @@ function startMaandUit(sluitDatum: string | null): string | null {
  * en leest alles opnieuw; dat is de knop op het beheerscherm, niet het rondje
  * van elk kwartier.
  */
+const LEEG: SyncUitkomst = { ok: false, melding: "", gelezen: 0, nieuweLeads: 0, bijgewerkt: 0, dossierStukken: 0 };
+
+/**
+ * Eén ronde langs HubSpot.
+ *
+ * Welke kant hij op kijkt hangt af van hoe je werkt. Bij Pingwin staan de leads
+ * als CONTACT met een leadstatus ("hot"), niet als deal; daarom is dat de
+ * standaard. Wie de dealpijplijn wél gebruikt, zet de bron op deals.
+ */
 export async function syncHubspot(opties: { volledig?: boolean } = {}): Promise<SyncUitkomst> {
-  const leeg: SyncUitkomst = { ok: false, melding: "", gelezen: 0, nieuweLeads: 0, bijgewerkt: 0, dossierStukken: 0 };
   if (!hubspotConfigured()) {
-    return { ...leeg, melding: "HubSpot is nog niet gekoppeld: zet HUBSPOT_TOKEN in Vercel." };
+    return { ...LEEG, melding: "HubSpot is nog niet gekoppeld: zet HUBSPOT_TOKEN in Vercel." };
   }
   await ensureTable();
   const instelling = await getHubspotInstelling();
@@ -265,6 +345,171 @@ export async function syncHubspot(opties: { volledig?: boolean } = {}): Promise<
     // exact gelijk en een gemiste wijziging komt anders nooit meer binnen.
     : new Date(new Date(instelling.laatsteRonde).getTime() - 5 * 60 * 1000);
 
+  const uitkomst = instelling.bron === "deals"
+    ? await syncDeals(instelling, sinds)
+    : await syncContacten(instelling, sinds);
+  if (uitkomst.ok) await setSetting(SETTING_LAATSTE_RONDE, new Date().toISOString());
+  return uitkomst;
+}
+
+/**
+ * De leads uit je contacten: iedereen met de leadstatus die jij hebt aangewezen.
+ *
+ * Wat er meekomt: wie het is, het bedrijf, mailadres en telefoon, de website, en
+ * wanneer je ze weer moet spreken. De bedragen en de datum waarop ze naar
+ * verwachting starten komen NIET uit HubSpot; die zet Maarten in het dashboard,
+ * want daar rekent de prognose ermee en daar staan ze maar op één plek.
+ */
+async function syncContacten(instelling: HubspotInstelling, sinds: Date | null): Promise<SyncUitkomst> {
+  if (!instelling.filterVeld || !instelling.filterWaarde) {
+    return { ...LEEG, ok: true, melding: "Nog niet ingesteld welke contacten een lead zijn. Kies op Beheer het veld en de waarde (bijvoorbeeld leadstatus is hot)." };
+  }
+
+  let contacten;
+  let eigenaren: Map<string, string>;
+  try {
+    [contacten, eigenaren] = await Promise.all([
+      hsContacten(sinds, { veld: instelling.filterVeld, waarde: instelling.filterWaarde },
+        [instelling.velden.opvolgDatum].filter(Boolean)),
+      hsEigenaren().catch(() => new Map<string, string>()),
+    ]);
+  } catch (e) {
+    return { ...LEEG, melding: (e as Error).message };
+  }
+
+  const { rows: gekoppeldeRijen } = await sql<{ client_slug: string; deal_id: string }>`
+    SELECT client_slug, deal_id FROM hubspot_lead`;
+  const gekoppeld = new Map(gekoppeldeRijen.map((r) => [r.deal_id, r.client_slug]));
+  let klanten = await listClients();
+
+  const vandaag = new Date().toISOString().slice(0, 10);
+  let nieuweLeads = 0;
+  let bijgewerkt = 0;
+  let dossierStukken = 0;
+
+  for (const c of contacten) {
+    try {
+      // Het bedrijf is wat we in het dashboard neerzetten; staat er geen
+      // bedrijfsnaam, dan is de naam van de persoon het beste wat we hebben.
+      const bedrijfNaam = c.bedrijf || c.naam || "Naamloze lead";
+      const domein = normalizeDomain(c.domein || "") || domeinUitMail(c.mail);
+
+      let klant = vindKlantVoorContact(klanten, gekoppeld, c.id, bedrijfNaam, domein);
+      if (!klant) {
+        if (!instelling.autoLeads) continue;
+        klant = await createLead({ name: bedrijfNaam, domain: domein, email: c.mail });
+        klanten = [...klanten, klant];
+        nieuweLeads++;
+      } else {
+        bijgewerkt++;
+      }
+
+      // De opvolgdatum: het veld dat Maarten heeft aangewezen, anders wat HubSpot
+      // zelf als volgende activiteit noteert, anders de eerstvolgende openstaande
+      // taak. Drie bronnen, in die volgorde, en nooit een gok.
+      const uitVeld = instelling.velden.opvolgDatum ? veldAlsDatum(c.extra[instelling.velden.opvolgDatum]) : null;
+      let opvolgDatum = uitVeld || c.volgendeActie || null;
+      let opvolgTitel = uitVeld ? "Uit je opvolgveld in HubSpot" : c.volgendeActie ? "Volgende activiteit in HubSpot" : "";
+      if (!opvolgDatum) {
+        const taken = await hsTakenVanDeal(c.id, "contacts").catch(() => []);
+        const open = taken.filter((t) => !t.afgerond && t.datum).sort((a, b) => String(a.datum).localeCompare(String(b.datum)));
+        if (open[0]) { opvolgDatum = open[0].datum; opvolgTitel = open[0].titel; }
+      }
+
+      const url = await hsContactLink(c.id);
+      const eigenaar = c.eigenaarId ? eigenaren.get(c.eigenaarId) || "" : "";
+
+      await sql`DELETE FROM hubspot_lead WHERE deal_id = ${c.id} AND client_slug <> ${klant.slug}`;
+      await sql`
+        INSERT INTO hubspot_lead (
+          client_slug, deal_id, deal_naam, fase_naam, opvolg_datum, opvolg_titel,
+          laatste_contact, contact_naam, contact_mail, bedrijf_naam, bedrijf_domein,
+          eigenaar, hubspot_url, soort, bijgewerkt_op)
+        VALUES (
+          ${klant.slug}, ${c.id}, ${c.naam || bedrijfNaam}, ${c.status}, ${opvolgDatum}, ${opvolgTitel},
+          ${c.laatsteContact}, ${c.naam}, ${c.mail}, ${bedrijfNaam}, ${domein || ""},
+          ${eigenaar}, ${url}, 'contact', now())
+        ON CONFLICT (client_slug) DO UPDATE SET
+          deal_id = EXCLUDED.deal_id, deal_naam = EXCLUDED.deal_naam, fase_naam = EXCLUDED.fase_naam,
+          opvolg_datum = EXCLUDED.opvolg_datum, opvolg_titel = EXCLUDED.opvolg_titel,
+          laatste_contact = EXCLUDED.laatste_contact, contact_naam = EXCLUDED.contact_naam,
+          contact_mail = EXCLUDED.contact_mail, bedrijf_naam = EXCLUDED.bedrijf_naam,
+          bedrijf_domein = EXCLUDED.bedrijf_domein, eigenaar = EXCLUDED.eigenaar,
+          hubspot_url = EXCLUDED.hubspot_url, soort = 'contact', bijgewerkt_op = now()`;
+      gekoppeld.set(c.id, klant.slug);
+
+      // Alleen de kans wordt alvast gezet, zodat een verse lead niet op 100%
+      // staat. Het bedrag en de startmaand zet Maarten zelf; die raakt deze
+      // ronde nooit aan.
+      await saveRegelUitBron(klant.slug, { kans: instelling.kans }).catch(() => {});
+
+      dossierStukken += await gesprekkenNaarDossier(klant.slug, c.id, "contacts");
+
+      if (opvolgDatum && opvolgDatum <= vandaag && klant.fase === "lead") {
+        const { rows: gemeld } = await sql<{ melding_op: string | null }>`
+          SELECT melding_op FROM hubspot_lead WHERE client_slug = ${klant.slug} LIMIT 1`;
+        if (alsDag(gemeld[0]?.melding_op ?? null) !== opvolgDatum) {
+          await meldingToevoegen({
+            soort: "lead-opvolg",
+            titel: `Opvolgen: ${klant.name}`,
+            regel: opvolgTitel ? `${opvolgTitel} (stond gepland op ${opvolgDatum})` : `Stond gepland op ${opvolgDatum}`,
+            link: `/admin/client/${klant.slug}?tab=lead`,
+            wie: "HubSpot",
+            bron: "hubspot",
+            bronId: `${klant.slug}:${opvolgDatum}`,
+          });
+          await sql`UPDATE hubspot_lead SET melding_op = ${opvolgDatum} WHERE client_slug = ${klant.slug}`;
+        }
+      }
+    } catch {
+      // Eén contact dat stukloopt mag de ronde niet tegenhouden.
+    }
+  }
+
+  return {
+    ok: true,
+    melding: contacten.length === 0 ? "Niets veranderd in HubSpot sinds de vorige ronde." : "Klaar.",
+    gelezen: contacten.length,
+    nieuweLeads,
+    bijgewerkt,
+    dossierStukken,
+  };
+}
+
+/** Het domein uit een mailadres, als het bedrijf zelf geen website heeft staan. */
+function domeinUitMail(mail: string): string {
+  const deel = String(mail || "").split("@")[1] || "";
+  const vrij = /^(gmail|hotmail|outlook|live|icloud|yahoo|ziggo|kpnmail|telfort|planet|home)\./i.test(deel);
+  return vrij ? "" : (normalizeDomain(deel) || "");
+}
+
+/** Zoekt het bedrijf in het dashboard dat bij dit contact hoort. */
+function vindKlantVoorContact(
+  klanten: ClientConfig[],
+  gekoppeld: Map<string, string>,
+  contactId: string,
+  bedrijfNaam: string,
+  domein: string,
+): ClientConfig | null {
+  const bestaande = gekoppeld.get(contactId);
+  if (bestaande) {
+    const c = klanten.find((k) => k.slug === bestaande);
+    if (c) return c;
+  }
+  if (domein) {
+    const opDomein = klanten.find((k) => (k.domain || "").toLowerCase() === domein.toLowerCase());
+    if (opDomein) return opDomein;
+  }
+  const naamSlug = slugify(bedrijfNaam);
+  if (naamSlug) {
+    const opNaam = klanten.find((k) => k.slug === naamSlug || k.name.trim().toLowerCase() === bedrijfNaam.trim().toLowerCase());
+    if (opNaam) return opNaam;
+  }
+  return null;
+}
+
+async function syncDeals(instelling: HubspotInstelling, sinds: Date | null): Promise<SyncUitkomst> {
+  const leeg = LEEG;
   let deals: HsDeal[];
   let pijplijnen: HsPijplijn[];
   let eigenaren: Map<string, string>;
@@ -395,7 +640,6 @@ export async function syncHubspot(opties: { volledig?: boolean } = {}): Promise<
     }
   }
 
-  await setSetting(SETTING_LAATSTE_RONDE, new Date().toISOString());
   return {
     ok: true,
     melding: deals.length === 0 ? "Niets veranderd in HubSpot sinds de vorige ronde." : "Klaar.",
@@ -414,8 +658,8 @@ export async function syncHubspot(opties: { volledig?: boolean } = {}): Promise<
  * Dedupe op de herkomst (`hubspot:notes:123`): het dossier is bewust
  * append-only, dus hetzelfde stuk mag er nooit twee keer in komen.
  */
-async function gesprekkenNaarDossier(slug: string, dealId: string): Promise<number> {
-  const gesprekken = await hsGesprekkenVanDeal(dealId).catch(() => []);
+async function gesprekkenNaarDossier(slug: string, id: string, van = "deals"): Promise<number> {
+  const gesprekken = await hsGesprekkenVanDeal(id, van).catch(() => []);
   if (!gesprekken.length) return 0;
 
   const { rows } = await sql<{ bron: string }>`

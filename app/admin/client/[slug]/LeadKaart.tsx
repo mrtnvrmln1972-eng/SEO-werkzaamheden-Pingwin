@@ -9,14 +9,15 @@ import { useCallback, useEffect, useState } from "react";
 // je hem weer moet spreken, wat het gaat worden, wanneer hij begint, en hoe groot
 // de kans is. Links komt uit HubSpot, rechts zet je zelf.
 //
-// De verdeling is niet toevallig maar de kern van de koppeling: HubSpot is de
-// baas over de pijplijn en de data, het dashboard over het beoogde maandbudget.
-// Een deal in HubSpot is meestal een totaalbedrag en de prognose rekent met
-// maandbedragen; klakkeloos overnemen zou de prognose onbruikbaar maken. Zie
-// HUBSPOT-LEADS.md.
+// De verdeling is niet toevallig maar de kern van de koppeling. HubSpot levert
+// wie er hot is, wie je spreekt en wanneer je ze weer moet spreken. Het geld en
+// de startmaand staan hier, want daar rekent de prognose mee en zo staat elk
+// bedrag op precies één plek. Zie HUBSPOT-LEADS.md.
 // ═══════════════════════════════════════════════════════════
 
 type Lead = {
+  /** "contact" (leadstatus in HubSpot) of "deal" (een dealpijplijn). */
+  soort: string;
   dealId: string; dealNaam: string; pijplijnNaam: string; faseNaam: string;
   bedrag: number | null; kans: number | null; sluitDatum: string | null;
   gesloten: boolean; gewonnen: boolean;
@@ -30,12 +31,23 @@ type Stand = {
   lead: Lead | null;
   fase: string;
   budget: { maandbudget: number; linkbuilding: number };
-  prognose: { kans: number | null; startMaand: string | null; bron: string };
+  prognose: {
+    kans: number | null; startMaand: string | null; bron: string;
+    feeAds: number; maandkosten: number; eenmalig: number; eenmaligKosten: number;
+  };
   notitiesTerug: boolean;
 };
 
 const euro = (n: number | null): string =>
   n === null || !Number.isFinite(n) ? "—" : `€ ${Math.round(n).toLocaleString("nl-NL")}`;
+
+const MAANDEN = ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"];
+
+/** "2026-10" wordt "oktober 2026". */
+function maandLabel(m: string): string {
+  const [j, mm] = String(m).split("-");
+  return MAANDEN[Number(mm) - 1] ? `${MAANDEN[Number(mm) - 1]} ${j}` : m;
+}
 
 function datumKort(iso: string | null): string {
   if (!iso) return "—";
@@ -62,7 +74,11 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
   const [stand, setStand] = useState<Stand | null>(null);
   const [bezig, setBezig] = useState("");
   const [melding, setMelding] = useState<{ ok: boolean; text: string } | null>(null);
+  // Alles wat jij zelf zet. Bewust vijf losse bedragen en geen totaal: SEO,
+  // advertenties, de kosten die eraan vastzitten en een eenmalige website zijn
+  // verschillende dingen, en opgeteld zie je niet meer waar een getal vandaan komt.
   const [budget, setBudget] = useState({ maandbudget: "", linkbuilding: "" });
+  const [geld, setGeld] = useState({ feeAds: "", maandkosten: "", eenmalig: "", eenmaligKosten: "" });
   const [kans, setKans] = useState("");
   const [startMaand, setStartMaand] = useState("");
   const [dealId, setDealId] = useState("");
@@ -80,6 +96,13 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
       });
       setKans(d.prognose.kans === null ? "" : String(d.prognose.kans));
       setStartMaand(d.prognose.startMaand || "");
+      const toon = (n: number) => (n ? String(Math.round(n)) : "");
+      setGeld({
+        feeAds: toon(d.prognose.feeAds),
+        maandkosten: toon(d.prognose.maandkosten),
+        eenmalig: toon(d.prognose.eenmalig),
+        eenmaligKosten: toon(d.prognose.eenmaligKosten),
+      });
     } catch { /* stil; de kaart blijft staan zoals hij stond */ }
   }, [slug]);
 
@@ -107,6 +130,8 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
 
   if (!stand) return null;
   const lead = stand.lead;
+  const getalUit = (v: string) => Number(String(v).replace(/[^\d]/g, "")) || 0;
+  const perMaand = getalUit(budget.maandbudget) + getalUit(geld.feeAds);
   const dringend = opvolgStand(lead?.opvolgDatum || null);
   const uitHubspot = stand.prognose.bron === "hubspot";
 
@@ -144,46 +169,55 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
             <div className="lead-kaart-onder">
               {dringend === "verstreken" ? "Stond gepland, nog niet gedaan"
                 : dringend === "vandaag" ? "Vandaag"
-                : lead.opvolgTitel || "Geen taak in HubSpot"}
+                : lead.opvolgTitel || "Niets gepland in HubSpot"}
             </div>
           </div>
           <div className="lead-kaart-vak">
-            <div className="lead-kaart-label">Verwacht klant</div>
-            <div className="lead-kaart-waarde">{datumKort(lead.sluitDatum)}</div>
-            <div className="lead-kaart-onder">Sluitingsdatum van de deal</div>
-          </div>
-          <div className="lead-kaart-vak">
-            <div className="lead-kaart-label">Kans</div>
-            <div className="lead-kaart-waarde">{stand.prognose.kans === null ? "—" : `${stand.prognose.kans}%`}</div>
-            <div className="lead-kaart-onder">{uitHubspot ? "uit de dealfase" : "door jou gezet"}</div>
-          </div>
-          <div className="lead-kaart-vak">
-            <div className="lead-kaart-label">Bedrag in HubSpot</div>
-            <div className="lead-kaart-waarde">{euro(lead.bedrag)}</div>
-            <div className="lead-kaart-onder">meestal het totaal, niet per maand</div>
+            <div className="lead-kaart-label">Contactpersoon</div>
+            <div className="lead-kaart-waarde">{lead.contactNaam || "—"}</div>
+            <div className="lead-kaart-onder">
+              {lead.contactMail ? <a href={`mailto:${lead.contactMail}`}>{lead.contactMail}</a> : "geen mailadres"}
+            </div>
           </div>
           <div className="lead-kaart-vak">
             <div className="lead-kaart-label">Laatste contact</div>
             <div className="lead-kaart-waarde">{datumKort(lead.laatsteContact)}</div>
+            <div className="lead-kaart-onder">{lead.eigenaar ? `van ${lead.eigenaar}` : "volgens HubSpot"}</div>
+          </div>
+          <div className="lead-kaart-vak">
+            <div className="lead-kaart-label">Per maand</div>
+            <div className="lead-kaart-waarde">{euro(perMaand)}</div>
             <div className="lead-kaart-onder">
-              {lead.contactNaam || lead.contactMail
-                ? lead.contactMail
-                  ? <a href={`mailto:${lead.contactMail}`}>{lead.contactNaam || lead.contactMail}</a>
-                  : lead.contactNaam
-                : "geen contactpersoon"}
+              {perMaand ? `SEO en advertenties samen${kans ? `, telt voor ${euro(Math.round(perMaand * (Number(kans) || 0) / 100))} mee` : ""}` : "nog geen bedrag ingevuld"}
             </div>
+          </div>
+          <div className="lead-kaart-vak">
+            <div className="lead-kaart-label">Verwacht klant</div>
+            <div className="lead-kaart-waarde">{startMaand ? maandLabel(startMaand) : lead.sluitDatum ? datumKort(lead.sluitDatum) : "—"}</div>
+            <div className="lead-kaart-onder">{startMaand ? "vanaf deze maand in de prognose" : "vul hieronder in vanaf welke maand"}</div>
           </div>
         </div>
       )}
 
       {/* ── Wat jij zet ── */}
+      {/* HubSpot levert wie er hot is, de contactgegevens en de opvolgdatum. De
+          bedragen en de startmaand staan hier, want hier rekent de prognose ermee
+          en zo staat elk bedrag op precies één plek. */}
       <div className="lead-kaart-invoer">
         <div className="field">
-          <label htmlFor={`lk-budget-${slug}`}>Beoogd maandbudget</label>
+          <label htmlFor={`lk-budget-${slug}`}>SEO per maand</label>
           <input
             id={`lk-budget-${slug}`} inputMode="numeric" value={budget.maandbudget}
             onChange={(e) => setBudget({ ...budget, maandbudget: e.target.value })}
             placeholder="bijv. 1500"
+          />
+        </div>
+        <div className="field">
+          <label htmlFor={`lk-ads-${slug}`}>Advertenties per maand</label>
+          <input
+            id={`lk-ads-${slug}`} inputMode="numeric" value={geld.feeAds}
+            onChange={(e) => setGeld({ ...geld, feeAds: e.target.value })}
+            placeholder="0"
           />
         </div>
         <div className="field">
@@ -195,15 +229,39 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
           />
         </div>
         <div className="field">
+          <label htmlFor={`lk-kosten-${slug}`}>Overige kosten per maand</label>
+          <input
+            id={`lk-kosten-${slug}`} inputMode="numeric" value={geld.maandkosten}
+            onChange={(e) => setGeld({ ...geld, maandkosten: e.target.value })}
+            placeholder="0"
+          />
+        </div>
+        <div className="field">
+          <label htmlFor={`lk-eenmalig-${slug}`}>Eenmalig (website)</label>
+          <input
+            id={`lk-eenmalig-${slug}`} inputMode="numeric" value={geld.eenmalig}
+            onChange={(e) => setGeld({ ...geld, eenmalig: e.target.value })}
+            placeholder="0"
+          />
+        </div>
+        <div className="field">
+          <label htmlFor={`lk-eenmalig-kosten-${slug}`}>Kosten daarvan</label>
+          <input
+            id={`lk-eenmalig-kosten-${slug}`} inputMode="numeric" value={geld.eenmaligKosten}
+            onChange={(e) => setGeld({ ...geld, eenmaligKosten: e.target.value })}
+            placeholder="0"
+          />
+        </div>
+        <div className="field">
           <label htmlFor={`lk-kans-${slug}`}>Kans in %</label>
           <input
             id={`lk-kans-${slug}`} inputMode="numeric" value={kans}
             onChange={(e) => setKans(e.target.value)}
-            placeholder={lead?.kans === null || lead?.kans === undefined ? "30" : String(lead.kans)}
+            placeholder="50"
           />
         </div>
         <div className="field">
-          <label htmlFor={`lk-maand-${slug}`}>Vanaf maand</label>
+          <label htmlFor={`lk-maand-${slug}`}>Verwacht klant vanaf</label>
           <input
             id={`lk-maand-${slug}`} type="month" value={startMaand}
             onChange={(e) => setStartMaand(e.target.value)}
@@ -220,20 +278,20 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
               linkbuilding: Number(budget.linkbuilding.replace(/[^\d]/g, "")) || 0,
             });
             if (gelukt) {
+              const getal = (v: string) => Number(v.replace(/[^\d]/g, "")) || 0;
               await doe("prognose", {
-                kans: kans === "" ? undefined : Number(kans.replace(/[^\d]/g, "")),
+                kans: kans === "" ? undefined : getal(kans),
                 startMaand: startMaand || null,
+                feeAds: getal(geld.feeAds),
+                maandkosten: getal(geld.maandkosten),
+                eenmalig: getal(geld.eenmalig),
+                eenmaligKosten: getal(geld.eenmaligKosten),
               }, "Bewaard. De prognose rekent hier meteen mee.");
             }
           }}
         >
           {bezig === "budget" || bezig === "prognose" ? "Bezig…" : "Bewaren"}
         </button>
-        {lead?.bedrag ? (
-          <button className="btn btn-ghost btn-klein" onClick={() => setBudget({ ...budget, maandbudget: String(Math.round(lead.bedrag || 0)) })}>
-            Neem {euro(lead.bedrag)} over
-          </button>
-        ) : null}
         <button className="btn btn-ghost btn-klein" onClick={() => setToonNotitie((v) => !v)}>
           {toonNotitie ? "Notitie sluiten" : "Notitie toevoegen"}
         </button>

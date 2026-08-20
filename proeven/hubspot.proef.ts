@@ -92,7 +92,22 @@ proef(
 proef(
   "het budget van een lead komt niet uit HubSpot",
   !/setClientBudget/.test(sync),
-  "Een deal in HubSpot is meestal een totaalbedrag. Overnemen maakt de prognose onbruikbaar; het maandbudget zet Maarten zelf.",
+  "De bedragen zet Maarten in het dashboard: SEO en advertenties per maand, de kosten, en een eenmalige website. Daar rekent de prognose mee en zo staat elk bedrag op één plek.",
+);
+proef(
+  "de contactenronde zet alleen de kans, niet het bedrag of de startmaand",
+  /saveRegelUitBron\(klant\.slug, \{ kans: instelling\.kans \}\)/.test(sync),
+  "Een ronde die elk kwartier draait mag nooit over een bedrag of een startmaand heen schrijven; die zijn van Maarten.",
+);
+proef(
+  "leads komen standaard uit je contacten, niet uit deals",
+  /bron: bron === "deals" \? "deals" : "contacten"/.test(sync),
+  "Niet elk bureau werkt met deals. De standaard hoort de werkwijze te zijn die hier echt gebruikt wordt.",
+);
+proef(
+  "zonder gekozen leadstatus komt er niets binnen",
+  /if \(!instelling\.filterVeld \|\| !instelling\.filterWaarde\)/.test(sync),
+  "Zonder filter zou je hele adresboek als lead in het dashboard belanden. Liever niets dan alles.",
 );
 
 // ── 4. Hetzelfde gesprek komt niet twee keer in het dossier ─────────────────
