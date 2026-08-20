@@ -291,6 +291,19 @@ export function opVolgorde(bevindingen: Bevinding[]): Bevinding[] {
   });
 }
 
+/**
+ * Is dit echt base64, of iets dat er alleen op lijkt?
+ *
+ * Geen overbodige controle: puppeteer geeft een schermfoto terug als Uint8Array,
+ * en `.toString("base64")` daarop levert "255,216,255,224,…" op. Dat is een
+ * geldige string, hij gaat overal doorheen, en pas de API van Claude zegt er
+ * iets van ("invalid base64 data"). Dan is de hele beoordeling weg terwijl de
+ * pagina al twee keer bezocht is. Hier valt hij meteen door de mand.
+ */
+export function isBase64(waarde: string): boolean {
+  return waarde.length > 100 && /^[A-Za-z0-9+/]+={0,2}$/.test(waarde);
+}
+
 /** Beoordeel één pagina. Geeft null terug als er geen bruikbaar antwoord kwam. */
 export async function beoordeelPagina(
   desktop: Opname,
@@ -298,10 +311,13 @@ export async function beoordeelPagina(
   gedrag: PaginaGedragUitkomst | null,
   slug?: string,
 ): Promise<Oordeel> {
+  if (!isBase64(desktop.eersteScherm)) {
+    throw new Error("De schermfoto kwam niet in een bruikbare vorm terug, dus er valt niets te beoordelen op beeld.");
+  }
   const beelden: VisionImage[] = [
     { url: "", label: "Schermfoto 1: het eerste scherm op desktop (1440 breed), zonder scrollen.", base64: desktop.eersteScherm, mediaType: "image/jpeg" },
   ];
-  if (desktop.helePagina) {
+  if (desktop.helePagina && isBase64(desktop.helePagina)) {
     beelden.push({
       url: "",
       label: `Schermfoto 2: de hele pagina op desktop van boven naar beneden${desktop.paginaHoogte > 6000 ? " (afgekapt op 6000 pixels, de pagina is langer)" : ""}.`,
@@ -309,7 +325,7 @@ export async function beoordeelPagina(
       mediaType: "image/jpeg",
     });
   }
-  if (mobiel) {
+  if (mobiel && isBase64(mobiel.eersteScherm)) {
     beelden.push({ url: "", label: "Schermfoto 3: het eerste scherm op een telefoon (390 breed), zonder scrollen.", base64: mobiel.eersteScherm, mediaType: "image/jpeg" });
   }
 

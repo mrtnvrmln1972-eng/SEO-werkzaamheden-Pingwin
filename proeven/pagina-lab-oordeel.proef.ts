@@ -27,7 +27,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { CRITERIA, VAKOORDELEN, opId } from "../lib/pagina-lab/kennisbank";
 import { naarWaarden, type MetingWaarde, type RuweMeting } from "../lib/pagina-lab/meting";
-import { BEVINDING_TOOL, bouwOpdracht, keur, opVolgorde, type RuweBevinding } from "../lib/pagina-lab/oordeel";
+import { BEVINDING_TOOL, bouwOpdracht, isBase64, keur, opVolgorde, type RuweBevinding } from "../lib/pagina-lab/oordeel";
 import type { Opname } from "../lib/pagina-lab/meting";
 
 const WORTEL = join(__dirname, "..");
@@ -174,6 +174,15 @@ check("de tekst gaat door de gedeelde opmaak", !paneel.includes("dangerouslySetI
 check("het scherm belooft niet dat er iets bewaard wordt",
   paneel.includes("Er wordt niets bewaard"),
   "Zolang het lab niets opslaat, moet dat er staan; anders zoekt Maarten later naar een oordeel dat er niet meer is.");
+
+
+// ── 9. Een schermfoto die geen schermfoto is ───────────────
+// Puppeteer geeft een foto terug als Uint8Array, en .toString("base64") daarop
+// maakt er "255,216,255,…" van. Dat ziet er als string prima uit, komt overal
+// doorheen, en sneuvelt pas bij de API, ná twee paginabezoeken. Dit is precies
+// de fout die de eerste echte beoordeling liet mislukken.
+check("een rij getallen gaat niet door voor een foto", !isBase64("255,216,255,224,0,16,74,70,73,70".repeat(20)));
+check("echte base64 komt er wel doorheen", isBase64("a".repeat(200) + "=="));
 
 console.log(fouten ? `\n${fouten} fout(en) in het oordeel van het Pagina-lab.` : "\nHet oordeel van het Pagina-lab rust op criteria, meting en foto.");
 if (fouten) process.exit(1);

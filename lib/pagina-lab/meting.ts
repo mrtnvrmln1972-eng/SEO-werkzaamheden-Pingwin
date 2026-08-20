@@ -479,14 +479,17 @@ export async function neemPaginaOp(url: string, apparaat: Apparaat = "desktop", 
     ruw.snelheid.cls = Math.round((snelheid?.cls || 0) * 1000) / 1000;
     ruw.overlays.cookiemelding = cookiemelding;
 
-    const eersteScherm: Buffer = await page.screenshot({ type: "jpeg", quality: 80 });
+    // Let op: puppeteer geeft hier een Uint8Array terug, geen Buffer. Rechtstreeks
+    // .toString("base64") erop levert een rij komma's met getallen op, en dan
+    // weigert de API het beeld met "invalid base64 data". Vandaar Buffer.from.
+    const eersteScherm = Buffer.from(await page.screenshot({ type: "jpeg", quality: 80 }));
     let helePagina: Buffer | null = null;
     if (metHelePagina) {
       const hoog = Math.min(MAX_FOTO_HOOGTE, Math.max(scherm.hoogte, gelezen.hoogte || scherm.hoogte));
-      helePagina = await page.screenshot({
+      helePagina = Buffer.from(await page.screenshot({
         type: "jpeg", quality: 62, captureBeyondViewport: true,
         clip: { x: 0, y: 0, width: scherm.breedte, height: hoog },
-      });
+      }));
     }
 
     const bron: PaginaBron = {
