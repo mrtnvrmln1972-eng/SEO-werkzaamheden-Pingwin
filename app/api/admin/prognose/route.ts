@@ -3,7 +3,7 @@ import { guardOwner } from "../../../../lib/admin-scope";
 import { listClients, setClientBudget } from "../../../../lib/clients";
 import {
   getPrognose, savePrognoseInstelling, saveRegelExtra,
-  addPost, deletePost, maandPlus,
+  addPost, deletePost, maandPlus, getRegelsPerSlug,
 } from "../../../../lib/prognose";
 import { moneybirdConfigured, getProfitLoss, getMbContacts } from "../../../../lib/moneybird";
 import {
@@ -31,6 +31,14 @@ async function stuurPrognose() {
 export async function GET(req: NextRequest) {
   const g = await guardOwner(req); if (!g.ok) return g.res;
   try {
+    // ?regels=1 geeft alleen de ingevulde regels terug (kans, startmaand), zonder
+    // de hele prognose door te rekenen. Dat is wat het klantenoverzicht nodig
+    // heeft om in de leadlijst te laten zien wanneer iemand naar verwachting
+    // start; die pagina hoeft daar geen berekening van twaalf maanden voor op te
+    // halen.
+    if (req.nextUrl.searchParams.get("regels")) {
+      return NextResponse.json({ ok: true, regels: await getRegelsPerSlug() });
+    }
     return await stuurPrognose();
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 });

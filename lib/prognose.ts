@@ -185,6 +185,22 @@ type RegelRow = {
   extra_omzet: string | number; eenmalig_omzet: string | number; eenmalig_kosten: string | number;
 };
 
+/**
+ * De kans waarmee een lead meetelt zolang niemand hem beoordeeld heeft. Stond
+ * als losse 30 in de berekening, terwijl een nieuwe regel in de tabel op 100
+ * begon: vulde je alleen een startmaand in, dan telde die lead ineens voor de
+ * volle mep mee. Eén getal, hier, dat allebei die plekken gebruiken.
+ */
+export const LEAD_STANDAARD_KANS = 30;
+
+/** Alle prognose-regels ineens, per slug. Voor een lijst met veel leads. */
+export async function getRegelsPerSlug(): Promise<Record<string, RegelExtra>> {
+  const map = await getRegelExtras();
+  const uit: Record<string, RegelExtra> = {};
+  for (const [slug, r] of map) uit[slug] = r;
+  return uit;
+}
+
 async function getRegelExtras(): Promise<Map<string, RegelExtra>> {
   await ensureTable();
   const { rows } = await sql<RegelRow>`
@@ -477,7 +493,7 @@ export function berekenPrognose(
       // Een lead die nooit is beoordeeld krijgt niet stilletjes 100%: dan zou
       // de lijn beloven wat nog niet getekend is. 30 is een nuchtere start die
       // Maarten per lead bijstelt.
-      const kans = e ? e.kans : isLead ? 30 : 100;
+      const kans = e ? e.kans : isLead ? LEAD_STANDAARD_KANS : 100;
       return {
         slug: k.slug,
         naam: k.name,

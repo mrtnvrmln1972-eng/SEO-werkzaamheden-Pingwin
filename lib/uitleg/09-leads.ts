@@ -64,8 +64,10 @@ export const HOOFDSTUK: Hoofdstuk = {
         "Daaronder vul je in wat de prognose moet weten: het SEO-bedrag per maand, advertenties per maand, de " +
         "kosten die eraan vastzitten, een eenmalig bedrag voor een website met de kosten daarvan, de kans, en " +
         "vanaf welke maand het gaat lopen. Het eenmalige bedrag telt precies één keer mee, in die startmaand; " +
-        "de maandbedragen tellen vanaf dan elke maand. In de leadlijst zie je per rij wanneer je moet opvolgen, " +
-        "wat het budget is en wanneer hij verwacht wordt.\n\n" +
+        "de maandbedragen tellen vanaf dan elke maand. In de leadlijst op je startscherm zie je per rij wanneer " +
+        "je moet opvolgen, en daar vul je het maandbedrag en de startmaand ook meteen in, zonder de lead te " +
+        "openen; wat je daar typt is hetzelfde bedrag als op de leadkaart en telt direct mee in de prognose. " +
+        "Een lead die je nog niet beoordeeld hebt telt daarbij voor dertig procent mee, niet voor honderd.\n\n" +
         "Daaronder staat de mailwisseling met dat bedrijf, met dezelfde knop om te antwoorden of een nieuwe mail " +
         "te sturen als bij een klant. Die mail komt uit de mailbox en niet uit het CRM: daar staat de hele draad, " +
         "ook wat er nooit gelogd is. En er is een tijdlijn waarin alles op datum onder elkaar staat: mails, " +

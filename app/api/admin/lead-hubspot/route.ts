@@ -3,7 +3,7 @@ import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug, setClientBudget, setClientFase } from "../../../../lib/clients";
 import { getHubspotLead, koppelDeal, ontkoppelLead, syncHubspot, getHubspotInstelling } from "../../../../lib/hubspot-leads";
 import { hubspotConfigured, hsMaakNotitie } from "../../../../lib/hubspot";
-import { saveRegelExtra, getRegelExtra, getRegelBron } from "../../../../lib/prognose";
+import { saveRegelExtra, getRegelExtra, getRegelBron, LEAD_STANDAARD_KANS } from "../../../../lib/prognose";
 import { addDossierItem } from "../../../../lib/lead-dossier";
 import { planOpvolging } from "../../../../lib/mail-opvolg";
 import { ahrefsConfigured, getSiteAuthority, getAhrefsTopPages } from "../../../../lib/ahrefs";
@@ -87,7 +87,12 @@ export async function POST(req: NextRequest) {
     // laat de HubSpot-ronde hem met rust; zie saveRegelUitBron in lib/prognose.ts.
     case "prognose": {
       const getal = (v: unknown) => Math.max(0, Math.round(Number(v) || 0));
+      // Bestaat er nog geen regel voor deze lead, dan begint hij op de standaard
+      // leadkans en niet op 100. Zonder dit zou het invullen van alleen een
+      // startmaand een lead stilletjes als zekere omzet in de prognose zetten.
+      const versLead = client.fase !== "klant" && body.kans === undefined && !(await getRegelExtra(slug).catch(() => null));
       await saveRegelExtra(slug, {
+        ...(versLead ? { kans: LEAD_STANDAARD_KANS } : {}),
         ...(body.kans !== undefined ? { kans: Number(body.kans) } : {}),
         ...(body.startMaand !== undefined ? { startMaand: body.startMaand || null } : {}),
         ...(body.feeAds !== undefined ? { extraOmzet: getal(body.feeAds) } : {}),
