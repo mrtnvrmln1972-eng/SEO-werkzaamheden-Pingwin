@@ -44,6 +44,7 @@ export const SETTING_FILTER_VELD = "hubspot_filter_veld";
 export const SETTING_FILTER_WAARDE = "hubspot_filter_waarde";
 export const SETTING_VELDEN = "hubspot_velden";
 export const SETTING_KANS = "hubspot_kans";
+export const SETTING_EIGENAAR = "hubspot_eigenaar";
 
 /**
  * Welke betekenis welk HubSpot-veld heeft. Leeg = dat gegeven komt niet uit
@@ -210,6 +211,8 @@ export type HubspotInstelling = {
   /** Bij contacten: welk veld en welke waarde een lead maken (bijvoorbeeld leadstatus = hot). */
   filterVeld: string;
   filterWaarde: string;
+  /** Alleen contacten van deze HubSpot-eigenaar. Leeg = van iedereen. */
+  eigenaar: string;
   /** Welke velden welke betekenis hebben. */
   velden: Veldkoppeling;
   /** De kans die een verse lead uit HubSpot krijgt, tot Maarten hem bijstelt. */
@@ -224,7 +227,7 @@ export type HubspotInstelling = {
 };
 
 export async function getHubspotInstelling(): Promise<HubspotInstelling> {
-  const [p, n, a, r, bron, fv, fw, velden, kans] = await Promise.all([
+  const [p, n, a, r, bron, fv, fw, velden, kans, eigenaar] = await Promise.all([
     getSetting(SETTING_PIJPLIJNEN),
     getSetting(SETTING_NOTITIES_TERUG),
     getSetting(SETTING_AUTO_LEADS),
@@ -234,6 +237,7 @@ export async function getHubspotInstelling(): Promise<HubspotInstelling> {
     getSetting(SETTING_FILTER_WAARDE),
     getSetting(SETTING_VELDEN),
     getSetting(SETTING_KANS),
+    getSetting(SETTING_EIGENAAR),
   ]);
   let gekoppeld = LEGE_VELDEN;
   try { gekoppeld = { ...LEGE_VELDEN, ...(velden ? JSON.parse(velden) : {}) }; } catch { /* stukke instelling telt als leeg */ }
@@ -242,6 +246,7 @@ export async function getHubspotInstelling(): Promise<HubspotInstelling> {
     bron: bron === "deals" ? "deals" : "contacten",
     filterVeld: fv || "",
     filterWaarde: fw || "",
+    eigenaar: eigenaar || "",
     velden: gekoppeld,
     kans: Number.isFinite(k) && k >= 0 && k <= 100 ? Math.round(k) : 50,
     pijplijnen: String(p || "").split(",").map((x) => x.trim()).filter(Boolean),
@@ -256,6 +261,7 @@ export async function saveHubspotInstelling(p: Partial<HubspotInstelling>): Prom
   if (p.bron !== undefined) taken.push(setSetting(SETTING_BRON, p.bron === "deals" ? "deals" : "contacten"));
   if (p.filterVeld !== undefined) taken.push(setSetting(SETTING_FILTER_VELD, p.filterVeld));
   if (p.filterWaarde !== undefined) taken.push(setSetting(SETTING_FILTER_WAARDE, p.filterWaarde));
+  if (p.eigenaar !== undefined) taken.push(setSetting(SETTING_EIGENAAR, p.eigenaar));
   if (p.velden !== undefined) taken.push(setSetting(SETTING_VELDEN, JSON.stringify({ ...LEGE_VELDEN, ...p.velden })));
   if (p.kans !== undefined) taken.push(setSetting(SETTING_KANS, String(Math.min(100, Math.max(0, Math.round(p.kans))))));
   if (p.pijplijnen !== undefined) taken.push(setSetting(SETTING_PIJPLIJNEN, p.pijplijnen.join(",")));
@@ -272,6 +278,12 @@ export async function hubspotPijplijnKeuze(): Promise<HsPijplijn[]> {
 /** De contactvelden zoals ze in HubSpot staan, om ze te kunnen kiezen. */
 export async function hubspotVeldKeuze(): Promise<HsVeld[]> {
   return hsVelden("contacts");
+}
+
+/** De eigenaren uit HubSpot, om te kunnen kiezen van wie de leads mogen komen. */
+export async function hubspotEigenaarKeuze(): Promise<{ id: string; naam: string }[]> {
+  const map = await hsEigenaren();
+  return [...map.entries()].map(([id, naam]) => ({ id, naam })).sort((a, b) => a.naam.localeCompare(b.naam, "nl"));
 }
 
 // ── De ronde zelf ───────────────────────────────────────────
@@ -384,7 +396,7 @@ async function syncContacten(instelling: HubspotInstelling, sinds: Date | null):
   let eigenaren: Map<string, string>;
   try {
     [contacten, eigenaren] = await Promise.all([
-      hsContacten(sinds, { veld: instelling.filterVeld, waarde: instelling.filterWaarde },
+      hsContacten(sinds, { veld: instelling.filterVeld, waarde: instelling.filterWaarde, eigenaar: instelling.eigenaar },
         [instelling.velden.opvolgDatum].filter(Boolean)),
       hsEigenaren().catch(() => new Map<string, string>()),
     ]);
@@ -743,6 +755,7 @@ export type OnterechteLead = { slug: string; naam: string; dealNaam: string };
 
 export async function lijstOnterechteLeads(): Promise<OnterechteLead[]> {
   await ensureTable();
+  const instelling = await getHubspotInstelling();
   // Bewust in losse stappen en niet als één grote query met JOIN's: die tabellen
   // worden pas aangemaakt zodra iemand ze voor het eerst gebruikt, en een query
   // over een tabel die nog niet bestaat mislukt in zijn geheel. Dan zou deze
@@ -753,9 +766,12 @@ export async function lijstOnterechteLeads(): Promise<OnterechteLead[]> {
     FROM clients c
     JOIN hubspot_lead h ON h.client_slug = c.slug
     WHERE c.fase IN ('lead', 'verloren')
-      AND h.soort = 'deal'
       AND COALESCE(c.maandbudget, 0) = 0
       AND c.login_id IS NULL
+      -- Uit de dealronde (die had hier nooit mogen staan), of uit een
+      -- contactronde met een andere status dan wat er nu is ingesteld. Een lead
+      -- die wél aan je huidige filter voldoet blijft altijd staan.
+      AND (h.soort = 'deal' OR h.fase_naam IS DISTINCT FROM ${instelling.filterWaarde})
     ORDER BY c.name`;
   if (!rows.length) return [];
 

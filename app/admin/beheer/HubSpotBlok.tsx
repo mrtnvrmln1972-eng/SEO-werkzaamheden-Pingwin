@@ -19,7 +19,7 @@ type Pijplijn = { id: string; naam: string; fases: Fase[] };
 type Veld = { naam: string; label: string; soort: string; opties: { waarde: string; label: string }[] };
 type Instelling = {
   bron: "contacten" | "deals";
-  filterVeld: string; filterWaarde: string;
+  filterVeld: string; filterWaarde: string; eigenaar: string;
   velden: { opvolgDatum: string };
   kans: number;
   pijplijnen: string[]; notitiesTerug: boolean; autoLeads: boolean; laatsteRonde: string | null;
@@ -34,6 +34,7 @@ type Stand = {
   instelling: Instelling;
   pijplijnen: Pijplijn[];
   velden: Veld[];
+  eigenaren: { id: string; naam: string }[];
   leads: Lead[];
   /** Namen van leads die een ronde heeft aangemaakt en waar niets mee gedaan is. */
   opruimen?: string[];
@@ -93,6 +94,7 @@ export default function HubSpotBlok() {
   const veldLabel = (naam: string) => (stand?.velden || []).find((v) => v.naam === naam)?.label || naam;
   const waardeLabel = (waarde: string) =>
     gekozenVeld?.opties.find((o) => o.waarde === waarde)?.label || waarde;
+  const eigenaarNaam = (id: string) => (stand?.eigenaren || []).find((o) => o.id === id)?.naam || "die eigenaar";
 
   return (
     <>
@@ -163,7 +165,9 @@ export default function HubSpotBlok() {
                         ? `Deals uit ${instelling.pijplijnen.length} gekozen pijplijn(en).`
                         : "Nog niets: kies hieronder welke pijplijnen als lead tellen.")
                       : (instelling?.filterVeld && instelling?.filterWaarde
-                        ? `Contacten waarbij ${veldLabel(instelling.filterVeld)} gelijk is aan "${waardeLabel(instelling.filterWaarde)}". Verder niets.`
+                        ? `Contacten waarbij ${veldLabel(instelling.filterVeld)} gelijk is aan "${waardeLabel(instelling.filterWaarde)}"`
+                          + (instelling.eigenaar ? `, en waarvan ${eigenaarNaam(instelling.eigenaar)} de eigenaar is.` : ", van iedereen.")
+                          + " Verder niets."
                         : <span style={{ color: "var(--danger)" }}>Nog niets: kies hieronder het veld en de waarde (bijvoorbeeld Lead status is HOTHOTHOT).</span>)}
                   </td>
                 </tr>
@@ -231,6 +235,17 @@ export default function HubSpotBlok() {
                   )}
                   <span className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-1)" }}>
                     Leeg laten betekent: er komt niets binnen.
+                  </span>
+                </div>
+                <div className="field">
+                  <label htmlFor="hs-eigenaar">Van wie mogen ze zijn</label>
+                  <select id="hs-eigenaar" value={instelling?.eigenaar || ""} disabled={!!bezig}
+                    onChange={(e) => stuur({ actie: "instellingen", eigenaar: e.target.value }, "eigenaar", "Bewaard.")}>
+                    <option value="">Van iedereen</option>
+                    {(stand.eigenaren || []).map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
+                  </select>
+                  <span className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-1)" }}>
+                    Kies jezelf, dan komt het werk van anderen niet in je dashboard.
                   </span>
                 </div>
                 <div className="field">

@@ -7,7 +7,9 @@ te kennen. Onderaan staan twee regels techniek voor de chat die het bouwt.
 
 Hij gebruikt geen deals. Zijn leads zijn contacten met een leadstatus, en de bedragen zet hij niet in
 HubSpot maar in het dashboard. De koppeling haalt daarom op: iedereen met de leadstatus die hij
-aanwijst (bijvoorbeeld "hot"), de contactgegevens, de opvolgdatum en de notities. In het dashboard
+aanwijst (bijvoorbeeld "HOTHOTHOT") én van wie hij de eigenaar aanwijst (zichzelf), de contactgegevens,
+de opvolgdatum en de notities. Die twee filters samen zijn precies zijn opgeslagen weergave
+"HOT LEADS!" in HubSpot, dus wat daar in staat komt hier binnen en verder niets. In het dashboard
 staan het SEO-bedrag per maand, advertenties per maand, de kosten, een eenmalig bedrag met de kosten
 daarvan, de kans en de maand waarin het gaat lopen; daar rekent de prognose mee.
 

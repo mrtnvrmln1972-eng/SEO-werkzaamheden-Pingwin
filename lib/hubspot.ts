@@ -233,12 +233,17 @@ const CONTACT_VELDEN = [
  */
 export async function hsContacten(
   sinds: Date | null,
-  filter: { veld: string; waarde: string },
+  filter: { veld: string; waarde: string; eigenaar?: string },
   extraVelden: string[] = [],
   maximum = 300,
 ): Promise<HsContactLead[]> {
   if (!filter.veld || !filter.waarde) return [];
   const filters: Record<string, unknown>[] = [{ propertyName: filter.veld, operator: "EQ", value: filter.waarde }];
+  // De eigenaar erbij: bij Pingwin staat in HubSpot ook het werk van anderen, en
+  // alleen wat van Maarten zelf is hoort in zijn dashboard. Precies dezelfde twee
+  // regels als zijn eigen weergave daar ("Lead status is HOTHOTHOT" en "Contact
+  // owner is Me"). Leeg = geen beperking op eigenaar.
+  if (filter.eigenaar) filters.push({ propertyName: "hubspot_owner_id", operator: "EQ", value: filter.eigenaar });
   if (sinds) filters.push({ propertyName: "lastmodifieddate", operator: "GTE", value: String(sinds.getTime()) });
 
   const velden = [...new Set([...CONTACT_VELDEN, filter.veld, ...extraVelden.filter(Boolean)])];

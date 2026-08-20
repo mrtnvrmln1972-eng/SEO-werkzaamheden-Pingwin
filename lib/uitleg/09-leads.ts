@@ -43,7 +43,8 @@ export const HOOFDSTUK: Hoofdstuk = {
       kern: "Elk kwartier komen je warme leads binnen, met contactgegevens en opvolgdatum.",
       tekst:
         "Staat je verkoop in HubSpot, dan hoeft niemand meer twee keer te typen. Elk kwartier komt iedereen " +
-        "binnen die daar de leadstatus heeft die jij hebt aangewezen (bijvoorbeeld hot): met naam en bedrijf, " +
+        "binnen die daar de leadstatus heeft die jij hebt aangewezen (bijvoorbeeld hot) en, als je dat instelt, " +
+        "ook nog van jou is als eigenaar: precies dezelfde selectie als je opgeslagen weergave in HubSpot. Met naam en bedrijf, " +
         "mailadres en telefoon, de website, wanneer je ze weer moet spreken, en de notities en gespreksverslagen " +
         "die erbij horen. Die notities landen in het dossier, dus het gesprek over deze lead weet vanaf dat " +
         "moment wat er besproken is. Werk je wél met een dealpijplijn, dan kan de koppeling ook die kant op " +
