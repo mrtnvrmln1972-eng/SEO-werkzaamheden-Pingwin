@@ -62,7 +62,7 @@ type Rij = {
   start_maand: string | null; kans: number | null; opvolg_datum: string | null;
 };
 
-const SCHEMA_VERSIE = "klant-regel-a28a4ce5";
+const SCHEMA_VERSIE = "klant-regel-0bbd7da9";
 
 function ensureTable(): Promise<void> {
   return eenmalig("klant-regel", SCHEMA_VERSIE, doEnsure);
@@ -85,6 +85,12 @@ async function doEnsure(): Promise<void> {
       created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
   await sql`CREATE INDEX IF NOT EXISTS ix_klant_regel_slug ON klant_regel (client_slug)`;
+  // Let op: een kolom die je later toevoegt hoort HIER als ALTER te staan, niet
+  // alleen in het CREATE hierboven. Een tabel die al bestaat wordt door CREATE
+  // TABLE IF NOT EXISTS niet aangeraakt, dus zonder deze regel bestaat de kolom
+  // nergens waar de tabel er al stond en mislukt elke query erop. Precies dat
+  // gebeurde op 20-08-2026: de knop "+ regel" deed niets meer.
+  await sql`ALTER TABLE klant_regel ADD COLUMN IF NOT EXISTS opvolg_datum DATE`;
 }
 
 function naarRegel(r: Rij): KlantRegel {

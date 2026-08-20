@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BedragVeld } from "./RijVeld";
+import { BedragVeld, MaandVeld } from "./RijVeld";
 import { Kruis } from "../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
@@ -94,7 +94,7 @@ export function useExtraRegels(actief: boolean, naWijziging?: () => void) {
  * extra regel is een kopie van die rij, dus hij hoort er ook zo uit te zien;
  * waar de regel over gaat lees je in de kolom Soort ernaast.
  */
-export function RegelNaam({ naam, domein }: { naam: string; domein?: string | null }) {
+export function RegelNaam({ naam, domein, hubspotUrl }: { naam: string; domein?: string | null; hubspotUrl?: string | null }) {
   return (
     <span className="regel-naam">
       <span className="regel-tak" aria-hidden="true" />
@@ -102,6 +102,13 @@ export function RegelNaam({ naam, domein }: { naam: string; domein?: string | nu
         <a href={`https://${domein}`} target="_blank" rel="noreferrer"
           title={`Open ${domein}`} onClick={(e) => e.stopPropagation()}><strong>{naam}</strong></a>
       ) : <strong>{naam}</strong>}
+      {hubspotUrl && (
+        <>
+          {" "}
+          <a className="hs-link" href={hubspotUrl} target="_blank" rel="noreferrer"
+            title="Open dit contact in HubSpot" onClick={(e) => e.stopPropagation()}>(HS)</a>
+        </>
+      )}
     </span>
   );
 }
@@ -124,17 +131,10 @@ export function RegelSoortKeuze({ regel, bewaar }: { regel: ExtraRegel; bewaar: 
 /** Vanaf welke maand deze regel meetelt (en wanneer het eenmalige bedrag valt). */
 export function RegelMaand({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
   return (
-    <input
-      className="prog-veld lead-veld-maand"
-      type="month"
-      aria-label="Vanaf welke maand telt deze regel mee"
-      defaultValue={regel.startMaand || ""}
-      onClick={(e) => e.stopPropagation()}
-      onBlur={(e) => {
-        const nieuw = e.target.value || "";
-        if (nieuw === (regel.startMaand || "")) return;
-        bewaar(regel.id, { startMaand: nieuw || null });
-      }}
+    <MaandVeld
+      waarde={regel.startMaand || ""}
+      label="Vanaf welke maand telt deze regel mee"
+      opslaan={(nieuw) => bewaar(regel.id, { startMaand: nieuw || null })}
     />
   );
 }

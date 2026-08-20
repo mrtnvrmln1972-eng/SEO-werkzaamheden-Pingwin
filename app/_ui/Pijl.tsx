@@ -81,6 +81,11 @@ export function Omlaag({ className }: { className?: string }) {
   return <Teken className={className} vulling><path d="M4 6.5h8L8 11z" /></Teken>;
 }
 
+/** Een driehoekje omhoog: hier staat het kleinste bovenaan. */
+export function Omhoog({ className }: { className?: string }) {
+  return <Teken className={className} vulling><path d="M4 9.5h8L8 5z" /></Teken>;
+}
+
 /** Een driehoekje naar rechts: klap dit open. */
 export function Uitklap({ className }: { className?: string }) {
   return <Teken className={className} vulling><path d="M6 4l5 4-5 4z" /></Teken>;

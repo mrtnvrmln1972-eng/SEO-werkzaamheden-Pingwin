@@ -4,8 +4,8 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type { ClientConfig } from "../../lib/clients";
 import { LEAD_STANDAARD_KANS } from "../../lib/prognose-kans";
 import Vouwblok from "./Vouwblok";
-import { Kruis, Munt, Omlaag, PijlRechts, Uitklap, Vlag } from "../_ui/Pijl";
-import { BedragVeld, DatumVeld } from "./RijVeld";
+import { Kruis, Munt, Omhoog, Omlaag, PijlRechts, Uitklap, Vlag } from "../_ui/Pijl";
+import { BedragVeld, DatumVeld, MaandVeld } from "./RijVeld";
 import { useExtraRegels, RegelNaam, RegelSoortKeuze, RegelMaand, RegelKans, RegelOpvolg, RegelBedrag, RegelWeg } from "./ExtraRegels";
 
 // ═══════════════════════════════════════════════════════════
@@ -40,6 +40,9 @@ type StripMaand = {
   omzet: number; omzetSeo: number; omzetAds: number; omzetEenmalig: number; omzetOverig: number;
 };
 
+/** Op welke kolom je kunt sorteren. Leeg = je eigen volgorde (slepen). */
+type SortKolom = "" | "opvolgen" | "kans" | "budget" | "kosten" | "eenmalig" | "start";
+
 /** Twee rijen die hetzelfde bedrijf lijken te zijn. */
 type DubbelPaar = {
   behoud: { slug: string; naam: string; domein: string | null; bedrag: number; fase: string };
@@ -55,6 +58,16 @@ type StripOpbouw = { slug: string; naam: string; soort: string; kans: number; be
 type LeadVeld = { kans: string; maand: string; eenmalig: string; soort: "seo" | "ads" | "website" | "overig" };
 
 /** De vier soorten, in dezelfde volgorde als bij een extra regel. */
+/** De kolommen waarop je kunt sorteren, in de volgorde waarin ze staan. */
+const SORTEERBAAR: { kolom: Exclude<SortKolom, "">; label: string }[] = [
+  { kolom: "opvolgen", label: "Opvolgen" },
+  { kolom: "kans", label: "Kans" },
+  { kolom: "budget", label: "Budget p/m" },
+  { kolom: "kosten", label: "Kosten p/m" },
+  { kolom: "eenmalig", label: "Eenmalig" },
+  { kolom: "start", label: "Verwacht klant" },
+];
+
 const SOORT_KEUZE: { waarde: LeadVeld["soort"]; label: string }[] = [
   { waarde: "seo", label: "SEO" },
   { waarde: "ads", label: "Advertenties" },
@@ -116,6 +129,18 @@ export default function LeadLijst({
   // De extra regels onder een lead (een website, advertenties). Ze rekenen mee
   // in de prognose, dus na elke wijziging mag de maandstrook opnieuw tellen.
   const extra = useExtraRegels(isOwner, () => setHertel((n) => n + 1));
+
+  // Sorteren op een kolom. Drie standen per kolom: oplopend, aflopend, en weer
+  // je eigen volgorde (die je met slepen zet). Lege vakjes staan altijd
+  // onderaan, in welke richting je ook sorteert; een lead zonder bedrag hoort
+  // niet bovenaan te springen omdat nul het laagste getal is.
+  const [sortKolom, setSortKolom] = useState<SortKolom>("");
+  const [sortOp, setSortOp] = useState<"op" | "neer">("op");
+  function klikSorteer(k: SortKolom) {
+    if (sortKolom !== k) { setSortKolom(k); setSortOp("op"); }
+    else if (sortOp === "op") setSortOp("neer");
+    else setSortKolom("");
+  }
 
   // Bedrijven die twee keer in de lijst staan: één keer met de hand, één keer
   // uit HubSpot. Zoeken gebeurt vanzelf; samenvoegen alleen op een knop.
@@ -241,6 +266,28 @@ export default function LeadLijst({
   );
   const euro = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
 
+  // De lijst zoals hij op het scherm komt. Zonder sortering is dat je eigen
+  // volgorde; met sortering staan lege vakjes onderaan.
+  const sorteerWaarde = (c: ClientConfig, k: Exclude<SortKolom, "">): number | string | null => {
+    if (k === "opvolgen") return hubspot[c.slug]?.opvolgDatum || c.opvolgDatum || null;
+    if (k === "kans") return leadVeld[c.slug]?.kans ? Number(leadVeld[c.slug]?.kans) : null;
+    if (k === "budget") return c.budget.maandbudget || null;
+    if (k === "kosten") return c.budget.linkbuilding || null;
+    if (k === "eenmalig") return eenmaligVan(c.slug) || null;
+    return leadVeld[c.slug]?.maand || null;
+  };
+  const zichtbareLeads = !sortKolom ? leads : [...leads].sort((a, b) => {
+    const va = sorteerWaarde(a, sortKolom);
+    const vb = sorteerWaarde(b, sortKolom);
+    // Leeg hoort altijd onderaan, in allebei de richtingen.
+    if (va === null && vb === null) return 0;
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    const richting = sortOp === "op" ? 1 : -1;
+    if (typeof va === "number" && typeof vb === "number") return (va - vb) * richting;
+    return String(va).localeCompare(String(vb), "nl") * richting;
+  });
+
   const dubbelBalk = isOwner && dubbel.length > 0 && (
     <div className="lead-opruimbalk">
       <span>
@@ -281,7 +328,25 @@ export default function LeadLijst({
         <thead>
           <tr>
             {isOwner && <th></th>}<th>Bedrijf</th><th>Soort</th>
-            <th>Opvolgen</th><th>Kans</th><th>Budget p/m</th><th>Kosten p/m</th><th>Eenmalig</th><th>Verwacht klant</th><th></th>
+            {SORTEERBAAR.map((k) => (
+              <th
+                key={k.kolom}
+                className={"kop-sorteer" + (sortKolom === k.kolom ? " kop-sorteer-aan" : "")}
+                onClick={() => klikSorteer(k.kolom)}
+                role="button"
+                tabIndex={0}
+                title={sortKolom === k.kolom
+                  ? (sortOp === "op" ? "Nog een keer klikken: hoog naar laag" : "Nog een keer klikken: terug naar je eigen volgorde")
+                  : `Sorteer op ${k.label.toLowerCase()}`}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); klikSorteer(k.kolom); } }}
+              >
+                {k.label}
+                {sortKolom === k.kolom && (
+                  <span className="kop-pijl">{sortOp === "op" ? <Omhoog /> : <Omlaag />}</span>
+                )}
+              </th>
+            ))}
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -290,23 +355,23 @@ export default function LeadLijst({
               Nog geen leads. Maak er een aan met alleen een naam en een website.
             </td></tr>
           )}
-          {leads.map((c) => (
+          {zichtbareLeads.map((c) => (
             <Fragment key={c.slug}>
             <tr
               className={"clickable-row" + (sleep === c.id ? " tw-item-sleept" : "")}
               onClick={() => openDashboard(c)}
               title="Open de leadomgeving"
-              onDragOver={isOwner ? (e) => e.preventDefault() : undefined}
-              onDrop={isOwner ? (e) => { e.preventDefault(); void sleepVolgorde(leads, c.id); } : undefined}
+              onDragOver={isOwner && !sortKolom ? (e) => e.preventDefault() : undefined}
+              onDrop={isOwner && !sortKolom ? (e) => { e.preventDefault(); void sleepVolgorde(leads, c.id); } : undefined}
             >
               {isOwner && (
                 <td onClick={(e) => e.stopPropagation()}>
                   <span
-                    className="drag-handle tw-greep"
-                    draggable
+                    className={"drag-handle tw-greep" + (sortKolom ? " tw-greep-uit" : "")}
+                    draggable={!sortKolom}
                     onDragStart={() => setSleep(c.id)}
                     onDragEnd={() => setSleep(null)}
-                    title="Sleep om de volgorde te veranderen"
+                    title={sortKolom ? "Zet de sortering uit om weer te kunnen slepen" : "Sleep om de volgorde te veranderen"}
                   >
                     ⠿
                   </span>
@@ -320,6 +385,15 @@ export default function LeadLijst({
                   <a href={`https://${c.domain}`} target="_blank" rel="noreferrer"
                     title={`Open ${c.domain}`} onClick={(e) => e.stopPropagation()}><strong>{c.name}</strong></a>
                 ) : <strong>{c.name}</strong>}
+                {/* Komt deze lead uit HubSpot, dan staat er (HS) achter met de
+                    directe link naar dat contact. */}
+                {hubspot[c.slug]?.hubspotUrl && (
+                  <>
+                    {" "}
+                    <a className="hs-link" href={hubspot[c.slug]?.hubspotUrl} target="_blank" rel="noreferrer"
+                      title="Open dit contact in HubSpot" onClick={(e) => e.stopPropagation()}>(HS)</a>
+                  </>
+                )}
                 {" "}<span className="row-arrow"><PijlRechts /></span>
               </td>
               {/* De rij zelf is de SEO-fee; wil je er een website of Google Ads
@@ -432,18 +506,13 @@ export default function LeadLijst({
               </td>
               <td onClick={(e) => e.stopPropagation()}>
                 {isOwner ? (
-                  <input
-                    className="prog-veld lead-veld-maand"
-                    type="month"
-                    aria-label={`Vanaf welke maand telt ${c.name} mee`}
-                    value={leadVeld[c.slug]?.maand ?? ""}
-                    disabled={celBezig === `${c.slug}:maand`}
-                    onChange={(e) => zetLeadVeld(c.slug, { maand: e.target.value })}
-                    onBlur={(e) => {
-                      const nieuw = e.target.value || "";
-                      if (nieuw === (bewaardVeld.current[c.slug]?.maand ?? "")) return;
+                  <MaandVeld
+                    waarde={leadVeld[c.slug]?.maand ?? ""}
+                    label={`Vanaf welke maand telt ${c.name} mee`}
+                    opslaan={(nieuw) => {
+                      zetLeadVeld(c.slug, { maand: nieuw });
                       bewaardVeld.current[c.slug] = { ...bewaardVeld.current[c.slug], maand: nieuw };
-                      void bewaarLead(c.slug, "maand", { actie: "prognose", startMaand: nieuw });
+                      return bewaarLead(c.slug, "maand", { actie: "prognose", startMaand: nieuw });
                     }}
                   />
                 ) : leadVeld[c.slug]?.maand
@@ -473,7 +542,7 @@ export default function LeadLijst({
             {extra.perSlug(c.slug).map((r) => (
               <tr key={`r-${r.id}`} className="regel-rij">
                 {isOwner && <td></td>}
-                <td><RegelNaam naam={c.name} domein={c.domain} /></td>
+                <td><RegelNaam naam={c.name} domein={c.domain} hubspotUrl={hubspot[c.slug]?.hubspotUrl} /></td>
                 <td><RegelSoortKeuze regel={r} bewaar={extra.bewaar} /></td>
                 <td><RegelOpvolg regel={r} bewaar={extra.bewaar} /></td>
                 <td><RegelKans regel={r} bewaar={extra.bewaar} /></td>

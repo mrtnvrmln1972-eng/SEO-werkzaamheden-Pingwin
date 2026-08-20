@@ -5781,6 +5781,19 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   font-weight: 600; color: var(--label-muted);
   font-size: var(--type-label); line-height: var(--regel-label);
 }
+/* (HS) achter een bedrijfsnaam: de directe link naar dat contact in HubSpot. */
+.hs-link { color: var(--kleur-accent); font-weight: 700; text-decoration: none; }
+.hs-link:hover { text-decoration: underline; }
+
+/* Een kolomkop waarop je kunt klikken om te sorteren. Drie standen: oplopend,
+   aflopend, en weer je eigen volgorde. */
+.kop-sorteer { cursor: pointer; user-select: none; white-space: nowrap; }
+.kop-sorteer:hover { text-decoration: underline; }
+.kop-sorteer-aan { color: var(--kleur-accent); }
+.kop-pijl { display: inline-flex; vertical-align: middle; margin-left: var(--ruimte-krap); }
+/* Slepen kan alleen in je eigen volgorde; tijdens sorteren staat de greep uit. */
+.tw-greep-uit { opacity: 0.3; cursor: default; }
+
 /* De voorstellen om twee rijen van hetzelfde bedrijf samen te voegen. */
 .dubbel-lijst { display: flex; flex-direction: column; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-regel); }
 .dubbel-paar {
