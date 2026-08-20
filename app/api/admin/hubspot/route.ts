@@ -35,9 +35,12 @@ export async function GET(req: NextRequest) {
   ]);
   return NextResponse.json({
     ok: true, gekoppeld: true, werkt: gezond.ok, melding: gezond.melding,
-    instelling, pijplijnen, velden, eigenaren, leads,
+    instelling, pijplijnen, eigenaren, leads,
     // Leads die een ronde heeft aangemaakt en waar niemand iets aan gedaan heeft.
     opruimen: opruimen.map((l) => l.naam),
+    // De veldenlijst staat expres achteraan: dat zijn er vierhonderd en dan is al
+    // het andere in dit antwoord onvindbaar zodra je er met de hand in kijkt.
+    velden,
   });
 }
 

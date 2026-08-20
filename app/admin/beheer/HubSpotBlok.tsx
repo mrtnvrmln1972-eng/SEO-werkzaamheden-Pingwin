@@ -245,7 +245,9 @@ export default function HubSpotBlok() {
                     {(stand.eigenaren || []).map((o) => <option key={o.id} value={o.id}>{o.naam}</option>)}
                   </select>
                   <span className="muted" style={{ fontSize: "var(--fs-sm)", marginTop: "var(--s-1)" }}>
-                    Kies jezelf, dan komt het werk van anderen niet in je dashboard.
+                    {(stand.eigenaren || []).length === 0
+                      ? "Deze sleutel mag de gebruikers van HubSpot niet lezen, dus kiezen kan hier niet; alles van iedereen komt binnen."
+                      : "Kies jezelf, dan komt het werk van anderen niet in je dashboard."}
                   </span>
                 </div>
                 <div className="field">
