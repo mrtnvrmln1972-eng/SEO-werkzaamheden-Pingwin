@@ -82,7 +82,10 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   const [loading, setLoading] = useState(!initialTasks);
-  const [view, setView] = useState<"list" | "week">("list");
+  // De weekplanning is waar je begint: dit scherm gaat over wanneer er wat
+  // gebeurt, en dat is de vraag die je stelt als je hem opent. De lijst per klant
+  // is naslag (20-08-2026). Stond op "list", dus je moest elke keer één klik doen.
+  const [view, setView] = useState<"list" | "week">("week");
   const [dragTaskIdx, setDragTaskIdx] = useState<number | null>(null);
   // De weekplanning scrollt zelf (verticaal, alle weken onder elkaar); deze week
   // moet bij het openen van dat blok meteen bovenaan in beeld staan, in plaats

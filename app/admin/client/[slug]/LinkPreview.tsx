@@ -5,6 +5,12 @@ import { leesHintVertraging } from "../../../_ui/hint-vertraging";
 import { PijlSchuin } from "../../../_ui/Pijl";
 
 // Bouwt een insluitbare preview-URL voor Google-documenten; anders null.
+// De maat van de voorvertoning, gelijk aan .link-preview in app/globals.css.
+// Verander je er één, verander ze allebei; proeven/link-preview.proef.ts rekent na
+// of ze nog gelijk staan, want anders valt het venster half buiten het scherm.
+export const PREVIEW_BREED = 600;
+export const PREVIEW_HOOG = 460;
+
 function googlePreview(url: string): string | null {
   let m = url.match(/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]+)/);
   if (m) return `https://docs.google.com/${m[1]}/d/${m[2]}/preview`;
@@ -73,8 +79,13 @@ export default function LinkPreview() {
   const gp = googlePreview(state.url);
   const w = typeof window !== "undefined" ? window.innerWidth : 1200;
   const h = typeof window !== "undefined" ? window.innerHeight : 800;
-  const left = Math.max(8, Math.min(state.x, w - 392));
-  const top = Math.min(state.y + 6, h - (gp ? 320 : 130));
+  // Hetzelfde formaat als in app/globals.css (.link-preview). Het venster moet
+  // weten hoe groot hij is om hem binnen beeld te houden; staan deze twee niet
+  // gelijk, dan valt de voorvertoning half buiten het scherm.
+  const breed = Math.min(PREVIEW_BREED, w * 0.92);
+  const hoog = gp ? Math.min(PREVIEW_HOOG, h * 0.7) + 20 : 130;
+  const left = Math.max(8, Math.min(state.x, w - breed - 8));
+  const top = Math.max(8, Math.min(state.y + 6, h - hoog));
 
   return (
     <div

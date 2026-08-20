@@ -1146,6 +1146,11 @@ tbody td:last-child { text-align: center; }
    horizontaal, maandag t/m zondag), met de "nog niet ingepland"-balk er als
    vaste voet onder (zie .dev-pool-sticky). */
 .dev-weeks-scroll { max-height: 62vh; overflow-y: auto; display: flex; flex-direction: column; gap: var(--s-5); padding: var(--ruimte-krap) var(--ruimte-krap) var(--ruimte-krap) var(--ruimte-krap); scroll-behavior: smooth; }
+/* Zodat "Week van …" mét het DEZE WEEK-chipje onder de vaste kopbalk vandaan
+   komt bij het scrollen. Zonder deze marge landde de rij precies achter die balk
+   en zag je alleen de onderste helft van de dagkoppen (20-08-2026). De maat is
+   de sticky-hoogte (top: 80px) plus de balk zelf plus wat lucht. */
+.dev-week-row { scroll-margin-top: 172px; }
 .dev-week-row-label { font-weight: 700; font-size: var(--type-bijschrift); color: var(--dark); margin-bottom: var(--ruimte-naast); display: flex; align-items: center; gap: var(--ruimte-naast); }
 .dev-week-row-nu .dev-week-row-label { color: var(--kleur-accent-diep); }
 .dev-week-row-nu-badge { font-size: var(--type-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--spatie-label); background: var(--kleur-accent-vlak); color: var(--kleur-accent-diep); padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-pil); }
@@ -2459,8 +2464,15 @@ button.ck-collapse-head {
 .rich-cell p { display: inline; }
 .rich-cell:focus p { display: block; }
 .rich-cell a { color: var(--kleur-accent) !important; text-decoration: underline; }
-.link-preview { position: fixed; z-index: 1000; width: 384px; background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); box-shadow: var(--diepte-zwevend); overflow: hidden; }
-.link-preview iframe { width: 100%; height: 300px; border: 0; display: block; background: var(--kleur-pagina); }
+/* De voorvertoning van een document bij het aanwijzen van een link. Was 384 bij
+   300 en dan lees je van een spreadsheet twee kolommen en drie regels; met deze
+   maat zie je een tabel of een kop echt staan (20-08-2026). Op een smal scherm
+   krimpt hij mee, want hij mag nooit breder zijn dan het venster.
+   De maten staan óók in LinkPreview.tsx (PREVIEW_BREED/PREVIEW_HOOG), want het
+   venster moet weten hoe groot hij is om hem binnen beeld te houden. Verander je
+   ze hier, verander ze daar mee; proeven/link-preview.proef.ts rekent het na. */
+.link-preview { position: fixed; z-index: 1000; width: min(600px, 92vw); background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); box-shadow: var(--diepte-zwevend); overflow: hidden; }
+.link-preview iframe { width: 100%; height: min(70vh, 460px); border: 0; display: block; background: var(--kleur-pagina); }
 .link-preview-card { padding: var(--ruimte-regel) var(--ruimte-groep); }
 .link-preview-card .lp-host { font-weight: 600; font-size: var(--type-bijschrift); color: var(--dark); }
 .link-preview-card .lp-url { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); word-break: break-all; margin: var(--ruimte-krap) 0 var(--ruimte-naast); }
