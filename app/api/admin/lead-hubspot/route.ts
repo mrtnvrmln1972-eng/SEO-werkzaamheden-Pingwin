@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
       bron: bron || "",
     },
     notitiesTerug: !!instelling?.notitiesTerug,
+    bron: instelling?.bron || "contacten",
+    ingesteld: !!(instelling?.bron === "deals" || (instelling?.filterVeld && instelling?.filterWaarde)),
   });
 }
 

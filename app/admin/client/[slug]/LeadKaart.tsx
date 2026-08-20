@@ -36,6 +36,10 @@ type Stand = {
     feeAds: number; maandkosten: number; eenmalig: number; eenmaligKosten: number;
   };
   notitiesTerug: boolean;
+  /** Waar de leads vandaan komen: je contacten of een dealpijplijn. */
+  bron: "contacten" | "deals";
+  /** Staat op Beheer ingesteld welke leads binnenkomen? */
+  ingesteld: boolean;
 };
 
 const euro = (n: number | null): string =>
@@ -143,7 +147,7 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
           <div className="lead-blok-sub">
             {lead
               ? `${lead.pijplijnNaam || "HubSpot"}${lead.faseNaam ? ` · ${lead.faseNaam}` : ""}`
-              : stand.gekoppeld ? "Nog niet aan een HubSpot-deal gekoppeld" : "HubSpot is nog niet gekoppeld"}
+              : stand.gekoppeld ? "Nog niet gekoppeld aan HubSpot" : "HubSpot is nog niet gekoppeld"}
           </div>
         </div>
         <div className="pnl-acties-groep">
@@ -338,13 +342,16 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
       {stand.gekoppeld && !lead && (
         <div className="lead-kaart-koppel">
           <div className="hint">
-            Deze lead hangt nog niet aan een deal. Vul het dealnummer uit HubSpot in (dat staat in de adresbalk van de deal),
-            of wacht op de volgende ronde: een deal met dezelfde website of bedrijfsnaam wordt vanzelf gekoppeld.
+            {!stand.ingesteld
+              ? <>Op <a href="/admin/beheer">Beheer</a> staat nog niet welke leads uit HubSpot moeten komen. Wijs daar het veld en de waarde aan (bijvoorbeeld leadstatus is hot); daarna koppelt de eerstvolgende ronde dit bedrijf vanzelf, op website of bedrijfsnaam.</>
+              : stand.bron === "deals"
+                ? "Deze lead hangt nog niet aan een deal. Vul het dealnummer uit HubSpot in (dat staat in de adresbalk van de deal), of wacht op de volgende ronde: een deal met dezelfde website of bedrijfsnaam wordt vanzelf gekoppeld."
+                : "Dit bedrijf is nog niet aan een contact in HubSpot gekoppeld. Dat gebeurt vanzelf zodra daar iemand met jouw leadstatus staat met dezelfde website of bedrijfsnaam. Weet je het nummer van het contact (dat staat in de adresbalk in HubSpot), dan kun je hem hier meteen koppelen."}
           </div>
           <div className="lead-kaart-koppel-rij">
-            <input value={dealId} onChange={(e) => setDealId(e.target.value)} placeholder="dealnummer, bijv. 31415926535" inputMode="numeric" />
+            <input value={dealId} onChange={(e) => setDealId(e.target.value)} placeholder={stand.bron === "deals" ? "dealnummer" : "contactnummer"} inputMode="numeric" />
             <button className="btn btn-klein" disabled={!dealId.trim() || !!bezig} onClick={() => doe("koppel", { dealId }, "Gekoppeld en opgehaald.")}>
-              {bezig === "koppel" ? "Bezig…" : "Koppel aan deze deal"}
+              {bezig === "koppel" ? "Bezig…" : "Koppelen"}
             </button>
           </div>
         </div>
