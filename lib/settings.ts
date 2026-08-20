@@ -9,6 +9,29 @@ export async function getSetting(key: string): Promise<string | null> {
   return (rows[0]?.value as string) || null;
 }
 
+/**
+ * Meerdere instellingen in ÉÉN vraag aan de database, in plaats van één vraag
+ * per sleutel naast elkaar. Dat is niet alleen sneller (tien rondjes worden er
+ * één); het is ook betrouwbaarder. Op 20-08-2026 gaf `getSetting` tien keer
+ * tegelijk aangeroepen in een verse serverfunctie leeg terug, terwijl exact
+ * dezelfde vraag een regel later wél de waarde gaf. Gevolg: de HubSpot-ronde
+ * las een leeg filter, meldde "nog niet ingesteld" en haalde nooit iemand op,
+ * terwijl het beheerscherm het filter keurig gevuld liet zien. Wie instellingen
+ * bij elkaar nodig heeft, hoort ze dus zo te lezen.
+ */
+export async function getSettings(keys: string[]): Promise<Record<string, string>> {
+  await ensureSchema();
+  // Eén tekstparameter met komma's ertussen, en Postgres maakt er de lijst van.
+  // Bewust geen array-parameter: sleutelnamen bevatten nooit een komma, en deze
+  // vorm werkt met elke driver hetzelfde.
+  const { rows } = await sql<{ key: string; value: string | null }>`
+    SELECT key, value FROM app_settings
+    WHERE key = ANY(string_to_array(${keys.join(",")}, ','))`;
+  const uit: Record<string, string> = {};
+  for (const r of rows) if (r.value) uit[r.key] = r.value;
+  return uit;
+}
+
 export async function setSetting(key: string, value: string | null): Promise<void> {
   await ensureSchema();
   const v = (value || "").trim() || null;

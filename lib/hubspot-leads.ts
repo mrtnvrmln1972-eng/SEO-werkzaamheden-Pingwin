@@ -1,6 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
-import { getSetting, setSetting } from "./settings";
+import { getSetting, getSettings, setSetting } from "./settings";
 import { listClients, createLead, setClientFase, deleteClient, normalizeDomain, slugify, type ClientConfig } from "./clients";
 import { addDossierItem } from "./lead-dossier";
 import { meldingToevoegen } from "./meldingen";
@@ -234,18 +234,24 @@ export type HubspotInstelling = {
 };
 
 export async function getHubspotInstelling(): Promise<HubspotInstelling> {
-  const [p, n, a, r, bron, fv, fw, velden, kans, eigenaar] = await Promise.all([
-    getSetting(SETTING_PIJPLIJNEN),
-    getSetting(SETTING_NOTITIES_TERUG),
-    getSetting(SETTING_AUTO_LEADS),
-    getSetting(SETTING_LAATSTE_RONDE),
-    getSetting(SETTING_BRON),
-    getSetting(SETTING_FILTER_VELD),
-    getSetting(SETTING_FILTER_WAARDE),
-    getSetting(SETTING_VELDEN),
-    getSetting(SETTING_KANS),
-    getSetting(SETTING_EIGENAAR),
+  // In één vraag, niet tien tegelijk. Zie getSettings() in lib/settings.ts: tien
+  // losse vragen naast elkaar gaven in een verse serverfunctie leeg terug, en
+  // dan meldt de ronde "nog niet ingesteld" terwijl alles keurig ingevuld staat.
+  const w = await getSettings([
+    SETTING_PIJPLIJNEN, SETTING_NOTITIES_TERUG, SETTING_AUTO_LEADS, SETTING_LAATSTE_RONDE,
+    SETTING_BRON, SETTING_FILTER_VELD, SETTING_FILTER_WAARDE, SETTING_VELDEN,
+    SETTING_KANS, SETTING_EIGENAAR,
   ]);
+  const p = w[SETTING_PIJPLIJNEN] || null;
+  const n = w[SETTING_NOTITIES_TERUG] || null;
+  const a = w[SETTING_AUTO_LEADS] || null;
+  const r = w[SETTING_LAATSTE_RONDE] || null;
+  const bron = w[SETTING_BRON] || null;
+  const fv = w[SETTING_FILTER_VELD] || null;
+  const fw = w[SETTING_FILTER_WAARDE] || null;
+  const velden = w[SETTING_VELDEN] || null;
+  const kans = w[SETTING_KANS] || null;
+  const eigenaar = w[SETTING_EIGENAAR] || null;
   let gekoppeld = LEGE_VELDEN;
   try { gekoppeld = { ...LEGE_VELDEN, ...(velden ? JSON.parse(velden) : {}) }; } catch { /* stukke instelling telt als leeg */ }
   const k = Number(kans);
