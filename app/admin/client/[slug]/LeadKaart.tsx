@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { MaandVeld } from "../../RijVeld";
 
 // ═══════════════════════════════════════════════════════════
 // DE LEADKAART: de stand van de deal, bovenaan de leadomgeving
@@ -266,9 +267,13 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
         </div>
         <div className="field">
           <label htmlFor={`lk-maand-${slug}`}>Verwacht klant</label>
-          <input
-            id={`lk-maand-${slug}`} type="month" value={startMaand}
-            onChange={(e) => setStartMaand(e.target.value)}
+          {/* Een keuzelijst, geen maandvakje: daarin moet je het jaartal met de
+              hand omhoog klikken en dan is volgend jaar niet te vinden. Zelfde
+              lijst als in de leadlijst; zie MaandVeld in app/admin/RijVeld.tsx. */}
+          <MaandVeld
+            waarde={startMaand}
+            label={`Vanaf welke maand telt ${naam} mee`}
+            opslaan={(m) => setStartMaand(m)}
           />
         </div>
       </div>
