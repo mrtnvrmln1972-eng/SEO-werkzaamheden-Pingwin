@@ -13,7 +13,7 @@ import KlantwaardeBulk from "./KlantwaardeBulk";
 import Vouwblok from "./Vouwblok";
 import LeadLijst, { MaandStrook, type HubspotStand } from "./LeadLijst";
 import { BedragVeld } from "./RijVeld";
-import { useExtraRegels, RegelNaam, RegelBedrag, RegelWeg } from "./ExtraRegels";
+import { useExtraRegels, RegelNaam, RegelSoortKeuze, RegelBedrag, RegelWeg } from "./ExtraRegels";
 import KijkSleutel from "./KijkSleutel";
 import { Gebouw, Kruis, Mensen, PijlRechts, Vlag } from "../_ui/Pijl";
 
@@ -329,6 +329,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           <tr>
             {isOwner && <th></th>}
             <th>Bedrijf</th>
+            <th>Soort</th>
             <th>Inlognaam</th>
             <th>Maandfee</th>
             <th>Kosten p/m</th>
@@ -338,7 +339,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         </thead>
         <tbody>
           {list.length === 0 && (
-            <tr><td colSpan={isOwner ? 7 : 6} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
+            <tr><td colSpan={isOwner ? 8 : 7} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>{emptyText}</td></tr>
           )}
           {list.map((c) => (
             <Fragment key={c.slug}>
@@ -383,6 +384,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                   )}
                   {" "}<span className="row-arrow"><PijlRechts /></span>
                 </td>
+                <td className="regel-soort-vast" title="Het maandbedrag in deze rij is de SEO-fee">SEO</td>
                 <td>{c.loginEnabled ? c.loginId : <span className="muted">geen login</span>}</td>
                 {/* De maandfee en de kosten vul je hier in de rij in, net als bij
                     de leads; netto rekent zichzelf uit. Het uitklapvak met
@@ -413,8 +415,14 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 <td style={{ whiteSpace: "nowrap" }}>
                   {isOwner ? (
                     <>
-                      <button className="btn btn-klein" title="Een regel erbij voor dit bedrijf, bijvoorbeeld de website of Google Ads"
-                        onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>{" "}
+                      <button className="btn btn-klein" title="Deze rij dupliceren: zelfde bedragen, zodat je er bijvoorbeeld de website of Google Ads van kunt maken"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void extra.voegToe(c.slug, {
+                            bedrag: Math.round(c.budget.maandbudget || 0),
+                            kosten: Math.round(c.budget.linkbuilding || 0),
+                          });
+                        }}>+ regel</button>{" "}
                       <button className="lead-kruis" title="Verwijder deze klant"
                         aria-label={`${c.name} verwijderen`} onClick={(e) => remove(e, c)}><Kruis /></button>
                     </>
@@ -430,6 +438,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 <tr key={`r-${r.id}`} className="regel-rij">
                   {isOwner && <td></td>}
                   <td><RegelNaam regel={r} bewaar={extra.bewaar} /></td>
+                  <td><RegelSoortKeuze regel={r} bewaar={extra.bewaar} /></td>
                   <td></td>
                   <td><RegelBedrag regel={r} veld="bedrag" label={`Bedrag per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
                   <td><RegelBedrag regel={r} veld="kosten" label={`Kosten per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
@@ -446,7 +455,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           <tfoot>
             <tr className="lead-totaalrij">
               {isOwner && <td></td>}
-              <td colSpan={2}>Alles bij elkaar</td>
+              <td colSpan={3}>Alles bij elkaar</td>
               {/* De extra regels tellen mee, anders klopt de streep eronder niet. */}
               <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.maandbudget || 0) + extra.perSlug(c.slug).reduce((n, r) => n + r.bedrag, 0), 0))}</span></td>
               <td><span className="lead-totaal-bedrag">{euroKort(list.reduce((t, c) => t + (c.budget.linkbuilding || 0) + extra.perSlug(c.slug).reduce((n, r) => n + r.kosten, 0), 0))}</span></td>

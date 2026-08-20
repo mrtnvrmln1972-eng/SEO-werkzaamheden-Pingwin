@@ -5792,6 +5792,9 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .prog-veld.regel-naam-veld { width: 18ch; text-align: left; }
 .prog-veld.regel-soort-veld { width: 14ch; text-align: left; }
 .regel-kans { color: var(--label-muted); text-align: right; }
+/* De soort van de rij zelf: geen keuzelijst, want het maandbedrag van een klant
+   is per definitie de SEO-fee. Een website of Google Ads krijgt een eigen regel. */
+.regel-soort-vast { color: var(--label-muted); }
 
 /* De strook onder de leads: maanden naast elkaar, bedragen rechts uitgelijnd. */
 .maand-strook th, .maand-strook td { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }

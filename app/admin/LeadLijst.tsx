@@ -6,7 +6,7 @@ import { LEAD_STANDAARD_KANS } from "../../lib/prognose-kans";
 import Vouwblok from "./Vouwblok";
 import { Kruis, Munt, Omlaag, PijlRechts, Uitklap, Vlag } from "../_ui/Pijl";
 import { BedragVeld, DatumVeld } from "./RijVeld";
-import { useExtraRegels, RegelNaam, RegelBedrag, RegelWeg } from "./ExtraRegels";
+import { useExtraRegels, RegelNaam, RegelSoortKeuze, RegelMaand, RegelBedrag, RegelWeg } from "./ExtraRegels";
 
 // ═══════════════════════════════════════════════════════════
 // DE LEADLIJST OP HET KLANTENOVERZICHT
@@ -196,13 +196,13 @@ export default function LeadLijst({
       <table>
         <thead>
           <tr>
-            {isOwner && <th></th>}<th>Bedrijf</th>
+            {isOwner && <th></th>}<th>Bedrijf</th><th>Soort</th>
             <th>Opvolgen</th><th>Kans</th><th>Budget p/m</th><th>Kosten p/m</th><th>Eenmalig</th><th>Verwacht klant</th><th></th>
           </tr>
         </thead>
         <tbody>
           {leads.length === 0 && (
-            <tr><td colSpan={isOwner ? 9 : 8} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
+            <tr><td colSpan={isOwner ? 10 : 9} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
               Nog geen leads. Maak er een aan met alleen een naam en een website.
             </td></tr>
           )}
@@ -238,6 +238,9 @@ export default function LeadLijst({
                 ) : <strong>{c.name}</strong>}
                 {" "}<span className="row-arrow"><PijlRechts /></span>
               </td>
+              {/* De rij zelf is de SEO-fee; wil je er een website of Google Ads
+                  bij, dan zet je daar met "+ regel" een eigen regel voor neer. */}
+              <td className="regel-soort-vast" title="Het maandbedrag in deze rij is de SEO-fee">SEO</td>
               {/* Wanneer je hem weer moet spreken. Dat is het enige dat uit
                   HubSpot komt; de kolom die daar "zelf gemaakt" of de leadstatus
                   liet zien is eruit (20-08-2026), want die stond op elke rij
@@ -357,8 +360,16 @@ export default function LeadLijst({
                 {isOwner ? (
                   <>
                     <button className="btn btn-klein" onClick={(e) => setFase(e, c, "klant", `${c.name} omzetten naar klant? Alles blijft staan; alleen het label verandert.`)}>Maak klant</button>{" "}
-                    <button className="btn btn-klein" title="Een regel erbij voor dit bedrijf, bijvoorbeeld de website of Google Ads"
-                      onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>{" "}
+                    <button className="btn btn-klein" title="Deze rij dupliceren: zelfde bedragen, zodat je er bijvoorbeeld de website of Google Ads van kunt maken"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void extra.voegToe(c.slug, {
+                          bedrag: Math.round(c.budget.maandbudget || 0),
+                          kosten: Math.round(c.budget.linkbuilding || 0),
+                          eenmaligOmzet: eenmaligVan(c.slug),
+                          startMaand: leadVeld[c.slug]?.maand || null,
+                        });
+                      }}>+ regel</button>{" "}
                     <button className="lead-kruis" title="Niet doorgegaan" aria-label={`${c.name} op niet doorgegaan zetten`}
                       onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}><Kruis /></button>
                   </>
@@ -372,12 +383,13 @@ export default function LeadLijst({
               <tr key={`r-${r.id}`} className="regel-rij">
                 {isOwner && <td></td>}
                 <td><RegelNaam regel={r} bewaar={extra.bewaar} /></td>
+                <td><RegelSoortKeuze regel={r} bewaar={extra.bewaar} /></td>
                 <td></td>
                 <td className="regel-kans">{r.kans === null ? "" : `${r.kans}%`}</td>
                 <td><RegelBedrag regel={r} veld="bedrag" label={`Bedrag per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
                 <td><RegelBedrag regel={r} veld="kosten" label={`Kosten per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
                 <td><RegelBedrag regel={r} veld="eenmaligOmzet" label={`Eenmalig bedrag van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
-                <td></td>
+                <td><RegelMaand regel={r} bewaar={extra.bewaar} /></td>
                 <td><RegelWeg regel={r} verwijder={extra.verwijder} /></td>
               </tr>
             ))}
@@ -388,7 +400,7 @@ export default function LeadLijst({
           <tfoot>
             <tr className="lead-totaalrij">
               {isOwner && <td></td>}
-              <td colSpan={2}>Alles bij elkaar</td>
+              <td colSpan={3}>Alles bij elkaar</td>
               {/* Twee regels per bedrag: opgeteld boven, gewogen met de kans
                   eronder. Het woordje "gewogen" staat in de kanskolom en lijnt
                   rechts uit, precies zoals de bedragen ernaast. */}

@@ -17,10 +17,25 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const g = await guardOwner(req); if (!g.ok) return g.res;
-  const body = (await req.json().catch(() => ({}))) as { slug?: string; naam?: string; soort?: RegelSoort };
+  const body = (await req.json().catch(() => ({}))) as {
+    slug?: string; naam?: string; soort?: RegelSoort;
+    bedrag?: number; kosten?: number; eenmaligOmzet?: number; eenmaligKosten?: number; startMaand?: string | null;
+  };
   const slug = String(body.slug || "").trim();
   if (!slug) return NextResponse.json({ ok: false, error: "Geen bedrijf opgegeven." }, { status: 400 });
   const regel = await addKlantRegel(slug, String(body.naam || ""), body.soort || "overig");
+  // Een nieuwe regel is een kopie van de rij erboven: zelfde bedrag, zelfde
+  // kosten, zelfde eenmalige bedrag, zelfde startmaand. Dat is wat "dupliceren"
+  // hoort te doen; daarna pas je één van de twee aan tot het klopt.
+  const kopie = {
+    bedrag: body.bedrag, kosten: body.kosten,
+    eenmaligOmzet: body.eenmaligOmzet, eenmaligKosten: body.eenmaligKosten,
+    startMaand: body.startMaand,
+  };
+  if (Object.values(kopie).some((v) => v !== undefined)) {
+    await saveKlantRegel(regel.id, kopie);
+    return NextResponse.json({ ok: true, regel: { ...regel, ...kopie } });
+  }
   return NextResponse.json({ ok: true, regel });
 }
 

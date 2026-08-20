@@ -53,10 +53,16 @@ export function useExtraRegels(actief: boolean, naWijziging?: () => void) {
 
   const perSlug = (slug: string) => regels.filter((r) => r.clientSlug === slug);
 
-  async function voegToe(slug: string) {
+  /**
+   * Een regel erbij. Wat je meegeeft is de rij waar je op stond, dus de nieuwe
+   * regel is een kopie: zelfde bedrag, zelfde kosten, zelfde eenmalige bedrag,
+   * zelfde startmaand. Daarna pas je er één van aan tot het klopt, bijvoorbeeld
+   * de ene regel op de website en de andere op de SEO.
+   */
+  async function voegToe(slug: string, kopie: Partial<ExtraRegel> = {}) {
     await fetch("/api/admin/klant-regels", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, naam: "", soort: "overig" }),
+      body: JSON.stringify({ slug, naam: "", soort: "overig", ...kopie }),
     }).catch(() => null);
     await laad();
     naWijziging?.();
@@ -81,7 +87,7 @@ export function useExtraRegels(actief: boolean, naWijziging?: () => void) {
   return { regels, perSlug, voegToe, bewaar, verwijder, herlaad: laad };
 }
 
-/** Het naamveld plus de soort: samen zeggen ze waar dit stukje omzet over gaat. */
+/** Waar deze regel over gaat, in de kolom onder de bedrijfsnaam. */
 export function RegelNaam({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
   return (
     <span className="regel-naam">
@@ -94,16 +100,40 @@ export function RegelNaam({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: n
         onClick={(e) => e.stopPropagation()}
         onBlur={(e) => { if (e.target.value !== regel.naam) bewaar(regel.id, { naam: e.target.value }); }}
       />
-      <select
-        className="prog-veld regel-soort-veld"
-        value={regel.soort}
-        aria-label="Waar valt dit onder"
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => bewaar(regel.id, { soort: e.target.value as ExtraRegel["soort"] })}
-      >
-        {SOORTEN.map((s) => <option key={s.waarde} value={s.waarde}>{s.label}</option>)}
-      </select>
     </span>
+  );
+}
+
+/** SEO, advertenties, website of overig. Stuurt de uitsplitsing in de strook. */
+export function RegelSoortKeuze({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
+  return (
+    <select
+      className="prog-veld regel-soort-veld"
+      value={regel.soort}
+      aria-label="Waar valt dit onder"
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => bewaar(regel.id, { soort: e.target.value as ExtraRegel["soort"] })}
+    >
+      {SOORTEN.map((s) => <option key={s.waarde} value={s.waarde}>{s.label}</option>)}
+    </select>
+  );
+}
+
+/** Vanaf welke maand deze regel meetelt (en wanneer het eenmalige bedrag valt). */
+export function RegelMaand({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
+  return (
+    <input
+      className="prog-veld lead-veld-maand"
+      type="month"
+      aria-label="Vanaf welke maand telt deze regel mee"
+      defaultValue={regel.startMaand || ""}
+      onClick={(e) => e.stopPropagation()}
+      onBlur={(e) => {
+        const nieuw = e.target.value || "";
+        if (nieuw === (regel.startMaand || "")) return;
+        bewaar(regel.id, { startMaand: nieuw || null });
+      }}
+    />
   );
 }
 
