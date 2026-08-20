@@ -14,7 +14,7 @@
 // beoordeling is een nieuwe en het scherm zegt dat ook.
 // ═══════════════════════════════════════════════════════════
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Blok, Chip, Chips, Keuze, Leeg, Paneel, Signaal, Signalen, Tabel, Tekst, Veld, Veldrij } from "../../_ui/Uitkomst";
 import type { KlantStand } from "./GedragPaneel";
 import { VAKOORDEEL_WAARSCHUWING } from "../../../lib/pagina-lab/kennisbank";
@@ -79,8 +79,8 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
 
   const klant = klanten.find((k) => k.slug === slug) || null;
 
-  async function beoordeel() {
-    if (!url.trim()) { setFout("Vul eerst het volledige webadres in, met https:// ervoor."); return; }
+  const beoordeel = useCallback(async (adres: string, klantSlug: string) => {
+    if (!adres.trim()) { setFout("Vul eerst het volledige webadres in, met https:// ervoor."); return; }
     setBezig(true);
     setFout("");
     setUit(null);
@@ -88,7 +88,7 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
       const res = await fetch("/api/admin/pagina-lab/oordeel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: url.trim(), slug }),
+        body: JSON.stringify({ url: adres.trim(), slug: klantSlug }),
       });
       const data = await res.json();
       if (!data.ok) setFout(data.error || "Het beoordelen lukte niet.");
@@ -98,7 +98,26 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
     } finally {
       setBezig(false);
     }
-  }
+  }, []);
+
+  // Het adres mag in de link staan: ?pagina=… (en ?klant=…). Met &start=1 begint
+  // de beoordeling meteen. Dat is er om twee redenen: je kunt een beoordeling
+  // als bladwijzer bewaren of doorsturen, en de schermfoto-route kan niet
+  // klikken, dus zonder deze ingang is een gevuld scherm niet te fotograferen.
+  // Bewust niet vanzelf starten zonder start=1: elke ronde kost een paar minuten
+  // en een beetje geld, en dan zou een keer verversen dat opnieuw uitgeven.
+  const gestart = useRef(false);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const adres = p.get("pagina") || "";
+    const klantSlug = p.get("klant") || "";
+    if (adres) setUrl(adres);
+    if (klantSlug) setSlug(klantSlug);
+    if (adres && p.get("start") === "1" && !gestart.current) {
+      gestart.current = true;
+      void beoordeel(adres, klantSlug);
+    }
+  }, [beoordeel]);
 
   const onderbouwd = uit ? uit.oordeel.bevindingen.filter((b) => b.plank === "onderbouwd") : [];
   const eigen = uit ? uit.oordeel.bevindingen.filter((b) => b.plank === "vakoordeel") : [];
@@ -115,7 +134,7 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
           "Er wordt niets bewaard: het lab leest mee en schrijft nog nergens iets weg."
         }
         knoppen={
-          <button className="btn btn-primary btn-klein" onClick={beoordeel} disabled={bezig}>
+          <button className="btn btn-primary btn-klein" onClick={() => beoordeel(url, slug)} disabled={bezig}>
             {bezig ? "Bezig met beoordelen" : "Beoordeel deze pagina"}
           </button>
         }
@@ -162,6 +181,11 @@ export default function OordeelPaneel({ klanten }: { klanten: KlantStand[] }) {
               />
             ) : (
               <Signaal soort="goed">Er is niets gevonden dat mis is of beter kan. Kijk dan wel even naar de punten die niet vast te stellen waren.</Signaal>
+            )}
+            {uit.pagina.status !== 200 && (
+              <Signaal soort="let-op">
+                {`Let op: de server gaf status ${uit.pagina.status ?? "onbekend"} terug op ${uit.oordeel.url}. Dan beoordeel je een foutpagina en niet de pagina die je bedoelde.`}
+              </Signaal>
             )}
             {!uit.pagina.mobielGelukt && (
               <Signaal soort="let-op">De mobiele opname is niet gelukt, dus dit oordeel gaat alleen over het desktopbeeld.</Signaal>
