@@ -3,7 +3,8 @@ import { guardOwner } from "../../../../lib/admin-scope";
 import { hubspotConfigured, hubspotHealthCheck } from "../../../../lib/hubspot";
 import {
   getHubspotInstelling, saveHubspotInstelling, hubspotPijplijnKeuze, hubspotVeldKeuze,
-  syncHubspot, listHubspotLeads, type Veldkoppeling,
+  syncHubspot, listHubspotLeads, lijstOnterechteLeads, verwijderOnterechteLeads,
+  type Veldkoppeling,
 } from "../../../../lib/hubspot-leads";
 
 export const runtime = "nodejs";
@@ -24,15 +25,18 @@ export async function GET(req: NextRequest) {
   }
   // De pijplijnen zijn alleen nodig als je met deals werkt; mislukt dat (geen
   // dealrecht op de sleutel), dan is dat geen storing maar een lege lijst.
-  const [gezond, velden, pijplijnen, leads] = await Promise.all([
+  const [gezond, velden, pijplijnen, leads, opruimen] = await Promise.all([
     hubspotHealthCheck(),
     hubspotVeldKeuze().catch(() => []),
     hubspotPijplijnKeuze().catch(() => []),
     listHubspotLeads().catch(() => []),
+    lijstOnterechteLeads().catch(() => []),
   ]);
   return NextResponse.json({
     ok: true, gekoppeld: true, werkt: gezond.ok, melding: gezond.melding,
     instelling, pijplijnen, velden, leads,
+    // Leads die een ronde heeft aangemaakt en waar niemand iets aan gedaan heeft.
+    opruimen: opruimen.map((l) => l.naam),
   });
 }
 
@@ -57,6 +61,11 @@ export async function POST(req: NextRequest) {
       ...(body.autoLeads !== undefined ? { autoLeads: body.autoLeads } : {}),
     });
     return NextResponse.json({ ok: true, instelling: await getHubspotInstelling() });
+  }
+
+  if (body.actie === "opruimen") {
+    const res = await verwijderOnterechteLeads();
+    return NextResponse.json({ ok: true, ...res, melding: `${res.verwijderd} lead(s) opgeruimd.` });
   }
 
   if (body.actie === "sync") {

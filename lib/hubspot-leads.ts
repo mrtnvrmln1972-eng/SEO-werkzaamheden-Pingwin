@@ -1,7 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
 import { getSetting, setSetting } from "./settings";
-import { listClients, createLead, setClientFase, normalizeDomain, slugify, type ClientConfig } from "./clients";
+import { listClients, createLead, setClientFase, deleteClient, normalizeDomain, slugify, type ClientConfig } from "./clients";
 import { addDossierItem } from "./lead-dossier";
 import { meldingToevoegen } from "./meldingen";
 import { saveRegelUitBron } from "./prognose";
@@ -510,6 +510,12 @@ function vindKlantVoorContact(
 
 async function syncDeals(instelling: HubspotInstelling, sinds: Date | null): Promise<SyncUitkomst> {
   const leeg = LEEG;
+  // Zonder gekozen pijplijn zou élke deal in het account een lead worden. Dat is
+  // op 19-08-2026 één keer echt gebeurd (127 oude klusjes in de klantenlijst),
+  // dus dit is nu een rem en geen standaardwaarde.
+  if (!instelling.pijplijnen.length) {
+    return { ...leeg, ok: true, melding: "Nog niet ingesteld welke pijplijnen een lead zijn. Vink ze aan op Beheer; zolang er geen keuze staat wordt er niets opgehaald." };
+  }
   let deals: HsDeal[];
   let pijplijnen: HsPijplijn[];
   let eigenaren: Map<string, string>;
@@ -685,6 +691,50 @@ async function gesprekkenNaarDossier(slug: string, id: string, van = "deals"): P
     toegevoegd++;
   }
   return toegevoegd;
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPRUIMEN: WAT DE RONDE TEVEEL HEEFT AANGEMAAKT
+// ═══════════════════════════════════════════════════════════
+// Op 19-08-2026 stond de koppeling nog op deals en was er geen pijplijn gekozen.
+// Gevolg: élke deal in het HubSpot-account werd een lead, ook tien jaar oude
+// klusjes ("AdWords Diabetes Centrale"), en er stonden er in één ronde 127 in de
+// klantenlijst. Twee dingen zijn daarna veranderd: zonder gekozen pijplijn (of
+// zonder gekozen leadstatus) komt er niets meer binnen, en hieronder staat de
+// knop die de rommel in één keer opruimt.
+//
+// De regel voor wat weg mag is streng, want weggooien is onomkeerbaar: alleen
+// een lead die door een ronde is aangemaakt (er hangt een HubSpot-rij aan),
+// waar niemand iets aan gedaan heeft (geen dossier, geen document, geen
+// gesprek), en waar geen bedrag bij staat. Alles wat daar niet aan voldoet
+// blijft staan, ook als het uit HubSpot kwam.
+// ═══════════════════════════════════════════════════════════
+
+export type OnterechteLead = { slug: string; naam: string; dealNaam: string };
+
+export async function lijstOnterechteLeads(): Promise<OnterechteLead[]> {
+  await ensureTable();
+  const { rows } = await sql<{ slug: string; naam: string; deal_naam: string }>`
+    SELECT c.slug, c.name AS naam, h.deal_naam
+    FROM clients c
+    JOIN hubspot_lead h ON h.client_slug = c.slug
+    WHERE c.fase = 'lead'
+      AND COALESCE(c.maandbudget, 0) = 0
+      AND NOT EXISTS (SELECT 1 FROM lead_dossier d WHERE d.client_slug = c.slug)
+      AND NOT EXISTS (SELECT 1 FROM lead_docs   l WHERE l.client_slug = c.slug)
+      AND NOT EXISTS (SELECT 1 FROM client_chat t WHERE t.client_slug = c.slug)
+    ORDER BY c.name`;
+  return rows.map((r) => ({ slug: r.slug, naam: r.naam, dealNaam: r.deal_naam || "" }));
+}
+
+export async function verwijderOnterechteLeads(): Promise<{ verwijderd: number; namen: string[] }> {
+  const lijst = await lijstOnterechteLeads();
+  for (const l of lijst) {
+    await sql`DELETE FROM hubspot_lead WHERE client_slug = ${l.slug}`;
+    await sql`DELETE FROM prognose_regel WHERE client_slug = ${l.slug}`;
+    await deleteClient(l.slug).catch(() => false);
+  }
+  return { verwijderd: lijst.length, namen: lijst.map((l) => l.naam) };
 }
 
 /** Koppelt een bestaande lead met de hand aan een deal, en haalt hem meteen op. */

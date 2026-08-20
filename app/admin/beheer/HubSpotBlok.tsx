@@ -35,6 +35,8 @@ type Stand = {
   pijplijnen: Pijplijn[];
   velden: Veld[];
   leads: Lead[];
+  /** Namen van leads die een ronde heeft aangemaakt en waar niets mee gedaan is. */
+  opruimen?: string[];
 };
 
 function wanneer(iso: string | null): string {
@@ -73,7 +75,7 @@ export default function HubSpotBlok() {
         setMelding({
           ok: true,
           text: melden || (typeof d.gelezen === "number"
-            ? `Klaar: ${d.gelezen} bekeken in HubSpot, ${d.nieuweLeads} nieuwe lead(s), ${d.dossierStukken} stuk(ken) in een dossier gezet.`
+            ? `${d.melding && d.melding !== "Klaar." ? d.melding + " " : ""}${d.gelezen} bekeken in HubSpot, ${d.nieuweLeads} nieuwe lead(s), ${d.dossierStukken} stuk(ken) in een dossier gezet.`
             : "Bewaard."),
         });
       } else setMelding({ ok: false, text: d.error || d.melding || "Dat lukte niet." });
@@ -294,6 +296,25 @@ export default function HubSpotBlok() {
               bedrag of een datum in HubSpot wordt nooit door het dashboard aangepast.
             </p>
           </div>
+
+          {(stand.opruimen?.length || 0) > 0 && (
+            <div className="created-box" style={{ marginTop: "var(--s-5)" }}>
+              <div className="created-title">{stand.opruimen?.length} leads die hier waarschijnlijk niet horen</div>
+              <p>
+                Deze zijn door een ophaalronde aangemaakt en er is verder niets mee gedaan: geen dossier, geen
+                document, geen gesprek en geen bedrag. Meestal zijn het oude deals of contacten die per ongeluk
+                meekwamen. Weggooien raakt alleen deze; alles waar je wél aan gewerkt hebt blijft staan.
+              </p>
+              <p className="muted">{stand.opruimen?.slice(0, 12).join(", ")}{(stand.opruimen?.length || 0) > 12 ? ` en nog ${(stand.opruimen?.length || 0) - 12}` : ""}</p>
+              <button className="btn btn-danger" disabled={!!bezig}
+                onClick={() => {
+                  if (!window.confirm(`${stand.opruimen?.length} leads verwijderen? Dit kan niet ongedaan gemaakt worden.`)) return;
+                  stuur({ actie: "opruimen" }, "opruimen");
+                }}>
+                {bezig === "opruimen" ? "Bezig met opruimen…" : `Verwijder deze ${stand.opruimen?.length} leads`}
+              </button>
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: "var(--s-2)", flexWrap: "wrap", marginTop: "var(--s-5)" }}>
             <button className="btn btn-primary" disabled={!!bezig} onClick={() => stuur({ actie: "sync" }, "sync")}>
