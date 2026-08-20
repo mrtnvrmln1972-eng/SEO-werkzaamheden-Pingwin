@@ -254,12 +254,23 @@ function meetInPagina(): RuweMeting {
       if (st.position !== "fixed" && st.position !== "sticky") return false;
       if (!zichtbaar(el)) return false;
       const r = el.getBoundingClientRect();
-      return r.top < schermHoogte && r.bottom > 0 && (r.width * r.height) / (schermBreedte * schermHoogte) > 0.15;
+      // Ook naar links en rechts kijken. Een mobiel menu staat dicht door het
+      // buiten beeld te schuiven (translateX), maar het heeft dan nog steeds een
+      // breedte en een hoogte. Zonder deze twee voorwaarden meldde de meting op
+      // de homepage van een klant "een open menu over 22% van het scherm" terwijl
+      // dat menu netjes dicht was, en dat is precies het soort bevinding dat een
+      // heel oordeel onbetrouwbaar maakt.
+      if (r.left >= schermBreedte || r.right <= 0) return false;
+      const zichtbaarDeel = Math.max(0, Math.min(r.right, schermBreedte) - Math.max(r.left, 0))
+        * Math.max(0, Math.min(r.bottom, schermHoogte) - Math.max(r.top, 0));
+      return r.top < schermHoogte && r.bottom > 0 && zichtbaarDeel / (schermBreedte * schermHoogte) > 0.15;
     })
     .slice(0, 4)
     .map((el) => {
       const r = el.getBoundingClientRect();
-      return { wat: `${naam(el)}: ${kort(el.textContent || "", 40)}`, dekking: Math.round(((r.width * r.height) / (schermBreedte * schermHoogte)) * 100) };
+      const deel = Math.max(0, Math.min(r.right, schermBreedte) - Math.max(r.left, 0))
+        * Math.max(0, Math.min(r.bottom, schermHoogte) - Math.max(r.top, 0));
+      return { wat: `${naam(el)}: ${kort(el.textContent || "", 40)}`, dekking: Math.round((deel / (schermBreedte * schermHoogte)) * 100) };
     });
 
   // ── Beweging ──

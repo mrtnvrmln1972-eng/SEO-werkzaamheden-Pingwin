@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../../lib/admin-auth";
 import { vensterPoort } from "../../../../../lib/klantvenster";
 import { fotografeerPagina, leesPagina, waaromNiet, type Apparaat } from "../../../../../lib/pagina-lab/bron";
+import { neemPaginaOp } from "../../../../../lib/pagina-lab/meting";
 
 export const runtime = "nodejs";
 // Ruim genomen, net als de contentscan. Een browser starten kost op een koude
@@ -20,7 +21,10 @@ export const maxDuration = 300;
 //
 // Wat je meegeeft:
 //   url        het volledige adres, met https://
-//   vorm       "tekst" (standaard) of "foto"
+//   vorm       "tekst" (standaard), "foto" of "meting" (de cijfers waarop het
+//              oordeel rust, zonder dat er iets beoordeeld wordt: dat scheelt een
+//              paar minuten en de kosten van een beoordeling als je alleen wilt
+//              nakijken wat het lab ziet)
 //   apparaat   "desktop" (standaard) of "mobiel"
 //   heel       1 voor de hele pagina in plaats van alleen het eerste scherm
 //   vanaf      een strook uit een lange pagina: vanaf deze hoogte in pixels
@@ -54,7 +58,8 @@ export async function GET(req: NextRequest) {
   if (fout) return NextResponse.json({ ok: false, error: fout }, { status: 400 });
 
   const apparaat: Apparaat = p.get("apparaat") === "mobiel" ? "mobiel" : "desktop";
-  const vorm = p.get("vorm") === "foto" ? "foto" : "tekst";
+  const gevraagd = p.get("vorm");
+  const vorm = gevraagd === "foto" ? "foto" : gevraagd === "meting" ? "meting" : "tekst";
 
   try {
     if (vorm === "foto") {
@@ -72,6 +77,14 @@ export async function GET(req: NextRequest) {
       return new NextResponse(new Uint8Array(png), {
         headers: { "Content-Type": "image/png", "Cache-Control": "no-store" },
       });
+    }
+
+    if (vorm === "meting") {
+      const opname = await neemPaginaOp(url, apparaat, false);
+      if (!opname) {
+        return NextResponse.json({ ok: false, error: "De browser kon niet starten op deze server." }, { status: 500 });
+      }
+      return NextResponse.json({ ok: true, apparaat, url: opname.bron.eindUrl, status: opname.bron.status, meting: opname.meting, ruw: opname.ruw });
     }
 
     const bron = await leesPagina(url, apparaat);
