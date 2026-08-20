@@ -610,13 +610,22 @@ export function berekenPrognose(
 }
 
 /** De prognose zoals het scherm hem krijgt: klanten uit de database erbij. */
-export async function getPrognose(klanten: KlantBron[]): Promise<PrognoseUitkomst & { kostenregels: KostenRegel[]; kostenMeldingen: string[] }> {
-  const [instelling, extras, posten, kostenregels] = await Promise.all([
+export async function getPrognose(
+  klanten: KlantBron[],
+  // Minimaal zoveel maanden teruggeven, ook als de prognose zelf op minder
+  // staat. De strook op het klantenoverzicht wil altijd een half jaar laten
+  // zien; zijn horizon op /admin/financien gaat daar niet over.
+  minimaalMaanden = 0,
+): Promise<PrognoseUitkomst & { kostenregels: KostenRegel[]; kostenMeldingen: string[] }> {
+  const [instellingRuw, extras, posten, kostenregels] = await Promise.all([
     getPrognoseInstelling(),
     getRegelExtras(),
     listPosten(),
     listKostenregels().catch(() => [] as KostenRegel[]),
   ]);
+  const instelling = minimaalMaanden > instellingRuw.horizon
+    ? { ...instellingRuw, horizon: minimaalMaanden }
+    : instellingRuw;
   const model = pasKostenmodelToe(
     klanten.map((k) => ({ ...k, grp: k.grp ?? null })),
     kostenregels,

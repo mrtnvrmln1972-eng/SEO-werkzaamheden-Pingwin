@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import type { ClientConfig } from "../../lib/clients";
 import { LEAD_STANDAARD_KANS } from "../../lib/prognose-kans";
 import Vouwblok from "./Vouwblok";
-import { Munt, PijlRechts, Vlag } from "../_ui/Pijl";
+import { Kruis, Munt, PijlRechts, Vlag } from "../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // DE LEADLIJST OP HET KLANTENOVERZICHT
@@ -309,7 +309,7 @@ export default function LeadLijst({
                   <>
                     <button className="btn btn-klein" onClick={(e) => setFase(e, c, "klant", `${c.name} omzetten naar klant? Alles blijft staan; alleen het label verandert.`)}>Maak klant</button>{" "}
                     <button className="lead-kruis" title="Niet doorgegaan" aria-label={`${c.name} op niet doorgegaan zetten`}
-                      onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}>✕</button>
+                      onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}><Kruis /></button>
                   </>
                 ) : <span className="muted">&mdash;</span>}
               </td>

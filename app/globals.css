@@ -5746,17 +5746,16 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    want een percentage is twee tekens en een bedrag vier. Zonder deze maten
    rekten die kolommen tot de helft van de tabel op en werd de naam van het
    bedrijf weggedrukt. */
-.lead-veld-kans { width: 4ch; }
-.lead-veld-geld { width: 8ch; }
-.lead-veld-maand { width: 12ch; }
+.prog-veld.lead-veld-kans { width: 5ch; }
+.prog-veld.lead-veld-geld { width: 9ch; }
+.prog-veld.lead-veld-maand { width: 13ch; }
 .lead-kans-veld { display: inline-flex; align-items: center; gap: var(--ruimte-krap); white-space: nowrap; }
 .lead-kans-teken { color: var(--label-muted); }
 /* Een kruisje in plaats van een knop met tekst: "niet doorgegaan" is een
    bedieningsteken naast de hoofdactie, geen tweede knop die om aandacht vraagt. */
 .lead-kruis {
   background: none; border: 0; cursor: pointer; color: var(--kleur-fout);
-  font-size: var(--type-body); line-height: var(--regel-body);
-  padding: 0 var(--ruimte-naast);
+  padding: 0 var(--ruimte-naast); vertical-align: middle;
 }
 .lead-kruis:hover { color: var(--kleur-fout); opacity: 0.7; }
 /* De optelling onderaan: opgeteld boven, gewogen eronder. Het bedrag staat in
@@ -5765,7 +5764,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .lead-totaalrij td { font-weight: 700; white-space: nowrap; }
 .lead-totaal-kans { color: var(--label-muted); font-weight: 600; text-align: right; }
 .lead-totaal-bedrag {
-  display: block; width: 8ch; text-align: right;
+  display: block; width: 9ch; text-align: right;
   padding: var(--ruimte-krap) var(--ruimte-naast);
   border: 1px solid transparent;
   font-variant-numeric: tabular-nums;

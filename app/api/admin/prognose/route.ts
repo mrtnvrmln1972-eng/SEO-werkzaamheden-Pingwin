@@ -47,12 +47,14 @@ export async function GET(req: NextRequest) {
     const strip = Number(req.nextUrl.searchParams.get("strip")) || 0;
     if (strip > 0) {
       const klanten = await listClients();
+      const hoeveel = Math.min(18, strip);
       const uit = await getPrognose(
         klanten.map((k) => ({ slug: k.slug, name: k.name, fase: k.fase, grp: k.grp, budget: k.budget })),
+        hoeveel,
       );
       return NextResponse.json({
         ok: true,
-        maanden: uit.maanden.slice(0, Math.min(18, strip)).map((m) => ({
+        maanden: uit.maanden.slice(0, hoeveel).map((m) => ({
           maand: m.maand, label: m.label,
           zekerOmzet: m.zekerOmzet, verwachtOmzet: m.verwachtOmzet, postOmzet: m.postOmzet,
           omzet: m.omzet, omzetSeo: m.omzetSeo, omzetAds: m.omzetAds, omzetEenmalig: m.omzetEenmalig,

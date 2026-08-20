@@ -70,6 +70,12 @@ export function Vink({ className }: { className?: string }) {
   return <Teken className={className}><path d="M3.5 8.5l3 3 6-7" /></Teken>;
 }
 
+/** Een kruisje: sluiten, of iets wegzetten. Getekend, want een letterlijke ✕
+    zit niet in Montserrat en wordt dan een leeg vlakje of helemaal niets. */
+export function Kruis({ className }: { className?: string }) {
+  return <Teken className={className}><path d="M4 4l8 8M12 4l-8 8" /></Teken>;
+}
+
 /** Een driehoekje omlaag: hier zit iets onder. */
 export function Omlaag({ className }: { className?: string }) {
   return <Teken className={className} vulling><path d="M4 6.5h8L8 11z" /></Teken>;

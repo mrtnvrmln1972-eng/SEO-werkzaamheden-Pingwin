@@ -1,6 +1,6 @@
 {
   "css": {
-    "regels": 9042,
+    "regels": 9041,
     "stijlregels": 4409,
     "classnamen": 3005
   },
@@ -1538,7 +1538,7 @@
     }
   ],
   "icoontekens": {
-    "totaal": 208,
+    "totaal": 207,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
@@ -1563,12 +1563,12 @@
         "aantal": 8
       },
       {
-        "teken": "✕",
+        "teken": "▲",
         "aantal": 8
       },
       {
-        "teken": "▲",
-        "aantal": 8
+        "teken": "✕",
+        "aantal": 7
       },
       {
         "teken": "▼",
@@ -1916,7 +1916,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8581,
+    "gebruik": 8579,
     "schaalGebruik": 1474
   }
 }
