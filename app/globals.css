@@ -5752,7 +5752,10 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    bedrijf weggedrukt. */
 .prog-veld.lead-veld-kans { width: 5ch; }
 .prog-veld.lead-veld-geld { width: 9ch; }
-.prog-veld.lead-veld-maand { width: 15ch; }
+/* Het maandveld toont de volle maandnaam plus het kalendericoontje ("september
+   2026"); smaller en de browser kapt hem af, en dan sta je te raden welk jaar
+   er staat. */
+.prog-veld.lead-veld-maand { width: 17ch; }
 .lead-kans-veld { display: inline-flex; align-items: center; gap: var(--ruimte-krap); white-space: nowrap; }
 .lead-kans-teken { color: var(--label-muted); }
 /* Een kruisje in plaats van een knop met tekst: "niet doorgegaan" is een
