@@ -286,11 +286,17 @@ export const STRATEGIE_STAP = "chat_analyse";
  */
 export async function getStrategieLinksAll(slug: string): Promise<Record<string, string>> {
   await ensureSchema();
+  // Volgorde is hier het halve werk: een pagina kan meerdere strategie-rijen
+  // hebben (een oude uit juli, een nieuwe van vandaag). De rij met het juiste
+  // stap-kenmerk gaat voor, daarna de nieuwste. Zonder die volgorde wees de link
+  // zomaar naar de strategie van vóór de herziening, terwijl de fase ernaast
+  // "klaar" zei over de nieuwe. Dat is erger dan geen link.
   const { rows } = await sql`
     SELECT page_url, taak, doc_link, client_doc_link
     FROM client_tasks
     WHERE client_slug = ${slug} AND page_url IS NOT NULL
-      AND (step_kind = ${STRATEGIE_STAP} OR taak ILIKE '%Strategie:%')`;
+      AND (step_kind = ${STRATEGIE_STAP} OR taak ILIKE '%Strategie:%')
+    ORDER BY (step_kind = ${STRATEGIE_STAP}) DESC, id DESC`;
   const uit: Record<string, string> = {};
   for (const r of rows) {
     const k = urlKey(String(r.page_url));

@@ -8,6 +8,7 @@ import { buildPingwinDoc, laatsteOmslagGelukt } from "../../../../lib/pingwin-do
 import { upsertStepTask } from "../../../../lib/tasks";
 import { getPageDriveFolder } from "../../../../lib/site-urls";
 import { uploadDocx } from "../../../../lib/drive";
+import { logActiviteit } from "../../../../lib/activiteit";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -43,7 +44,19 @@ async function runAnalyseDocBackground(slug: string, url: string, analysis: stri
       pageUrl: url, stepKind: "chat_analyse", title: `Strategie: ${pagePath(url)}`,
       link: link || undefined, clientLink: link || undefined, klantToelichting: klantUitleg, wie: "SEO", fase: "Bouwen", klantZichtbaar: true,
     }).catch(() => null);
-  } catch { /* stil; opnieuw proberen kan */ }
+  } catch (e) {
+    // Niet meer stil. Deze stap draait op de achtergrond, dus als hij stukloopt
+    // ziet niemand iets: de kaart meldt "het document wordt gemaakt" en er komt
+    // er daarna gewoon geen. Precies dat gebeurde op 20-08-2026 bij
+    // /hovenier-oss/. Nu komt het als werkzaamheid in de tijdlijn van de pagina
+    // te staan, intern (dit is geen nieuws voor de klant), zodat je kunt zien
+    // dát het misging en waarom, en het opnieuw kunt starten.
+    await logActiviteit({
+      slug, url, soort: "analyse", zichtbaar: false, bron: "systeem", bronId: `strategie-doc-fout:${url}`,
+      intern: `Het strategie-document maken is mislukt: ${e instanceof Error ? e.message : "onbekende fout"}. De vastgelegde strategie zelf staat er wel; start het document opnieuw vanuit de pagina-chat.`,
+      klant: "",
+    }).catch(() => { /* een melding die zelf omvalt mag niets breken */ });
+  }
 }
 
 // Vat de chat-analyse samen tot één document (naar Drive of download) en legt de
