@@ -6,6 +6,7 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../../lib/constants";
 import { listClients } from "../../../../lib/clients";
 import { getOnboardingStand, getOnboardingSignalen, wisSignaalCache } from "../../../../lib/onboarding";
 import { getOnboardingRun, startOnboardingRun, draaiOnboardingRun } from "../../../../lib/onboarding-run";
+import { isKlant } from "../../../../lib/klant-groepen";
 
 export const runtime = "nodejs";
 // De rit wacht de korte stappen af (site uitlezen, profiel, tone of voice,
@@ -25,8 +26,9 @@ export async function GET(req: NextRequest) {
     const scope = await getScopeFromCookie(req.cookies.get(ADMIN_COOKIE)?.value, req.cookies.get(ADMIN_VIEWAS_COOKIE)?.value);
     if (!scope) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
     const clients = await listClients();
-    // Alleen klanten (geen leads) en alleen wat deze gebruiker mag zien.
-    const slugs = clients.filter((c) => c.fase !== "lead" && canAccessSlug(scope, c.slug)).map((c) => c.slug);
+    // Alleen lopende klanten (geen leads, geen verloren deals) en alleen wat
+    // deze gebruiker mag zien.
+    const slugs = clients.filter((c) => isKlant(c) && canAccessSlug(scope, c.slug)).map((c) => c.slug);
     return NextResponse.json({ ok: true, signalen: await getOnboardingSignalen(slugs) });
   }
 

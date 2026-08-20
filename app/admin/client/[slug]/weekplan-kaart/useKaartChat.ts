@@ -24,6 +24,11 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
   const [chatOpen, setChatOpen] = useState(false);
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [chatId, setChatId] = useState<number | null>(null);
+  // Van wanneer is het gesprek dat hier open staat? De kaart toont altijd het
+  // meest recente gesprek over deze pagina, maar "meest recent" zegt niets over
+  // hoe oud het is: dat kan van vanochtend zijn of van vijf weken terug, en dat
+  // verschil bepaalt of de conclusie erin nog geldt. Leeg = nog geen gesprek.
+  const [chatDatum, setChatDatum] = useState<{ laatste: string; gestart: string }>({ laatste: "", gestart: "" });
   // Een mislukte vraag krijgt zijn eigen melding, IN de chat. Dat was het echte
   // probleem op 11 augustus: de foutmelding van de chat ging naar `foutje`, en
   // dat blok staat in de fase-lijst. Een kaart zonder pagina heeft geen fase-lijst,
@@ -89,10 +94,14 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
         const eerste = d?.chats?.[0];
         if (eerste?.id) {
           const c = await fetch(`/api/admin/page-chats?id=${eerste.id}`).then((r) => r.json());
-          if (c?.ok && Array.isArray(c.chat?.messages)) { setMsgs(c.chat.messages); setChatId(eerste.id); }
+          if (c?.ok && Array.isArray(c.chat?.messages)) {
+            setMsgs(c.chat.messages); setChatId(eerste.id);
+            setChatDatum({ laatste: eerste.updatedAt || "", gestart: eerste.createdAt || "" });
+          }
         }
       } else {
         const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(kaartThread)}&nothreads=1`).then((r) => r.json());
+        if (d?.ok) setChatDatum({ laatste: String(d.updatedAt || ""), gestart: "" });
         if (d?.ok && Array.isArray(d.messages)) {
           // Alleen de tekst; actie-kaarten uit dit gesprek renderen we hier niet.
           setMsgs((d.messages as ChatMsg[]).map((m) => ({ role: m.role, content: m.content })).filter((m) => (m.content || "").trim()));
@@ -146,6 +155,10 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
         setMsgs(withReply);
         const s = await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: withReply }) }).then((res) => res.json()).catch(() => null);
         if (s?.ok && s.id) setChatId(s.id);
+        // Er is net iets gezegd, dus dit gesprek is van vandaag. Zonder deze
+        // regel bleef de datum in de kop op de oude stand staan tot je de kaart
+        // opnieuw opende.
+        setChatDatum((d) => ({ laatste: new Date().toISOString(), gestart: d.gestart || new Date().toISOString() }));
       } else {
         const r = await vraagAssistent("/api/admin/chat", { slug, thread: kaartThread, messages: outgoing });
         if (!r.ok) { mislukt(r.fout); return; }
@@ -154,6 +167,7 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
         // De server slaat inclusief het context-bericht op; vervang de historie
         // meteen door de schone lijst zodat de seed nooit in beeld komt.
         await fetch("/api/admin/chat", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: kaartThread, messages: withReply }) }).catch(() => {});
+        setChatDatum((d) => ({ laatste: new Date().toISOString(), gestart: d.gestart }));
       }
     } catch { mislukt("De assistent is niet bereikbaar. Je vraag staat weer in het invulveld."); } finally { setChatBusy(false); }
   }
@@ -174,7 +188,7 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
   // voor bericht opruimen. Bij een kaart met pagina gooit dit de opgeslagen
   // pagina-chat weg, bij een kaart zonder pagina het eigen kaart-gesprek.
   async function wisChat() {
-    setWegVraag(null); setMsgs([]); setOpenBericht({});
+    setWegVraag(null); setMsgs([]); setOpenBericht({}); setChatDatum({ laatste: "", gestart: "" });
     try {
       if (t.url) { if (chatId !== null) await fetch(`/api/admin/page-chats?id=${chatId}`, { method: "DELETE" }); setChatId(null); }
       else await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(kaartThread)}`, { method: "DELETE" });
@@ -195,8 +209,16 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
       // kaart-achtergrond als context (net als bij een gewone vraag).
       const seed = achtergrond();
       const outgoing = seed ? [seed, ...next] : next;
-      const d = await fetch("/api/admin/page-chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, messages: outgoing, volledig: true }) }).then((r) => r.json());
-      if (!d?.ok || !String(d.reply || "").trim()) { setFoutje(d?.error || "Samenvatten mislukt, probeer het nog een keer."); setMsgs(voorheen); return; }
+      // Via dezelfde robuuste weg als een gewone vraag. Stond hier als kale
+      // fetch met `r.json()`, en dat klapt stuk zodra de server géén JSON
+      // teruggeeft (een tijdslimiet geeft een foutpagina). Je kreeg dan
+      // "Samenvatten mislukt, probeer het nog een keer" zonder enige reden,
+      // terwijl de echte oorzaak wél te benoemen was. Gebeurde op 20-08-2026
+      // bij /hovenier-oss/.
+      const r = await vraagAssistent("/api/admin/page-chat", { slug, url: t.url, messages: outgoing, volledig: true });
+      if (!r.ok) { setFoutje(r.fout); setMsgs(voorheen); return; }
+      const d = r.data as { reply?: string; proposal?: { plan?: string } };
+      if (!String(d.reply || "").trim()) { setFoutje("Het samenvatten leverde geen tekst op. Probeer het nog een keer; blijft het gebeuren, vat dan samen vanuit Pagina's."); setMsgs(voorheen); return; }
       const withReply: ChatMsg[] = [...next, { role: "assistant", content: String(d.reply) }];
       setMsgs(withReply);
       const s = await fetch("/api/admin/page-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, id: chatId, messages: withReply }) }).then((r) => r.json()).catch(() => null);
@@ -217,7 +239,7 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
 
   return {
     chatOpen, setChatOpen, msgs, chatFout, openBericht, setOpenBericht, wegVraag, setWegVraag,
-    input, setInput, chatBusy, msgsRef, vatFase, laatsteAntwoord,
+    input, setInput, chatBusy, msgsRef, vatFase, laatsteAntwoord, chatDatum,
     openChat, sendChat, verwijderChatBericht, wisChat, vatSamenEnLegVast, chatConclusie,
   };
 }

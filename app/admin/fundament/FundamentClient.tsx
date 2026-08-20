@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import FundamentActieKnop, { type FundamentActieKind } from "../client/[slug]/FundamentActieKnop";
 import { FUNDAMENT_KOLOMMEN, PUNT_LABEL, fundamentVoortgang, type FundamentStatus } from "../../../lib/fundament";
+import { groepeerKlanten } from "../../../lib/klant-groepen";
 
 // ═══════════════════════════════════════════════════════════
 // DE KLANTEN GEGROEPEERD: EIGEN, LEADS, MULTIMEDIA CONCEPTS
@@ -52,13 +53,16 @@ type Groep = { sleutel: string; label: string; rijen: FundamentRij[]; standaardO
 
 export default function FundamentClient({ rijen }: { rijen: FundamentRij[] }) {
   const groepen = useMemo<Groep[]>(() => {
-    const isLead = (r: FundamentRij) => r.fase === "lead";
-    const isMmc = (r: FundamentRij) => r.grp === "mmc";
+    // Dezelfde indeling als de beheerlijst en de klantenkiezer, uit
+    // lib/klant-groepen.ts. Stond hier als eigen regel, en zette daardoor elke
+    // verloren HubSpot-deal onder "Mijn eigen klanten".
+    const g = groepeerKlanten(rijen);
     return [
-      { sleutel: "eigen", label: "Mijn eigen klanten", rijen: rijen.filter((r) => !isLead(r) && !isMmc(r)), standaardOpen: true },
-      { sleutel: "leads", label: "Leads", rijen: rijen.filter((r) => isLead(r) && !isMmc(r)), standaardOpen: true },
-      { sleutel: "mmc", label: "Multimedia Concepts", rijen: rijen.filter(isMmc), standaardOpen: false },
-    ].filter((g) => g.rijen.length > 0);
+      { sleutel: "eigen", label: "Mijn eigen klanten", rijen: g.eigen, standaardOpen: true },
+      { sleutel: "leads", label: "Leads", rijen: g.leads, standaardOpen: true },
+      { sleutel: "mmc", label: "Multimedia Concepts", rijen: g.mmc, standaardOpen: false },
+      { sleutel: "afgesloten", label: "Niet doorgegaan en oud", rijen: [...g.verloren, ...g.oud], standaardOpen: false },
+    ].filter((g2) => g2.rijen.length > 0);
   }, [rijen]);
 
   const [open, setOpen] = useState<Record<string, boolean>>({});

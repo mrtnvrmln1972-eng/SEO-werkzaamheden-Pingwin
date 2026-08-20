@@ -11,6 +11,8 @@
 
 import { useEffect, useState } from "react";
 import { docsBewerkLink } from "../../../../lib/drive-id";
+// Dezelfde datumopmaak als overal elders; stond hier als eigen kopie.
+import { korteDatum } from "../../../../lib/chat-datum";
 
 type DocRij = { kind: string; label: string; naam: string; link: string; datum: string | null };
 type DocPagina = { url: string; pad: string; doorgevoerd: boolean | null; docs: DocRij[]; laatste: string | null };
@@ -22,11 +24,6 @@ function maandVan(iso: string | null): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "Zonder datum";
   return `${MAANDEN[d.getMonth()]} ${d.getFullYear()}`;
-}
-function korteDatum(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : `${d.getDate()} ${MAANDEN[d.getMonth()].slice(0, 3)}`;
 }
 
 export default function DocumentenPanel({ slug, onGoToPage }: { slug: string; onGoToPage?: (url: string) => void }) {

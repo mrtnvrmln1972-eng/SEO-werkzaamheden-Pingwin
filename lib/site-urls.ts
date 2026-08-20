@@ -22,6 +22,7 @@ export type ClientUrl = {
   gscClicks: number;
   gscImpressions: number;
   plan: string;               // plan-alinea (leeg als nog niet aangeraakt)
+  planUpdatedAt?: string | null; // wanneer die strategie is vastgelegd
   hasClusterAdvice: boolean;  // kreeg cluster-advies mee vanuit de analyse van een andere pagina ("half plan")
   lastScanned: string | null;
   /** In welke bronnen deze pagina gevonden is: "sitemap", "gsc", "ahrefs",
@@ -332,7 +333,7 @@ export async function getClientUrls(slug: string): Promise<ClientUrl[]> {
   await ensureTables();
   const { rows } = await sql`
     SELECT u.url, u.status, u.redirect_target, u.title, u.gsc_clicks, u.gsc_impressions, u.bronnen, u.last_scanned,
-           p.plan,
+           p.plan, p.updated_at AS plan_updated_at,
            EXISTS (SELECT 1 FROM page_cluster_advice a WHERE a.client_slug = u.client_slug AND a.url = u.url) AS has_cluster_advice
     FROM client_urls u
     LEFT JOIN page_plans p ON p.client_slug = u.client_slug AND p.url = u.url
@@ -346,6 +347,11 @@ export async function getClientUrls(slug: string): Promise<ClientUrl[]> {
     gscClicks: Number(r.gsc_clicks) || 0,
     gscImpressions: Number(r.gsc_impressions) || 0,
     plan: (r.plan as string) || "",
+    // Wanneer is die strategie vastgelegd? Zonder die datum kun je op het scherm
+    // niet zien of je naar de conclusie van vanochtend kijkt of naar die van
+    // vijf weken terug, en dat is precies waar het misgaat: een tabblad dat nog
+    // openstond toonde na het vastleggen doodleuk de oude tekst (20-08-2026).
+    planUpdatedAt: r.plan_updated_at ? new Date(r.plan_updated_at as string).toISOString() : null,
     hasClusterAdvice: !!r.has_cluster_advice,
     lastScanned: r.last_scanned ? new Date(r.last_scanned as string).toISOString() : null,
     bronnen: r.bronnen ? String(r.bronnen).split(",").filter(Boolean) : [],

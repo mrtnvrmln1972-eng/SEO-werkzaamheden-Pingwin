@@ -256,6 +256,11 @@ export default function KaartFases({
   }
 
   function docLink(key: FaseKey): string {
+    // De strategie levert net zo goed een Pingwin-document op als de andere
+    // stappen, alleen komt dat langs een andere weg binnen (als stap-werkzaamheid
+    // uit page-analysis-doc). Daardoor stond hier als enige fase geen "(link)",
+    // terwijl het document er wél was (gemeld 20-08-2026).
+    if (key === "strategie") return page?.links?.strategie ? docsBewerkLink(page.links.strategie) : "";
     if (key === "analyse" || key === "blauwdruk" || key === "copy") {
       const extern = everLinks[key] || page?.links?.[key] || (key === "copy" ? t.copyUrl : "") || "";
       // Een Pingwin-document is altijd een Word-bestand, dus rechtstreeks in Docs

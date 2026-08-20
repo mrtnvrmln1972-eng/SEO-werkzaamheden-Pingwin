@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { answerChat, clearChatHistory, getChatHistory, listChatThreads, replaceChatHistory } from "../../../../lib/chat";
+import { answerChat, clearChatHistory, getChatHistory, getChatUpdatedAt, listChatThreads, replaceChatHistory } from "../../../../lib/chat";
 import { applyActionStatuses } from "../../../../lib/overview-actions";
 import { metAfkap, CHAT_AFKAP_MS, CHAT_AFKAP_TEKST } from "../../../../lib/afkap";
 
@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
   if (thread && thread.startsWith("overzicht") && messages.length) {
     messages = await applyActionStatuses(slug, messages);
   }
-  return NextResponse.json({ ok: true, threads, messages });
+  // De datum van dit gesprek gaat altijd mee. Met de threadlijst erbij staat hij
+  // daar al in, maar een scherm dat één gesprek opent (nothreads=1) kreeg hem
+  // niet, en dan staat er een gesprek in beeld zonder dat je weet van wanneer.
+  const updatedAt = thread && messages.length ? await getChatUpdatedAt(slug, thread).catch(() => "") : "";
+  return NextResponse.json({ ok: true, threads, messages, updatedAt });
 }
 
 export async function POST(req: NextRequest) {

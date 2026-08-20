@@ -24,6 +24,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { groepeerKlanten, isAfgesloten, isLead, isMmc } from "../../../../lib/klant-groepen";
 
 export type KiezerKlant = {
   slug: string;
@@ -56,26 +57,28 @@ export default function KlantKiezer({ klanten, huidig, onKies, onVooruit }: {
   // De indeling. Volgorde is de volgorde waarin je ze nodig hebt: eigen klanten
   // eerst, dan de klanten van Multimedia Concepts, dan de leads.
   const groepen = useMemo<Groep[]>(() => {
-    const isLead = (c: KiezerKlant) => (c.fase || "klant") === "lead";
+    // De indeling komt uit lib/klant-groepen.ts. Stond hier als eigen regel
+    // ("alles wat geen lead is, is een klant") en zette daardoor elke verloren
+    // HubSpot-deal onder "Mijn eigen klanten".
+    const g = groepeerKlanten(klanten);
+    const afgesloten = [...g.verloren, ...g.oud];
     const lijst: Groep[] = [
+      { sleutel: "eigen", label: "Mijn eigen klanten", klanten: g.eigen, standaardOpen: true },
       {
-        sleutel: "eigen", label: "Mijn eigen klanten",
-        klanten: klanten.filter((c) => !isLead(c) && c.grp !== "mmc"),
-        standaardOpen: true,
-      },
-      {
-        sleutel: "mmc", label: "Multimedia Concepts",
-        klanten: klanten.filter((c) => !isLead(c) && c.grp === "mmc"),
+        sleutel: "mmc", label: "Multimedia Concepts", klanten: g.mmc,
         // Dicht, tenzij je er zelf in zit: dan zou je niet zien waar je bent.
-        standaardOpen: hier?.grp === "mmc",
+        standaardOpen: hier ? isMmc(hier) : false,
       },
       {
-        sleutel: "leads", label: "Leads",
-        klanten: klanten.filter(isLead),
+        sleutel: "leads", label: "Leads", klanten: g.leads,
         standaardOpen: !!hier && isLead(hier),
       },
+      {
+        sleutel: "afgesloten", label: "Niet doorgegaan en oud", klanten: afgesloten,
+        standaardOpen: !!hier && isAfgesloten(hier),
+      },
     ];
-    return lijst.filter((g) => g.klanten.length > 0);
+    return lijst.filter((g2) => g2.klanten.length > 0);
   }, [klanten, hier]);
 
   const term = zoek.trim().toLowerCase();

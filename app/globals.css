@@ -3400,10 +3400,12 @@ button.org-sec-kop:hover { color: var(--kleur-accent-diep); }
 .ovc-topic-title { font-weight: 800; font-size: var(--type-lopend); line-height: var(--regel-label); color: var(--kleur-accent); }
 .ovc-topic.done .ovc-topic-title { color: var(--kleur-tekst-stil); text-decoration: line-through; }
 .ovc-topic-sum { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-/* De datum van het laatste bericht, rechts naast de titel. Stil, want hij is
-   naslag; maar hij moet er staan, anders lijkt een gesprek van drie weken terug
-   net zo actueel als dat van gisteren. */
-.ovc-topic-datum { flex: none; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); white-space: nowrap; margin-top: var(--ruimte-krap); }
+/* De datum van een gesprek: waar dan ook in het dashboard, altijd dezelfde vorm.
+   Stil, want hij is naslag; maar hij moet er staan, anders lijkt een gesprek van
+   drie weken terug net zo actueel als dat van gisteren. Dit is de ENIGE regel
+   voor een gespreksdatum: zet er nergens een tweede naast, dan lopen de lijsten
+   weer uiteen. De tekst komt uit lib/chat-datum.ts. */
+.gesprek-datum { flex: none; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); white-space: nowrap; margin-top: var(--ruimte-krap); }
 .ovc-title-inline { border: none; background: transparent; font-family: inherit; font-weight: 800; font-size: var(--type-lopend); line-height: var(--regel-label); color: var(--kleur-accent); padding: 0; width: 100%; }
 .ovc-title-inline:focus { outline: none; border-bottom: 1px solid var(--kleur-accent); }
 .ovc-title-inline::placeholder { color: var(--kleur-tekst-stil); font-weight: 500; }

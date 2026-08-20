@@ -10,6 +10,7 @@ import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import { eersteKop } from "../../../../lib/chat-vouw";
+import { gesprekDatum } from "../../../../lib/chat-datum";
 import { bestandMelding } from "../../../../lib/bestand-melding";
 import MailVenster from "./MailVenster";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
@@ -18,12 +19,6 @@ import { Beeld, Blad, Omlaag, Uitklap } from "../../../_ui/Pijl";
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst; bronnen?: Bron[] };
 type Topic = { thread: string; count: number; title: string; summary: string; done: boolean; updatedAt: string };
 
-/** "16 aug", zoals je het zelf zou opschrijven. Leeg als de datum onbruikbaar is. */
-function korteDatum(iso: string): string {
-  const d = new Date(iso || "");
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
-}
 
 // ── Diep denken ──
 // De bird's eye draait op het zware model, want dit is het gesprek waarin de opzet
@@ -447,7 +442,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     een gesprek van gisteren niet te onderscheiden van een gesprek
                     van drie weken terug: precies het verschil dat bepaalt welke
                     versie van een strategie nog geldt (18-08-2026). */}
-                {korteDatum(t.updatedAt) && <span className="ovc-topic-datum">{korteDatum(t.updatedAt)}</span>}
+                {gesprekDatum(t.updatedAt).label && <span className="gesprek-datum" title={gesprekDatum(t.updatedAt).titel}>{gesprekDatum(t.updatedAt).label}</span>}
                 {/* Elk onderwerp is te verwijderen, "Algemeen" ook. */}
                 {/* De bevestiging staat in de rij zelf. Het was een browser-popup, en
                     die valt buiten de huisstijl en leest als een systeemmelding. */}

@@ -17,6 +17,7 @@ import { PROFILE_HEADER, TOV_HEADER } from "../../../../lib/constants";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
 import { Omlaag, Uitklap } from "../../../_ui/Pijl";
+import { gesprekDatum } from "../../../../lib/chat-datum";
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -673,6 +674,10 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
 type PageOpp = { impressions: number; clicks: number; ctr: number; position: number; bestKeyword: string; bestPosition: number | null; bestVolume: number | null; score: number; label: string; level: string };
 function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName, onGoToTask, onDataChanged, isPrio, onTogglePriority, inPlanning, onGepland }: { slug: string; u: ClientUrl; opp?: PageOpp; fases?: Partial<Record<FaseKey, boolean>>; open: boolean; onToggle: () => void; clientEmail: string; clientName: string; onGoToTask?: (taskId: number) => void; onDataChanged?: () => void; isPrio?: boolean; onTogglePriority?: () => void; inPlanning?: boolean; onGepland?: () => void }) {
   const [plan, setPlan] = useState(u.plan);
+  // Wanneer is deze strategie vastgelegd? Zonder die datum kun je niet zien of
+  // je naar de conclusie van vanochtend kijkt of naar die van vijf weken terug;
+  // een tabblad dat nog openstond toonde na het vastleggen gewoon de oude tekst.
+  const [planDatum, setPlanDatum] = useState<string | null>(u.planUpdatedAt ?? null);
   const [saved, setSaved] = useState(false);
   const [editing, setEditing] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
@@ -765,7 +770,8 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
   function savePlan() {
     const html = (planRef.current?.innerHTML || "").trim();
     setPlan(html); setSaved(false); setEditing(false);
-    fetch("/api/admin/page-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: u.url, plan: html }) }).then(() => setSaved(true)).catch(() => {});
+    fetch("/api/admin/page-plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: u.url, plan: html }) })
+      .then(() => { setSaved(true); setPlanDatum(new Date().toISOString()); }).catch(() => {});
   }
 
   return (
@@ -897,6 +903,11 @@ function PageRow({ slug, u, opp, fases, open, onToggle, clientEmail, clientName,
                   <div className={"pages-plan-inline" + ((plan || "").trim() ? " done" : "")} style={{ border: "1px solid var(--border)", borderLeft: "var(--streep-accent) solid var(--kleur-accent)", borderRadius: "var(--r-md)", padding: "var(--s-3) var(--s-4)", marginBottom: "var(--s-3)", background: "var(--white)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "var(--s-2)", flexWrap: "wrap", marginBottom: "var(--s-2)" }}>
                       <strong style={{ fontSize: "var(--fs-sm)" }}>Vastgelegde strategie (de conclusie van deze stap)</strong>
+                      {(plan || "").trim() && gesprekDatum(planDatum).label && (
+                        <span className="gesprek-datum" title={`Vastgelegd op ${gesprekDatum(planDatum).titel.replace(/^Laatste bericht: /, "")}`}>
+                          vastgelegd {gesprekDatum(planDatum).label}
+                        </span>
+                      )}
                       {!(plan || "").trim() && <span className="plan-chip">nog geen strategie</span>}
                       {saved && <span className="focus-save-status">opgeslagen</span>}
                       <span style={{ marginLeft: "auto" }}><button type="button" className="btn btn-klein" onClick={() => { if (editing) savePlan(); else setEditing(true); }}>{editing ? "Klaar" : "Bewerken"}</button></span>

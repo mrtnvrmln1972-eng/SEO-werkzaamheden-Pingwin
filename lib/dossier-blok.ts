@@ -2,6 +2,7 @@ import { mdToHtml } from "./markdown";
 import { linkifyHtml } from "./linkify";
 import { HARD_BEWIJS, type PaginaMail } from "./page-emails";
 import type { PageDossier, DossierDoc } from "./page-dossier";
+import { gesprekDatum } from "./chat-datum";
 
 // ═══════════════════════════════════════════════════════════
 // HET DOSSIERBLOK: wat je op de kaart ziet
@@ -210,7 +211,13 @@ function tijdlijn(d: PageDossier): string {
     }).join("")}</ul>`);
   }
   if (d.chats.length) {
-    delen.push(`<div class="pd-chats">${d.chats.map((c) => `<span class="pd-chatregel" data-chat="${c.id}">${esc(c.title.slice(0, 90))}</span>`).join("")}</div>`);
+    // Met datum, net als de tijdlijnregels erboven. Zonder die datum staat een
+    // gesprek van vijf weken terug er even actueel bij als dat van gisteren, en
+    // dat is precies het verschil dat bepaalt welke afspraak nog geldt.
+    delen.push(`<div class="pd-chats">${d.chats.map((c) => {
+      const dat = gesprekDatum(c.updatedAt, c.createdAt);
+      return `<span class="pd-chatregel" data-chat="${c.id}"><span class="pd-datum"${dat.titel ? ` title="${esc(dat.titel)}"` : ""}>${esc(dat.label)}</span> ${esc(c.title.slice(0, 90))}</span>`;
+    }).join("")}</div>`);
   }
   return `<details class="pd-meer"><summary>Wat er gebeurd is (${aantal})</summary><div class="pd-meer-body">${delen.join("")}</div></details>`;
 }

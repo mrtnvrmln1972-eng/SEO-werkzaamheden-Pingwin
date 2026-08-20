@@ -529,6 +529,18 @@ export async function getChatHistory(slug: string, thread = "algemeen"): Promise
   }
 }
 
+// Wanneer is er voor het laatst iets in dit ene gesprek gezegd? De volledige
+// threadlijst opbouwen is duur (die leest alle histories), en een scherm dat
+// maar één gesprek toont heeft die lijst niet nodig; het heeft wél de datum
+// nodig, anders staat er een gesprek in beeld waarvan niemand weet of het van
+// vandaag of van vorige maand is.
+export async function getChatUpdatedAt(slug: string, thread = "algemeen"): Promise<string> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT updated_at FROM client_chat WHERE client_slug = ${slug} AND thread = ${cleanThread(thread)} LIMIT 1`;
+  const d = new Date(String(rows[0]?.updated_at || ""));
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
+}
+
 // Alle gesprekken (threads) van een klant, nieuwste eerst. Inclusief de
 // onderwerp-samenvatting en de "gedaan"-vlag voor de toggle-weergave.
 export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string; title: string; summary: string; done: boolean }[]> {

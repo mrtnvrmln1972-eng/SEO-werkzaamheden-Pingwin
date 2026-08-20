@@ -8,6 +8,25 @@ export const HOOFDSTUK: Hoofdstuk = {
     "samenkomen, en hij is bewust terughoudend gebouwd.",
   uitklappers: [
     {
+      titel: "Elk gesprek laat zien van wanneer het is",
+      kern: "Een gesprek zonder datum is niet te wegen: welke afspraak geldt nog?",
+      tekst:
+        "Overal waar een gesprek in beeld komt, staat de datum erbij: in de gesprekkenlijst op de " +
+        "takenpagina, bij de eerdere chats van een pagina, op de projectkaart, in de gesprekkenkeuze van " +
+        "het zwevende venster, en bij de chatregels in het dossier van een pagina. Wijs de datum aan en je " +
+        "ziet de volledige datum, hoe lang geleden dat was, en of het gesprek over meerdere dagen liep.\n\n" +
+        "Ook de **vastgelegde strategie** zegt wanneer hij is vastgelegd. Dat is niet hetzelfde als de " +
+        "datum van het gesprek: je kunt vandaag een conclusie vastleggen uit een gesprek van vorige week.\n\n" +
+        "Waarom dit er is: bij Paul Hoevenaars stond op de ene locatiepagina een uitgewerkt gesprek uit " +
+        "juli en op de andere een gesprek van augustus met de herziene strategie. Op het scherm waren die " +
+        "twee niet uit elkaar te houden, want er stond alleen een titel. Alle fases erna (gelieerde " +
+        "pagina's, analyse, blauwdruk, copy) draaien op de laatste conclusie, dus wie de verkeerde voor de " +
+        "meest recente aanziet, laat een document maken op een achterhaald uitgangspunt.\n\n" +
+        "De opmaak van die datum staat op één plek in de code, en een proef rekent na dat geen enkel " +
+        "scherm er zijn eigen versie naast zet. Dat was namelijk al twee keer gebeurd, met elk een eigen " +
+        "manier om de maand af te korten.",
+    },
+    {
       titel: "Wat er automatisch meekomt in het gesprek",
       kern: "De klant, de afspraken, de cijfers en de mail. Zonder dat je iets hoeft te uploaden.",
       tekst:

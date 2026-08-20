@@ -4,6 +4,7 @@
 // lijst met eerdere chats eronder, en per chat het gesprek zelf met de
 // vastleg-knoppen. De staat en de serverkant zitten in useStrategieChat.ts.
 import { eersteKop } from "../../../../../lib/chat-vouw";
+import { gesprekDatum } from "../../../../../lib/chat-datum";
 import HelpHint from "../HelpHint";
 import Bronnenstrip from "../Bronnenstrip";
 import DriveRij from "./DriveRij";
@@ -173,6 +174,10 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
               <div className="pch-item-head" onClick={() => setConvoOpen((o) => !o)}>
                 <span className="pch-caret">{convoOpen ? <Omlaag /> : <Uitklap />}</span>
                 <span className="pch-title">{analyseTitle}</span>
+                {/* Dit gesprek loopt nu, dus het is van vandaag. Ook hier hoort
+                    de datum te staan: anders is de ene rij in deze lijst wél te
+                    dateren en de andere niet. */}
+                <span className="gesprek-datum" title="Dit gesprek voer je nu.">vandaag</span>
                 {wegChat === "nieuw" ? (
                   <span className="pch-weg-vraag" onClick={(e) => e.stopPropagation()}>
                     Weggooien?
@@ -190,11 +195,16 @@ export default function StrategieKaart({ chat, url, siteBase, chatOpen, setChatO
           {chats.map((c) => {
             const active = chatId === c.id;
             const open = active && convoOpen;
+            // Van wanneer is dit gesprek? Zonder die datum lijkt een strategie
+            // van vijf weken terug even geldig als die van gisteren, en juist
+            // die volgorde bepaalt welke afspraak nog staat.
+            const datum = gesprekDatum(c.updatedAt, c.createdAt);
             return (
               <div key={c.id} className={"pch-item" + (open ? " open" : "") + (active ? " active" : "")}>
                 <div className="pch-item-head" onClick={() => { if (active) setConvoOpen((o) => !o); else { openChat(c.id); setConvoOpen(true); } }}>
                   <span className="pch-caret">{open ? <Omlaag /> : <Uitklap />}</span>
                   <span className="pch-title">{active ? analyseTitle : c.title}</span>
+                  {datum.label && <span className="gesprek-datum" title={datum.titel}>{datum.label}</span>}
                   {wegChat === c.id ? (
                     <span className="pch-weg-vraag" onClick={(e) => e.stopPropagation()}>
                       Weggooien?

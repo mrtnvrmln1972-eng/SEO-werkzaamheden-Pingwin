@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ClientConfig } from "../../lib/clients";
+import { groepeerKlanten } from "../../lib/klant-groepen";
 import OntwikkelMenu from "./OntwikkelMenu";
 import Tellers from "./Tellers";
 import MeldingenMenu from "./MeldingenMenu";
@@ -478,13 +479,19 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
     navigator.clipboard?.writeText(text);
   }
 
-  // Leads staan in een eigen lijst; ze hebben geen inlog, sheet of budget en
-  // horen dus niet tussen de klantkolommen. De klantlijsten blijven precies
-  // zoals ze waren (eigen klanten en, in de Pingwin-wereld, Multimedia Concepts).
-  const leads = clients.filter((c) => c.fase === "lead");
-  const klanten = clients.filter((c) => c.fase !== "lead");
-  const ownClients = klanten.filter((c) => c.grp !== "mmc");
-  const mmcClients = klanten.filter((c) => c.grp === "mmc");
+  // De indeling komt uit lib/klant-groepen.ts, want vier schermen beantwoordden
+  // deze vraag zelf en allemaal met "alles wat geen lead is, is een klant". Sinds
+  // HubSpot deals aanlevert klopt dat niet meer: een deal die niet doorgaat wordt
+  // "verloren", viel dus uit de leadlijst en kwam tussen de echte klanten te
+  // staan. Zo groeide "Mijn eigen klanten" naar 124 rijen vol hosting- en
+  // websitedeals (20-08-2026).
+  const groepen = groepeerKlanten(clients);
+  const leads = groepen.leads;
+  const ownClients = groepen.eigen;
+  const mmcClients = groepen.mmc;
+  // Niet doorgegaan en oud-klanten: bewaard, maar in hun eigen blok dat dicht
+  // staat. Ze horen niet in een lijst waar je je werk van vandaag zoekt.
+  const afgesloten = [...groepen.verloren, ...groepen.oud];
 
   const leadTable = (
     <div className="task-table-wrap">
@@ -851,20 +858,32 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         <Vouwblok
           titel={showGroups && mmcClients.length > 0 ? "Mijn eigen klanten" : "Klanten"}
           icoon={<Mensen />}
-          aantal={showGroups && mmcClients.length > 0 ? ownClients.length : klanten.length}
+          aantal={ownClients.length}
           actie={isOwner ? (openen) => (
             <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowForm((v) => !v); }}>
               {showForm ? "− Formulier sluiten" : "+ Nieuwe klant"}
             </button>
           ) : undefined}
         >
-          {clientTable(showGroups && mmcClients.length > 0 ? ownClients : klanten, "Nog geen klanten.")}
+          {clientTable(ownClients, "Nog geen klanten.")}
           {isOwner && showForm && klantForm}
         </Vouwblok>
 
         {showGroups && mmcClients.length > 0 && (
           <Vouwblok titel="Multimedia Concepts" aantal={mmcClients.length} icoon={<Gebouw />}>
             <div className="mmc-list">{clientTable(mmcClients, "Nog geen Multimedia Concepts-klanten.")}</div>
+          </Vouwblok>
+        )}
+
+        {/* Niet doorgegaan en oud-klanten. Dicht, want dit is naslag: de deals
+            die HubSpot als verloren markeert stonden tot 20-08-2026 gewoon
+            tussen de lopende klanten, en dat waren er meer dan honderd. Ze
+            blijven wél bestaan; de mails, notities en dealwaarde zijn precies
+            de reden dat ze bewaard zijn. */}
+        {afgesloten.length > 0 && (
+          <Vouwblok titel="Niet doorgegaan en oud" aantal={afgesloten.length} icoon={<Gebouw />}
+            sub="Verloren deals en oud-klanten. Blijven bewaard, staan alleen niet tussen je lopende klanten.">
+            {clientTable(afgesloten, "Niets afgesloten.")}
           </Vouwblok>
         )}
 

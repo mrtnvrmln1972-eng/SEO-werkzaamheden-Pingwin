@@ -6,7 +6,11 @@ import { urlKey } from "./url-key";
 // terug kunt lezen en met een kruisje kunt verwijderen.
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
-export type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
+// `createdAt` staat er vanaf 20-08-2026 bij. De kolom bestond al, maar reisde
+// niet mee naar het scherm, en zonder die twee data is een gesprek van vandaag
+// niet te onderscheiden van een gesprek van vijf weken terug. Dat is precies
+// het verschil dat bepaalt welke strategie nog geldt.
+export type ChatSummary = { id: number; title: string; updatedAt: string; createdAt: string; count: number };
 
 // Eén keer per serverinstantie (gecachet), scheelt CREATE TABLE per verzoek.
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
@@ -30,19 +34,31 @@ async function doEnsureTable(): Promise<void> {
     )`;
 }
 
+// Eén rij uit page_chats naar het overzicht op het scherm. Stond twee keer
+// woordelijk uitgeschreven (hieronder en in listChatsForKey), en toen de datum
+// erbij moest was dat meteen twee plekken; vandaar deze ene vorm.
+function naarSummary(r: Record<string, unknown>): ChatSummary {
+  // Titel altijd uit de eerste vraag afleiden (volledig), zodat oude chats die
+  // met een kortere titel zijn opgeslagen ook de hele vraag tonen.
+  const msgs = (r.messages as ChatMsg[]) || [];
+  const firstUser = msgs.find((m) => m.role === "user")?.content || "";
+  const derived = firstUser.replace(/\s+/g, " ").trim().slice(0, 400);
+  const iso = (v: unknown) => { const d = new Date(String(v || "")); return Number.isNaN(d.getTime()) ? "" : d.toISOString(); };
+  return {
+    id: Number(r.id),
+    title: derived || (r.title as string) || "(chat)",
+    updatedAt: iso(r.updated_at),
+    createdAt: iso(r.created_at),
+    count: Number(r.n || 0),
+  };
+}
+
 export async function listChats(slug: string, url: string): Promise<ChatSummary[]> {
   await ensureSchema(); await ensureTable();
   const { rows } = await sql`
-    SELECT id, title, messages, updated_at, jsonb_array_length(messages) AS n
+    SELECT id, title, messages, created_at, updated_at, jsonb_array_length(messages) AS n
     FROM page_chats WHERE client_slug = ${slug} AND url = ${url} ORDER BY updated_at DESC`;
-  return rows.map((r) => {
-    // Titel altijd uit de eerste vraag afleiden (volledig), zodat oude chats die
-    // met een kortere titel zijn opgeslagen ook de hele vraag tonen.
-    const msgs = (r.messages as ChatMsg[]) || [];
-    const firstUser = msgs.find((m) => m.role === "user")?.content || "";
-    const derived = firstUser.replace(/\s+/g, " ").trim().slice(0, 400);
-    return { id: Number(r.id), title: derived || (r.title as string) || "(chat)", updatedAt: new Date(r.updated_at as string).toISOString(), count: Number(r.n || 0) };
-  });
+  return rows.map(naarSummary);
 }
 
 // Zelfde lijst, vergelijkend op de genormaliseerde sleutel (www/trailing slash
@@ -52,23 +68,24 @@ export async function listChatsForKey(slug: string, url: string): Promise<ChatSu
   await ensureSchema(); await ensureTable();
   const k = urlKey(url);
   const { rows } = await sql`
-    SELECT id, url, title, messages, updated_at, jsonb_array_length(messages) AS n
+    SELECT id, url, title, messages, created_at, updated_at, jsonb_array_length(messages) AS n
     FROM page_chats WHERE client_slug = ${slug} ORDER BY updated_at DESC LIMIT 200`;
-  return rows
-    .filter((r) => urlKey(String(r.url || "")) === k)
-    .map((r) => {
-      const msgs = (r.messages as ChatMsg[]) || [];
-      const firstUser = msgs.find((m) => m.role === "user")?.content || "";
-      const derived = firstUser.replace(/\s+/g, " ").trim().slice(0, 400);
-      return { id: Number(r.id), title: derived || (r.title as string) || "(chat)", updatedAt: new Date(r.updated_at as string).toISOString(), count: Number(r.n || 0) };
-    });
+  return rows.filter((r) => urlKey(String(r.url || "")) === k).map(naarSummary);
 }
 
-export async function getChat(id: number): Promise<{ id: number; messages: ChatMsg[] } | null> {
+// Eén chat mét zijn data: het scherm dat een gesprek opent (de projectkaart)
+// haalt hem hierlangs op en moet er de datum bij kunnen zetten.
+export async function getChat(id: number): Promise<{ id: number; messages: ChatMsg[]; updatedAt: string; createdAt: string } | null> {
   await ensureSchema(); await ensureTable();
-  const { rows } = await sql`SELECT id, messages FROM page_chats WHERE id = ${id} LIMIT 1`;
+  const { rows } = await sql`SELECT id, messages, created_at, updated_at FROM page_chats WHERE id = ${id} LIMIT 1`;
   if (!rows[0]) return null;
-  return { id: Number(rows[0].id), messages: (rows[0].messages as ChatMsg[]) || [] };
+  const iso = (v: unknown) => { const d = new Date(String(v || "")); return Number.isNaN(d.getTime()) ? "" : d.toISOString(); };
+  return {
+    id: Number(rows[0].id),
+    messages: (rows[0].messages as ChatMsg[]) || [],
+    updatedAt: iso(rows[0].updated_at),
+    createdAt: iso(rows[0].created_at),
+  };
 }
 
 export async function saveChat(slug: string, url: string, id: number | null, messages: ChatMsg[]): Promise<number> {

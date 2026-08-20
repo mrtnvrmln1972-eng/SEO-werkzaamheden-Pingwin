@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { logActiviteit } from "./activiteit";
+import { urlKey } from "./url-key";
 
 // ═══════════════════════════════════════════════════════════
 // WERKZAAMHEDEN PER KLANT (in het dashboard, niet in Google Sheets)
@@ -258,6 +259,29 @@ export async function setClientDocLink(slug: string, pageUrl: string, stepKind: 
     UPDATE client_tasks SET client_doc_link = ${link || null}, updated_at = now()
     WHERE client_slug = ${slug} AND page_url = ${pageUrl} AND step_kind = ${stepKind}`;
   return (res.rowCount ?? 0) > 0;
+}
+
+// ── Het document van de vastgelegde strategie, per pagina ────────────────────
+// De strategie levert net zo goed een Pingwin-document op als de analyse, de
+// blauwdruk en de copy, alleen komt dat langs een andere weg binnen: niet via
+// page_doc_runs (de pijplijn) maar als stap-werkzaamheid met stepKind
+// "chat_analyse", gemaakt door /api/admin/page-analysis-doc. Daardoor stond bij
+// Strategie als enige fase géén "(link)", terwijl het document er wél was.
+// Gemeld op 20-08-2026: "blijkbaar is er wel een document van, dan wil ik ook
+// een link naar waar die strategie staat".
+export const STRATEGIE_STAP = "chat_analyse";
+
+/** De strategie-documentlink van elke pagina van deze klant, in één query. */
+export async function getStrategieLinksAll(slug: string): Promise<Record<string, string>> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT page_url, COALESCE(client_doc_link, doc_link) AS link
+    FROM client_tasks
+    WHERE client_slug = ${slug} AND step_kind = ${STRATEGIE_STAP} AND page_url IS NOT NULL
+      AND COALESCE(client_doc_link, doc_link) IS NOT NULL`;
+  const uit: Record<string, string> = {};
+  for (const r of rows) uit[urlKey(String(r.page_url))] = String(r.link || "");
+  return uit;
 }
 
 // Taken die NU op Klaar/Verwerkt staan, voor het terugwerkend vullen van het

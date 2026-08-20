@@ -1,6 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
 import { listClients } from "./clients";
+import { isKlant } from "./klant-groepen";
 import { getAhrefsSubscriptionUsage, ahrefsConfigured } from "./ahrefs";
 import { getOnboardingStand, wisSignaalCache } from "./onboarding";
 import { GOLVEN, GOLF_STAPPEN, GOLF_UNITS, GOLF_CENT, BODEM_UNITS, isGolf, type Golf, type Rij, type BulkStand, type Raming } from "./onboarding-golven";
@@ -74,7 +75,10 @@ export async function tegoed(): Promise<{ over: number | null; limiet: number | 
  * voordat Maarten op start drukt; nooit een verrassing achteraf.
  */
 export async function raming(golf: Golf, slugs?: string[]): Promise<Raming> {
-  const klanten = (await listClients()).filter((c) => c.fase !== "lead" && (!slugs || slugs.includes(c.slug)));
+  // Alleen lopende klanten. Dit filterde eerder alleen de leads eruit, en
+  // daardoor rekende de raming honderdtwintig verloren HubSpot-deals mee: elk
+  // met achttien onboardingstappen, Ahrefs-units en al.
+  const klanten = (await listClients()).filter((c) => isKlant(c) && (!slugs || slugs.includes(c.slug)));
   const uit: Raming["klanten"] = [];
   for (const c of klanten) {
     const stand = await getOnboardingStand(c.slug).catch(() => null);

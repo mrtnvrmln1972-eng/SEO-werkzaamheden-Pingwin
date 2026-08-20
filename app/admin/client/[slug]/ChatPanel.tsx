@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
 import { GESPREK_BASIS, gesprekLabel, isSiteGesprek } from "../../../../lib/gesprekken";
+import { korteDatum } from "../../../../lib/chat-datum";
 
 // Een "oogst"-bericht is geen tekst maar een voorstel met vinkjes: precies
 // hetzelfde blok als in de bird's eye-chat. Zo is er één weg van gesprek naar
@@ -386,7 +387,7 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
                         filter: élk gesprek uit de database kwam voorbij met zijn
                         technische naam, dus ook `overzicht:~mshj4bjy` en `lead`. */}
                     {(zichtbareThreads.some((t) => t.thread === thread) ? zichtbareThreads : [{ thread, count: messages.length, updatedAt: "" }, ...zichtbareThreads]).map((t) => (
-                      <option key={t.thread} value={t.thread}>{gesprekLabel(t.thread, t.title)}{t.count ? ` (${t.count})` : ""}</option>
+                      <option key={t.thread} value={t.thread}>{gesprekLabel(t.thread, t.title)}{t.count ? ` (${t.count})` : ""}{korteDatum(t.updatedAt) ? ` · ${korteDatum(t.updatedAt)}` : ""}</option>
                     ))}
                   </select>
                   <button type="button" className="btn btn-klein" onClick={newThread}>+ Nieuw</button>

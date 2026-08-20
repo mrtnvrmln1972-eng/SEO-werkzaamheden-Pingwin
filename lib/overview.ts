@@ -11,6 +11,7 @@
 import { sql } from "./db";
 import { getClientBySlug } from "./clients";
 import { getStepsEverDoneAll, getStepLinksAll, getOutgoingClusterCountAll } from "./page-doc-run";
+import { getStrategieLinksAll } from "./tasks";
 import { getPageSchemaStatusAll } from "./page-schema";
 import { getPhaseMarksAll } from "./phase-marks";
 import { urlKey } from "./url-key";
@@ -284,7 +285,7 @@ export type WeekplanPageInfo = {
   strategie: boolean; gelieerde: boolean; analyse: boolean; blauwdruk: boolean; copy: boolean;
   bouw: boolean; structured: boolean; structuredStatus: string;
   next: string;
-  links: { analyse: string; blauwdruk: string; copy: string };
+  links: { analyse: string; blauwdruk: string; copy: string; strategie?: string };
 };
 
 export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Promise<Record<string, WeekplanPageInfo>> {
@@ -292,7 +293,7 @@ export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Pr
   // "doorgevoerd"-oordeel per pagina). Eén gedeelde belofte in plaats van twee
   // aparte aanroepen: dezelfde tabel werd voorheen twee keer per klant bevraagd.
   const copyLivePromise = getCopyLiveAll(slug).catch(() => ({} as Record<string, { doorgevoerd: boolean; percentage: number; gemeten: string | null; meetbaar: boolean }>));
-  const [pages, everDone, links, schemaStatus, marks, uitgaand, copyLive] = await Promise.all([
+  const [pages, everDone, links, schemaStatus, marks, uitgaand, copyLive, strategieLinks] = await Promise.all([
     getPageWorkStatus(slug, copyLivePromise),
     getStepsEverDoneAll(slug).catch(() => ({} as Record<string, { analyse: boolean; blauwdruk: boolean; copy: boolean }>)),
     getStepLinksAll(slug).catch(() => ({} as Record<string, { analyse: string; blauwdruk: string; copy: string }>)),
@@ -300,6 +301,11 @@ export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Pr
     getPhaseMarksAll(slug).catch(() => ({} as Record<string, Partial<Record<string, boolean>>>)),
     getOutgoingClusterCountAll(slug).catch(() => ({} as Record<string, number>)),
     copyLivePromise,
+    // Het document van de vastgelegde strategie. Komt langs een andere weg
+    // binnen dan analyse/blauwdruk/copy (als stap-werkzaamheid, niet uit de
+    // pijplijn), en stond daardoor als enige fase zonder "(link)" op de kaart,
+    // terwijl het document er wél was.
+    getStrategieLinksAll(slug).catch(() => ({} as Record<string, string>)),
   ]);
   const out: Record<string, WeekplanPageInfo> = {};
   for (const p of pages) {
@@ -327,7 +333,7 @@ export async function getWeekplanPages(slug: string, onlyKeys?: Set<string>): Pr
       structured: fase("structured", sst === "done"),
       structuredStatus: sst,
       next: nextStep(p, { level: "none", label: "", position: null }).label,
-      links: links[k] || { analyse: "", blauwdruk: "", copy: "" },
+      links: { ...(links[k] || { analyse: "", blauwdruk: "", copy: "" }), strategie: strategieLinks[k] || "" },
     };
   }
   return out;

@@ -37,6 +37,18 @@ export async function POST(req: NextRequest) {
     // dekt elk echt gesprek; het samenvatten is een bewuste, incidentele actie.
     const volledig = body.volledig === true;
     const historie = volledig ? messages.slice(-40) : korteGeschiedenis(messages);
+    // ── Eén klok voor het hele verzoek (20-08-2026) ──
+    // Hier zat het gat waardoor "Samenvatten mislukt, probeer het nog een keer"
+    // ontstond, zónder reden erbij. Het afkappen hieronder gold alléén voor het
+    // opzoekwerk; de plan-extractie daarna was een tweede AI-aanroep zonder klok.
+    // Duurde het samenvatten 260 seconden en de extractie nog 40, dan hakte
+    // Vercel op 300 de functie om, kreeg de browser een foutpagina in plaats van
+    // JSON, en klapte `r.json()` stuk op de generieke melding. Nu telt alles mee
+    // in dezelfde begroting en komt er altijd leesbare JSON terug.
+    const START = Date.now();
+    const EIND = START + 285_000;
+    // Ruimte om ná het opzoekwerk het plan te destilleren en te versturen.
+    const RESERVE_MS = 25_000;
     // Wat de chat opzocht, meegeven zodat het onder het antwoord te zien is.
     const bronnen: Bron[] = [];
     const run = async (naam: string, invoer: Record<string, unknown>) => {
@@ -48,15 +60,34 @@ export async function POST(req: NextRequest) {
     // lang onderzoek netjes afrondt binnen het venster van 300 seconden.
     // Zelf afkappen vlak vóór de tijdslimiet van het platform, zodat de browser
     // altijd JSON terugkrijgt en nooit een foutpagina waar hij niets mee kan.
+    // ── Ruimte voor een lang antwoord bij het samenvatten (20-08-2026) ──
+    // De strategie van een locatiepagina is een compleet stuk: rol, zoekwoorden
+    // met onderbouwing, negen acties, doel-URL. Dat past niet altijd in 4096
+    // tokens, en dan trad de nood-ladder in werking: hetzelfde verzoek nóg twee
+    // keer, met driemaal zo veel ruimte. Die herhaling kostte de minuten die het
+    // samenvatten juist nodig had. Nu krijgt het samenvatten die ruimte meteen,
+    // dus in één keer een compleet antwoord in plaats van drie halve pogingen.
+    // Je betaalt wat er geschreven wordt, niet wat je toestaat.
+    const ruimte = volledig ? 12000 : 4096;
+    // Het samenvatten hoeft niet lang te zoeken (dat is in het gesprek al
+    // gebeurd), maar wel lang te schrijven. Het onderzoek stopt daarom eerder,
+    // zodat er tijd overblijft om het uit te schrijven.
+    const onderzoekTot = START + (volledig ? 140_000 : 210_000);
     const raw = await metAfkap(
-      callClaudeAgentic(system, historie, CHAT_TOOLS, run, 20, 4096, { slug, action: "page_chat" }, Date.now() + 210_000),
-      CHAT_AFKAP_MS,
+      callClaudeAgentic(system, historie, CHAT_TOOLS, run, 20, ruimte, { slug, action: "page_chat" }, onderzoekTot),
+      Math.min(CHAT_AFKAP_MS, Math.max(10_000, EIND - RESERVE_MS - Date.now())),
       "",
     );
     if (!raw) return NextResponse.json({ ok: false, error: CHAT_AFKAP_TEKST }, { status: 502 });
     const { reply } = parseProposal(raw);
     // Aparte extractie voor een altijd-complete accepteer-lijst (nooit afgekapt).
-    const proposal = await extractProposal(reply).catch(() => null);
+    // Met een eigen klok: is de tijd op, dan gaat het antwoord zonder gedestilleerd
+    // plan terug (de aanroeper valt dan terug op de volledige tekst als plan) in
+    // plaats van dat het hele verzoek stukloopt op de tijdslimiet van Vercel.
+    const restMs = EIND - Date.now();
+    const proposal = restMs > 8_000
+      ? await metAfkap(extractProposal(reply).catch(() => null), restMs, null)
+      : null;
     return NextResponse.json({ ok: true, reply, proposal, bronnen: ontdubbel(bronnen) });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 });

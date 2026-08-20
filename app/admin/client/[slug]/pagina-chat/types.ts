@@ -5,7 +5,9 @@ import type { Bron } from "../Bronnenstrip";
 export type Msg = { role: "user" | "assistant"; content: string; bronnen?: Bron[] };
 export type Task = { taak: string; fase?: string; wie?: string };
 export type Proposal = { plan?: string; tasks?: Task[] };
-export type ChatSummary = { id: number; title: string; updatedAt: string; count: number };
+// Spiegel van ChatSummary in lib/page-chats.ts; `createdAt` hoort erbij omdat
+// een gesprek zonder datum niet te wegen is (zie lib/chat-datum.ts).
+export type ChatSummary = { id: number; title: string; updatedAt: string; createdAt: string; count: number };
 // Achtergrond-run (analyse -> blauwdruk -> copy los van de browser).
 export type DocRun = { id: number; status: string; steps: Record<string, string>; links: Record<string, string>; error: string; updatedAt?: string | null };
 export type DriveFolder = { id: string; name: string; path: string };

@@ -124,7 +124,7 @@ check("wat je openzet wordt onthouden per klant", /pingwin-koers-open:\$\{slug\}
 // van gisteren, en dat is precies het verschil dat bepaalt welke versie van een
 // strategie nog geldt.
 const chatScherm = lees("app/admin/client/[slug]/OverviewChat.tsx");
-check("elk gespreksonderwerp toont zijn datum", /ovc-topic-datum/.test(chatScherm),
+check("elk gespreksonderwerp toont zijn datum", /gesprek-datum/.test(chatScherm),
   "Zonder datum weet je niet welk gesprek het laatste woord had.");
 check("elk gespreksonderwerp is te verwijderen, ook het eerste", !/thread === BASE \? "Leegmaken/.test(chatScherm),
   "Het eerste gesprek werd bij elke keer laden opnieuw aangemaakt, dus het kruisje\n"

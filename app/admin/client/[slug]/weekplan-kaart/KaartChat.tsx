@@ -6,6 +6,7 @@
 import { mdToHtml } from "../../../../../lib/markdown";
 import { linkifyHtml } from "../../../../../lib/linkify";
 import { eersteKop } from "../../../../../lib/chat-vouw";
+import { gesprekDatum } from "../../../../../lib/chat-datum";
 import AntwoordBlokken from "../AntwoordBlokken";
 import type { DriveMap } from "../DriveMapKiezer";
 import { Icoon, ICOON } from "./fase-iconen";
@@ -27,7 +28,11 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
   refreshBoard: () => void;
 }) {
   const { chatOpen, setChatOpen, msgs, chatFout, openBericht, setOpenBericht, wegVraag, setWegVraag,
-    input, setInput, chatBusy, msgsRef, vatFase, laatsteAntwoord } = chat;
+    input, setInput, chatBusy, msgsRef, vatFase, laatsteAntwoord, chatDatum } = chat;
+  // Van wanneer is dit gesprek? De kaart toont het meest recente gesprek over
+  // deze pagina, en dat kan van vanochtend zijn of van vijf weken terug. Dat
+  // verschil bepaalt of de conclusie erin nog geldt, dus het hoort in beeld.
+  const datum = gesprekDatum(chatDatum.laatste, chatDatum.gestart);
   const host = (() => { try { return new URL(t.url).host; } catch { return ""; } })();
   const origin = (() => { try { return new URL(t.url).origin; } catch { return ""; } })();
 
@@ -43,6 +48,8 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
             Pagina&rsquo;s <PijlSchuin />
           </button>
         )}
+        {/* De datum van dit gesprek, direct naast de knop. */}
+        {datum.label && <span className="gesprek-datum" title={datum.titel}>{datum.label}</span>}
         {chatOpen && msgs.length > 0 && (wegVraag === "chat" ? (
           <span className="wp-weg-vraag wp-weg-naast">
             Hele chat weggooien?

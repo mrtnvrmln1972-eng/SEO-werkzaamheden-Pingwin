@@ -5,6 +5,7 @@ import { ADMIN_VIEWAS_COOKIE } from "../../../../lib/constants";
 import { listClients } from "../../../../lib/clients";
 import { getEuroInstelling, zetEuroInstelling } from "../../../../lib/opruim-euro";
 import { wisSignaalCache } from "../../../../lib/onboarding";
+import { isKlant } from "../../../../lib/klant-groepen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
   const scope = await getScopeFromCookie(req.cookies.get(ADMIN_COOKIE)?.value, req.cookies.get(ADMIN_VIEWAS_COOKIE)?.value);
   if (!scope) return NextResponse.json({ ok: false, error: "Geen toegang." }, { status: 401 });
   try {
-    const klanten = (await listClients()).filter((c) => c.fase !== "lead" && canAccessSlug(scope, c.slug));
+    const klanten = (await listClients()).filter((c) => isKlant(c) && canAccessSlug(scope, c.slug));
     const rijen = await Promise.all(klanten.map(async (c) => {
       const e = await getEuroInstelling(c.slug).catch(() => ({ klantwaarde: 0, conversie: 0, ingevuld: false }));
       return { slug: c.slug, naam: c.name, ...e };
