@@ -5741,6 +5741,23 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift);
 }
 .lead-kolom-datum { white-space: nowrap; }
+/* De velden die je in een leadrij zelf invult. Ze gebruiken het bestaande
+   invulveld uit de prognose (.prog-veld); hier staat alleen hoe breed ze zijn,
+   want een percentage is twee tekens en een bedrag vier. Zonder deze maten
+   rekten die kolommen tot de helft van de tabel op en werd de naam van het
+   bedrijf weggedrukt. */
+.lead-veld-kans { width: 4ch; }
+.lead-veld-geld { width: 8ch; }
+.lead-veld-maand { width: 12ch; }
+.lead-kans-veld { display: inline-flex; align-items: center; gap: var(--ruimte-krap); white-space: nowrap; }
+.lead-kans-teken { color: var(--label-muted); }
+/* De optelling onderaan: opgeteld boven, gewogen eronder. */
+.lead-totaalrij td { font-weight: 700; white-space: nowrap; }
+.lead-totaal-kans { color: var(--label-muted); font-weight: 600; }
+.lead-totaal-gewogen {
+  display: block; font-weight: 600; color: var(--label-muted);
+  font-size: var(--type-label); line-height: var(--regel-label);
+}
 .lead-datum-vandaag { color: var(--kleur-let-op); font-weight: 700; }
 .lead-datum-verstreken { color: var(--kleur-fout); font-weight: 700; }
 .lead-tijdregel-tekst { flex: 1; min-width: 0; }

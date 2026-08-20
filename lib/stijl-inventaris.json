@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9004,
-    "stijlregels": 4394,
-    "classnamen": 2992
+    "regels": 9021,
+    "stijlregels": 4402,
+    "classnamen": 3000
   },
   "kleuren": {
     "verschillend": 40,
@@ -532,7 +532,7 @@
     },
     {
       "naam": "Invoervelden",
-      "aantal": 51,
+      "aantal": 55,
       "namen": [
         "add-month-select",
         "ag-checkbox-field",
@@ -556,6 +556,10 @@
         "kpi-focus-select",
         "kpi-period-select",
         "kw-veld",
+        "lead-kans-veld",
+        "lead-veld-geld",
+        "lead-veld-kans",
+        "lead-veld-maand",
         "nt-titel-input",
         "nt-veld",
         "nv-term-input",
@@ -1912,7 +1916,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8571,
-    "schaalGebruik": 1470
+    "gebruik": 8574,
+    "schaalGebruik": 1473
   }
 }

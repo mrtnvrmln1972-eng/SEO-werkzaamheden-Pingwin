@@ -316,6 +316,23 @@ export default function LeadKaart({ slug, naam, onVeranderd }: {
             Lead wordt klant
           </button>
         )}
+        {/* Weggooien staat hier en niet meer in de leadlijst (20-08-2026): daar
+            stonden "Niet doorgegaan" en "Verwijder" naast elkaar en die deden in
+            de praktijk hetzelfde, terwijl de tweede onomkeerbaar is. In de lijst
+            blijft de omkeerbare knop; echt weggooien is zeldzaam en hoort dus
+            een klik dieper, bij de lead zelf. */}
+        <button className="btn btn-danger btn-klein" disabled={!!bezig}
+          onClick={async () => {
+            if (!window.confirm(
+              `${naam} helemaal verwijderen? Het dossier, de documenten en de mailwisseling gaan mee weg.\n\n`
+              + "Wil je hem alleen uit je lijst hebben, gebruik dan \u201cNiet doorgegaan\u201d; dat kun je terugdraaien.",
+            )) return;
+            const r = await fetch(`/api/admin/clients?slug=${encodeURIComponent(slug)}`, { method: "DELETE" })
+              .then((x) => x.json()).catch(() => null);
+            if (r?.ok !== false) window.location.href = "/admin";
+          }}>
+          Lead verwijderen
+        </button>
       </div>
 
       {toonNotitie && (

@@ -1,4 +1,5 @@
 import { sql, ensureSchema } from "./db";
+import { LEAD_STANDAARD_KANS } from "./prognose-kans";
 import { eenmalig } from "./schema-stand";
 import { getSetting, setSetting } from "./settings";
 import { listKostenregels, pasKostenmodelToe, type KostenRegel } from "./kostenmodel";
@@ -185,13 +186,10 @@ type RegelRow = {
   extra_omzet: string | number; eenmalig_omzet: string | number; eenmalig_kosten: string | number;
 };
 
-/**
- * De kans waarmee een lead meetelt zolang niemand hem beoordeeld heeft. Stond
- * als losse 30 in de berekening, terwijl een nieuwe regel in de tabel op 100
- * begon: vulde je alleen een startmaand in, dan telde die lead ineens voor de
- * volle mep mee. Eén getal, hier, dat allebei die plekken gebruiken.
- */
-export const LEAD_STANDAARD_KANS = 30;
+// De standaardkans van een onbeoordeelde lead staat in lib/prognose-kans.ts,
+// want de leadlijst in de browser rekent er ook mee en die kan dit bestand niet
+// laden (Postgres-client). Hier alleen doorgeven, zodat er één getal blijft.
+export { LEAD_STANDAARD_KANS };
 
 /** Alle prognose-regels ineens, per slug. Voor een lijst met veel leads. */
 export async function getRegelsPerSlug(): Promise<Record<string, RegelExtra>> {
