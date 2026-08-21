@@ -21,7 +21,7 @@ import { Gebouw, Kruis, Mensen, PijlRechts, Vlag } from "../_ui/Pijl";
 type SoortKeuze = "seo" | "ads" | "website" | "overig";
 const SOORT_KEUZE: { waarde: SoortKeuze; label: string }[] = [
   { waarde: "seo", label: "SEO" },
-  { waarde: "ads", label: "Advertenties" },
+  { waarde: "ads", label: "Ads" },
   { waarde: "website", label: "Website" },
   { waarde: "overig", label: "Overig" },
 ];

@@ -72,6 +72,8 @@ export const HOOFDSTUK: Hoofdstuk = {
         "klikken; de rest van de rij is invulruimte en klikt je nergens naartoe. Heeft HubSpot een " +
         "opvolgdatum, dan staat die er; zo niet, dan zet je die datum daar zelf. Is die dag geweest, dan " +
         "krijgt de datum een zacht oranje vlakje, zodat je in één oogopslag ziet wie er wacht. " +
+        "Een datum die je zelf zet staat er precies zo bij (“28 jul”), met het kalendertje ernaast " +
+        "om hem te veranderen. " +
         "De startmaand staat kort in beeld (“sept ’27”), en “N.B.” betekent dat je hem nog niet weet. " +
         "Een lead die je nog niet beoordeeld hebt telt voor dertig procent mee, " +
         "niet voor honderd. Onder de lijst staat wat het bij elkaar is: het opgetelde bedrag en daaronder " +

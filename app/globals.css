@@ -5814,12 +5814,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 /* Het maandveld toont de maand kort met het jaar erachter ("sept '26"), plus
    het pijltje van de keuzelijst. Zo past hij naast de bedragen in plaats van de
    halve tabel op te eten, zoals met de volle maandnaam (21-08-2026). */
-.prog-veld.lead-veld-maand { width: 11ch; }
-.prog-veld.lead-veld-datum { width: 13ch; }
-/* Een extra regel neemt de opvolgdatum over van het bedrijf erboven, dus ook
-   wat er uit HubSpot komt. Gestippeld: die datum is niet van deze regel zelf,
-   en zodra je er een eigen datum in zet wordt de rand weer gewoon. */
-.prog-veld.regel-datum-erf { border-style: dashed; }
+.prog-veld.lead-veld-maand { width: 10ch; }
 .lead-kans-veld { display: inline-flex; align-items: center; gap: var(--ruimte-krap); white-space: nowrap; }
 .lead-kans-teken { color: var(--label-muted); }
 /* Een kruisje in plaats van een knop met tekst: "niet doorgegaan" is een
@@ -5832,7 +5827,13 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 /* De knoppenkolom uiterst rechts. Alles staat rechts uitgelijnd, want een extra
    regel eronder heeft alleen het kruisje en dat hoort op precies dezelfde plek
    te staan als het kruisje van de rij erboven (21-08-2026). */
-.lead-acties { text-align: right; white-space: nowrap; }
+/* Let op de `tbody td` ervoor: die is nodig, geen slordigheid. Verderop staat
+   `tbody td:last-child { text-align: center }`, en dat is één puntje specifieker
+   dan een losse klasse. Met alleen `.lead-acties` bleef de kolom dus gecentreerd
+   en stond het kruisje van een extra regel (die alleen dát kruisje heeft) een
+   heel eind links van het kruisje erboven. Precies wat er hersteld moest worden
+   (21-08-2026). */
+tbody td.lead-acties, .lead-acties { text-align: right; white-space: nowrap; }
 .lead-acties > * + * { margin-left: var(--ruimte-naast); }
 /* De optelling onderaan: opgeteld boven, gewogen eronder. Het bedrag staat in
    een blokje met precies de maat en de binnenruimte van het invulveld erboven,
@@ -5882,7 +5883,10 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   background: var(--kleur-rand); margin-left: var(--ruimte-regel);
 }
 .prog-veld.regel-naam-veld { width: 18ch; text-align: left; }
-.prog-veld.regel-soort-veld { width: 14ch; text-align: left; }
+/* Smal genoeg voor "Website", het langste woord in de lijst. "Advertenties"
+   heet daarom "Ads": elke pixel die deze kolom niet nodig heeft, gaat naar de
+   bedrijfsnaam ernaast (21-08-2026). */
+.prog-veld.regel-soort-veld { width: 10ch; text-align: left; }
 .regel-kans { color: var(--label-muted); text-align: right; }
 /* De soort van de rij zelf: geen keuzelijst, want het maandbedrag van een klant
    is per definitie de SEO-fee. Een website of Google Ads krijgt een eigen regel. */
@@ -5910,6 +5914,36 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   border: 1px solid transparent; border-radius: var(--ronding-klein);
   font-variant-numeric: tabular-nums;
 }
+/* Een datum die je zelf zet, in exact dezelfde vorm als een datum die je alleen
+   leest: "28 jul", met er direct naast het kalendertje om hem te veranderen.
+   Het volle invulvak toonde "07/28/2026" plus icoontje, was dertien tekens
+   breed, en duwde daarmee de bedrijfsnaam in de kolom ernaast op twee regels
+   (21-08-2026). Het is nog steeds het gewone datumvakje van de browser: alleen
+   de tekst ervan staat uit, dus kiezen werkt met de muis én het toetsenbord
+   precies zoals overal. */
+.lead-datum-kies { display: inline-flex; align-items: center; gap: var(--ruimte-krap); }
+.lead-datum-tekst { font-variant-numeric: tabular-nums; }
+.lead-datum-prikker {
+  width: 7ch; padding: 0; border: 0; background: none; cursor: pointer;
+  font-family: var(--letter); font-size: inherit; color: inherit;
+}
+/* Alleen het kalendertje laten staan kan met de onderdelen van het datumvakje,
+   en die kent niet elke browser. Kent hij ze niet, dan blijft het een smal maar
+   gewoon vakje in plaats van een halve. */
+@supports selector(::-webkit-calendar-picker-indicator) {
+  .lead-datum-prikker { width: auto; }
+  .lead-datum-prikker::-webkit-datetime-edit,
+  .lead-datum-prikker::-webkit-inner-spin-button,
+  .lead-datum-prikker::-webkit-clear-button { display: none; }
+  .lead-datum-prikker::-webkit-calendar-picker-indicator {
+    padding: 0; margin: 0; opacity: 0.5; cursor: pointer;
+  }
+  .lead-datum-kies:hover .lead-datum-prikker::-webkit-calendar-picker-indicator { opacity: 1; }
+}
+/* Een extra regel die de datum van het bedrijf erboven overneemt: stiller, want
+   die datum is niet van deze regel zelf. Zet je er een eigen datum in, dan
+   staat hij gewoon zwart. */
+.lead-datum-kies.regel-datum-erf .lead-datum-tekst { color: var(--label-muted); }
 .lead-datum-vandaag { color: var(--kleur-accent-diep); font-weight: 600; }
 .lead-datum-verstreken {
   background: var(--kleur-accent-waas);

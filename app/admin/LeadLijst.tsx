@@ -64,15 +64,17 @@ const SORTEERBAAR: { kolom: Exclude<SortKolom, "">; label: string }[] = [
   { kolom: "eenmalig", label: "Eenmalig" },
   // Wat dat eenmalige werk jou kost (de bouwer van de website, de fotograaf).
   // Staat naast de opbrengst, want daar reken je het tegen af.
-  // Kort, want een kopregel bepaalt hoe breed de kolom wordt en de tabel is al
-  // breed. "Kosten eenmalig" voluit koste vijftig pixels extra.
-  { kolom: "eenmaligKosten", label: "Kosten eenm." },
-  { kolom: "start", label: "Verwacht klant" },
+  //
+  // De koppen hieronder zijn bewust kort. Een kopregel bepaalt hoe breed een
+  // kolom wordt, en elke pixel die hier weggaat komt bij de bedrijfsnaam
+  // terecht; die moet op één regel passen (21-08-2026).
+  { kolom: "eenmaligKosten", label: "Kosten 1x" },
+  { kolom: "start", label: "Verwacht" },
 ];
 
 const SOORT_KEUZE: { waarde: LeadVeld["soort"]; label: string }[] = [
   { waarde: "seo", label: "SEO" },
-  { waarde: "ads", label: "Advertenties" },
+  { waarde: "ads", label: "Ads" },
   { waarde: "website", label: "Website" },
   { waarde: "overig", label: "Overig" },
 ];

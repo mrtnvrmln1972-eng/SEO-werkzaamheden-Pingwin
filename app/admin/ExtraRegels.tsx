@@ -34,7 +34,7 @@ export type ExtraRegel = {
 
 const SOORTEN: { waarde: ExtraRegel["soort"]; label: string }[] = [
   { waarde: "seo", label: "SEO" },
-  { waarde: "ads", label: "Advertenties" },
+  { waarde: "ads", label: "Ads" },
   { waarde: "website", label: "Website" },
   { waarde: "overig", label: "Overig" },
 ];

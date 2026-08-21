@@ -200,7 +200,18 @@ function maandenLijst(huidig: string): string[] {
   return lijst.sort();
 }
 
-/** Een datum (JJJJ-MM-DD). Een gekozen datum gaat er meteen in. */
+/**
+ * Een datum (JJJJ-MM-DD) die je zelf zet. In beeld staat hij in dezelfde vorm
+ * als een datum die je alleen leest ("28 jul"), met er direct naast het
+ * kalendertje waarmee je hem verandert. Het volle invulvak toonde
+ * "07/28/2026" plus een icoontje, was dertien tekens breed, en duwde daarmee
+ * de bedrijfsnaam in de kolom ernaast op twee regels (21-08-2026).
+ *
+ * Het is nog steeds gewoon een datumvakje van de browser: de tekst ervan staat
+ * uit in de opmaak en alleen het kalendertje blijft staan. Zo hoeft er geen
+ * eigen kalender nagebouwd te worden, en werkt kiezen met de muis én met het
+ * toetsenbord precies zoals overal.
+ */
 export function DatumVeld({
   waarde, label, merk = "", opslaan,
 }: {
@@ -212,15 +223,17 @@ export function DatumVeld({
 }) {
   const { tekst, nu } = useZelfBewaren(waarde, (t) => { void opslaan(t); });
   return (
-    <input
-      className={`prog-veld lead-veld-datum${merk}`}
-      type="date"
-      aria-label={label}
-      title={label}
-      value={tekst}
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => nu(e.target.value || "")}
-    />
+    <span className={`lead-datum lead-datum-kies${merk}`} title={label}>
+      <span className="lead-datum-tekst">{tekst ? dagKort(tekst) : "—"}</span>
+      <input
+        className="lead-datum-prikker"
+        type="date"
+        aria-label={label}
+        value={tekst}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => nu(e.target.value || "")}
+      />
+    </span>
   );
 }
 
