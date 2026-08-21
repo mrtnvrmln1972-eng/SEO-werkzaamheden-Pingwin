@@ -24,6 +24,35 @@ export const BLOKKEN: Uitklapper[] = [
       "blokkade op de site ook Google raakt of alleen meettools.",
   },
   {
+    titel: "Een machinekoppeling is geen pagina, en telt dus nergens meer mee",
+    kern: "Bij Nationaal Oogcentrum werden 103 gemelde pagina's er 24; de andere 79 waren geen pagina's.",
+    tekst:
+      "Search Console zet in zijn paginalijst alles wat het ooit is tegengekomen, ook adressen die " +
+      "geen pagina zijn. Bij WordPress zijn dat er veel: elke pagina verwijst in zijn kop automatisch " +
+      "naar `/wp-json/...`, de **REST API**. Dat is dezelfde inhoud, maar dan als datablok voor de " +
+      "blokeditor en voor apps. Google ziet dat adres langskomen en zet het in de lijst, en zo kwamen " +
+      "die adressen ook in onze paginalijst terecht.\n\n" +
+      "Op 21 augustus 2026 kwam dat aan het licht via de sitemap-check van Nationaal Oogcentrum: " +
+      "**103 live pagina's die niet in de sitemap staan**. Nageteld waren daarvan 77 REST API-adressen " +
+      "en 2 afbeeldingen uit de mediabibliotheek. Er bleven **24 echte pagina's** over, en die vragen " +
+      "stuk voor stuk om een besluit: de negen keuzehulp-pagina's onder `/ben-ik-geschikt/` en de FAQ " +
+      "horen in de sitemap, terwijl de elf blog-categorieën, de disclaimer en de privacyverklaring vaak " +
+      "juist bewust op noindex staan.\n\n" +
+      "Waarom dat meer is dan een schoonheidsfout: zo'n getal is de kern van het advies dat naar een " +
+      "klant of sitebeheerder gaat. **103 leest als \"je sitemap deugt niet\", 24 leest als \"er ontbreken " +
+      "een paar pagina's die er wel in horen\".** Ruis maakt een lijst niet langer maar ongeloofwaardig.\n\n" +
+      "De oplossing zit op één plek, niet in dat ene scherm: bestanden, feeds en machinekoppelingen " +
+      "(`/wp-json/`, `/wp-content/`, `/wp-admin/`, `/feed/`, `xmlrpc.php` en alles met een " +
+      "bestandsextensie) worden nu geweerd bij het inlezen én bij het lezen van de paginalijst. Dat " +
+      "laatste is bewust: de lijsten die er al stonden zijn daardoor meteen eerlijk, zonder dat elke " +
+      "klant eerst opnieuw ingelezen hoeft te worden. Het geldt dus overal waar het dashboard pagina's " +
+      "telt, niet alleen in de sitemap-check. `proeven/geen-pagina.proef.ts` legt de grens vast, " +
+      "inclusief de randgevallen: een pagina als `/nieuws/feed-inspiratie/` blijft gewoon een pagina.\n\n" +
+      "Op de site zelf blijft één punt over voor de sitebeheerder: die REST- en oEmbed-verwijzingen uit " +
+      "de kop van de pagina halen, of `/wp-json/` een **noindex** meegeven via de HTTP-header. Niet " +
+      "blokkeren in robots.txt, want dan blijven ze indexeerbaar en kan de blokeditor vastlopen.",
+  },
+  {
     titel: "De sitemap-check is deelbaar met een link, zonder inlog",
     kern: "Eén adres dat precies dit ene overzicht laat zien, en verder niets van het dashboard.",
     tekst:

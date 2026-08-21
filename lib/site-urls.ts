@@ -138,6 +138,43 @@ export function isExcludedUrl(u: string): boolean {
   return EXCLUDED_PATHS.test(u);
 }
 
+// ═══════════════════════════════════════════════════════════
+// WAT GEEN PAGINA IS (één definitie, voor het hele dashboard)
+// ═══════════════════════════════════════════════════════════
+// Wat er misging (21-08-2026). De sitemap-check van Nationaal Oogcentrum meldde
+// 103 live pagina's die niet in de sitemap staan. Daar waren er 77 van
+// `/wp-json/...`: dat is de machinekoppeling van WordPress (de REST API), geen
+// pagina maar dezelfde inhoud als datablok voor de blokeditor en apps. WordPress
+// zet in de kop van elke pagina automatisch een verwijzing daarheen, Search
+// Console ziet dat adres langskomen en zet het in zijn paginalijst, en zo kwam
+// het in onze spiegel terecht. Plus twee losse afbeeldingen uit de
+// mediabibliotheek. Het echte aantal was 24.
+//
+// Dat is geen kleine schoonheidsfout. Zo'n getal is de kern van het advies dat
+// naar een klant of sitebeheerder gaat, en 103 tegen 24 verandert de conclusie:
+// van "je sitemap deugt niet" naar "er ontbreken een paar pagina's die er wel in
+// horen". Ruis maakt een lijst niet alleen langer, hij maakt hem ongeloofwaardig.
+//
+// De filter hoort hier en nergens anders, want dit is de plek waar de paginalijst
+// ontstaat en waar hij gelezen wordt. Zou hij alleen in de sitemap-check zitten,
+// dan bleven de bespreekpunten, de opruimanalyse en elke telling van "aantal
+// pagina's" gewoon meerekenen met adressen die geen pagina zijn.
+const GEEN_PAGINA_BESTAND = /\.(jpe?g|png|gif|webp|avif|bmp|tiff?|heic|svg|ico|css|js|mjs|json|xml|txt|pdf|docx?|xlsx?|pptx?|csv|zip|rar|gz|mp3|mp4|m4a|mov|avi|webm|woff2?|ttf|otf|eot)(\?|$)/i;
+
+// Machinekoppelingen en systeemmappen: wel een adres, nooit een pagina waar
+// iemand op landt of waar SEO-werk op gebeurt.
+const GEEN_PAGINA_PAD = /(^|\/)(wp-json|wp-admin|wp-includes|wp-content|xmlrpc\.php|feed|rss|atom|comments\/feed|oembed|cdn-cgi)(\/|$)/i;
+
+/** Is dit adres geen pagina maar een bestand, een feed of een machinekoppeling? */
+export function isGeenPagina(u: string): boolean {
+  let pad = u;
+  let query = "";
+  try { const p = new URL(u, "https://x.invalid"); pad = p.pathname; query = p.search; } catch { /* dan meten we op de hele string */ }
+  // `?rest_route=/wp/v2/pages/12` is dezelfde REST API zonder mooie URL.
+  if (/[?&]rest_route=/i.test(query)) return true;
+  return GEEN_PAGINA_BESTAND.test(pad) || GEEN_PAGINA_PAD.test(pad);
+}
+
 // ── Sitemap ophalen (incl. sitemap-index), URL's verzamelen ──
 async function fetchSitemapUrls(domain: string, max = 3000): Promise<string[]> {
   const base = domain.startsWith("http") ? domain.replace(/\/$/, "") : `https://${domain.replace(/^www\./, "").replace(/\/$/, "")}`;
@@ -195,8 +232,6 @@ async function checkUrl(u: string): Promise<{ status: number | null; redirectTar
   }
 }
 
-// Bestanden en systeempaden die geen pagina zijn; die horen niet in de spiegel.
-const GEEN_PAGINA = /\.(jpe?g|png|gif|webp|svg|ico|css|js|mjs|json|xml|txt|pdf|docx?|xlsx?|zip|rar|mp3|mp4|webm|woff2?|ttf|eot)(\?|$)/i;
 
 /**
  * De vereniging van de vier bronnen tot één paginalijst met per pagina de
@@ -212,7 +247,7 @@ export function verenigBronnen(domain: string, bronnen: { sitemap: string[]; gsc
       const p = new URL(u);
       const host = p.hostname.replace(/^www\./, "").toLowerCase();
       if (host !== eigenHost) return null;
-      if (GEEN_PAGINA.test(p.pathname) || isExcludedUrl(u)) return null;
+      if (isGeenPagina(u) || isExcludedUrl(u)) return null;
       return p.pathname.replace(/\/+$/, "").toLowerCase() || "/";
     } catch { return null; }
   };
@@ -339,7 +374,12 @@ export async function getClientUrls(slug: string): Promise<ClientUrl[]> {
     LEFT JOIN page_plans p ON p.client_slug = u.client_slug AND p.url = u.url
     WHERE u.client_slug = ${slug}
     ORDER BY u.gsc_clicks DESC, u.url ASC`;
-  return rows.map((r) => ({
+  // Ook hier zeven, niet alleen bij het inlezen. De spiegels die er nu staan
+  // bevatten nog de machinekoppelingen en bestanden van vóór 21-08-2026 (bij
+  // Nationaal Oogcentrum 79 van de 228 regels), en die zouden pas verdwijnen na
+  // een volledige herscan van elke klant. Eén zeef aan de leeskant maakt élk
+  // scherm meteen eerlijk; het inlezen zorgt dat er niets nieuws bij komt.
+  return rows.filter((r) => !isGeenPagina(r.url as string)).map((r) => ({
     url: r.url as string,
     status: r.status === null ? null : Number(r.status),
     redirectTarget: (r.redirect_target as string) || "",

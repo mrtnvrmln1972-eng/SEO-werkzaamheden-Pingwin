@@ -16,7 +16,7 @@
 // in praten.
 
 import { getClientBySlug } from "./clients";
-import { getClientUrls, padSleutel, isExcludedUrl } from "./site-urls";
+import { getClientUrls, padSleutel, isExcludedUrl, isGeenPagina } from "./site-urls";
 import { baseFromDomain } from "./wordpress";
 
 export type SitemapBestand = { url: string; status: number | null; aantal: number };
@@ -110,7 +110,10 @@ export async function sitemapCheck(slug: string): Promise<SitemapCheckUitkomst |
       let aantal = 0;
       for (const u of gevondenLocs) {
         if (inSitemap.size >= MAX) break;
-        if (isExcludedUrl(u)) continue;
+        // Dezelfde zeef als de paginalijst: een bestand of een machinekoppeling
+        // in de sitemap is geen pagina, en zou anders aan één kant wél meetellen
+        // en aan de andere kant niet. Dan praten de twee lijsten tegen elkaar in.
+        if (isExcludedUrl(u) || isGeenPagina(u)) continue;
         inSitemap.add(padSleutel(u));
         sitemapUrls.push(u);
         aantal++;
