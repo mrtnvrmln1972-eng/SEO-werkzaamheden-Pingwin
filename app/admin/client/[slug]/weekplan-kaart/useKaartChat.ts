@@ -16,8 +16,12 @@ import type { WpTask } from "./types";
 
 export type ChatMsg = { role: "user" | "assistant"; content: string };
 
-export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFoutje, setMelding }: {
+export function useKaartChat({ slug, t, hasInfo, open, driveMap, refreshBoard, setFoutje, setMelding }: {
   slug: string; t: WpTask; hasInfo: boolean;
+  /** Staat de kaart open? Dan kijken we alvast of er een gesprek over deze
+      pagina ligt, zodat de fase-rij "Strategie" zijn knop kan tonen zonder dat
+      je de chat eerst hoeft open te klappen. */
+  open: boolean;
   driveMap: DriveMap | null; refreshBoard: () => void;
   setFoutje: (v: string) => void; setMelding: (v: string) => void;
 }) {
@@ -81,13 +85,12 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
     return laatste.replace(/<[^>]*>/g, " ").replace(/[#*|]/g, "").replace(/\s+/g, " ").trim().slice(0, 600);
   }
 
-  // Chat: laden bij eerste keer openklappen. Met pagina: de meest recente
+  // Het gesprek ophalen, los van het openklappen. Met pagina: de meest recente
   // pagina-chat (zelfde geheugen als Pagina's); zonder pagina: het eigen
-  // kaart-gesprek via de bird's eye-chat.
-  async function openChat(prefill?: string) {
-    setChatOpen(true);
-    if (prefill) setInput(prefill);
-    if (msgs.length) return;
+  // kaart-gesprek via de bird's eye-chat. Geeft de berichten terug, want de
+  // knop in de fase-rij moet er meteen mee verder kunnen; wachten op de
+  // React-staat werkt daar niet.
+  async function laadBerichten(): Promise<ChatMsg[]> {
     try {
       if (t.url) {
         const d = await fetch(`/api/admin/page-chats?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(t.url)}`).then((r) => r.json());
@@ -95,8 +98,10 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
         if (eerste?.id) {
           const c = await fetch(`/api/admin/page-chats?id=${eerste.id}`).then((r) => r.json());
           if (c?.ok && Array.isArray(c.chat?.messages)) {
-            setMsgs(c.chat.messages); setChatId(eerste.id);
+            const lijst = c.chat.messages as ChatMsg[];
+            setMsgs(lijst); setChatId(eerste.id);
             setChatDatum({ laatste: eerste.updatedAt || "", gestart: eerste.createdAt || "" });
+            return lijst;
           }
         }
       } else {
@@ -104,11 +109,41 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
         if (d?.ok) setChatDatum({ laatste: String(d.updatedAt || ""), gestart: "" });
         if (d?.ok && Array.isArray(d.messages)) {
           // Alleen de tekst; actie-kaarten uit dit gesprek renderen we hier niet.
-          setMsgs((d.messages as ChatMsg[]).map((m) => ({ role: m.role, content: m.content })).filter((m) => (m.content || "").trim()));
+          const lijst = (d.messages as ChatMsg[]).map((m) => ({ role: m.role, content: m.content })).filter((m) => (m.content || "").trim());
+          setMsgs(lijst);
+          return lijst;
         }
       }
     } catch { /* stil */ }
+    return [];
   }
+
+  // Chat: laden bij eerste keer openklappen.
+  async function openChat(prefill?: string) {
+    setChatOpen(true);
+    if (prefill) setInput(prefill);
+    if (msgs.length) return;
+    await laadBerichten();
+  }
+
+  // Ligt er een gesprek over deze pagina, en van wanneer? Dit kijkje kost één
+  // lichte aanroep bij het openklappen van de kaart en is er zodat de fase-rij
+  // "Strategie" kan tonen wat er ligt. Zonder dit wist die rij niets tot je de
+  // chat opende, en dus stond er alleen "Bespreek", ook als het hele gesprek al
+  // gevoerd was.
+  useEffect(() => {
+    if (!open || !t.url || msgs.length || chatDatum.laatste) return;
+    let leeft = true;
+    fetch(`/api/admin/page-chats?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(t.url)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!leeft || !d?.ok) return;
+        const eerste = d.chats?.[0];
+        if (eerste?.id) setChatDatum({ laatste: eerste.updatedAt || "", gestart: eerste.createdAt || "" });
+      })
+      .catch(() => { /* dan toont de rij gewoon alleen "Bespreek" */ });
+    return () => { leeft = false; }; /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [open, slug, t.url]);
 
   // Eén vraag versturen en het antwoord terugkrijgen, met een begrijpelijke reden
   // als het misgaat. Waarom apart: `r.json()` klapte eruit zodra de server géén
@@ -198,10 +233,10 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
   // Dezelfde afsluitknop als in de pagina-chat: het hele gesprek wordt samengevat,
   // de conclusie wordt de vastgelegde strategie (de basis voor de volgende fases)
   // en er komt een Pingwin-document van in de Drive-map, als afgeronde werkzaamheid.
-  async function vatSamenEnLegVast() {
+  async function vatSamenEnLegVast(basis?: ChatMsg[]) {
     if (!t.url || chatBusy || vatFase) return;
-    const voorheen = msgs;
-    const next: ChatMsg[] = [...msgs, { role: "user", content: SUMMARIZE_PROMPT }];
+    const voorheen = basis ?? msgs;
+    const next: ChatMsg[] = [...voorheen, { role: "user", content: SUMMARIZE_PROMPT }];
     setVatFase("samenvatten"); setChatBusy(true); setFoutje(""); setMelding("");
     setMsgs(next);
     try {
@@ -230,17 +265,33 @@ export function useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFout
       setVatFase("document");
       const doc = await fetch("/api/admin/page-analysis-doc", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, url: t.url, analysis: String(d.reply), background: true, ...(driveMap ? { folderId: driveMap.id } : {}) }) }).then((r) => r.json()).catch(() => null);
       setMelding(doc?.ok
-        ? `Strategie vastgelegd. Het document wordt op de achtergrond gemaakt${driveMap ? ` in "${driveMap.path || driveMap.name}"` : ""} en verschijnt als werkzaamheid.`
-        : "Strategie vastgelegd. Alleen het document maken lukte niet; probeer dat zo opnieuw (of vanuit de pagina-chat in Pagina's).");
+        ? `Strategie vastgelegd en de korte samenvatting bijgewerkt. Het document wordt op de achtergrond gemaakt${driveMap ? ` in "${driveMap.path || driveMap.name}"` : ""} en verschijnt als werkzaamheid.`
+        : "Strategie vastgelegd en de korte samenvatting bijgewerkt. Alleen het document maken lukte niet; probeer dat zo opnieuw (of vanuit de pagina-chat in Pagina's).");
       refreshBoard();
     } catch { setFoutje("Samenvatten mislukt, probeer het nog een keer."); setMsgs(voorheen); }
     finally { setVatFase(""); setChatBusy(false); }
   }
 
+  // Dezelfde keten, maar gestart vanuit de fase-rij "Strategie" in plaats van
+  // onderin de chat. Dat is de plek waar je hem zoekt: daar staat de fase die
+  // erdoor afkomt. De chat klapt open zodat je ziet wat er gebeurt, en het
+  // gesprek wordt zo nodig eerst opgehaald.
+  async function legVastVanuitFase() {
+    if (!t.url || chatBusy || vatFase) return;
+    setChatOpen(true);
+    let lijst = msgs;
+    if (!lijst.length) lijst = await laadBerichten();
+    if (!lijst.some((m) => m.role === "assistant")) {
+      setFoutje("Er is nog geen gesprek over deze pagina om samen te vatten. Bespreek hem eerst; daarna legt deze knop de conclusie vast.");
+      return;
+    }
+    await vatSamenEnLegVast(lijst);
+  }
+
   return {
     chatOpen, setChatOpen, msgs, chatFout, openBericht, setOpenBericht, wegVraag, setWegVraag,
     input, setInput, chatBusy, msgsRef, vatFase, laatsteAntwoord, chatDatum,
-    openChat, sendChat, verwijderChatBericht, wisChat, vatSamenEnLegVast, chatConclusie,
+    openChat, sendChat, verwijderChatBericht, wisChat, vatSamenEnLegVast, legVastVanuitFase, chatConclusie,
   };
 }
 

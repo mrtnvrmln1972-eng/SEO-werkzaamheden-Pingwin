@@ -83,7 +83,7 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
     return () => { alive = false; };
   }, [open, slug, docSleutel]);
 
-  const chat = useKaartChat({ slug, t, hasInfo, driveMap, refreshBoard, setFoutje, setMelding });
+  const chat = useKaartChat({ slug, t, hasInfo, open, driveMap, refreshBoard, setFoutje, setMelding });
   const dev = useNaarDev({ slug, t, setFoutje });
   const doorgevoerd = useDoorgevoerd({ slug, id: t.id, refreshBoard });
   const lijst = useBespreeklijst({ slug, t, open });
@@ -130,6 +130,11 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               busy={busy} setBusy={setBusy}
               foutje={foutje} setFoutje={setFoutje} melding={melding} setMelding={setMelding}
               onBespreek={(prefill) => void chat.openChat(prefill)}
+              strategie={{
+                gesprek: !!t.url && (chat.msgs.length > 0 || !!chat.chatDatum.laatste),
+                bezig: chat.vatFase,
+                legVast: () => void chat.legVastVanuitFase(),
+              }}
               haalConclusie={chat.chatConclusie}
               onMail={onMail} refreshBoard={refreshBoard}
               dev={dev} doorgevoerd={doorgevoerd} />

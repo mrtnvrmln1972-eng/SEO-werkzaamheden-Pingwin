@@ -46,6 +46,17 @@ export const BLOKKEN: Uitklapper[] = [
       "beide plekken waar de chat staat: bij de pagina in Pagina's én op de projectkaart in de planning. " +
       "Zonder die klik draaien de volgende fases op de live data alleen, zonder de conclusies uit het " +
       "gesprek.\n\n" +
+      "**Vastleggen is één handeling, en dat is sinds 21 augustus 2026 ook echt zo.** Het gesprek op de " +
+      "projectkaart en het gesprek bij de pagina in Pagina's zijn hetzelfde gesprek (één geheugen per " +
+      "pagina), maar de knop eronder deed niet overal hetzelfde: legde je de strategie vast vanaf de " +
+      "projectkaart, dan bleef de korte samenvatting \"In het kort\" boven de pagina leeg en moest je die " +
+      "daar met een tweede knop alsnog laten maken. Twee kopieën van dezelfde keten, uit elkaar gelopen. Nu " +
+      "maakt de server die samenvatting op het moment dat de strategie wordt vastgelegd, dus voor beide " +
+      "knoppen gelijk; bij een pagina waarvan de strategie van vóór die datum is, verschijnt hij alsnog " +
+      "vanzelf zodra je de pagina opent. En de knop staat nu ook in de fase-rij **Strategie** zelf, zodra " +
+      "er een gesprek over die pagina ligt: daar begint de fase, dus daar hoort de knop die hem afmaakt. " +
+      "Je hoeft de chat niet meer open te klappen en langs het hele gesprek te scrollen; wil je eerst " +
+      "verder praten, dan staat \"Praat verder\" ernaast en dat opent hetzelfde gesprek.\n\n" +
       "**Nieuwe strategie trekt oud, doorgegeven advies in.** Leg je de strategie opnieuw vast, dan verdwijnt " +
       "advies dat die pagina eerder via \"Gelieerde pagina's\" doorgaf automatisch overal. Meegegeven advies " +
       "staat bij de ontvanger zichtbaar boven de chat met een knop \"Negeer dit advies\"; het lopende gesprek " +

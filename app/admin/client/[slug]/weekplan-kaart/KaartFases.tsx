@@ -62,7 +62,7 @@ export function FaseChips({ page, onToggleOpen }: { page: WpPageInfo; onToggleOp
 export default function KaartFases({
   slug, t, page, naarDev, driveMap, onKiesMap, ensureDriveMap,
   busy, setBusy, foutje, setFoutje, melding, setMelding,
-  onBespreek, haalConclusie, onMail, refreshBoard, dev, doorgevoerd,
+  onBespreek, strategie, haalConclusie, onMail, refreshBoard, dev, doorgevoerd,
 }: {
   slug: string; t: WpTask; page?: WpPageInfo; naarDev: boolean;
   driveMap: DriveMap | null; onKiesMap: () => void;
@@ -78,6 +78,12 @@ export default function KaartFases({
   foutje: string; setFoutje: (v: string) => void;
   melding: string; setMelding: (v: string) => void;
   onBespreek: (prefill: string) => void;
+  /** De strategie-stap in één handeling, vanuit de fase-rij zelf. `gesprek`
+      zegt of er al over deze pagina gepraat is; `bezig` is de stand van de
+      keten (samenvatten, vastleggen, document). De knop stond alleen onderin
+      de chat, dus je moest eerst openklappen en langs het hele gesprek
+      scrollen om de stap af te maken die hier begint. */
+  strategie?: { gesprek: boolean; bezig: string; legVast: () => void };
   haalConclusie: () => Promise<string>;
   onMail: (aud: "klant" | "dev") => void;
   refreshBoard: () => void;
@@ -304,7 +310,31 @@ export default function KaartFases({
     const p = page;
     if (!p) return null;
     if (key === "strategie") {
-      return <button type="button" className="btn btn-ghost btn-klein" title={p.strategie ? "Bespreek of stel de strategie bij in de kaart-chat" : "Stel in de kaart-chat een strategie voor deze pagina op"} onClick={() => onBespreek("Stel een strategie voor deze pagina voor. Houd rekening met de achtergrond van deze kaart.")}>Bespreek</button>;
+      // Twee knoppen, in de volgorde van het werk: eerst praten, dan vastleggen.
+      // De tweede verschijnt zodra er een gesprek ligt en doet in één klik wat
+      // eerst vier handelingen waren (chat openklappen, naar beneden scrollen,
+      // samenvatten, en daarna op Pagina's nóg een keer laten samenvatten).
+      const bezigLabel = strategie?.bezig === "samenvatten" ? "Samenvatten…"
+        : strategie?.bezig === "vastleggen" ? "Strategie vastleggen…"
+        : strategie?.bezig === "document" ? "Document maken…" : "";
+      return (
+        <>
+          <button type="button" className="btn btn-ghost btn-klein"
+            title={p.strategie ? "Praat verder over deze pagina in de kaart-chat; hetzelfde gesprek als in Pagina's" : "Stel in de kaart-chat een strategie voor deze pagina op"}
+            onClick={() => onBespreek(p.strategie
+              ? "Stel de vastgelegde strategie voor deze pagina bij. Wat wijzigen we, en waarom?"
+              : "Stel een strategie voor deze pagina voor. Houd rekening met de achtergrond van deze kaart.")}>
+            {strategie?.gesprek ? "Praat verder" : "Bespreek"}
+          </button>
+          {strategie?.gesprek && (
+            <button type="button" className="btn btn-primary btn-klein" disabled={!!bezigLabel}
+              title="Vat het gesprek over deze pagina samen, leg die conclusie vast als de strategie (de basis voor de volgende fases), maak er het Pingwin-document van en zet de korte samenvatting erboven. Eén handeling."
+              onClick={() => ensureDriveMap(() => strategie.legVast())}>
+              {bezigLabel || (p.strategie ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast")}
+            </button>
+          )}
+        </>
+      );
     }
     if (key === "gelieerde") {
       const kan = p.strategie;

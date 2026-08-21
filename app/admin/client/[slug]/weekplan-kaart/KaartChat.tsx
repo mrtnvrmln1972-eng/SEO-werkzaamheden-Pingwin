@@ -124,8 +124,13 @@ export default function KaartChat({ slug, t, page, chat, driveMap, onKiesMap, en
           )}
           {t.url && msgs.some((m) => m.role === "assistant") && (
             <div className="wp-chat-acties">
+              {/* Exact dezelfde knop als in de fase-rij "Strategie" hierboven:
+                  zelfde naam, zelfde keten, zelfde standen. Twee ingangen naar
+                  één handeling mag (hier eindig je je gesprek, daar begin je de
+                  fase), twee namen voor één handeling niet: dan zoek je altijd
+                  de verkeerde. */}
               <button type="button" className="btn btn-primary btn-klein" disabled={chatBusy || !!vatFase}
-                title="Vat het hele gesprek samen tot de definitieve conclusie, zet die als vastgelegde strategie (de basis voor gelieerde pagina's, analyse, blauwdruk en copy) en maak er het Pingwin-document van in de Drive-map."
+                title="Vat het gesprek over deze pagina samen, leg die conclusie vast als de strategie (de basis voor de volgende fases), maak er het Pingwin-document van en zet de korte samenvatting erboven. Eén handeling."
                 onClick={() => ensureDriveMap(() => void chat.vatSamenEnLegVast())}>
                 {vatFase === "samenvatten" ? "Samenvatten…" : vatFase === "vastleggen" ? "Strategie vastleggen…" : vatFase === "document" ? "Document maken…" : page?.strategie ? "Vat opnieuw samen & leg strategie vast" : "Vat samen & leg strategie vast"}
               </button>
