@@ -50,6 +50,11 @@ export const BLOKKEN: Uitklapper[] = [
       "zichzelf tegen: bovenaan stond dat de titel gewijzigd was, verderop dat de H1 grotendeels ongewijzigd " +
       "was. Het geschreven stukje \"wat er in de tekst is aangepast\" gaat sindsdien alleen nog over de " +
       "inhoud.\n\n" +
+      "**Onder \"wat er in de tekst is aangepast\" staat alleen wat er écht is aangepast.** Er stonden vijf " +
+      "punten waarvan er vier begonnen met \"ongewijzigd gelaten\", met de reden erbij; dat leest voor een " +
+      "klant als vier dingen die niet gebeurd zijn. Wat je niet noemt, heb je niet veranderd, dus hoeft het " +
+      "er ook niet bij te staan. Is er aan de tekst zelf niets veranderd, dan zegt het document dat in één " +
+      "zin.\n\n" +
       "**En elke kop krijgt zijn H-nummer ervoor** (H1, H2, H3), zodat de sitebouwer niet alleen ziet dát " +
       "iets een kop is maar ook wélke. In de tabel met de rolverdeling staan hooguit drie zoekwoorden in " +
       "plaats van een waslijst in een smalle kolom.\n\n" +

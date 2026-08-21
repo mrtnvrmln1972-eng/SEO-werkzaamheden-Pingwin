@@ -128,6 +128,7 @@ DIT DOCUMENT IS EEN OPLEVERING, GEEN LIJST MET HUISWERK (dit is een harde regel)
 - Geef daarom NOOIT een aanbeveling die je zelf kunt uitvoeren. Kun je het zelf, doe het, en zet het in "wijzigingen". Dus niet "het verdient aanbeveling de meta-description aan te scherpen", maar de aangescherpte meta-description zelf.
 - Vind je dat de meta-title of de meta-description van de LANDINGSPAGINA beter kan (te lang, te kort, geen klikprikkel, hoofdterm niet vooraan), schrijf ze dan zelf en zet ze in "landingMetas". Zijn ze al goed, laat "landingMetas" dan leeg; verzin geen werk.
 - Is een kop in de kern de zoekterm zelf, kies dan een kop met een eigen invalshoek. Lever dat alternatief, in plaats van een opmerking dat het lastig is.
+- In "wijzigingen" staat ALLEEN wat je écht veranderd hebt. Nooit een regel die zegt dat iets ongewijzigd is gebleven, en nooit een verantwoording waarom je iets hebt laten staan. Wat je niet noemt, heb je niet aangepast; dat is de afspraak, en dan hoeft het er dus niet bij. Heb je aan de tekst zelf niets veranderd, geef dan een lege lijst.
 - Schrijf in "wijzigingen" NIETS over de titel, de H1, de meta-title of de meta-description. Die staan feitelijk in een eigen tabel in het document, met de oude en de nieuwe waarde naast elkaar; schrijf je er zelf ook over, dan spreken die twee elkaar tegen. In "wijzigingen" hoort alleen wat er met de INHOUD gebeurd is: welke alinea, welke tussenkop, welke zin met de link erin.
 - "waarschuwingen" is UITSLUITEND voor Maarten en komt niet in het document. Zet daar alleen wat echt een keuze van hem vraagt (een strategische afweging, iets wat je niet kon controleren). Nooit iets over de interne linkstrategie of over ons eigen werk; dat is geen klantboodschap. Meestal is deze lijst leeg.
 
@@ -440,6 +441,23 @@ function veldenTabel(plan: OndersteunendPlan, oudeTitel: string, oudeKop: string
   ];
 }
 
+/**
+ * Is dit een échte wijziging, of een regel die zegt dat er niets veranderd is?
+ *
+ * Onder het kopje "Wat er in de tekst is aangepast" stonden vijf punten waarvan
+ * er vier begonnen met "ongewijzigd gelaten", inclusief de reden waarom. Dat is
+ * geen lijst met aanpassingen maar een lijst met niet-aanpassingen, en de klant
+ * leest daar dus vier dingen die niet gebeurd zijn. Maartens woorden
+ * (21-08-2026): "je noemt een heel aantal dingen waar niks aan veranderd is".
+ * De afspraak was al: wat je niet noemt, heb je niet veranderd. Dan hoeft het er
+ * ook niet bij, en hier wordt dat nagerekend in plaats van gevraagd.
+ */
+const NIETS_VERANDERD = /\b(ongewijzigd|onveranderd|niet aangepast|niet gewijzigd|niet veranderd|blijft staan|blijven staan|gehandhaafd|laten staan|gelaten)\b/i;
+
+export function isEchteWijziging(regel: string): boolean {
+  return !!(regel || "").trim() && !NIETS_VERANDERD.test(regel);
+}
+
 /** De steuntermen kort houden; een waslijst in een smalle kolom leest niemand. */
 function steunKolom(termen: string[]): string {
   const schoon = (termen || []).map((t) => t.trim()).filter(Boolean);
@@ -523,7 +541,7 @@ ${bron.slice(0, 16000)}`;
       titel: String(p.titel || "").trim() || String(versie.naam || "Aangepast stuk"),
       metaTitle: String(p.metaTitle || "").trim(),
       metaDescription: String(p.metaDescription || "").trim(),
-      wijzigingen: (Array.isArray(p.wijzigingen) ? p.wijzigingen : []).map(String).slice(0, 6),
+      wijzigingen: (Array.isArray(p.wijzigingen) ? p.wijzigingen : []).map(String).filter(isEchteWijziging).slice(0, 6),
       links: (Array.isArray(p.links) ? p.links : []).map((l) => ({
         naar: String(l?.naar || "").trim(), anker: String(l?.anker || "").trim(), plek: String(l?.plek || "").trim(),
       })).filter((l) => l.naar),
@@ -595,7 +613,10 @@ ${bron.slice(0, 16000)}`;
           // "moet ik hier zelf nog iets mee?" Wat er te doen viel is nu gedaan
           // en staat hierboven; wat er overblijft is voor Maarten en staat op
           // het scherm bij het document. Zet dit kopje hier nooit terug.
-          ...(plan.wijzigingen.length ? [{ type: "subheading" as const, text: "Wat er in de tekst is aangepast" }, { type: "bullets" as const, items: plan.wijzigingen }] : []),
+          { type: "subheading" as const, text: "Wat er in de tekst is aangepast" },
+          ...(plan.wijzigingen.length
+            ? [{ type: "bullets" as const, items: plan.wijzigingen }]
+            : [{ type: "paragraph" as const, text: "Aan de tekst zelf is niets veranderd. Alleen de titel, de kop en de meta-gegevens zijn aangepast; die staan hierboven, met de oude en de nieuwe waarde naast elkaar." }]),
         ],
       },
       {

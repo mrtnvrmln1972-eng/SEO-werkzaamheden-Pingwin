@@ -22,7 +22,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { botsendeTermen, botstMetHoofdterm, controleerPlan, tekstNaarBlokken } from "../lib/ondersteunend";
+import { botsendeTermen, botstMetHoofdterm, controleerPlan, isEchteWijziging, tekstNaarBlokken } from "../lib/ondersteunend";
 import { groepeer } from "../lib/doc-groepen";
 
 let fouten = 0;
@@ -231,6 +231,37 @@ proef("een schoon plan levert geen botsende term op", botsendeTermen(goedPlan())
   proef("de steuntermen worden ingekort tot een leesbare kolom",
     b.includes("steunKolom(") && b.includes("andere vragen rond dit onderwerp"),
     "Een komma-lijst van vijftien termen in een smalle kolom leest niemand.");
+}
+
+
+// ── "Wat er is aangepast" bevat alleen wat er écht is aangepast (21-08-2026) ──
+// Onder dat kopje stonden vijf punten waarvan er vier begonnen met "ongewijzigd
+// gelaten", mét de reden erbij. Dat is geen lijst met aanpassingen maar een lijst
+// met niet-aanpassingen, en de klant leest daar dus vier dingen die niet gebeurd
+// zijn. Maartens woorden: "je noemt een heel aantal dingen waar niks aan
+// veranderd is".
+{
+  const weg = [
+    "Tussenkop 'Natuurlijke waterzuivering uit het zicht' ongewijzigd gelaten: bevat de hoofdterm maar heeft een eigen invalshoek.",
+    "Tussenkop 'Ook 's avonds een blikvanger' ongewijzigd gelaten.",
+    "De eerste alinea is niet aangepast.",
+    "De opsomming blijft staan zoals hij was.",
+  ];
+  for (const regel of weg) proef(`gaat eruit: "${regel.slice(0, 50)}..."`, !isEchteWijziging(regel));
+  const blijft = [
+    "Afsluitende alinea toegevoegd met de interne link naar de landingspagina.",
+    "Tussenkop 'Natuurzwembad aanleggen' vervangen door 'Zo bouwden we dit bad'.",
+    "De eerste alinea herschreven zodat hij op het project mikt.",
+  ];
+  for (const regel of blijft) proef(`blijft staan: "${regel.slice(0, 50)}..."`, isEchteWijziging(regel));
+  proef("een lege regel telt niet mee", !isEchteWijziging("   "));
+
+  const b = readFileSync(join(__dirname, "..", "lib", "ondersteunend.ts"), "utf8");
+  proef("de filter zit op het inlezen van het plan", /wijzigingen:[^\n]*isEchteWijziging/.test(b),
+    "Anders komt zo'n regel alsnog in het document.");
+  proef("is er niets aan de tekst veranderd, dan zegt het document dat in één zin",
+    b.includes("Aan de tekst zelf is niets veranderd"),
+    "Beter één eerlijke zin dan een kopje met een lijst niet-aanpassingen eronder.");
 }
 
 console.log(fouten === 0 ? "\nAlles goed." : `\n${fouten} fout(en).`);
