@@ -5814,7 +5814,7 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 /* Het maandveld toont de maand kort met het jaar erachter ("sept '26"), plus
    het pijltje van de keuzelijst. Zo past hij naast de bedragen in plaats van de
    halve tabel op te eten, zoals met de volle maandnaam (21-08-2026). */
-.prog-veld.lead-veld-maand { width: 10ch; }
+.prog-veld.lead-veld-maand { width: 11ch; }
 .lead-kans-veld { display: inline-flex; align-items: center; gap: var(--ruimte-krap); white-space: nowrap; }
 .lead-kans-teken { color: var(--label-muted); }
 /* Een kruisje in plaats van een knop met tekst: "niet doorgegaan" is een
@@ -5886,7 +5886,7 @@ tbody td.lead-acties, .lead-acties { text-align: right; white-space: nowrap; }
 /* Smal genoeg voor "Website", het langste woord in de lijst. "Advertenties"
    heet daarom "Ads": elke pixel die deze kolom niet nodig heeft, gaat naar de
    bedrijfsnaam ernaast (21-08-2026). */
-.prog-veld.regel-soort-veld { width: 10ch; text-align: left; }
+.prog-veld.regel-soort-veld { width: 11ch; text-align: left; }
 .regel-kans { color: var(--label-muted); text-align: right; }
 /* De soort van de rij zelf: geen keuzelijst, want het maandbedrag van een klant
    is per definitie de SEO-fee. Een website of Google Ads krijgt een eigen regel. */
