@@ -385,14 +385,12 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           {list.map((c) => (
             <Fragment key={c.slug}>
               <tr
-                className={"clickable-row" + (sleep === c.id ? " tw-item-sleept" : "")}
-                onClick={() => openDashboard(c)}
-                title="Open de cockpit van deze klant"
+                className={sleep === c.id ? "tw-item-sleept" : undefined}
                 onDragOver={isOwner ? (e) => e.preventDefault() : undefined}
                 onDrop={isOwner ? (e) => { e.preventDefault(); void sleepVolgorde(list, c.id); } : undefined}
               >
                 {isOwner && (
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td>
                     <span
                       className="drag-handle tw-greep"
                       draggable
@@ -404,7 +402,11 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                     </span>
                   </td>
                 )}
-                <td>
+                {/* Alleen deze kolom opent de cockpit, niet de hele rij: de rest
+                    van de rij is invulvakjes, en daarin klikken hoorde je nooit
+                    de pagina uit te sturen (21-08-2026, zelfde regel als bij de
+                    leads eronder). */}
+                <td className="rij-open-cel" onClick={() => openDashboard(c)} title="Open de cockpit van deze klant">
                   <strong>{c.name}</strong>
                   {overdue[c.slug] && (
                     <span
@@ -425,7 +427,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                   )}
                   {" "}<span className="row-arrow"><PijlRechts /></span>
                 </td>
-                <td onClick={(e) => e.stopPropagation()}>
+                <td>
                   {isOwner ? (
                     <select
                       className="prog-veld regel-soort-veld"
@@ -464,11 +466,11 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 <td>
                   <span className="lead-totaal-bedrag">{euroKort(c.budget.maandbudget - c.budget.linkbuilding)}</span>
                 </td>
-                <td style={{ whiteSpace: "nowrap" }}>
+                <td className="lead-acties">
                   {isOwner ? (
                     <>
                       <button className="btn btn-klein" title="Nog een regel voor dit bedrijf: dezelfde rij, leeg, zodat je er de website of Google Ads van kunt maken"
-                        onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>{" "}
+                        onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>
                       <button className="lead-kruis" title="Verwijder deze klant"
                         aria-label={`${c.name} verwijderen`} onClick={(e) => remove(e, c)}><Kruis /></button>
                     </>
@@ -489,7 +491,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                   <td><RegelBedrag regel={r} veld="bedrag" label={`Bedrag per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
                   <td><RegelBedrag regel={r} veld="kosten" label={`Kosten per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
                   <td><span className="lead-totaal-bedrag">{euroKort(r.bedrag - r.kosten)}</span></td>
-                  <td><RegelWeg regel={r} verwijder={extra.verwijder} /></td>
+                  <td className="lead-acties"><RegelWeg regel={r} verwijder={extra.verwijder} /></td>
                 </tr>
               ))}
             </Fragment>

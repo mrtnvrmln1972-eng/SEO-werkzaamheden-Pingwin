@@ -738,6 +738,11 @@ tbody td:last-child { text-align: center; }
 .clickable-row { cursor: pointer; }
 .row-arrow { color: var(--kleur-accent); font-weight: 700; opacity: 0; transition: opacity 0.15s; }
 .clickable-row:hover .row-arrow { opacity: 1; }
+/* De ene kolom van een lijstrij die de omgeving erachter opent: de bedrijfsnaam.
+   Vroeger deed de hele rij dat, maar naast die naam staan tien invulvakjes en
+   dan klik je jezelf de hele dag per ongeluk weg (21-08-2026). */
+.rij-open-cel { cursor: pointer; }
+.rij-open-cel:hover .row-arrow { opacity: 1; }
 
 /* Cockpit tabs */
 .tabs { display: flex; gap: var(--s-2); flex-wrap: wrap; border-bottom: 2px solid var(--border); margin-bottom: var(--s-6); }
@@ -5757,11 +5762,15 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
    bedrijf weggedrukt. */
 .prog-veld.lead-veld-kans { width: 5ch; }
 .prog-veld.lead-veld-geld { width: 9ch; }
-/* Het maandveld toont de volle maandnaam plus het kalendericoontje ("september
-   2026"); smaller en de browser kapt hem af, en dan sta je te raden welk jaar
-   er staat. */
-.prog-veld.lead-veld-maand { width: 17ch; }
+/* Het maandveld toont de maand kort met het jaar erachter ("sept '26"), plus
+   het pijltje van de keuzelijst. Zo past hij naast de bedragen in plaats van de
+   halve tabel op te eten, zoals met de volle maandnaam (21-08-2026). */
+.prog-veld.lead-veld-maand { width: 11ch; }
 .prog-veld.lead-veld-datum { width: 13ch; }
+/* Een extra regel neemt de opvolgdatum over van het bedrijf erboven, dus ook
+   wat er uit HubSpot komt. Gestippeld: die datum is niet van deze regel zelf,
+   en zodra je er een eigen datum in zet wordt de rand weer gewoon. */
+.prog-veld.regel-datum-erf { border-style: dashed; }
 .lead-kans-veld { display: inline-flex; align-items: center; gap: var(--ruimte-krap); white-space: nowrap; }
 .lead-kans-teken { color: var(--label-muted); }
 /* Een kruisje in plaats van een knop met tekst: "niet doorgegaan" is een
@@ -5771,6 +5780,11 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
   padding: 0 var(--ruimte-naast); vertical-align: middle;
 }
 .lead-kruis:hover { color: var(--kleur-fout); opacity: 0.7; }
+/* De knoppenkolom uiterst rechts. Alles staat rechts uitgelijnd, want een extra
+   regel eronder heeft alleen het kruisje en dat hoort op precies dezelfde plek
+   te staan als het kruisje van de rij erboven (21-08-2026). */
+.lead-acties { text-align: right; white-space: nowrap; }
+.lead-acties > * + * { margin-left: var(--ruimte-naast); }
 /* De optelling onderaan: opgeteld boven, gewogen eronder. Het bedrag staat in
    een blokje met precies de maat en de binnenruimte van het invulveld erboven,
    zodat de cijfers onder elkaar uitlijnen in plaats van er een stukje naast. */
@@ -5837,8 +5851,22 @@ details.opr-kaart-intro:not([open]) > .opr-kop {
 .strook-opbouw td { color: var(--label-muted); }
 .strook-opbouw td:first-child { padding-left: var(--ruimte-kaart); }
 .strook-kans { color: var(--kleur-accent); }
-.lead-datum-vandaag { color: var(--kleur-let-op); font-weight: 700; }
-.lead-datum-verstreken { color: var(--kleur-fout); font-weight: 700; }
+/* Wanneer je iemand weer moet spreken. Een verstreken afspraak moet opvallen,
+   maar niet schreeuwen: een zacht oranje vlakje in de huisstijl in plaats van
+   een harde rode regel, zodat een lijst met tien leads geen alarmscherm is
+   (21-08-2026). Vandaag is dezelfde kleur zonder vlak, want dat is wel dringend
+   maar nog niet te laat. */
+.lead-datum {
+  display: inline-block; padding: 0 var(--ruimte-naast);
+  border: 1px solid transparent; border-radius: var(--ronding-klein);
+  font-variant-numeric: tabular-nums;
+}
+.lead-datum-vandaag { color: var(--kleur-accent-diep); font-weight: 600; }
+.lead-datum-verstreken {
+  background: var(--kleur-accent-waas);
+  border-color: color-mix(in srgb, var(--kleur-accent) 35%, white);
+  color: var(--kleur-accent-diep); font-weight: 600;
+}
 .lead-tijdregel-tekst { flex: 1; min-width: 0; }
 
 @media (max-width: 1100px) {

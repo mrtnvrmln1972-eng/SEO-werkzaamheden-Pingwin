@@ -5,7 +5,7 @@ import type { ClientConfig } from "../../lib/clients";
 import { LEAD_STANDAARD_KANS } from "../../lib/prognose-kans";
 import Vouwblok from "./Vouwblok";
 import { Kruis, Munt, Omhoog, Omlaag, PijlRechts, Uitklap, Vlag } from "../_ui/Pijl";
-import { BedragVeld, DatumVeld, MaandVeld } from "./RijVeld";
+import { BedragVeld, DatumVeld, KansVeld, MaandVeld, dagKort, maandLabel, opvolgKlasse } from "./RijVeld";
 import { useExtraRegels, RegelNaam, RegelSoortKeuze, RegelMaand, RegelKans, RegelOpvolg, RegelBedrag, RegelWeg } from "./ExtraRegels";
 
 // ═══════════════════════════════════════════════════════════
@@ -27,12 +27,6 @@ import { useExtraRegels, RegelNaam, RegelSoortKeuze, RegelMaand, RegelKans, Rege
 /** De stand van één lead in HubSpot, voor de kolommen in de leadlijst. */
 export type HubspotStand = { slug: string; opvolgDatum: string | null; sluitDatum: string | null; faseNaam: string; hubspotUrl: string };
 
-/** Een datum kort en leesbaar: "3 sep". Leeg blijft een streepje. */
-function dagKort(iso: string | null | undefined): string {
-  if (!iso) return "";
-  try { return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return ""; }
-}
-
 /** Eén maand in de strook onder de leadlijst: wat wordt de omzet, en waaruit. */
 type StripMaand = {
   maand: string; label: string;
@@ -41,7 +35,7 @@ type StripMaand = {
 };
 
 /** Op welke kolom je kunt sorteren. Leeg = je eigen volgorde (slepen). */
-type SortKolom = "" | "opvolgen" | "kans" | "budget" | "kosten" | "eenmalig" | "start";
+type SortKolom = "" | "opvolgen" | "kans" | "budget" | "kosten" | "eenmalig" | "eenmaligKosten" | "start";
 
 /** Twee rijen die hetzelfde bedrijf lijken te zijn. */
 type DubbelPaar = {
@@ -54,8 +48,11 @@ type DubbelPaar = {
 /** Eén klant, lead of losse post in de opbouw onder de strook. */
 type StripOpbouw = { slug: string; naam: string; soort: string; kans: number; bedragen: number[] };
 
-/** De drie dingen die je per lead in de lijst zelf invult, als tekst in beeld. */
-type LeadVeld = { kans: string; maand: string; eenmalig: string; soort: "seo" | "ads" | "website" | "overig" };
+/** Wat je per lead in de lijst zelf invult, als tekst in beeld. */
+type LeadVeld = {
+  kans: string; maand: string; eenmalig: string; eenmaligKosten: string;
+  soort: "seo" | "ads" | "website" | "overig";
+};
 
 /** De vier soorten, in dezelfde volgorde als bij een extra regel. */
 /** De kolommen waarop je kunt sorteren, in de volgorde waarin ze staan. */
@@ -65,6 +62,9 @@ const SORTEERBAAR: { kolom: Exclude<SortKolom, "">; label: string }[] = [
   { kolom: "budget", label: "Budget p/m" },
   { kolom: "kosten", label: "Kosten p/m" },
   { kolom: "eenmalig", label: "Eenmalig" },
+  // Wat dat eenmalige werk jou kost (de bouwer van de website, de fotograaf).
+  // Staat naast de opbrengst, want daar reken je het tegen af.
+  { kolom: "eenmaligKosten", label: "Kosten eenmalig" },
   { kolom: "start", label: "Verwacht klant" },
 ];
 
@@ -74,24 +74,7 @@ const SOORT_KEUZE: { waarde: LeadVeld["soort"]; label: string }[] = [
   { waarde: "website", label: "Website" },
   { waarde: "overig", label: "Overig" },
 ];
-const LEEG_VELD: LeadVeld = { kans: "", maand: "", eenmalig: "", soort: "seo" };
-
-/** Een maand als "2026-10" kort en leesbaar: "okt 2026". */
-function maandKort(maand: string | null | undefined): string {
-  if (!maand) return "";
-  try {
-    return new Date(`${maand}-01T00:00:00`).toLocaleDateString("nl-NL", { month: "short", year: "numeric" });
-  } catch { return maand; }
-}
-
-/** Is dit contactmoment geweest, vandaag, of nog niet? Bepaalt de kleur. */
-function opvolgKlasse(datum: string | null | undefined): string {
-  if (!datum) return "";
-  const vandaag = new Date().toISOString().slice(0, 10);
-  if (datum < vandaag) return " lead-datum-verstreken";
-  if (datum === vandaag) return " lead-datum-vandaag";
-  return "";
-}
+const LEEG_VELD: LeadVeld = { kans: "", maand: "", eenmalig: "", eenmaligKosten: "", soort: "seo" };
 
 export default function LeadLijst({
   leads, isOwner, hubspot, sleep, setSleep, sleepVolgorde, openDashboard, setFase, refresh, melden, setHertel,
@@ -120,11 +103,12 @@ export default function LeadLijst({
   // hem aan het kiezen bent, dus zonder dit zou elke klik in zo'n veld een keer
   // opslaan; nu gebeurt dat alleen als de waarde echt anders is.
   const bewaardVeld = useRef<Record<string, LeadVeld>>({});
-  const zetLeadVeld = (slug: string, deel: Partial<LeadVeld>) =>
+  const zetLeadVeld = (slug: string, deel: Partial<LeadVeld>) => {
+    // Ook onthouden wat er weggeschreven is, zodat het vakje niet terugspringt
+    // zodra de lijst opnieuw geladen is met precies dezelfde waarde.
+    bewaardVeld.current[slug] = { ...LEEG_VELD, ...bewaardVeld.current[slug], ...deel };
     setLeadVeld((v) => ({ ...v, [slug]: { ...LEEG_VELD, ...v[slug], ...deel } }));
-  // Welke cel op dit moment wordt weggeschreven, zodat een rij niet twee keer
-  // tegelijk opslaat en je ziet dat er iets gebeurt.
-  const [celBezig, setCelBezig] = useState<string>("");
+  };
 
   // De extra regels onder een lead (een website, advertenties). Ze rekenen mee
   // in de prognose, dus na elke wijziging mag de maandstrook opnieuw tellen.
@@ -180,30 +164,26 @@ export default function LeadLijst({
    * opvolgdatum). Gaat naar /api/admin/clients, want daar staan die velden; de
    * lijst wordt daarna opnieuw geladen zodat de optelling eronder klopt.
    */
-  async function bewaarKlant(slug: string, veld: string, body: Record<string, unknown>) {
-    setCelBezig(`${slug}:${veld}`);
+  async function bewaarKlant(slug: string, body: Record<string, unknown>) {
     try {
       const d = await fetch("/api/admin/clients", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug, ...body }),
       }).then((r) => r.json());
       if (!d?.ok) melden({ ok: false, text: d?.error || "Opslaan lukte niet." });
-      else await refresh();
+      else { await refresh(); setHertel((n) => n + 1); }
     } catch { melden({ ok: false, text: "Opslaan lukte niet." }); }
-    finally { setCelBezig(""); }
   }
 
-  /** Eén veld van één lead bewaren en de lijst daarna opnieuw laden. */
-  async function bewaarLead(slug: string, veld: string, body: Record<string, unknown>) {
-    setCelBezig(`${slug}:${veld}`);
+  /** Eén veld van één lead bewaren; de strook eronder telt daarna opnieuw. */
+  async function bewaarLead(slug: string, body: Record<string, unknown>) {
     try {
       const d = await fetch(`/api/admin/lead-hubspot?slug=${encodeURIComponent(slug)}`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       }).then((r) => r.json());
       if (!d?.ok) melden({ ok: false, text: d?.error || "Opslaan lukte niet." });
-      else if (veld === "budget") await refresh();
+      else setHertel((n) => n + 1);
     } catch { melden({ ok: false, text: "Opslaan lukte niet." }); }
-    finally { setCelBezig(""); }
   }
 
   // De kans, de startmaand en het eenmalige bedrag die je zelf hebt ingevuld.
@@ -215,13 +195,17 @@ export default function LeadLijst({
       try {
         const d = await fetch("/api/admin/prognose?regels=1").then((r) => r.json());
         if (!d?.ok || !alive || !d.regels) return;
-        const rijen = d.regels as Record<string, { kans: number; startMaand: string | null; eenmaligOmzet: number; soort?: LeadVeld["soort"] }>;
+        const rijen = d.regels as Record<string, {
+          kans: number; startMaand: string | null;
+          eenmaligOmzet: number; eenmaligKosten: number; soort?: LeadVeld["soort"];
+        }>;
         const map: Record<string, LeadVeld> = {};
         for (const [slug, r] of Object.entries(rijen)) {
           map[slug] = {
             kans: r?.kans === undefined || r?.kans === null ? "" : String(r.kans),
             maand: r?.startMaand || "",
             eenmalig: r?.eenmaligOmzet ? String(Math.round(r.eenmaligOmzet)) : "",
+            eenmaligKosten: r?.eenmaligKosten ? String(Math.round(r.eenmaligKosten)) : "",
             soort: r?.soort || "seo",
           };
         }
@@ -238,10 +222,12 @@ export default function LeadLijst({
     const n = Number(t.replace(/[^\d]/g, ""));
     return t && Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : LEAD_STANDAARD_KANS;
   };
-  const eenmaligVan = (slug: string) => {
-    const n = Number(String(leadVeld[slug]?.eenmalig ?? "").replace(/[^\d]/g, ""));
+  const getalVan = (slug: string, veld: "eenmalig" | "eenmaligKosten") => {
+    const n = Number(String(leadVeld[slug]?.[veld] ?? "").replace(/[^\d]/g, ""));
     return Number.isFinite(n) ? n : 0;
   };
+  const eenmaligVan = (slug: string) => getalVan(slug, "eenmalig");
+  const eenmaligKostenVan = (slug: string) => getalVan(slug, "eenmaligKosten");
   const totalen = leads.reduce(
     (t, c) => {
       const w = kansVan(c.slug) / 100;
@@ -251,6 +237,7 @@ export default function LeadLijst({
       const maand = Math.round(c.budget.maandbudget || 0) + eigen.reduce((n, r) => n + r.bedrag, 0);
       const kosten = Math.round(c.budget.linkbuilding || 0) + eigen.reduce((n, r) => n + r.kosten, 0);
       const eens = eenmaligVan(c.slug) + eigen.reduce((n, r) => n + r.eenmaligOmzet, 0);
+      const eensKosten = eenmaligKostenVan(c.slug) + eigen.reduce((n, r) => n + r.eenmaligKosten, 0);
       const gewogen = (basis: number, regelDeel: (r: typeof eigen[number]) => number) =>
         basis * w + eigen.reduce((n, r) => n + regelDeel(r) * ((r.kans === null ? kansVan(c.slug) : r.kans) / 100), 0);
       return {
@@ -260,9 +247,14 @@ export default function LeadLijst({
         kostenGewogen: t.kostenGewogen + gewogen(Math.round(c.budget.linkbuilding || 0), (r) => r.kosten),
         eens: t.eens + eens,
         eensGewogen: t.eensGewogen + gewogen(eenmaligVan(c.slug), (r) => r.eenmaligOmzet),
+        eensKosten: t.eensKosten + eensKosten,
+        eensKostenGewogen: t.eensKostenGewogen + gewogen(eenmaligKostenVan(c.slug), (r) => r.eenmaligKosten),
       };
     },
-    { maand: 0, maandGewogen: 0, kosten: 0, kostenGewogen: 0, eens: 0, eensGewogen: 0 },
+    {
+      maand: 0, maandGewogen: 0, kosten: 0, kostenGewogen: 0,
+      eens: 0, eensGewogen: 0, eensKosten: 0, eensKostenGewogen: 0,
+    },
   );
   const euro = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
 
@@ -274,6 +266,7 @@ export default function LeadLijst({
     if (k === "budget") return c.budget.maandbudget || null;
     if (k === "kosten") return c.budget.linkbuilding || null;
     if (k === "eenmalig") return eenmaligVan(c.slug) || null;
+    if (k === "eenmaligKosten") return eenmaligKostenVan(c.slug) || null;
     return leadVeld[c.slug]?.maand || null;
   };
   const zichtbareLeads = !sortKolom ? leads : [...leads].sort((a, b) => {
@@ -351,21 +344,19 @@ export default function LeadLijst({
         </thead>
         <tbody>
           {leads.length === 0 && (
-            <tr><td colSpan={isOwner ? 10 : 9} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
+            <tr><td colSpan={isOwner ? 11 : 10} style={{ textAlign: "center", padding: "var(--s-10)", color: "var(--gray)" }}>
               Nog geen leads. Maak er een aan met alleen een naam en een website.
             </td></tr>
           )}
           {zichtbareLeads.map((c) => (
             <Fragment key={c.slug}>
             <tr
-              className={"clickable-row" + (sleep === c.id ? " tw-item-sleept" : "")}
-              onClick={() => openDashboard(c)}
-              title="Open de leadomgeving"
+              className={sleep === c.id ? "tw-item-sleept" : undefined}
               onDragOver={isOwner && !sortKolom ? (e) => e.preventDefault() : undefined}
               onDrop={isOwner && !sortKolom ? (e) => { e.preventDefault(); void sleepVolgorde(leads, c.id); } : undefined}
             >
               {isOwner && (
-                <td onClick={(e) => e.stopPropagation()}>
+                <td>
                   <span
                     className={"drag-handle tw-greep" + (sortKolom ? " tw-greep-uit" : "")}
                     draggable={!sortKolom}
@@ -377,10 +368,12 @@ export default function LeadLijst({
                   </span>
                 </td>
               )}
-              {/* De naam is de link naar hun eigen site; de rij eromheen opent de
-                  leadomgeving. De losse kolom "Website" is daarmee weg
-                  (20-08-2026): die stond twee keer hetzelfde te zeggen. */}
-              <td>
+              {/* De naam is de link naar hun eigen site; deze kolom eromheen
+                  opent de leadomgeving. Alleen deze kolom, niet de hele rij
+                  (21-08-2026): met tien invulvakjes op één regel klikte je
+                  jezelf constant per ongeluk het scherm uit. De losse kolom
+                  "Website" is weg (20-08-2026): die zei twee keer hetzelfde. */}
+              <td className="rij-open-cel" onClick={() => openDashboard(c)} title="Open de leadomgeving">
                 {c.domain ? (
                   <a href={`https://${c.domain}`} target="_blank" rel="noreferrer"
                     title={`Open ${c.domain}`} onClick={(e) => e.stopPropagation()}><strong>{c.name}</strong></a>
@@ -398,7 +391,7 @@ export default function LeadLijst({
               </td>
               {/* De rij zelf is de SEO-fee; wil je er een website of Google Ads
                   bij, dan zet je daar met "+ regel" een eigen regel voor neer. */}
-              <td onClick={(e) => e.stopPropagation()}>
+              <td>
                 {isOwner ? (
                   <select
                     className="prog-veld regel-soort-veld"
@@ -407,7 +400,7 @@ export default function LeadLijst({
                     onChange={(e) => {
                       const soort = e.target.value as LeadVeld["soort"];
                       zetLeadVeld(c.slug, { soort });
-                      void bewaarLead(c.slug, "soort", { actie: "prognose", soort });
+                      void bewaarLead(c.slug, { actie: "prognose", soort });
                     }}
                   >
                     {SOORT_KEUZE.map((s) => <option key={s.waarde} value={s.waarde}>{s.label}</option>)}
@@ -418,42 +411,34 @@ export default function LeadLijst({
                   HubSpot komt; de kolom die daar "zelf gemaakt" of de leadstatus
                   liet zien is eruit (20-08-2026), want die stond op elke rij
                   hetzelfde en zei dus niets. */}
-              <td className={"lead-kolom-datum" + opvolgKlasse(hubspot[c.slug]?.opvolgDatum || c.opvolgDatum)}>
+              <td className="lead-kolom-datum">
                 {hubspot[c.slug]?.opvolgDatum ? (
-                  <span title="Deze datum komt uit HubSpot">{dagKort(hubspot[c.slug]?.opvolgDatum)}</span>
+                  <span className={"lead-datum" + opvolgKlasse(hubspot[c.slug]?.opvolgDatum)}
+                    title="Deze datum komt uit HubSpot">{dagKort(hubspot[c.slug]?.opvolgDatum)}</span>
                 ) : isOwner ? (
                   <DatumVeld
                     waarde={c.opvolgDatum || ""}
                     label={`Wanneer spreek je ${c.name} weer`}
-                    opslaan={(d) => bewaarKlant(c.slug, "opvolg", { action: "opvolgDatum", opvolgDatum: d })}
+                    merk={opvolgKlasse(c.opvolgDatum)}
+                    opslaan={(d) => bewaarKlant(c.slug, { action: "opvolgDatum", opvolgDatum: d })}
                   />
-                ) : c.opvolgDatum ? dagKort(c.opvolgDatum) : <span className="muted">&mdash;</span>}
+                ) : c.opvolgDatum ? (
+                  <span className={"lead-datum" + opvolgKlasse(c.opvolgDatum)}>{dagKort(c.opvolgDatum)}</span>
+                ) : <span className="muted">&mdash;</span>}
               </td>
-              {/* Kans, maandbedrag, eenmalig bedrag en startmaand: alle vier van
-                  jou, alle vier hier in te vullen. De rij zelf opent de
-                  leadomgeving, dus elke klik in een veld moet daar stoppen. */}
-              <td onClick={(e) => e.stopPropagation()}>
+              {/* Kans, maandbedrag, de twee eenmalige bedragen en de startmaand:
+                  allemaal van jou, allemaal hier in te vullen. Elk vakje
+                  bewaart zichzelf zodra je stopt met typen; zie RijVeld.tsx. */}
+              <td>
                 {isOwner ? (
-                  <span className="lead-kans-veld">
-                    <input
-                      className="prog-veld lead-veld-kans"
-                      inputMode="numeric"
-                      aria-label={`Hoe kansrijk is ${c.name}`}
-                      value={leadVeld[c.slug]?.kans ?? ""}
-                      placeholder={String(LEAD_STANDAARD_KANS)}
-                      disabled={celBezig === `${c.slug}:kans`}
-                      onChange={(e) => zetLeadVeld(c.slug, { kans: e.target.value.replace(/[^\d]/g, "").slice(0, 3) })}
-                      onBlur={(e) => {
-                        const n = Math.min(100, Math.max(0, Number(e.target.value.replace(/[^\d]/g, "")) || 0));
-                        const tekst = e.target.value.trim() ? String(n) : "";
-                        zetLeadVeld(c.slug, { kans: tekst });
-                        if (tekst === "" || tekst === (bewaardVeld.current[c.slug]?.kans ?? "")) return;
-                        bewaardVeld.current[c.slug] = { ...bewaardVeld.current[c.slug], kans: tekst };
-                        void bewaarLead(c.slug, "kans", { actie: "prognose", kans: n });
-                      }}
-                    />
-                    <span className="lead-kans-teken">%</span>
-                  </span>
+                  <KansVeld
+                    waarde={leadVeld[c.slug]?.kans ? Number(leadVeld[c.slug]?.kans) : null}
+                    label={`Hoe kansrijk is ${c.name}`}
+                    plaatshouder={String(LEAD_STANDAARD_KANS)}
+                    // Leeg laten betekent "de standaardkans", en dat hoeft niet
+                    // weggeschreven te worden; alleen een echt getal gaat mee.
+                    opslaan={(n) => { if (n !== null) return bewaarLead(c.slug, { actie: "prognose", kans: n }); }}
+                  />
                 ) : <span className="muted">{leadVeld[c.slug]?.kans || LEAD_STANDAARD_KANS}%</span>}
               </td>
               <td>
@@ -461,7 +446,7 @@ export default function LeadLijst({
                   <BedragVeld
                     waarde={c.budget.maandbudget}
                     label={`Beoogd maandbedrag van ${c.name}`}
-                    opslaan={(n) => bewaarKlant(c.slug, "budget", { action: "setBedragen", maandbudget: n })}
+                    opslaan={(n) => bewaarKlant(c.slug, { action: "setBedragen", maandbudget: n })}
                   />
                 ) : c.budget.maandbudget
                   ? euro(c.budget.maandbudget)
@@ -475,48 +460,55 @@ export default function LeadLijst({
                   <BedragVeld
                     waarde={c.budget.linkbuilding}
                     label={`Kosten per maand voor ${c.name}`}
-                    opslaan={(n) => bewaarKlant(c.slug, "kosten", { action: "setBedragen", linkbuilding: n })}
+                    opslaan={(n) => bewaarKlant(c.slug, { action: "setBedragen", linkbuilding: n })}
                   />
                 ) : c.budget.linkbuilding
                   ? euro(c.budget.linkbuilding)
                   : <span className="muted">&mdash;</span>}
               </td>
-              {/* Het eenmalige bedrag (meestal een website). Telt in de prognose
-                  één keer mee, in de maand hiernaast. */}
-              <td onClick={(e) => e.stopPropagation()}>
+              {/* Het eenmalige bedrag (meestal een website) en wat dat werk jou
+                  kost. Allebei tellen ze in de prognose één keer mee, in de
+                  maand die rechts staat. */}
+              <td>
                 {isOwner ? (
-                  <input
-                    className="prog-veld lead-veld-geld"
-                    inputMode="numeric"
-                    aria-label={`Eenmalig bedrag van ${c.name}`}
-                    value={leadVeld[c.slug]?.eenmalig ?? ""}
-                    placeholder="€"
-                    disabled={celBezig === `${c.slug}:eenmalig`}
-                    onChange={(e) => zetLeadVeld(c.slug, { eenmalig: e.target.value.replace(/[^\d]/g, "").slice(0, 7) })}
-                    onBlur={(e) => {
-                      const tekst = e.target.value.replace(/[^\d]/g, "");
-                      if (tekst === (bewaardVeld.current[c.slug]?.eenmalig ?? "")) return;
-                      bewaardVeld.current[c.slug] = { ...bewaardVeld.current[c.slug], eenmalig: tekst };
-                      void bewaarLead(c.slug, "eenmalig", { actie: "prognose", eenmalig: Number(tekst) || 0 });
+                  <BedragVeld
+                    waarde={eenmaligVan(c.slug)}
+                    label={`Eenmalig bedrag van ${c.name}`}
+                    opslaan={(n) => {
+                      zetLeadVeld(c.slug, { eenmalig: n ? String(n) : "" });
+                      return bewaarLead(c.slug, { actie: "prognose", eenmalig: n });
                     }}
                   />
                 ) : eenmaligVan(c.slug)
                   ? euro(eenmaligVan(c.slug))
                   : <span className="muted">&mdash;</span>}
               </td>
-              <td onClick={(e) => e.stopPropagation()}>
+              <td>
+                {isOwner ? (
+                  <BedragVeld
+                    waarde={eenmaligKostenVan(c.slug)}
+                    label={`Kosten van dat eenmalige werk voor ${c.name}`}
+                    opslaan={(n) => {
+                      zetLeadVeld(c.slug, { eenmaligKosten: n ? String(n) : "" });
+                      return bewaarLead(c.slug, { actie: "prognose", eenmaligKosten: n });
+                    }}
+                  />
+                ) : eenmaligKostenVan(c.slug)
+                  ? euro(eenmaligKostenVan(c.slug))
+                  : <span className="muted">&mdash;</span>}
+              </td>
+              <td>
                 {isOwner ? (
                   <MaandVeld
                     waarde={leadVeld[c.slug]?.maand ?? ""}
                     label={`Vanaf welke maand telt ${c.name} mee`}
                     opslaan={(nieuw) => {
                       zetLeadVeld(c.slug, { maand: nieuw });
-                      bewaardVeld.current[c.slug] = { ...bewaardVeld.current[c.slug], maand: nieuw };
-                      return bewaarLead(c.slug, "maand", { actie: "prognose", startMaand: nieuw });
+                      return bewaarLead(c.slug, { actie: "prognose", startMaand: nieuw });
                     }}
                   />
                 ) : leadVeld[c.slug]?.maand
-                  ? maandKort(leadVeld[c.slug]?.maand)
+                  ? maandLabel(leadVeld[c.slug]?.maand)
                   : <span className="muted">&mdash;</span>}
               </td>
               {/* Één knop om hem weg te zetten, niet twee. "Niet doorgegaan" en
@@ -524,12 +516,15 @@ export default function LeadLijst({
                   die is terug te draaien en houdt de mailwisseling en het dossier
                   staan. Echt weggooien staat nu in de leadomgeving zelf, onderaan
                   de leadkaart: zeldzaam en onomkeerbaar, dus een klik dieper. */}
-              <td style={{ whiteSpace: "nowrap" }}>
+              {/* De knoppen staan rechts, en het kruisje staat uiterst rechts.
+                  Dat is een vaste plek: een extra regel eronder heeft alleen dat
+                  kruisje, en dat schoof anders naar links (21-08-2026). */}
+              <td className="lead-acties">
                 {isOwner ? (
                   <>
                     <button className="btn btn-klein" onClick={(e) => setFase(e, c, "klant", `${c.name} omzetten naar klant? Alles blijft staan; alleen het label verandert.`)}>Maak klant</button>{" "}
                     <button className="btn btn-klein" title="Nog een regel voor dit bedrijf: dezelfde rij, leeg, zodat je er de website of Google Ads van kunt maken"
-                      onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>{" "}
+                      onClick={(e) => { e.stopPropagation(); void extra.voegToe(c.slug); }}>+ regel</button>
                     <button className="lead-kruis" title="Niet doorgegaan" aria-label={`${c.name} op niet doorgegaan zetten`}
                       onClick={(e) => setFase(e, c, "verloren", `${c.name} op "niet doorgegaan" zetten? Je kunt dat later terugdraaien.`)}><Kruis /></button>
                   </>
@@ -544,13 +539,18 @@ export default function LeadLijst({
                 {isOwner && <td></td>}
                 <td><RegelNaam naam={c.name} domein={c.domain} hubspotUrl={hubspot[c.slug]?.hubspotUrl} /></td>
                 <td><RegelSoortKeuze regel={r} bewaar={extra.bewaar} /></td>
-                <td><RegelOpvolg regel={r} bewaar={extra.bewaar} /></td>
+                {/* De opvolgdatum loopt standaard mee met het bedrijf erboven,
+                    dus ook met wat HubSpot doorgeeft. */}
+                <td className="lead-kolom-datum">
+                  <RegelOpvolg regel={r} erf={hubspot[c.slug]?.opvolgDatum || c.opvolgDatum} bewaar={extra.bewaar} />
+                </td>
                 <td><RegelKans regel={r} bewaar={extra.bewaar} /></td>
                 <td><RegelBedrag regel={r} veld="bedrag" label={`Bedrag per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
                 <td><RegelBedrag regel={r} veld="kosten" label={`Kosten per maand van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
                 <td><RegelBedrag regel={r} veld="eenmaligOmzet" label={`Eenmalig bedrag van ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
+                <td><RegelBedrag regel={r} veld="eenmaligKosten" label={`Kosten van dat eenmalige werk voor ${r.naam || "deze regel"}`} bewaar={extra.bewaar} /></td>
                 <td><RegelMaand regel={r} bewaar={extra.bewaar} /></td>
-                <td><RegelWeg regel={r} verwijder={extra.verwijder} /></td>
+                <td className="lead-acties"><RegelWeg regel={r} verwijder={extra.verwijder} /></td>
               </tr>
             ))}
           </Fragment>
@@ -579,6 +579,10 @@ export default function LeadLijst({
               <td>
                 <span className="lead-totaal-bedrag">{euro(totalen.eens)}</span>
                 <span className="lead-totaal-bedrag lead-totaal-gewogen">{euro(totalen.eensGewogen)}</span>
+              </td>
+              <td>
+                <span className="lead-totaal-bedrag">{euro(totalen.eensKosten)}</span>
+                <span className="lead-totaal-bedrag lead-totaal-gewogen">{euro(totalen.eensKostenGewogen)}</span>
               </td>
               <td colSpan={2}></td>
             </tr>

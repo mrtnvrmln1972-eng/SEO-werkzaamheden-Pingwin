@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // ═══════════════════════════════════════════════════════════
 // EEN VAKJE IN EEN LIJSTRIJ WAAR JE DIRECT IN TYPT
@@ -8,13 +8,59 @@ import { useState } from "react";
 // De leadlijst en de klantenlijst vullen allebei bedragen en datums in de rij
 // zelf in. Dat is één soort veld, dus staat het hier één keer: hetzelfde
 // uiterlijk (het invulveld uit de prognose, `.prog-veld`), dezelfde breedte,
-// dezelfde manier van opslaan (pas bij verlaten, en alleen als de waarde echt
-// veranderd is).
+// dezelfde manier van opslaan.
 //
-// Waarom de klik gestopt wordt: een rij in die lijsten is zelf aanklikbaar en
-// opent de klant- of leadomgeving. Zonder dat stoppen zou typen in een vakje de
-// pagina wegklikken.
+// Sinds 21-08-2026 bewaart elk vakje zichzelf: kort nadat je stopt met typen,
+// en meteen als je het vakje verlaat of een datum of maand kiest. Daarvoor
+// gebeurde dat alleen bij verlaten, en dan is "even een bedrag bijwerken en
+// doorklikken" precies de handeling die niets opslaat.
+//
+// Waarom de klik gestopt wordt: een rij in die lijsten opent de klant- of
+// leadomgeving. Zonder dat stoppen zou typen in een vakje de pagina wegklikken.
 // ═══════════════════════════════════════════════════════════
+
+/** Hoe lang een vakje wacht tot je uitgetypt bent voor het zichzelf bewaart. */
+const ZELF_BEWAREN_MS = 700;
+
+/**
+ * De motor onder elk vakje dat zichzelf bewaart. Hij houdt bij wat er in beeld
+ * staat, bewaart kort nadat je stopt met typen (`straks`) of meteen (`nu`), en
+ * volgt een waarde die buiten dit vakje om verandert, bijvoorbeeld doordat de
+ * lijst opnieuw is geladen. Wat jij zojuist zelf hebt weggeschreven telt niet
+ * als "van buiten": anders springt je eigen invoer terug op het moment dat het
+ * antwoord van de server binnenkomt.
+ */
+function useZelfBewaren(vanBuiten: string, bewaarWaarde: (tekst: string) => void) {
+  const [tekst, setTekst] = useState(vanBuiten);
+  const bewaard = useRef(vanBuiten);
+  const klok = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (vanBuiten === bewaard.current) return;
+    bewaard.current = vanBuiten;
+    setTekst(vanBuiten);
+  }, [vanBuiten]);
+
+  useEffect(() => () => { if (klok.current) clearTimeout(klok.current); }, []);
+
+  /** Nu bewaren, en wat er in beeld staat gelijktrekken met wat er weggaat. */
+  const nu = (waarde: string) => {
+    if (klok.current) { clearTimeout(klok.current); klok.current = null; }
+    setTekst(waarde);
+    if (waarde === bewaard.current) return;
+    bewaard.current = waarde;
+    bewaarWaarde(waarde);
+  };
+
+  /** Straks bewaren: zodra je even niets meer typt. */
+  const straks = (waarde: string) => {
+    setTekst(waarde);
+    if (klok.current) clearTimeout(klok.current);
+    klok.current = setTimeout(() => nu(waarde), ZELF_BEWAREN_MS);
+  };
+
+  return { tekst, nu, straks };
+}
 
 /** Een bedrag in hele euro's. Leeg blijft leeg; een euroteken staat als hint. */
 export function BedragVeld({
@@ -25,25 +71,68 @@ export function BedragVeld({
   breed?: "geld" | "kans";
   opslaan: (nieuw: number) => Promise<unknown> | void;
 }) {
-  const [bezig, setBezig] = useState(false);
+  const rond = Math.round(waarde || 0);
+  const { tekst, nu, straks } = useZelfBewaren(
+    rond ? String(rond) : "",
+    (t) => { void opslaan(Math.max(0, Number(t) || 0)); },
+  );
   return (
     <input
       className={`prog-veld lead-veld-${breed}`}
       inputMode="numeric"
       aria-label={label}
       title={label}
-      defaultValue={waarde ? String(Math.round(waarde)) : ""}
+      value={tekst}
       placeholder={breed === "kans" ? "" : "€"}
-      disabled={bezig}
       onClick={(e) => e.stopPropagation()}
-      onBlur={async (e) => {
-        const nieuw = Math.max(0, Math.round(Number(e.target.value.replace(/[^\d]/g, "")) || 0));
-        if (nieuw === Math.round(waarde || 0)) return;
-        setBezig(true);
-        try { await opslaan(nieuw); } finally { setBezig(false); }
-      }}
+      onChange={(e) => straks(schoonGetal(e.target.value, 9))}
+      onBlur={(e) => nu(schoonGetal(e.target.value, 9))}
     />
   );
+}
+
+/**
+ * Hoe kansrijk iets is, in procenten. Leeg mag: bij een lead betekent dat de
+ * standaardkans, bij een extra regel de kans van het bedrijf erboven.
+ */
+export function KansVeld({
+  waarde, label, plaatshouder = "", opslaan,
+}: {
+  waarde: number | null;
+  label: string;
+  plaatshouder?: string;
+  opslaan: (nieuw: number | null) => Promise<unknown> | void;
+}) {
+  const { tekst, nu, straks } = useZelfBewaren(
+    waarde === null ? "" : String(waarde),
+    (t) => { void opslaan(t === "" ? null : Number(t)); },
+  );
+  /** Boven de honderd bestaat niet; wat je typt wordt teruggezet op 100. */
+  const binnenBereik = (ruw: string) => {
+    const t = schoonGetal(ruw, 3);
+    return t === "" ? "" : String(Math.min(100, Number(t)));
+  };
+  return (
+    <span className="lead-kans-veld">
+      <input
+        className="prog-veld lead-veld-kans"
+        inputMode="numeric"
+        aria-label={label}
+        title={label}
+        value={tekst}
+        placeholder={plaatshouder}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => straks(schoonGetal(e.target.value, 3))}
+        onBlur={(e) => nu(binnenBereik(e.target.value))}
+      />
+      <span className="lead-kans-teken">%</span>
+    </span>
+  );
+}
+
+/** Alleen cijfers, en niet meer dan er in het vakje past. */
+function schoonGetal(ruw: string, tekens: number): string {
+  return ruw.replace(/[^\d]/g, "").slice(0, tekens);
 }
 
 /**
@@ -60,7 +149,6 @@ export function MaandVeld({
   label: string;
   opslaan: (nieuw: string) => Promise<unknown> | void;
 }) {
-  const [bezig, setBezig] = useState(false);
   const maanden = maandenLijst(waarde);
   return (
     <select
@@ -68,27 +156,36 @@ export function MaandVeld({
       aria-label={label}
       title={label}
       value={waarde}
-      disabled={bezig}
       onClick={(e) => e.stopPropagation()}
-      onChange={async (e) => {
+      onChange={(e) => {
         const nieuw = e.target.value;
         if (nieuw === waarde) return;
-        setBezig(true);
-        try { await opslaan(nieuw); } finally { setBezig(false); }
+        void opslaan(nieuw);
       }}
     >
-      <option value="">nog niet bekend</option>
+      <option value="">{MAAND_ONBEKEND}</option>
       {maanden.map((m) => <option key={m} value={m}>{maandLabel(m)}</option>)}
     </select>
   );
 }
 
-const MAAND_NAAM = ["januari", "februari", "maart", "april", "mei", "juni",
-  "juli", "augustus", "september", "oktober", "november", "december"];
+/** Nog geen maand gekozen. Kort, want het staat in een smalle kolom. */
+export const MAAND_ONBEKEND = "N.B.";
 
-function maandLabel(m: string): string {
+const MAAND_KORT = ["jan", "feb", "mrt", "apr", "mei", "jun",
+  "jul", "aug", "sept", "okt", "nov", "dec"];
+
+/**
+ * Een maand kort in beeld: "sept '26". De volle naam plus het jaartal
+ * ("september 2026") maakte deze kolom twee keer zo breed als de rest en dat
+ * duwde de bedragen weg (21-08-2026).
+ */
+export function maandLabel(m: string | null | undefined): string {
+  if (!m) return "";
   const [j, mm] = m.split("-");
-  return `${MAAND_NAAM[Number(mm) - 1] || mm} ${j}`;
+  const naam = MAAND_KORT[Number(mm) - 1];
+  if (!naam || !j) return m;
+  return `${naam} '${j.slice(2)}`;
 }
 
 /** Een half jaar terug tot twee jaar vooruit, plus de waarde die er al stond. */
@@ -103,33 +200,46 @@ function maandenLijst(huidig: string): string[] {
   return lijst.sort();
 }
 
-/** Een datum (JJJJ-MM-DD). Alleen opslaan als hij echt anders is. */
+/** Een datum (JJJJ-MM-DD). Een gekozen datum gaat er meteen in. */
 export function DatumVeld({
-  waarde, label, opslaan,
+  waarde, label, merk = "", opslaan,
 }: {
   waarde: string;
   label: string;
+  /** Extra klassen, bijvoorbeeld de kleur van een verstreken afspraak. */
+  merk?: string;
   opslaan: (nieuw: string) => Promise<unknown> | void;
 }) {
-  const [tekst, setTekst] = useState(waarde);
-  const [bewaard, setBewaard] = useState(waarde);
-  const [bezig, setBezig] = useState(false);
+  const { tekst, nu } = useZelfBewaren(waarde, (t) => { void opslaan(t); });
   return (
     <input
-      className="prog-veld lead-veld-datum"
+      className={`prog-veld lead-veld-datum${merk}`}
       type="date"
       aria-label={label}
       title={label}
       value={tekst}
-      disabled={bezig}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => setTekst(e.target.value)}
-      onBlur={async (e) => {
-        const nieuw = e.target.value || "";
-        if (nieuw === bewaard) return;
-        setBezig(true);
-        try { await opslaan(nieuw); setBewaard(nieuw); } finally { setBezig(false); }
-      }}
+      onChange={(e) => nu(e.target.value || "")}
     />
   );
+}
+
+/** Een datum kort en leesbaar: "3 sep". Leeg blijft leeg. */
+export function dagKort(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try { return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }); } catch { return ""; }
+}
+
+/**
+ * Is dit contactmoment geweest, vandaag, of nog niet? Bepaalt hoe de datum
+ * eruitziet. Een verstreken afspraak krijgt een zacht oranje vlakje, niet een
+ * harde rode regel: je moet hem zien, maar de lijst is geen alarmscherm
+ * (21-08-2026, op verzoek van Maarten).
+ */
+export function opvolgKlasse(datum: string | null | undefined): string {
+  if (!datum) return "";
+  const vandaag = new Date().toISOString().slice(0, 10);
+  if (datum < vandaag) return " lead-datum-verstreken";
+  if (datum === vandaag) return " lead-datum-vandaag";
+  return "";
 }

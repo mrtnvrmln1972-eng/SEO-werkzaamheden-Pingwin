@@ -65,10 +65,15 @@ export const HOOFDSTUK: Hoofdstuk = {
         "kosten die eraan vastzitten, een eenmalig bedrag voor een website met de kosten daarvan, de kans, en " +
         "vanaf welke maand het gaat lopen. Het eenmalige bedrag telt precies één keer mee, in die startmaand; " +
         "de maandbedragen tellen vanaf dan elke maand. In de leadlijst op je startscherm zie je per rij wanneer " +
-        "je moet opvolgen, en daar vul je de kans, het maandbedrag, de kosten, het eenmalige bedrag en de " +
-        "startmaand ook meteen in, zonder de lead te openen; wat je daar typt is hetzelfde als op de " +
-        "leadkaart en telt direct mee in de prognose. Heeft HubSpot een opvolgdatum, dan staat die er; " +
-        "zo niet, dan zet je die datum daar zelf. Een lead die je nog niet beoordeeld hebt telt voor dertig procent mee, " +
+        "je moet opvolgen, en daar vul je de kans, het maandbedrag, de kosten, het eenmalige bedrag met de " +
+        "kosten daarvan en de startmaand ook meteen in, zonder de lead te openen; wat je daar typt is " +
+        "hetzelfde als op de leadkaart en telt direct mee in de prognose. Elk vakje bewaart zichzelf zodra " +
+        "je stopt met typen, dus je kunt gewoon doorwerken. De lead zelf open je door op de bedrijfsnaam te " +
+        "klikken; de rest van de rij is invulruimte en klikt je nergens naartoe. Heeft HubSpot een " +
+        "opvolgdatum, dan staat die er; zo niet, dan zet je die datum daar zelf. Is die dag geweest, dan " +
+        "krijgt de datum een zacht oranje vlakje, zodat je in één oogopslag ziet wie er wacht. " +
+        "De startmaand staat kort in beeld (“sept ’27”), en “N.B.” betekent dat je hem nog niet weet. " +
+        "Een lead die je nog niet beoordeeld hebt telt voor dertig procent mee, " +
         "niet voor honderd. Onder de lijst staat wat het bij elkaar is: het opgetelde bedrag en daaronder " +
         "het gewogen bedrag, dus elk bedrag maal de kans van die lead. Dat tweede getal is wat je nuchter " +
         "mag verwachten.\n\n" +
@@ -85,10 +90,13 @@ export const HOOFDSTUK: Hoofdstuk = {
         "nooit vanzelf, want het is niet terug te draaien.\n\n" +
         "Bij \u00e9\u00e9n bedrijf lopen vaak meer dingen tegelijk. Met de knop \u201c+ regel\u201d komt er een tweede rij " +
         "voor hetzelfde bedrijf: dezelfde naam, dezelfde link naar hun site, precies dezelfde kolommen, " +
-        "maar leeg. Je vult zelf in waar die regel over gaat (SEO, advertenties, website of overig), wanneer " +
-        "je erover moet opvolgen, hoe groot de kans is, wat hij per maand oplevert, wat hij kost en in welke " +
-        "maand hij start. Zo staat de SEO op de ene regel en de website op de andere, met elk hun eigen " +
-        "cijfers. Alles telt mee in de prognose; laat je de kans leeg, dan geldt de kans van het bedrijf.\n\n" +
+        "maar leeg. Je vult zelf in waar die regel over gaat (SEO, advertenties, website of overig), hoe " +
+        "groot de kans is, wat hij per maand oplevert, wat hij kost en in welke maand hij start. Zo staat " +
+        "de SEO op de ene regel en de website op de andere, met elk hun eigen cijfers. De opvolgdatum hoef " +
+        "je niet in te vullen: die neemt hij over van het bedrijf erboven en loopt daarmee mee, dus " +
+        "verschuift de afspraak in HubSpot, dan verschuiven die regels mee. Wil je er wél apart over " +
+        "bellen, dan zet je er een eigen datum in; maak je die weer leeg, dan volgt hij het bedrijf " +
+        "opnieuw. Alles telt mee in de prognose; laat je de kans leeg, dan geldt de kans van het bedrijf.\n\n" +
         "Daaronder staat de mailwisseling met dat bedrijf, met dezelfde knop om te antwoorden of een nieuwe mail " +
         "te sturen als bij een klant. Die mail komt uit de mailbox en niet uit het CRM: daar staat de hele draad, " +
         "ook wat er nooit gelogd is. En er is een tijdlijn waarin alles op datum onder elkaar staat: mails, " +

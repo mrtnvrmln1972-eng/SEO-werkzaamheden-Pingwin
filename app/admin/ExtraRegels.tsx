@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BedragVeld, MaandVeld } from "./RijVeld";
+import { BedragVeld, DatumVeld, KansVeld, MaandVeld, opvolgKlasse } from "./RijVeld";
 import { Kruis } from "../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
@@ -142,39 +142,40 @@ export function RegelMaand({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: 
 /** De kans van deze regel. Leeg = dezelfde kans als het bedrijf erboven. */
 export function RegelKans({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
   return (
-    <span className="lead-kans-veld">
-      <input
-        className="prog-veld lead-veld-kans"
-        inputMode="numeric"
-        aria-label="Hoe kansrijk is deze regel"
-        defaultValue={regel.kans === null ? "" : String(regel.kans)}
-        onClick={(e) => e.stopPropagation()}
-        onBlur={(e) => {
-          const tekst = e.target.value.replace(/[^\d]/g, "");
-          const nieuw = tekst === "" ? null : Math.min(100, Math.max(0, Number(tekst)));
-          if (nieuw === regel.kans) return;
-          bewaar(regel.id, { kans: nieuw });
-        }}
-      />
-      <span className="lead-kans-teken">%</span>
-    </span>
+    <KansVeld
+      waarde={regel.kans}
+      label="Hoe kansrijk is deze regel"
+      opslaan={(n) => bewaar(regel.id, { kans: n })}
+    />
   );
 }
 
-/** Wanneer je hierover weer contact hebt. Mag anders zijn dan bij de rij erboven. */
-export function RegelOpvolg({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id: number, d: Partial<ExtraRegel>) => void }) {
+/**
+ * Wanneer je hierover weer contact hebt.
+ *
+ * Standaard staat hier de datum van de regel erboven, en die blijft meelopen:
+ * verandert de afspraak in HubSpot, dan verandert deze mee. Dat is precies wat
+ * je wilt bij een website of advertenties die bij hetzelfde gesprek horen; je
+ * plant daar geen tweede belletje voor (21-08-2026). Zet je hier zelf een
+ * datum, dan is die van jou en loopt hij niet meer mee; maak je hem weer leeg,
+ * dan volgt hij de rij erboven opnieuw.
+ */
+export function RegelOpvolg({ regel, erf, bewaar }: {
+  regel: ExtraRegel;
+  /** De opvolgdatum van het bedrijf erboven, als die er is. */
+  erf?: string | null;
+  bewaar: (id: number, d: Partial<ExtraRegel>) => void;
+}) {
+  const eigen = regel.opvolgDatum || "";
+  const getoond = eigen || erf || "";
   return (
-    <input
-      className="prog-veld lead-veld-datum"
-      type="date"
-      aria-label="Wanneer spreek je ze hierover weer"
-      defaultValue={regel.opvolgDatum || ""}
-      onClick={(e) => e.stopPropagation()}
-      onBlur={(e) => {
-        const nieuw = e.target.value || "";
-        if (nieuw === (regel.opvolgDatum || "")) return;
-        bewaar(regel.id, { opvolgDatum: nieuw || null });
-      }}
+    <DatumVeld
+      waarde={getoond}
+      label={eigen
+        ? "Wanneer spreek je ze hierover weer"
+        : "Loopt mee met de datum van de rij erboven. Zet hier een eigen datum als het anders is."}
+      merk={(eigen ? "" : " regel-datum-erf") + opvolgKlasse(getoond)}
+      opslaan={(nieuw) => bewaar(regel.id, { opvolgDatum: nieuw || null })}
     />
   );
 }
@@ -182,7 +183,7 @@ export function RegelOpvolg({ regel, bewaar }: { regel: ExtraRegel; bewaar: (id:
 /** Het bedrag- en kostenvakje van een extra regel: exact het vakje erboven. */
 export function RegelBedrag({ regel, veld, label, bewaar }: {
   regel: ExtraRegel;
-  veld: "bedrag" | "kosten" | "eenmaligOmzet";
+  veld: "bedrag" | "kosten" | "eenmaligOmzet" | "eenmaligKosten";
   label: string;
   bewaar: (id: number, d: Partial<ExtraRegel>) => void;
 }) {
