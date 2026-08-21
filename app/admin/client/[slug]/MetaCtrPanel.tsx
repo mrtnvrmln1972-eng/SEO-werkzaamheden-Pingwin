@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
+import WpKoppeling from "./WpKoppeling";
 import { checkMetaTitle, checkMetaDescription, type MetaCheck } from "../../../../lib/meta-rules";
 import { urlKey } from "../../../../lib/url-key";
 import { Omlaag, Uitklap } from "../../../_ui/Pijl";
@@ -122,29 +123,15 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
   // Inlogpagina van de website-beheeromgeving (per klant instelbaar; leeg = /wp-admin/).
   const [beheerUrl, setBeheerUrl] = useState(backendUrl || "");
   const [beheerEdit, setBeheerEdit] = useState(false);
-  // WordPress-koppeling (voor 'Doorvoeren op de site'): status + invulformulier.
+  // De WordPress-koppeling (voor 'Doorvoeren op de site'). Het formulier staat in
+  // één gedeeld component, want dit scherm had er zijn eigen versie van, met een
+  // eigen opslag en zonder test. Gevolg: hier stond "De site weigert de
+  // koppeling" terwijl het tabblad Wijzigingen "gekoppeld" meldde, want dat waren
+  // twee verschillende wachtwoorden. Zie WpKoppeling.tsx en lib/wp-creds.ts.
   const [wp, setWp] = useState<{ connected: boolean; username: string | null } | null>(null);
-  const [wpEdit, setWpEdit] = useState(false);
-  const [wpUser, setWpUser] = useState("");
-  const [wpPass, setWpPass] = useState("");
-  const [wpMsg, setWpMsg] = useState("");
-
-  useEffect(() => {
-    fetch(`/api/admin/wp-koppeling?slug=${encodeURIComponent(slug)}`)
-      .then((r) => r.json()).then((d) => { if (d.ok) setWp({ connected: !!d.connected, username: d.username || null }); })
-      .catch(() => {});
-  }, [slug]);
-
-  async function saveWp() {
-    setWpMsg("");
-    const res = await fetch("/api/admin/wp-koppeling", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, username: wpUser, appPassword: wpPass }),
-    }).then((r) => r.json()).catch(() => ({ ok: false, error: "Opslaan mislukte." }));
-    if (!res.ok) { setWpMsg(res.error || "Opslaan mislukte."); return; }
-    setWp({ connected: true, username: wpUser });
-    setWpEdit(false); setWpPass("");
-  }
+  const onWpStand = useCallback((s: { gekoppeld: boolean; gebruiker: string }) => {
+    setWp({ connected: s.gekoppeld, username: s.gebruiker || null });
+  }, []);
 
   // Voer de goedgekeurde velden van één pagina door op de gekoppelde site.
   async function pushToSite(r: KansRow) {
@@ -392,23 +379,13 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
             {beheerUrl ? "Inlogpagina ingesteld ✓" : "Inlogpagina instellen"}
           </button>
         )}
-        <button type="button" className="btn btn-klein" onClick={() => { setWpUser(wp?.username || ""); setWpEdit((v) => !v); }}
-          title="Koppel de WordPress-site met een applicatie-wachtwoord, zodat goedgekeurde meta's met één knop op de site gezet worden. Aanmaken: op de site inloggen → Gebruikers → Profiel → Applicatiewachtwoorden.">
-          {wp?.connected ? `Site gekoppeld (${wp.username})` : "Site koppelen"}
-        </button>
+        {/* Eén gedeeld formulier, hetzelfde als op het tabblad Wijzigingen. Weigert
+            de site de koppeling, dan gaat het vanzelf open met die reden erboven:
+            dát is het moment waarop je hem nodig hebt. */}
+        <WpKoppeling slug={slug} onStand={onWpStand}
+          waarvoor="Goedgekeurde meta's en alt-teksten worden hiermee rechtstreeks op de site gezet."
+          probleem={/weigert de koppeling|inloggegevens|applicatie-wachtwoord|applicatiewachtwoord/i.test(error) ? error : undefined} />
       </div>
-      {wpEdit && (
-        <div className="org-actions" style={{ margin: "0 0 var(--s-3)", alignItems: "center", flexWrap: "wrap" }}>
-          <input value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="WordPress-gebruikersnaam"
-            style={{ padding: "var(--s-1) var(--s-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", font: "inherit", fontSize: "var(--fs-sm)" }}
-            aria-label="WordPress-gebruikersnaam" />
-          <input value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="Applicatie-wachtwoord (xxxx xxxx xxxx ...)" type="password"
-            style={{ minWidth: 260, padding: "var(--s-1) var(--s-3)", border: "1px solid var(--border)", borderRadius: "var(--r-md)", font: "inherit", fontSize: "var(--fs-sm)" }}
-            aria-label="WordPress applicatie-wachtwoord" />
-          <button type="button" className="btn btn-primary btn-klein" onClick={() => void saveWp()} disabled={!wpUser.trim() || !wpPass.trim()}>Koppeling opslaan</button>
-          {wpMsg && <span className="wz-item-sub" style={{ color: "var(--bad)" }}>{wpMsg}</span>}
-        </div>
-      )}
       {meetMsg && <p className="wz-item-sub" style={{ color: /mislukt/i.test(meetMsg) ? "var(--bad)" : "var(--dark)" }}>{meetMsg}</p>}
       {error && <p className="wz-item-sub" style={{ color: "var(--bad)" }}>{error}</p>}
       {rows === null && <p className="wz-item-sub">Lijst opbouwen uit Search Console en de laatste meting&hellip;</p>}

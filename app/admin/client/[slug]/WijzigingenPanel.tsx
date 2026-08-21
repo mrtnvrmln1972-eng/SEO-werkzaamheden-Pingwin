@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
 import type { MetaKind } from "@/lib/meta-rules";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
 import { Omlaag, Uitklap } from "../../../_ui/Pijl";
+import WpKoppeling from "./WpKoppeling";
 
 type ArrayDiff = { added: string[]; removed: string[] };
 type FieldChange = { before: string; after: string };
@@ -355,36 +356,11 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
   const [addDate, setAddDate] = useState("");
   const [addNote, setAddNote] = useState("");
   const [addBusy, setAddBusy] = useState(false);
-  // WordPress-koppeling (applicatiewachtwoord voor de volledige historie)
+  // De WordPress-koppeling. Het formulier staat in één gedeeld component
+  // (WpKoppeling.tsx), want dit scherm en Meta & CTR hadden er allebei hun eigen
+  // versie van, met hun eigen opslag; die liepen uit elkaar. Zie lib/wp-creds.ts.
   const [wpSet, setWpSet] = useState(false);
-  const [wpSetupOpen, setWpSetupOpen] = useState(false);
-  const [wpUser, setWpUser] = useState("");
-  const [wpPass, setWpPass] = useState("");
-  const [wpSaveBusy, setWpSaveBusy] = useState(false);
-  const [wpSaveMsg, setWpSaveMsg] = useState("");
-  const [wpSaveOk, setWpSaveOk] = useState(false);
-
-  useEffect(() => {
-    fetch(`/api/admin/wp-creds?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) { setWpSet(!!d.set); setWpUser(d.user || ""); } }).catch(() => {});
-  }, [slug]);
-
-  async function saveWpCreds() {
-    if (!wpUser.trim() || !wpPass.trim() || wpSaveBusy) return;
-    setWpSaveBusy(true); setWpSaveMsg("");
-    try {
-      const r = await fetch("/api/admin/wp-creds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, user: wpUser.trim(), appPassword: wpPass.trim() }) });
-      const d = await r.json();
-      if (d.ok) { setWpSet(true); setWpPass(""); setWpSaveOk(true); setWpSaveMsg("Inloggegevens opgeslagen en getest."); }
-      else { setWpSaveOk(false); setWpSaveMsg(d.error || "Opslaan mislukt."); }
-    } catch { setWpSaveOk(false); setWpSaveMsg("Opslaan mislukt."); } finally { setWpSaveBusy(false); }
-  }
-  async function removeWpCreds() {
-    setWpSaveBusy(true); setWpSaveMsg("");
-    try {
-      await fetch("/api/admin/wp-creds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, action: "delete" }) });
-      setWpSet(false); setWpPass(""); setWpSaveOk(true); setWpSaveMsg("Koppeling verwijderd.");
-    } catch { /* stil */ } finally { setWpSaveBusy(false); }
-  }
+  const onWpStand = useCallback((s: { gekoppeld: boolean }) => setWpSet(s.gekoppeld), []);
 
   useEffect(() => {
     fetch(`/api/admin/urls?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).then((d) => { if (d.ok) setUrls((d.urls || []).map((u: { url: string }) => u.url)); }).catch(() => {});
@@ -622,7 +598,8 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         <span>Wijzigingen ({clusters.length}) <HelpHint xl title="Wijzigingen: wat is er veranderd, en werkte het?" text={"SEO-werk bewijst zich pas als je de aanpassing én het effect naast elkaar ziet. Dit tabblad legt beide vast: **wat er op elke pagina veranderd is, wanneer, door wie; en wat de rankings daarna deden.**\n## Waar de wijzigingen vandaan komen\n- **Uit WordPress** (met de koppeling): de complete bewerkingshistorie per pagina, tot zo'n 8 maanden terug, inclusief aanpassingen door de klant of hun eigen developer; wie het deed staat erbij. Zonder koppeling wordt per pagina de laatste wijzigingsdatum opgehaald.\n- **Uit de scan:** 'Scan op wijzigingen' legt een basislijn vast van elke pagina (titel, koppen, alt-teksten, interne links, woordenaantal, schema) en detecteert daarna elk verschil; ook op sites zonder WordPress.\n- **Handmatig:** een bekende aanpassing uit het verleden kun je zelf toevoegen om het effect alsnog te volgen.\n## Hoe je het effect leest\nAanpassingen aan dezelfde pagina binnen 2 dagen worden gebundeld tot één moment (Google indexeert de pagina dan toch opnieuw als één geheel). Klik het moment open en je ziet de KPI-ontwikkeling eromheen: posities, klikken en vertoningen vóór en ná de wijziging. Dat is het eerlijkste antwoord op de vraag 'heeft die aanpassing gewerkt?'.\n## Handig\nDe ster zet een pagina op prioriteit (gedeeld met de andere tabs); geprioriteerde pagina's staan hier altijd bovenaan."} /></span>
         <span style={{ display: "inline-flex", gap: "var(--s-2)" }}>
           <button type="button" className="btn btn-klein" onClick={() => setShowAdd((v) => !v)}>{showAdd ? "Sluiten" : "Wijziging toevoegen"}</button>
-          {!wpSet && <button type="button" className="btn btn-klein" onClick={() => setWpSetupOpen((v) => !v)} title="WordPress-applicatiewachtwoord instellen voor de volledige bewerkingshistorie">WordPress-koppeling</button>}
+          <WpKoppeling slug={slug} onStand={onWpStand}
+            waarvoor="Met een koppeling haalt dit scherm de volledige bewerkingshistorie op: wat er wanneer en door wie is aangepast." />
           <button type="button" className="btn btn-klein" onClick={syncWordpress} disabled={wpBusy} title={wpSet ? "Haalt de volledige bewerkingshistorie (revisies) uit WordPress" : "Haalt per pagina de laatste wijzigingsdatum op (stel een koppeling in voor de volledige historie)"}>{wpBusy ? "Uit WordPress…" : (wpSet ? "Uit WordPress ophalen (historie)" : "Uit WordPress ophalen")}</button>
           <button type="button" className="btn btn-klein" onClick={scan} disabled={klus.bezig}>{klus.bezig ? "Scannen…" : "Scan op wijzigingen"}</button>
         </span>
@@ -638,33 +615,6 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
             stil={klus.klus?.status === "vastgelopen"}
             actie={klus.klus?.status === "vastgelopen" ? { label: "Opnieuw proberen", onClick: () => { void scan(); } } : undefined}
           />
-        </div>
-      )}
-      {wpSetupOpen && (
-        <div className="wz-add">
-          <div className="muted" style={{ fontSize: "var(--fs-sm)", marginBottom: "var(--s-2)" }}>
-            Voor de volledige bewerkingshistorie (wat is wanneer veranderd) heeft het dashboard een WordPress-applicatiewachtwoord nodig. Maak dat in WordPress-beheer aan: <strong>Gebruikers → Profiel → Wachtwoorden voor applicaties</strong>, geef het een naam (bijv. &ldquo;Pingwin dashboard&rdquo;), en plak de getoonde code hieronder. Zonder koppeling haalt de knop alleen de laatste wijzigingsdatum per pagina op.
-          </div>
-          <div className="wz-add-row">
-            <div style={{ flex: 1 }}>
-              <label className="compose-label">WordPress-gebruikersnaam</label>
-              <input className="compose-input" style={{ width: "100%" }} value={wpUser} onChange={(e) => setWpUser(e.target.value)} placeholder="bv. je inlognaam of e-mail van de WordPress-beheeromgeving"
-                name="pw_site_login" autoComplete="off" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
-              <div className="hint">De naam waarmee je inlogt in de WordPress-beheeromgeving van deze klant (iemand met bewerkrechten).</div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label className="compose-label">Applicatiewachtwoord</label>
-              <input className="compose-input" style={{ width: "100%" }} type="password" value={wpPass} onChange={(e) => setWpPass(e.target.value)} placeholder="xxxx xxxx xxxx xxxx xxxx xxxx"
-                name="pw_site_apptoken" autoComplete="new-password" data-lpignore="true" data-1p-ignore="true" data-form-type="other" />
-              <div className="hint">De code uit WordPress-beheer → Gebruikers → Profiel → Wachtwoorden voor applicaties. Niet je gewone wachtwoord.</div>
-            </div>
-          </div>
-          <div style={{ marginTop: "var(--s-2)", display: "inline-flex", gap: "var(--s-2)", alignItems: "center" }}>
-            <button type="button" className="btn btn-primary btn-klein" onClick={saveWpCreds} disabled={wpSaveBusy || !wpUser.trim() || !wpPass.trim()}>{wpSaveBusy ? "Testen…" : "Opslaan en testen"}</button>
-            {wpSet && <button type="button" className="btn btn-klein" onClick={removeWpCreds} disabled={wpSaveBusy}>Koppeling verwijderen</button>}
-            {wpSet && <span className="muted" style={{ fontSize: "var(--fs-sm)" }}>Ingesteld{wpUser ? ` (${wpUser})` : ""}.</span>}
-          </div>
-          {wpSaveMsg && <div className={wpSaveOk ? "saved-msg" : "login-error"} style={{ marginTop: "var(--s-2)" }}>{wpSaveMsg}</div>}
         </div>
       )}
       {showAdd && (
@@ -684,7 +634,7 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
         </div>
       )}
       <p className="muted" style={{ marginTop: "var(--s-1)" }}>Detecteert automatisch wat er op de live pagina's verandert (titel, koppen, alt-teksten, interne links, woordenaantal, schema). De eerste scan legt de basislijn vast; daarna zie je hier elke wijziging.
-        {wpSet && <> WordPress is gekoppeld. <button type="button" className="link-inline" onClick={() => setWpSetupOpen((v) => !v)}>koppeling beheren</button>.</>}
+        {wpSet && " WordPress is gekoppeld, dus je krijgt de volledige historie."}
       </p>
       {msg && <div className={/mislukt|fout|niet /i.test(msg) ? "login-error" : "saved-msg"} style={{ marginTop: "var(--s-2)" }}>{msg}</div>}
       {loading && <div className="muted" style={{ padding: "var(--s-3)" }}>Laden…</div>}

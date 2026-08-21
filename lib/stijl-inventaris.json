@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9178,
-    "stijlregels": 4454,
-    "classnamen": 3041
+    "regels": 9187,
+    "stijlregels": 4460,
+    "classnamen": 3046
   },
   "kleuren": {
     "verschillend": 40,
@@ -533,7 +533,7 @@
     },
     {
       "naam": "Invoervelden",
-      "aantal": 58,
+      "aantal": 59,
       "namen": [
         "add-month-select",
         "ag-checkbox-field",
@@ -590,6 +590,7 @@
         "uk-veldrij",
         "wp-chat-input",
         "wp-docdrop-input",
+        "wp-koppel-veld",
         "wp-mail-toveld",
         "wp-notitie-veld",
         "wp-steun-veld"
@@ -597,7 +598,7 @@
     }
   ],
   "inline": {
-    "totaal": 641,
+    "totaal": 629,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1542,7 +1543,7 @@
     }
   ],
   "icoontekens": {
-    "totaal": 207,
+    "totaal": 201,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
@@ -1552,7 +1553,7 @@
       },
       {
         "teken": "→",
-        "aantal": 45
+        "aantal": 39
       },
       {
         "teken": "▾",
@@ -1920,7 +1921,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8627,
+    "gebruik": 8630,
     "schaalGebruik": 1483
   }
 }

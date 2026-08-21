@@ -15,52 +15,27 @@
 //   overzetten naar de bestaande pagina) blijft een bewuste mensenklik in
 //   WordPress zelf. Dit is het WordPress-koppelstuk achter lib/site-connector.ts.
 
-import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
+import { getWpCreds, wpKoppelingStand } from "./wp-creds";
 
-function key(): Buffer {
-  const secret = process.env.SESSION_SECRET || "";
-  if (!secret) throw new Error("SESSION_SECRET ontbreekt.");
-  return crypto.createHash("sha256").update(secret).digest();
-}
-
-export function encryptSecret(plain: string): string {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key(), iv);
-  const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
-  return [iv.toString("base64"), cipher.getAuthTag().toString("base64"), enc.toString("base64")].join(".");
-}
-
-export function decryptSecret(stored: string): string {
-  const [iv, tag, data] = stored.split(".");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key(), Buffer.from(iv, "base64"));
-  decipher.setAuthTag(Buffer.from(tag, "base64"));
-  return Buffer.concat([decipher.update(Buffer.from(data, "base64")), decipher.final()]).toString("utf8");
-}
-
-export async function saveWpCredentials(slug: string, username: string, appPassword: string): Promise<void> {
-  await ensureSchema();
-  await sql`UPDATE clients SET wp_user = ${username.trim()}, wp_app_pass_enc = ${encryptSecret(appPassword.trim())} WHERE slug = ${slug}`;
-}
-
-export async function getWpStatus(slug: string): Promise<{ connected: boolean; username: string | null }> {
-  await ensureSchema();
-  const { rows } = await sql`SELECT wp_user, wp_app_pass_enc FROM clients WHERE slug = ${slug} LIMIT 1`;
-  const r = rows[0];
-  return { connected: !!(r?.wp_user && r?.wp_app_pass_enc), username: (r?.wp_user as string) || null };
-}
+// De opslag van de koppeling zelf staat in `lib/wp-creds.ts`; dit bestand
+// gebruikt hem alleen. Dat was tot 21-08-2026 niet zo: hier stond een tweede
+// opslag naast die van het tabblad Wijzigingen, en die twee liepen uit elkaar
+// (zie de uitleg bovenaan wp-creds.ts). Schrijf hier dus nooit weer zelf naar
+// clients.wp_user of clients.wp_app_pass_enc.
+export { encryptSecret, decryptSecret } from "./wp-geheim";
+export const getWpStatus = wpKoppelingStand;
 
 export type WpAuth = { origin: string; header: string };
 
 export async function authFor(slug: string, pageUrl: string): Promise<WpAuth> {
   await ensureSchema();
-  const { rows } = await sql`SELECT wp_user, wp_app_pass_enc FROM clients WHERE slug = ${slug} LIMIT 1`;
-  const r = rows[0];
-  if (!r?.wp_user || !r?.wp_app_pass_enc) throw new Error("Deze site is nog niet gekoppeld. Klik op 'Site koppelen' en vul de WordPress-gebruikersnaam en het applicatie-wachtwoord in.");
-  const pass = decryptSecret(r.wp_app_pass_enc as string).replace(/\s+/g, "");
+  const creds = await getWpCreds(slug);
+  if (!creds) throw new Error("Deze site is nog niet gekoppeld. Klik op 'Site koppelen' en vul de WordPress-gebruikersnaam en het applicatie-wachtwoord in.");
   // WordPress toont het applicatie-wachtwoord met spaties; die horen er niet in.
+  const pass = creds.appPassword.replace(/\s+/g, "");
   const origin = new URL(pageUrl).origin;
-  return { origin, header: "Basic " + Buffer.from(`${r.wp_user}:${pass}`).toString("base64") };
+  return { origin, header: "Basic " + Buffer.from(`${creds.user}:${pass}`).toString("base64") };
 }
 
 export async function wpFetch(auth: WpAuth, path: string, init?: RequestInit): Promise<Response> {

@@ -2875,6 +2875,15 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .wz-add { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); padding: var(--ruimte-regel) var(--ruimte-regel); margin-top: var(--ruimte-naast); background: var(--kleur-pagina); }
 .wz-add-row { display: flex; gap: var(--ruimte-naast); }
 .wz-add-row .compose-input { flex: 1; }
+/* Het gedeelde koppelformulier voor de WordPress-site (app/admin/client/[slug]/
+   WpKoppeling.tsx). Staat op elk scherm waar je tegen een niet-werkende
+   koppeling aanloopt, en ziet er daar dus overal hetzelfde uit. */
+.wp-koppel { flex-basis: 100%; }
+.wp-koppel-uitleg { font-size: var(--type-bijschrift); margin-bottom: var(--ruimte-naast); }
+.wp-koppel .wz-add-row { flex-wrap: wrap; }
+.wp-koppel-veld { flex: 1 1 260px; min-width: 0; }
+.wp-koppel-invoer { width: 100%; }
+.wp-koppel-acties { margin-top: var(--ruimte-naast); }
 
 /* Pagina-overzicht: kans-kolommen */
 .pg-sort { cursor: pointer; user-select: none; white-space: nowrap; }

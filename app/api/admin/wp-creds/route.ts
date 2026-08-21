@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getClientBySlug } from "../../../../lib/clients";
-import { getWpCreds, saveWpCreds, deleteWpCreds } from "../../../../lib/wp-creds";
-import { testWordpressAuth } from "../../../../lib/wordpress";
+import { bewaarKoppeling, getWpCreds, deleteWpCreds } from "../../../../lib/wp-creds";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,14 +35,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, set: false });
   }
 
-  const user = String(body.user || "").trim();
-  const appPassword = String(body.appPassword || "").trim();
-  if (!user || !appPassword) return NextResponse.json({ ok: false, error: "Vul gebruikersnaam en applicatiewachtwoord in." }, { status: 400 });
+  // Testen én bewaren zitten in lib/wp-creds.ts, want de andere ingang
+  // (/api/admin/wp-koppeling) moet exact hetzelfde doen. Twee routes die elk hun
+  // eigen versie hadden, is precies hoe er een ongetest wachtwoord in de opslag
+  // kwam terwijl het dashboard "gekoppeld" bleef melden.
   const client = await getClientBySlug(slug);
-  if (!client?.domain) return NextResponse.json({ ok: false, error: "Deze klant heeft nog geen domein ingevuld." }, { status: 400 });
-
-  const test = await testWordpressAuth(client.domain, { user, appPassword }, slug);
-  if (!test.ok) return NextResponse.json({ ok: false, error: test.error || "Inloggegevens werken niet." }, { status: 400 });
-  await saveWpCreds(slug, user, appPassword);
-  return NextResponse.json({ ok: true, set: true });
+  const uit = await bewaarKoppeling(slug, client?.domain || "", String(body.user || ""), String(body.appPassword || ""));
+  return uit.ok
+    ? NextResponse.json({ ok: true, set: true })
+    : NextResponse.json({ ok: false, error: uit.error }, { status: 400 });
 }

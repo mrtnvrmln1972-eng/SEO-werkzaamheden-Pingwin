@@ -89,7 +89,15 @@ export const HOOFDSTUK: Hoofdstuk = {
         "- Na het doorvoeren leest het dashboard het veld terug van de site. Staat het er niet, dan meldt het " +
         "dat eerlijk in plaats van te doen alsof het gelukt is.\n" +
         "- Het dashboard herkent zelf welke SEO-velden de site openstelt, in plaats van één vaste aanname te " +
-        "doen over het gebruikte plugin.",
+        "doen over het gebruikte plugin.\n\n" +
+        "**Eén koppeling per klant, en die staat op elk scherm waar je hem nodig hebt (21 augustus 2026).** " +
+        "Er waren er twee: één die je invulde bij Wijzigingen (voor de bewerkingshistorie) en één bij " +
+        "Meta & CTR (voor het doorvoeren). Twee formulieren, twee opslagen, en dus twee waarheden: bij " +
+        "GardenSwimm stond op het ene scherm \"WordPress is gekoppeld\" met de volledige historie erbij, en op " +
+        "het andere in dezelfde minuut \"De site weigert de koppeling\". Allebei klopte het, want het waren " +
+        "twee verschillende wachtwoorden. Nu is het er één, hij wordt vóór het opslaan altijd echt bij de site " +
+        "getest, en het invulvenster verschijnt vanzelf op het scherm waar iets misgaat in plaats van achter " +
+        "een knop die als statusmelding leest.",
     },
     {
       titel: "Moneybird (de boekhouding)",
