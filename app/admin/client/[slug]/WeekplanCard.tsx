@@ -131,7 +131,19 @@ export default function WeekplanCard({ slug, t, page, open, inRij, onToggleOpen,
               foutje={foutje} setFoutje={setFoutje} melding={melding} setMelding={setMelding}
               onBespreek={(prefill) => void chat.openChat(prefill)}
               strategie={{
+                // De knop staat er wanneer hij iets te doen heeft: er ligt een
+                // gesprek over deze pagina, en dat gesprek is nog niet in een
+                // strategie beland (of er is daarna verder gepraat). Is de
+                // strategie de laatste stand, dan blijft de rij rustig; opnieuw
+                // vastleggen kan dan nog steeds onderin de chat.
                 gesprek: !!t.url && (chat.msgs.length > 0 || !!chat.chatDatum.laatste),
+                teDoen: !!t.url && (() => {
+                  const gesprek = chat.chatDatum.laatste || (chat.msgs.length > 0 ? new Date().toISOString() : "");
+                  if (!gesprek) return false;
+                  if (!page?.strategie) return true;
+                  const vastgelegd = page?.sinds?.strategie || "";
+                  return !vastgelegd || gesprek > vastgelegd;
+                })(),
                 bezig: chat.vatFase,
                 legVast: () => void chat.legVastVanuitFase(),
               }}

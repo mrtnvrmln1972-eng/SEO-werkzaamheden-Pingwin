@@ -78,12 +78,12 @@ export default function KaartFases({
   foutje: string; setFoutje: (v: string) => void;
   melding: string; setMelding: (v: string) => void;
   onBespreek: (prefill: string) => void;
-  /** De strategie-stap in één handeling, vanuit de fase-rij zelf. `gesprek`
-      zegt of er al over deze pagina gepraat is; `bezig` is de stand van de
-      keten (samenvatten, vastleggen, document). De knop stond alleen onderin
-      de chat, dus je moest eerst openklappen en langs het hele gesprek
-      scrollen om de stap af te maken die hier begint. */
-  strategie?: { gesprek: boolean; bezig: string; legVast: () => void };
+  /** De strategie-stap in één handeling, vanuit de fase-rij zelf. `teDoen` zegt
+      of er een gesprek ligt dat nog niet in een strategie beland is; `bezig` is
+      de stand van de keten (samenvatten, vastleggen, document). De knop stond
+      alleen onderin de chat, dus je moest eerst openklappen en langs het hele
+      gesprek scrollen om de stap af te maken die hier begint. */
+  strategie?: { gesprek: boolean; teDoen: boolean; bezig: string; legVast: () => void };
   haalConclusie: () => Promise<string>;
   onMail: (aud: "klant" | "dev") => void;
   refreshBoard: () => void;
@@ -326,7 +326,7 @@ export default function KaartFases({
               : "Stel een strategie voor deze pagina voor. Houd rekening met de achtergrond van deze kaart.")}>
             {strategie?.gesprek ? "Praat verder" : "Bespreek"}
           </button>
-          {strategie?.gesprek && (
+          {strategie?.teDoen && (
             <button type="button" className="btn btn-primary btn-klein" disabled={!!bezigLabel}
               title="Vat het gesprek over deze pagina samen, leg die conclusie vast als de strategie (de basis voor de volgende fases), maak er het Pingwin-document van en zet de korte samenvatting erboven. Eén handeling."
               onClick={() => ensureDriveMap(() => strategie.legVast())}>
