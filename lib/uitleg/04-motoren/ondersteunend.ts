@@ -31,6 +31,28 @@ export const BLOKKEN: Uitklapper[] = [
       "meta-title of de eerste kop; loopt er echt een link naar elke gekozen landingspagina; en staat de " +
       "hoofdterm in de linktekst van die link. Klopt er iets niet, dan staat dat op het scherm bij het " +
       "document, in plaats van dat het er goed uitziet en het tegenovergestelde doet.\n\n" +
+      "**Het onderwerp mag gewoon in de kop staan (21 augustus 2026).** De regel was: de hoofdterm van " +
+      "de landingspagina mag niet in de titel, de meta-title of de H1 van het stuk. Dat is te grof gebleken. " +
+      "Bij een hoofdterm die één generiek woord is (\"natuurzwembad\") kun je dat woord niet missen in een " +
+      "stuk dat er nu eenmaal over gaat, en het weghalen kost meer dan het oplevert: dan snapt Google niet " +
+      "waar het stuk over gaat en is de interne link vanuit dat stuk juist mínder waard. Een ondersteunend " +
+      "stuk hoort over hetzelfde onderwerp te gaan; dat is het punt. Wat wél botst, is een kop die in de kern " +
+      "de zoekterm zélf is: er blijft te weinig eigen betekenis over als je de hoofdterm eruit haalt " +
+      "(\"Ons natuurzwembad\"), of er staat een koopwerkwoord tegenaan (\"natuurzwembad aanleggen\", " +
+      "\"laten maken\", \"kosten\", \"offerte\"), of de kop begint met een hoofdterm van meer dan één " +
+      "woord. Zo mag \"Strak natuurzwembad in IJsselmuiden, een kijkje in dit project\" gewoon blijven " +
+      "staan, en wordt \"Natuurzwembad aanleggen in IJsselmuiden\" wél vervangen.\n\n" +
+      "**Eén link per landingspagina, niet twee.** Google telt binnen één stuk vooral de eerste link naar een " +
+      "adres, dus een tweede voegt niets toe en leest als opgevuld. Een link naar een ándere relevante pagina " +
+      "mag er wel bij.\n\n" +
+      "**Titel, kop en meta's staan als feit in één tabel.** Wat er stond en wat er nu staat, naast elkaar, " +
+      "door het dashboard zelf ingevuld. Daarvóór beschreef de tekst dat zelf, en dan sprak het document " +
+      "zichzelf tegen: bovenaan stond dat de titel gewijzigd was, verderop dat de H1 grotendeels ongewijzigd " +
+      "was. Het geschreven stukje \"wat er in de tekst is aangepast\" gaat sindsdien alleen nog over de " +
+      "inhoud.\n\n" +
+      "**En elke kop krijgt zijn H-nummer ervoor** (H1, H2, H3), zodat de sitebouwer niet alleen ziet dát " +
+      "iets een kop is maar ook wélke. In de tabel met de rolverdeling staan hooguit drie zoekwoorden in " +
+      "plaats van een waslijst in een smalle kolom.\n\n" +
       "**Het document is een oplevering, geen lijst met huiswerk (21 augustus 2026).** Er stond een kopje " +
       "\"Let op\" in met daaronder de opmerkingen, en dat document gaat naar de klant en de sitebouwer. Die " +
       "lazen daar dus dingen als \"het verdient aanbeveling om ook de meta-description van de landingspagina " +

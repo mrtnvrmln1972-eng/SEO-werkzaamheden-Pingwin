@@ -24,13 +24,14 @@ import { registerGeneratedVersion } from "./doc-versions";
 // herschrijven. De inhoud is van de klant en blijft van de klant; alleen de kop,
 // de titel, de meta en een paar zinnen eromheen verschuiven, plus de links.
 //
-// Drie dingen worden hier in CODE nagerekend en niet aan het taalmodel
+// Vier dingen worden hier in CODE nagerekend en niet aan het taalmodel
 // overgelaten, want een instructie in een prompt is een verzoek en geen poort:
-//   1. de hoofdterm van de landingspagina mag niet in de titel of de H1 van de
-//      blog staan;
-//   2. er moet vanuit de blog minstens één link naar elke doelpagina lopen;
-//   3. de ankertekst van die link moet de hoofdterm bevatten, want dat is het
-//      signaal dat je wilt doorgeven.
+//   1. geen enkele kop van de blog is in de kern de hoofdterm zélf (het wóórd mag
+//      er gewoon in staan, zie botstMetHoofdterm verderop);
+//   2. er loopt vanuit de blog een link naar elke doelpagina;
+//   3. de ankertekst van die link bevat de hoofdterm, want dat is het signaal dat
+//      je wilt doorgeven;
+//   4. het is er precies ÉÉN per doelpagina, niet twee.
 //
 // ── HET DOCUMENT IS EEN OPLEVERING, GEEN LIJST MET HUISWERK (21-08-2026) ──
 // Er stond een kopje "Let op" in het document met daaronder de waarschuwingen.
@@ -110,7 +111,12 @@ JOUW OPDRACHT: maak dat stuk ONDERSTEUNEND aan die landingspagina('s). Niet conc
 DE VERDELING (dit is de kern, hier hangt alles aan):
 - De landingspagina is en blijft de baas op zijn commerciële hoofdterm (de term waarmee iemand een opdracht zoekt, bijvoorbeeld "natuurzwembad aanleggen" of "hovenier Etten-Leur").
 - De blog mikt op de informatieve vragen ERNAAST: hoe, wat kost, waarmee, hoe onderhoud je, wat is het verschil, welke soorten, een praktijkverhaal. Long tail, vraagvormen, ervaringen.
-- De blog geeft zijn kracht door aan de landingspagina met een interne link waarvan de ankertekst juist WEL de hoofdterm bevat. Dat is precies andersom dan de tekst: de term staat in de link, niet in de kop.
+- De blog geeft zijn kracht door aan de landingspagina met ÉÉN interne link waarvan de ankertekst juist WEL de hoofdterm bevat.
+
+HET ONDERWERP MAG ER GEWOON IN (dit werd eerder te streng toegepast):
+- Het WOORD uit de hoofdterm mag in de titel, de meta-title, de H1 en de tussenkoppen staan, en dat is vaak zelfs beter: een stuk dat zichtbaar over hetzelfde onderwerp gaat, geeft een sterkere interne link door dan een stuk waar dat woord uit weggepoetst is.
+- Wat NIET mag, is een kop die in de kern de zoekterm zélf is. Twee vormen: (1) er blijft na het weghalen van de hoofdterm te weinig eigen betekenis over ("Ons natuurzwembad", "Natuurzwembad aanleggen"); (2) de hoofdterm staat er met een koopwerkwoord tegenaan (aanleggen, laten maken, kopen, kosten, prijzen, offerte).
+- Geef de kop dus een eigen invalshoek: de plaats, de klant, het type project, de vraag die hij beantwoordt. "Strak natuurzwembad in IJsselmuiden, een kijkje in dit project" is goed. "Natuurzwembad aanleggen in IJsselmuiden" is niet goed.
 
 MINIMAAL INGRIJPEN (net zo belangrijk):
 - De inhoud is van de klant. Neem de tekst LETTERLIJK over, alinea voor alinea. Herschrijf niets omdat het mooier kan.
@@ -121,13 +127,16 @@ DIT DOCUMENT IS EEN OPLEVERING, GEEN LIJST MET HUISWERK (dit is een harde regel)
 - Het document gaat naar de klant en naar de sitebouwer. Alles wat erin staat is óf al gedaan door ons, óf een concrete waarde die zij overnemen. Er staat nooit iets in waarvan de klant zich afvraagt of hij zelf nog iets moet uitzoeken.
 - Geef daarom NOOIT een aanbeveling die je zelf kunt uitvoeren. Kun je het zelf, doe het, en zet het in "wijzigingen". Dus niet "het verdient aanbeveling de meta-description aan te scherpen", maar de aangescherpte meta-description zelf.
 - Vind je dat de meta-title of de meta-description van de LANDINGSPAGINA beter kan (te lang, te kort, geen klikprikkel, hoofdterm niet vooraan), schrijf ze dan zelf en zet ze in "landingMetas". Zijn ze al goed, laat "landingMetas" dan leeg; verzin geen werk.
-- Kan de hoofdterm niet uit de titel of de H1 zonder dat het stuk zijn onderwerp verliest, kies dan alsnog een andere titel en H1 die hetzelfde onderwerp dekken zonder die term (een plaatsnaam, het merk, het type project, de invalshoek). Er is altijd een alternatief; lever dat alternatief, in plaats van een opmerking dat het lastig is.
+- Is een kop in de kern de zoekterm zelf, kies dan een kop met een eigen invalshoek. Lever dat alternatief, in plaats van een opmerking dat het lastig is.
+- Schrijf in "wijzigingen" NIETS over de titel, de H1, de meta-title of de meta-description. Die staan feitelijk in een eigen tabel in het document, met de oude en de nieuwe waarde naast elkaar; schrijf je er zelf ook over, dan spreken die twee elkaar tegen. In "wijzigingen" hoort alleen wat er met de INHOUD gebeurd is: welke alinea, welke tussenkop, welke zin met de link erin.
 - "waarschuwingen" is UITSLUITEND voor Maarten en komt niet in het document. Zet daar alleen wat echt een keuze van hem vraagt (een strategische afweging, iets wat je niet kon controleren). Nooit iets over de interne linkstrategie of over ons eigen werk; dat is geen klantboodschap. Meestal is deze lijst leeg.
 
 HARDE REGELS:
-- De hoofdterm van een landingspagina staat NIET in de titel, NIET in de meta-title en NIET in de H1 van de blog. Ook geen letterlijke variant die er als hetzelfde uitziet voor Google.
-- Per landingspagina minstens één, hooguit drie interne links vanuit de blog, met de hoofdterm (of een natuurlijke variant daarvan) als ankertekst. Nooit "lees meer" of "klik hier".
-- Zet die links in de lopende tekst waar ze inhoudelijk kloppen, niet allemaal in de eerste alinea.
+- Geen enkele kop van de blog (titel, meta-title, H1, tussenkop) is in de kern de hoofdterm zelf; zie hierboven wat dat betekent.
+- PRECIES ÉÉN interne link per landingspagina, met de hoofdterm (of een natuurlijke variant daarvan) als ankertekst. Nooit twee keer naar dezelfde pagina: Google telt binnen één stuk vooral de eerste link naar een adres, dus een tweede voegt niets toe en leest als opgevuld. Nooit "lees meer" of "klik hier".
+- Een link naar een ándere relevante pagina van dezelfde site mag er wel bij, als hij inhoudelijk klopt.
+- Zet die link in de lopende tekst waar hij inhoudelijk hoort, niet in de eerste alinea.
+- Bij "steuntermen" hooguit VIER termen, en alleen de termen die er echt toe doen. Geen waslijst; die staat straks in een smalle kolom en dan leest niemand hem.
 - Verzin geen feiten, cijfers, plaatsen of diensten die niet in de aangeleverde tekst of de data staan.
 - Geen emoji. Geen losse streepjes als zinsscheiding; gebruik een komma, een puntkomma, haakjes of een nieuwe zin.
 
@@ -160,14 +169,80 @@ function eersteKop(tekst: string): string {
   return "";
 }
 
+// ═══════════════════════════════════════════════════════════
+// WANNEER BOTST EEN KOP ECHT? (verfijnd 21-08-2026)
+// ═══════════════════════════════════════════════════════════
+// De regel was: de hoofdterm mag NIET in de titel, de meta-title of de H1 staan.
+// Dat is te grof, en bij GardenSwimm liep het daarop vast. De hoofdterm van
+// /zwemvijvers/natuurzwembad/ is één generiek woord: "natuurzwembad". Een
+// projectverhaal dát over een natuurzwembad gaat, kan dat woord niet missen, en
+// het weghalen kost meer dan het oplevert: dan snapt Google niet waar het stuk
+// over gaat, en is de interne link vanuit dat stuk juist minder waard. Een
+// ondersteunend stuk hoort over hetzelfde onderwerp te gaan; dat is het punt.
+// Maartens vraag: "is het een groot probleem dat de term natuurzwembad in de H1
+// staat?" Nee, en de regel klopte dus niet.
+//
+// Wat wél botst, is een kop die in de kern de zoekterm ís. Twee vormen:
+//   1. Er blijft na het weghalen van de hoofdterm te weinig eigen betekenis over
+//      ("Ons natuurzwembad", "Natuurzwembad aanleggen"). Dan mikt de kop op
+//      precies dezelfde vraag als de landingspagina.
+//   2. De hoofdterm staat er met een commercieel werkwoord tegenaan
+//      ("natuurzwembad aanleggen", "natuurzwembad laten maken"). Dat is de
+//      koopintentie, en die hoort bij de landingspagina.
+// Staat het woord er met een eigen invalshoek omheen (een plaats, een merk, een
+// project, een vraag), dan is er geen botsing en mag het gewoon blijven staan.
+
+/** Woorden die niets zeggen over het onderwerp van een kop. */
+const KOP_STOPWOORDEN = new Set([
+  "de", "het", "een", "en", "of", "in", "op", "bij", "met", "voor", "van", "naar", "aan", "uit",
+  "dit", "dat", "die", "deze", "ons", "onze", "je", "jouw", "uw", "we", "wij", "zo", "hoe", "wat",
+  "is", "zijn", "wordt", "worden", "werd", "waarom", "welke", "over", "als", "ook", "bijvoorbeeld",
+]);
+
+/** Werkwoorden waarmee iemand een opdracht zoekt; die intentie is van de landingspagina. */
+const KOOP_WOORDEN = [
+  "aanleggen", "aanleg", "laten aanleggen", "aanschaffen", "kopen", "bestellen", "laten maken",
+  "laten bouwen", "bouwen", "offerte", "prijs", "prijzen", "kosten", "installeren", "plaatsen",
+];
+
+function normaliseer(t: string): string {
+  return (t || "").toLowerCase().replace(/[^a-z0-9à-ÿ\s]/gi, " ").replace(/\s+/g, " ").trim();
+}
+
 /**
- * De poort. Wat het taalmodel belooft is niet hetzelfde als wat het levert, dus
- * de drie dingen waar het echt om draait worden hier nagerekend en als
- * waarschuwing teruggegeven. Er wordt niets stilgehouden en niets geweigerd:
- * Maarten ziet wat er niet klopt en beslist zelf.
+ * Is deze kop in de kern de hoofdterm zelf?
+ *
+ * Geeft false als het woord er alleen ín staat met een eigen invalshoek eromheen;
+ * dat is geen botsing maar precies wat een ondersteunend stuk hoort te doen.
  */
+export function botstMetHoofdterm(kop: string, hoofdterm: string): boolean {
+  const k = normaliseer(kop);
+  const t = normaliseer(hoofdterm);
+  if (!k || t.length < 3 || !k.includes(t)) return false;
+
+  // Vorm 2: de koopintentie staat er letterlijk tegenaan.
+  for (const koop of KOOP_WOORDEN) {
+    if (k.includes(`${t} ${koop}`) || k.includes(`${koop} ${t}`)) return true;
+  }
+
+  // Vorm 3: de kop begint met een hoofdterm van meer dan één woord. Zo'n term is
+  // de commerciële zoekfrase zelf ("natuurzwembad aanleggen"), en vooraan in een
+  // titel is dat het sterkste signaal dat er bestaat; dan mikt de kop precies op
+  // die zoekopdracht. Bij een hoofdterm van één generiek woord telt dit niet:
+  // "Natuurzwembad in IJsselmuiden, een kijkje in dit project" begint er ook mee
+  // en is juist een prima titel voor een ondersteunend stuk.
+  if (t.includes(" ") && k.startsWith(t)) return true;
+
+  // Vorm 1: haal de hoofdterm eruit en kijk wat er aan eigen betekenis overblijft.
+  const rest = k.split(t).join(" ").split(" ")
+    .map((w) => w.trim())
+    .filter((w) => w.length > 2 && !KOP_STOPWOORDEN.has(w) && !KOOP_WOORDEN.includes(w));
+  return rest.length < 2;
+}
+
 /**
- * De hoofdtermen die nog in de titel, de meta-title of de H1 staan.
+ * De hoofdtermen waarvan de titel, de meta-title of de H1 in de kern de zoekterm
+ * zelf is.
  *
  * Apart van `controleerPlan` omdat dit het enige punt uit de poort is dat je kunt
  * hérstellen in plaats van melden: een titel is drie regels, de tekst niet. Wat
@@ -180,19 +255,27 @@ export function botsendeTermen(plan: OndersteunendPlan): string[] {
   for (const doel of plan.doelen || []) {
     const term = (doel.hoofdterm || "").trim();
     if (!term) continue;
-    if (bevatTerm(plan.titel, term) || bevatTerm(plan.metaTitle, term) || bevatTerm(kop, term)) uit.push(term);
+    if (botstMetHoofdterm(plan.titel, term) || botstMetHoofdterm(plan.metaTitle, term) || botstMetHoofdterm(kop, term)) {
+      uit.push(term);
+    }
   }
   return [...new Set(uit)];
 }
 
+/**
+ * De poort. Wat het taalmodel belooft is niet hetzelfde als wat het levert, dus
+ * de dingen waar het echt om draait worden hier nagerekend en als waarschuwing
+ * teruggegeven. Er wordt niets stilgehouden en niets geweigerd: Maarten ziet wat
+ * er niet klopt en beslist zelf.
+ */
 export function controleerPlan(plan: OndersteunendPlan): string[] {
   const uit: string[] = [];
   const kop = eersteKop(plan.tekst);
   for (const doel of plan.doelen || []) {
     const term = (doel.hoofdterm || "").trim();
     if (!term) continue;
-    if (bevatTerm(plan.titel, term) || bevatTerm(plan.metaTitle, term) || bevatTerm(kop, term)) {
-      uit.push(`De hoofdterm "${term}" staat nog in de titel of de kop van dit stuk. Zo blijft het concurreren met ${doel.url}; haal hem daar weg en laat hem alleen in de linktekst staan.`);
+    if (botstMetHoofdterm(plan.titel, term) || botstMetHoofdterm(plan.metaTitle, term) || botstMetHoofdterm(kop, term)) {
+      uit.push(`De titel of de kop van dit stuk is in de kern "${term}" zelf. Zo mikt hij op dezelfde vraag als ${doel.url}; geef de kop een eigen invalshoek (de plaats, het project, de vraag die hij beantwoordt). Het wóórd mag er gewoon in blijven staan.`);
     }
     const naarDoel = (plan.links || []).filter((l) => (l.naar || "").includes(doel.url) || doel.url.includes(l.naar || ""));
     if (!naarDoel.length) {
@@ -200,8 +283,11 @@ export function controleerPlan(plan: OndersteunendPlan): string[] {
     } else if (!naarDoel.some((l) => bevatTerm(l.anker, term))) {
       uit.push(`De link naar ${doel.url} heeft de hoofdterm "${term}" niet in de linktekst. Juist dáár hoort hij te staan, want dat is het signaal dat je doorgeeft.`);
     }
-    if (naarDoel.length > 3) {
-      uit.push(`Er staan ${naarDoel.length} links naar ${doel.url}. Meer dan drie in één stuk leest als opgevuld; houd de sterkste over.`);
+    // Eén link per doelpagina, niet meer. Google telt binnen één pagina vooral de
+    // eerste link naar een adres, dus een tweede voegt niets toe en leest als
+    // opgevuld. Maartens woorden (21-08-2026): "niet twee keer naar dezelfde".
+    if (naarDoel.length > 1) {
+      uit.push(`Er staan ${naarDoel.length} links naar ${doel.url}. Eén is genoeg: een tweede link naar dezelfde pagina telt nauwelijks mee en leest als opgevuld. Houd de sterkste over.`);
     }
   }
   return uit;
@@ -222,7 +308,9 @@ export function controleerPlan(plan: OndersteunendPlan): string[] {
 
 const HERSTEL_SYSTEM = `Je bent SEO-specialist bij bureau Pingwin. Een blog of projectverhaal is ondersteunend gemaakt aan een landingspagina, maar de titel of de H1 bevat nog steeds de commerciële hoofdterm van die landingspagina. Zo blijven ze om hetzelfde zoekwoord vechten.
 
-Bedenk een andere titel, meta-title en H1 die exact hetzelfde stuk dekken, maar de hoofdterm NIET bevatten, ook geen variant die er voor Google hetzelfde uitziet. Gebruik wat het stuk wél onderscheidt: de plaats, het merk, het type project, de invalshoek, de vraag die het beantwoordt. Blijf bij de inhoud van het stuk; verzin geen nieuwe feiten.
+Het probleem is NIET dat het woord erin staat; dat mag en dat is vaak zelfs beter. Het probleem is dat de kop in de kern de zoekterm zélf is: er blijft te weinig eigen betekenis over als je de hoofdterm eruit haalt, of er staat een koopwerkwoord tegenaan (aanleggen, laten maken, kopen, kosten, prijzen, offerte).
+
+Bedenk een andere titel, meta-title en H1 die exact hetzelfde stuk dekken en het onderwerp gewoon benoemen, maar met een eigen invalshoek erbij: de plaats, de klant, het type project, de vraag die het stuk beantwoordt. Het woord uit de hoofdterm mag er dus gewoon in blijven staan. Blijf bij de inhoud van het stuk; verzin geen nieuwe feiten.
 
 Antwoord met UITSLUITEND geldige JSON:
 {"titel":"de nieuwe titel","metaTitle":"maximaal 60 tekens","h1":"de nieuwe H1 boven het stuk","uitleg":"één korte regel: wat je veranderd hebt en waarom"}`;
@@ -267,9 +355,10 @@ ${plan.tekst.slice(0, 2000)}`;
     const metaTitle = String(p.metaTitle || "").trim();
     const h1 = String(p.h1 || "").trim();
     if (!titel || !h1) return false;
-    // Nareken: staat de term er nog steeds in, dan heeft dit niets opgelost.
+    // Nareken met dezelfde regel als de poort: botst de kop nog steeds, dan heeft
+    // dit niets opgelost. Het woord zelf mag er in blijven staan.
     for (const term of termen) {
-      if (bevatTerm(titel, term) || bevatTerm(metaTitle || titel, term) || bevatTerm(h1, term)) return false;
+      if (botstMetHoofdterm(titel, term) || botstMetHoofdterm(metaTitle || titel, term) || botstMetHoofdterm(h1, term)) return false;
     }
     plan.titel = titel;
     if (metaTitle) plan.metaTitle = metaTitle;
@@ -277,7 +366,7 @@ ${plan.tekst.slice(0, 2000)}`;
     plan.wijzigingen = [
       ...plan.wijzigingen,
       String(p.uitleg || "").trim()
-        || `De titel en de kop zijn aangepast naar "${titel}", zodat dit stuk niet meer op dezelfde zoekterm mikt als de landingspagina.`,
+        || `De kop heeft een eigen invalshoek gekregen, zodat dit stuk niet meer op dezelfde vraag mikt als de landingspagina.`,
     ].slice(0, 8);
     return true;
   } catch {
@@ -285,8 +374,19 @@ ${plan.tekst.slice(0, 2000)}`;
   }
 }
 
-/** Regels met ## en ### omzetten naar de blokken van een Pingwin-document. */
-function tekstNaarBlokken(tekst: string): DocBlock[] {
+/**
+ * Regels met ## en ### omzetten naar de blokken van een Pingwin-document.
+ *
+ * Elke kop krijgt zijn H-nummer ervoor ("H1 · Zo blijft het water helder").
+ * Zonder dat ziet de sitebouwer alleen dat iets een kop is, niet wélke, en dan
+ * belandt een tussenkop als H2 terwijl hij een H3 hoort te zijn. Maartens
+ * woorden (21-08-2026): "het is noodzakelijk dat alle titels de H-tags heel kort
+ * voor de titel vermelden".
+ *
+ * Het niveau komt uit de tekst zelf: één hekje is de H1, twee is een H2, drie is
+ * een H3. Dat is precies hoe de motor de tekst ook aanlevert.
+ */
+export function tekstNaarBlokken(tekst: string): DocBlock[] {
   const blokken: DocBlock[] = [];
   let bullets: string[] = [];
   const legen = () => {
@@ -295,8 +395,14 @@ function tekstNaarBlokken(tekst: string): DocBlock[] {
   for (const ruw of (tekst || "").split("\n")) {
     const regel = ruw.trim();
     if (!regel) { legen(); continue; }
-    const kop = regel.match(/^#{1,6}\s+(.*)$/);
-    if (kop) { legen(); blokken.push({ type: "subheading", text: kop[1].trim() }); continue; }
+    const kop = regel.match(/^(#{1,6})\s+(.*)$/);
+    if (kop) {
+      legen();
+      const niveau = kop[1].length;
+      const naam = kop[2].trim().replace(/^H[1-6]\s*[·:.-]?\s*/i, "");
+      blokken.push({ type: "subheading", text: `H${niveau} · ${naam}` });
+      continue;
+    }
     const punt = regel.match(/^[-*]\s+(.*)$/);
     if (punt) { bullets.push(punt[1].trim()); continue; }
     legen();
@@ -304,6 +410,43 @@ function tekstNaarBlokken(tekst: string): DocBlock[] {
   }
   legen();
   return blokken;
+}
+
+/**
+ * De feitelijke tabel "titel, koppen en meta's": wat er stond en wat er nu staat.
+ *
+ * Waarom dit uit CODE komt en niet uit het taalmodel: het document sprak zichzelf
+ * tegen. Bovenaan stond dat de titel gewijzigd was, verderop dat de H1
+ * grotendeels ongewijzigd was, en of de hoofdterm er nu wel of niet in zat werd
+ * op twee plekken anders beschreven. Maartens woorden (21-08-2026): "dan moet je
+ * het ook consistent vermelden met wat er is aangepast of niet". Feiten die het
+ * dashboard zelf kan vaststellen, hoort het niet aan een tekstschrijver te
+ * vragen. Het model schrijft daarom niets meer over deze vier velden.
+ */
+function veldenTabel(plan: OndersteunendPlan, oudeTitel: string, oudeKop: string): string[][] {
+  const nieuweKop = eersteKop(plan.tekst);
+  const regel = (veld: string, was: string, wordt: string): string[] => {
+    const w = (was || "").trim();
+    const n = (wordt || "").trim();
+    if (!n) return [veld, w || "niet bekend", "niet ingevuld"];
+    if (!w) return [veld, "stond er niet", n];
+    return [veld, w, n === w ? "ongewijzigd" : n];
+  };
+  return [
+    regel("Titel van het stuk", oudeTitel, plan.titel),
+    regel("H1 boven het stuk", oudeKop, nieuweKop),
+    regel("Paginatitel (meta-title)", "", plan.metaTitle),
+    regel("Meta-description", "", plan.metaDescription),
+  ];
+}
+
+/** De steuntermen kort houden; een waslijst in een smalle kolom leest niemand. */
+function steunKolom(termen: string[]): string {
+  const schoon = (termen || []).map((t) => t.trim()).filter(Boolean);
+  if (!schoon.length) return "niet bepaald";
+  const eerste = schoon.slice(0, 3);
+  const rest = schoon.length - eerste.length;
+  return eerste.join(", ") + (rest > 0 ? `, en ${rest} andere vragen rond dit onderwerp` : "");
 }
 
 /** Wat we van een doelpagina weten: waar hij nu op gevonden wordt en wat erop staat. */
@@ -375,7 +518,7 @@ ${bron.slice(0, 16000)}`;
       doelen: (Array.isArray(p.doelen) ? p.doelen : []).map((d) => ({
         url: String(d?.url || "").trim(),
         hoofdterm: String(d?.hoofdterm || "").trim(),
-        steuntermen: (Array.isArray(d?.steuntermen) ? d.steuntermen : []).map(String).slice(0, 8),
+        steuntermen: (Array.isArray(d?.steuntermen) ? d.steuntermen : []).map(String).slice(0, 4),
       })).filter((d) => d.url),
       titel: String(p.titel || "").trim() || String(versie.naam || "Aangepast stuk"),
       metaTitle: String(p.metaTitle || "").trim(),
@@ -413,6 +556,13 @@ ${bron.slice(0, 16000)}`;
 
   // Het document: eerst wat er veranderd is en wat de sitebouwer moet doen, dan
   // pas de tekst zelf. Andersom scrolt niemand tot de instructie.
+  // Wat er stond vóór onze ronde: de bestandsnaam is de titel zoals de klant hem
+  // aanleverde, en de eerste kop in de brontekst is de H1. Weten we het niet, dan
+  // zegt de tabel dat eerlijk in plaats van iets te suggereren.
+  const oudeTitel = String(versie.naam || "").replace(/\.[a-z0-9]{2,5}$/i, "").trim();
+  const oudeKop = eersteKop(bron);
+  const velden = veldenTabel(plan, oudeTitel, oudeKop);
+
   const spec: DocSpec = {
     klant: client?.name || slug,
     rapporttype: "Ondersteunende publicatie",
@@ -425,11 +575,19 @@ ${bron.slice(0, 16000)}`;
         heading: "Wat dit stuk doet",
         blocks: [
           { type: "highlight", text: plan.kop },
+          // De derde kolom was een komma-lijst van tien tot vijftien termen in een
+          // smalle kolom; die leest niemand. Nu hooguit drie, met een korte zin
+          // als er meer zijn (zie steunKolom).
           ...(plan.doelen.length ? [{
             type: "table" as const,
             headers: ["Landingspagina", "Blijft de baas op", "Dit stuk mikt op"],
-            rows: plan.doelen.map((d) => [d.url, d.hoofdterm || "(niet bepaald)", d.steuntermen.join(", ") || "(niet bepaald)"]),
+            rows: plan.doelen.map((d) => [pad(d.url), d.hoofdterm || "niet bepaald", steunKolom(d.steuntermen)]),
           }] : []),
+          // Titel, H1 en de meta's: één tabel met wat er stond en wat er nu staat,
+          // door het dashboard zelf ingevuld. Dit stond eerder verspreid in de
+          // geschreven tekst, en die sprak zichzelf tegen (zie veldenTabel).
+          { type: "subheading" as const, text: "Titel, kop en meta's" },
+          { type: "table" as const, headers: ["Veld", "Stond er", "Staat er nu"], rows: velden },
           // Hier stond ook een kopje "Let op" met de waarschuwingen eronder. Dat
           // document gaat naar de klant en naar de sitebouwer, en dan lees je
           // daar aanbevelingen die wíj hadden moeten doen, of een interne
@@ -437,15 +595,17 @@ ${bron.slice(0, 16000)}`;
           // "moet ik hier zelf nog iets mee?" Wat er te doen viel is nu gedaan
           // en staat hierboven; wat er overblijft is voor Maarten en staat op
           // het scherm bij het document. Zet dit kopje hier nooit terug.
-          ...(plan.wijzigingen.length ? [{ type: "subheading" as const, text: "Wat er is aangepast" }, { type: "bullets" as const, items: plan.wijzigingen }] : []),
+          ...(plan.wijzigingen.length ? [{ type: "subheading" as const, text: "Wat er in de tekst is aangepast" }, { type: "bullets" as const, items: plan.wijzigingen }] : []),
         ],
       },
       {
         heading: "Voor de sitebouwer",
         blocks: [
           { type: "table", headers: ["Veld", "Waarde"], rows: [
-            ["Paginatitel (meta-title)", plan.metaTitle || "(niet ingevuld)"],
-            ["Meta-description", plan.metaDescription || "(niet ingevuld)"],
+            ["Titel van het stuk", plan.titel],
+            ["H1 boven het stuk", eersteKop(plan.tekst) || plan.titel],
+            ["Paginatitel (meta-title)", plan.metaTitle || "niet ingevuld"],
+            ["Meta-description", plan.metaDescription || "niet ingevuld"],
           ] },
           // Kant-en-klaar, geen aanbeveling: staat hier alleen als de huidige
           // meta van de landingspagina echt beter kan.
