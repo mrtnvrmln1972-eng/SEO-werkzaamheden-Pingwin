@@ -136,7 +136,11 @@ export default function PageSummaryCard({ slug, url, planDone, autoGenSignal }: 
         <div className="muted psc-empty">Samenvatting laden…</div>
       ) : planDone ? (
         <div className="psc-empty">
-          <span className="muted">Nog geen korte samenvatting. Maak hem in één klik uit de vastgelegde strategie.</span>
+          {/* Sinds de samenvatting bij het vastleggen gemaakt wordt (en anders
+              bij het openen van de pagina), betekent deze stand dat die poging
+              niet lukte. Dat hoort er ook zo te staan, anders lijkt het weer een
+              stap die jij nog moet doen. */}
+          <span className="muted">{busy ? "De samenvatting wordt gemaakt uit de vastgelegde strategie…" : "De samenvatting is niet gelukt. Probeer het hier nog een keer."}</span>
           <button type="button" className={"btn btn-klein pcd-btn pcd-btn-primary" + (busy ? " busy" : "")} onClick={generate} disabled={busy}>{busy ? "Samenvatten…" : "Vat de strategie samen"}</button>
         </div>
       ) : (
