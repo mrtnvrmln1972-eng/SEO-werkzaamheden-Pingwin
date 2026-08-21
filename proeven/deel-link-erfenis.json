@@ -1,0 +1,26 @@
+{
+  "_uitleg": [
+    "Twee lijsten bij proeven/deel-link.proef.ts, met opzet apart.",
+    "",
+    "'magSchrijven' is GEEN erfenis maar een bewuste uitzondering: een deel-link die niet alleen",
+    "een rapport toont maar een afwerklijst is, waar de sitebouwer punten afvinkt. Zo'n route mag",
+    "schrijven, maar alleen binnen de klant die aan het token hangt, en dat rekent de proef na.",
+    "Zet hier nooit een route bij omdat hij nu eenmaal een POST heeft; alleen als afvinken of",
+    "invullen het doel van die deel-link is. Kan het achter /api/admin, dan hoort het daar.",
+    "",
+    "'eigenToken' is wél een erfenis en werkt als een ratel: alleen korter, nooit langer. Dit zijn",
+    "de plekken die van vóór 21-08-2026 hun eigen deel-token maken in plaats van dat uit",
+    "lib/deel-link.ts te halen. Dat is precies hoe de vier deel-links uit elkaar liepen. Verbouw je",
+    "er een naar getOrCreateDeelToken, haal hem dan van deze lijst; de proef meldt het zelf zodra",
+    "een bestand schoon is. Een nieuw deelbaar scherm staat er per definitie niet op."
+  ],
+  "magSchrijven": {
+    "app/api/share/werklijst/route.ts": "De afwerklijst voor de sitebouwer: afvinken en de hercontrole zijn het doel van deze link.",
+    "app/api/share/org/route.ts": "Het bedrijfsgegevens-formulier dat de klant zelf invult: opslaan is het doel van deze link."
+  },
+  "eigenToken": [
+    "lib/clients.ts",
+    "lib/dev-worklist.ts",
+    "lib/org-data.ts"
+  ]
+}

@@ -6377,17 +6377,25 @@ a.wb-pad:hover { text-decoration: underline; }
 .wp-bordlink { margin-left: var(--ruimte-regel); font-size: var(--type-label); font-weight: 700; color: var(--kleur-accent-diep); text-decoration: underline; }
 .wp-bordlink:hover { color: var(--accent); }
 
-/* ── De publieke deelpagina van het opruimrapport ──────────────────────────
+/* ── Het kader van élke publieke deelpagina ────────────────────────────────
    Dezelfde kaarten als in de cockpit, maar als een rustig document: een kop
-   met de merknaam, een begrensde leesbreedte en dezelfde warme ondergrond. */
-.opr-deel { min-height: 100vh; background: linear-gradient(180deg, var(--kleur-accent-waas) 0%, var(--brand-taupe-light) 100%); padding: var(--s-8) var(--ruimte-groep) var(--s-10); }
-.opr-deel-kop { max-width: 1200px; margin: 0 auto var(--s-6); }
-.opr-deel-merk { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: var(--type-label); color: var(--kleur-accent); margin-bottom: var(--ruimte-naast); }
-.opr-deel-kop h1 { font-size: var(--type-paginakop); line-height: var(--regel-paginakop); color: var(--dark); margin: 0 0 var(--ruimte-krap); }
-.opr-deel-kop p { margin: 0; color: var(--kleur-tekst-stil); font-size: var(--type-bijschrift); }
-.opr-deel-body { max-width: 1200px; margin: 0 auto; background: none; padding: 0; }
-.opr-deel-voet { max-width: 1200px; margin: var(--s-6) auto 0; color: var(--kleur-tekst-stil); font-size: var(--type-label); text-align: center; }
-.opr-deel-leeg { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--kleur-tekst-stil); font-size: var(--type-bijschrift); }
+   met de merknaam, een begrensde leesbreedte en dezelfde warme ondergrond.
+   Stond hier als `.opr-deel*` toen het opruimrapport het enige deelbare scherm
+   was; sinds de sitemap-check erbij kwam (21-08-2026) is het één kader voor
+   allemaal, getekend door app/_ui/DeelPagina.tsx. Zet hier dus nooit een tweede
+   set neer voor het volgende deelbare scherm. */
+.deel-pagina { min-height: 100vh; background: linear-gradient(180deg, var(--kleur-accent-waas) 0%, var(--brand-taupe-light) 100%); padding: var(--s-8) var(--ruimte-groep) var(--s-10); }
+.deel-kop { max-width: 1200px; margin: 0 auto var(--s-6); }
+.deel-merk { font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: var(--type-label); color: var(--kleur-accent); margin-bottom: var(--ruimte-naast); }
+.deel-kop h1 { font-size: var(--type-paginakop); line-height: var(--regel-paginakop); color: var(--dark); margin: 0 0 var(--ruimte-krap); }
+.deel-kop p { margin: 0; color: var(--kleur-tekst-stil); font-size: var(--type-bijschrift); }
+.deel-body { max-width: 1200px; margin: 0 auto; background: none; padding: 0; }
+.deel-voet { max-width: 1200px; margin: var(--s-6) auto 0; color: var(--kleur-tekst-stil); font-size: var(--type-label); text-align: center; }
+.deel-leeg { min-height: 60vh; display: flex; align-items: center; justify-content: center; color: var(--kleur-tekst-stil); font-size: var(--type-bijschrift); }
+/* Het balkje in de cockpit waarmee je zo'n link maakt: de link zelf breed, en
+   het knopje om hem te openen ernaast. */
+.deel-balk { display: flex; align-items: center; gap: var(--ruimte-naast); }
+.deel-balk .uk-veld { flex: 1 1 auto; }
 /* De deelkaart in de cockpit: iets nadrukkelijker, want dit is wat naar buiten gaat. */
 .opr-deelkaart { border-left: 3px solid var(--kleur-accent); }
 

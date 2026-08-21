@@ -10,6 +10,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useEffect, useState } from "react";
+import DeelPagina, { DeelLeeg } from "../../../_ui/DeelPagina";
 import OpruimTabel from "../../../admin/client/[slug]/OpruimTabel";
 import OpruimStructuur from "../../../admin/client/[slug]/OpruimStructuur";
 import OpruimOppakken, { type Oppakker } from "../../../admin/client/[slug]/OpruimOppakken";
@@ -42,8 +43,8 @@ export default function OpruimShare({ token }: { token: string }) {
       .catch(() => setFout("Deze link kon niet worden geladen."));
   }, [token]);
 
-  if (fout) return <div className="opr-deel-leeg">{fout}</div>;
-  if (!d) return <div className="opr-deel-leeg">Rapport wordt geladen…</div>;
+  if (fout) return <DeelLeeg>{fout}</DeelLeeg>;
+  if (!d) return <DeelLeeg>Rapport wordt geladen…</DeelLeeg>;
 
   const r = d.result;
   const domain = d.domain;
@@ -65,17 +66,15 @@ export default function OpruimShare({ token }: { token: string }) {
   }
 
   return (
-    <div className="opr-deel">
-      <header className="opr-deel-kop">
-        <div className="opr-deel-merk">Pingwin</div>
-        <h1>Opruimen en samenvoegen van pagina&rsquo;s</h1>
-        <p>
-          {d.clientName ? `${d.clientName}, ` : ""}
-          {r?.generatedAt ? `analyse van ${new Date(r.generatedAt).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}` : "actuele analyse"}
-        </p>
-      </header>
-
-      <div className="cannibal-panel opr-deel-body">
+    <DeelPagina
+      titel="Opruimen en samenvoegen van pagina’s"
+      onderschrift={
+        (d.clientName ? `${d.clientName}, ` : "") +
+        (r?.generatedAt ? `analyse van ${new Date(r.generatedAt).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}` : "actuele analyse")
+      }
+      voet="Opgesteld door Pingwin Online Marketing. Vragen over dit rapport? Stel ze gerust."
+      bodyClass="cannibal-panel"
+    >
         <div className="opr-kaart">
           <div className="opr-kop">Waar dit rapport over gaat</div>
           <div className="opr-kaart-tekst">
@@ -182,8 +181,6 @@ export default function OpruimShare({ token }: { token: string }) {
           interneLinks={r?.interneLinks?.length || 0}
         />
 
-        <p className="opr-deel-voet">Opgesteld door Pingwin Online Marketing. Vragen over dit rapport? Stel ze gerust.</p>
-      </div>
-    </div>
+    </DeelPagina>
   );
 }

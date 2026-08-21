@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSlugByOpruimToken } from "../../../../lib/opruim-deel";
+import { getSlugByDeelToken } from "../../../../lib/deel-link";
 import { getCannibalAnalysis } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
 import { paginaStructuur } from "../../../../lib/opruim-structuur";
@@ -13,7 +13,7 @@ export const maxDuration = 60;
 // zit achter de adminroutes en die eisen een admin-cookie.
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token") || "";
-  const slug = await getSlugByOpruimToken(token);
+  const slug = await getSlugByDeelToken("opruim", token);
   if (!slug) return NextResponse.json({ ok: false, error: "Deze link is niet (meer) geldig." }, { status: 404 });
 
   const [analyse, client] = await Promise.all([getCannibalAnalysis(slug), getClientBySlug(slug)]);

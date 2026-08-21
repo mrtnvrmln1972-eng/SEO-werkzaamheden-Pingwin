@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSlugByOpruimToken } from "../../../../lib/opruim-deel";
+import { getSlugByDeelToken } from "../../../../lib/deel-link";
 import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
@@ -20,7 +20,7 @@ export const maxDuration = 300;
 // planning zetten, corrigeren, doorvoeren) zit achter de adminroutes.
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("token") || "";
-  const slug = await getSlugByOpruimToken(token);
+  const slug = await getSlugByDeelToken("opruim", token);
   if (!slug) return NextResponse.json({ ok: false, error: "Deze link is niet (meer) geldig." }, { status: 404 });
 
   try {

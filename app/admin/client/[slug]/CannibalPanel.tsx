@@ -106,15 +106,15 @@ export default function CannibalPanel({ slug, domain = "", openTarget, clientNam
   const [deelMsg, setDeelMsg] = useState("");
 
   useEffect(() => {
-    fetch(`/api/admin/opruim-deellink?slug=${encodeURIComponent(slug)}`)
+    fetch(`/api/admin/deel-link?soort=opruim&slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json()).then((d) => { if (d?.ok) setDeelUrl(d.url || ""); }).catch(() => { /* stil */ });
   }, [slug]);
 
   async function deellink(actie: "maken" | "vernieuwen" | "intrekken") {
     setDeelMsg("");
     try {
-      const d = await fetch("/api/admin/opruim-deellink", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, actie }),
+      const d = await fetch("/api/admin/deel-link", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ soort: "opruim", slug, actie }),
       }).then((r) => r.json());
       if (!d?.ok) { setDeelMsg(d?.error || "Mislukt."); return; }
       setDeelUrl(d.url || "");
