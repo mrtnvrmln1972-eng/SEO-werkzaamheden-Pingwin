@@ -1584,9 +1584,13 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before,
    Een screendump die in een aantekening gesleept is, hoort er hetzelfde uit te
    zien als waar hij ook staat: op leesbreedte, met dezelfde ronding en rand als
    de rest, en nooit breder dan het vak eromheen. Staat hier in het gedeelde blok
-   en niet bij één scherm, precies zoals bij koppen, bullets en tabellen. */
+   en niet bij één scherm, precies zoals bij koppen, bullets en tabellen.
+   De hoogte is begrensd: een schermafbeelding van een hele pagina is al gauw
+   twee keer zo hoog als de kaart zelf, en dan scrol je aan één plaatje voorbij
+   om bij de rest van je aantekening te komen. Hij schaalt mee naar beneden en
+   houdt zijn verhoudingen; klik erop en je ziet hem op ware grootte. */
 .md img, .chat-md img, .focus-rich img {
-  display: block; max-width: 100%; height: auto;
+  display: block; max-width: 100%; width: auto; height: auto; max-height: 500px;
   margin: var(--ruimte-naast) 0;
   border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop);
   background: var(--kleur-rustig);
