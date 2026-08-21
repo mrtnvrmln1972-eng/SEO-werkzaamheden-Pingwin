@@ -70,8 +70,11 @@ export async function GET(req: NextRequest) {
   }
   try {
     // Optioneel: klik eerst iets aan (?klik=.vouwblok .strategy-head). Een blok
-    // dat standaard dicht staat is anders niet te fotograferen.
-    const klik = (req.nextUrl.searchParams.get("klik") || "").slice(0, 200) || null;
+    // dat standaard dicht staat is anders niet te fotograferen. Meerdere stappen
+    // na elkaar scheid je met een liggend streepje
+    // (?klik=.ov-blok .strategy-head|.wp-card-taak): het tweede ding bestaat
+    // soms pas als het eerste openstaat.
+    const klik = (req.nextUrl.searchParams.get("klik") || "").slice(0, 300) || null;
     const png = await maakSchermafbeelding(pad, basis, wacht, thema, klik);
     if (!png) {
       return NextResponse.json({ ok: false, error: "De browser kon niet starten op deze server." }, { status: 500 });

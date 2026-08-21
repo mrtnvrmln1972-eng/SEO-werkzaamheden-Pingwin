@@ -148,10 +148,18 @@ export async function maakSchermafbeelding(
     // anders niet te fotograferen, en dan kun je niet zien wat je gebouwd hebt.
     // Alles wat op de selector past wordt aangeklikt; niets gevonden is geen
     // fout, dan staat er gewoon niets open op de foto.
+    // Meerdere stappen na elkaar mag ook, gescheiden door een liggend streepje
+    // (?klik=.ov-blok .strategy-head|.wp-card-taak). Nodig zodra het tweede ding
+    // pas bestáát als het eerste openstaat: een projectkaart zit in het blok
+    // Planning, en dat blok staat dicht. Eén ronde klikken vond die kaart dan
+    // nooit, en dan is precies het scherm dat je wilt beoordelen niet te
+    // fotograferen. Een komma blijft gewoon "deze allemaal tegelijk".
     if (klik) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await page.$$eval(klik, (els: any[]) => els.forEach((e) => (e as HTMLElement).click())).catch(() => {});
-      await new Promise((r) => setTimeout(r, 300));
+      for (const stap of klik.split("|").map((s) => s.trim()).filter(Boolean)) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await page.$$eval(stap, (els: any[]) => els.forEach((e) => (e as HTMLElement).click())).catch(() => {});
+        await new Promise((r) => setTimeout(r, 600));
+      }
     }
     // Het plafond stond op twintig seconden en dat was te krap geworden: een
     // scherm dat zichzelf vult met werk van een paar minuten (het oordeel van het
