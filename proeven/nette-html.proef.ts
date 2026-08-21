@@ -71,6 +71,11 @@ const bronnen = [
   "app/admin/client/[slug]/BespreekLijsten.tsx",
   "app/admin/client/[slug]/Notities.tsx",
   "app/admin/client/[slug]/weekplan-kaart/KaartFases.tsx",
+  // Dit veld zette zijn inhoud rechtstreeks als innerHTML neer, dus het viel
+  // buiten élke controle hierboven (die kijken naar dangerouslySetInnerHTML).
+  // Kwam er platte tekst binnen (de tekst van een doorgezette taak), dan plakte
+  // hij aan elkaar tot één blok zonder regels en met kale webadressen erin.
+  "app/_velden/RijkTekstVeld.tsx",
 ];
 const EIGEN_BESLISSING = /<\\\/\[a-z\]\[a-z0-9\]\*>/;
 for (const b of bronnen) {

@@ -12,7 +12,7 @@
 // opleveren. Zonder deze proef is dat verschil een gevoel in een reguliere
 // expressie.
 
-import { zelfdeOnderwerp, groepeer, groepAantallen, onderwerpWoorden } from "../lib/doc-groepen";
+import { zelfdeOnderwerp, groepeer, groepAantallen, documentVolgorde, onderwerpWoorden } from "../lib/doc-groepen";
 
 let fouten = 0;
 function proef(naam: string, goed: boolean, uitleg = "") {
@@ -63,6 +63,23 @@ proef("het project mét klantversie vraagt wél een keuze", (aantal[groep[2]] ||
 // Eén document van een soort: nooit een keuze.
 const alleen = [{ id: 9, kind: "copy", naam: "Copy hovenier Breda" }];
 proef("één document levert nooit een keuze op", groepAantallen(alleen, groepeer(alleen))["copy#0"] === 1);
+
+// ── De volgorde: een afgeleid stuk staat ónder zijn bron ──
+// Een stuk dat uit een ander stuk voortkomt is altijd nieuwer, dus "nieuwste
+// eerst" zette het bovenaan, met het inspringstreepje dat zegt "ik hoor bij het
+// stuk hierboven" terwijl dat stuk eronder stond (21-08-2026).
+const lijst = [
+  { id: 18, kind: "structured", naam: 'Geldende versie na verwerken van "Advies v2.docx"', bronId: 14, createdAt: "2026-08-07T07:36:00.000Z" },
+  { id: 14, kind: "structured", naam: "Advies v2.docx", bronId: 0, createdAt: "2026-08-07T07:24:00.000Z" },
+  { id: 3, kind: "copy", naam: "Copy hovenier Breda", bronId: 0, createdAt: "2026-08-06T10:00:00.000Z" },
+];
+const volgorde = documentVolgorde(lijst, groepeer(lijst)).map((d) => d.id);
+proef("de copy staat vóór de structured data", volgorde.indexOf(3) === 0, JSON.stringify(volgorde));
+proef("de bron staat boven zijn verwerkte kopie", volgorde.indexOf(14) < volgorde.indexOf(18), JSON.stringify(volgorde));
+proef("er raakt geen document zoek in de volgorde", volgorde.length === 3, JSON.stringify(volgorde));
+// Een afgeleide waarvan de bron niet in de lijst staat, hoort er gewoon te blijven.
+const wees = [{ id: 5, kind: "copy", naam: "Los stuk", bronId: 99, createdAt: "2026-08-06T10:00:00.000Z" }];
+proef("een afgeleide zonder bron in beeld blijft staan", documentVolgorde(wees, groepeer(wees)).length === 1);
 
 console.log(fouten === 0 ? "\nAlles goed." : `\n${fouten} fout(en).`);
 process.exit(fouten === 0 ? 0 : 1);

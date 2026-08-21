@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { OrgDataForm, type OrgFormData } from "../../../admin/client/[slug]/OrgDataPanel";
+import { plaatsingsZin } from "../../../../lib/structured-taak";
 
 // De sitebouwer-kant van de bedrijfsgegevens: altijd alleen-lezen (deze link
 // kan nooit iets wijzigen), met de bedrijfsgegevens plus de kant-en-klare
@@ -14,6 +15,7 @@ export default function OrgDevShareClient({ token }: { token: string }) {
   const [sitewideJsonld, setSitewideJsonld] = useState("");
   const [plugin, setPlugin] = useState("");
   const [gekoppeld, setGekoppeld] = useState(false);
+  const [anchorId, setAnchorId] = useState("");
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -25,7 +27,7 @@ export default function OrgDevShareClient({ token }: { token: string }) {
         if (off) return;
         if (d.ok) {
           setData(d.data); setLocked(!!d.locked); setClientName(d.clientName || "");
-          setSitewideJsonld(d.sitewideJsonld || ""); setPlugin(d.plugin || ""); setGekoppeld(!!d.gekoppeld);
+          setSitewideJsonld(d.sitewideJsonld || ""); setPlugin(d.plugin || ""); setGekoppeld(!!d.gekoppeld); setAnchorId(d.anchorId || "");
         }
         else setErr(d.error || "Deze link is niet (meer) geldig.");
       })
@@ -73,13 +75,13 @@ export default function OrgDevShareClient({ token }: { token: string }) {
                 <>
                   <button type="button" className="btn btn-klein" onClick={copyJsonld}>{copied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
                   <pre className="sch-json-pre org-devshare-json">{sitewideJsonld}</pre>
+                  {/* Exact dezelfde zin als in de taak en de mail; zie
+                      lib/structured-taak.ts. Hier stond een eigen versie, en die
+                      plakte het label van de plugin-detectie letterlijk in de
+                      zin ("Aanvullend op handmatig/onbekend"). */}
                   <p className="org-share-note org-devshare-note">
-                    {gekoppeld
-                      ? `Aanvullend op ${plugin}: dit blok knoopt aan de organisatie-code van de plugin vast (zelfde @id) en voegt alleen toe wat die niet levert. Naast de bestaande plugin-code plaatsen, niets aan de plugin zelf aanpassen.`
-                      : plugin
-                        ? `${plugin} staat al op de site, maar we konden zijn organisatie-ID niet vinden; dit is daarom een zelfstandig blok. Controleer even op dubbele info met wat de plugin al toont.`
-                        : "Er is geen bestaand organisatie-schema op de homepage gevonden; dit is het volledige blok."}
-                    {" "}Voor behandel-, dienst- of productpagina's komt er per pagina nog een aanvullend blok;
+                    {plaatsingsZin({ pluginLabel: plugin, gekoppeld, anchorId }, { markdown: false })}
+                    {" "}Voor behandel-, dienst- of productpagina&rsquo;s komt er per pagina nog een aanvullend blok;
                     dat levert Pingwin apart aan zodra die pagina klaar is.
                   </p>
                 </>

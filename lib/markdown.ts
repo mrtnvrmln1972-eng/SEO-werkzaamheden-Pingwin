@@ -24,6 +24,20 @@ function esc(s: string): string {
 
 function inline(s: string, base: string): string {
   let t = esc(s);
+  // ── Codestukjes eerst opzij ──────────────────────────────────────────────
+  // Wat tussen backticks staat is letterlijke code en mag door geen enkele
+  // regel hieronder meer aangeraakt worden. Stond een webadres tussen die
+  // backticks (`https://site.nl/#organization`), dan pakte de link-regel dat
+  // adres inclusief de sluit-backtick, en daarna knipte de code-regel op de
+  // verkeerde plek: het resultaat was een kapotte tag met een `</code>` middenin
+  // een href, en de rest van de alinea kleurde mee als link (21-08-2026, in de
+  // opdracht voor de developer). Ze gaan dus eerst opzij en komen als laatste
+  // terug; het merkteken (een niet-typbaar teken) raakt geen enkele regel.
+  const codes: string[] = [];
+  t = t.replace(/`([^`]+)`/g, (_m, code: string) => {
+    codes.push(code);
+    return `\u0000c${codes.length - 1}\u0000`;
+  });
   // Markdown-links [tekst](url) → klikbaar, nieuw tabblad.
   t = t.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>');
   // Markdown-links met een relatief pad [tekst](/pad/) → link naar de klant-site.
@@ -52,7 +66,8 @@ function inline(s: string, base: string): string {
   t = t.replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<em>$2</em>");
   // _tekst_ → onderstreept (niet binnen bestandsnamen/__ ).
   t = t.replace(/(^|[^_\w])_([^_\n]+)_(?![_\w])/g, "$1<u>$2</u>");
-  t = t.replace(/`([^`]+)`/g, "<code>$1</code>");
+  // En de codestukjes terug op hun plek, precies zoals ze er stonden.
+  t = t.replace(/\u0000c(\d+)\u0000/g, (_m, nr: string) => `<code>${codes[Number(nr)]}</code>`);
   return t;
 }
 

@@ -40,6 +40,26 @@ export function isAlHtml(tekst: string): boolean {
   return SLUITTAG.test(t) && !MARKDOWN.test(t);
 }
 
+// Een beeld, een regelafbreking of een lijn heeft geen sluittag, en is toch echt
+// opmaak. Alleen deze drie: een genoemde tag in een zin (`<h1>`) blijft leestekst.
+const LOSSE_TAG = /<(?:img|br|hr)\b/i;
+
+/**
+ * Bevat deze tekst al opmaak die van een bewerkbaar veld komt?
+ *
+ * Andere vraag dan `isAlHtml`, en met opzet. Die kiest bij twijfel voor
+ * renderen: staat er markdown ín een stuk HTML, dan wint de markdown. Voor een
+ * veld waar iemand zelf in typt is dat precies verkeerd om: typt hij letterlijk
+ * `**twee sterretjes**` in een opgemaakte alinea, dan zou zijn eigen tekst
+ * opnieuw door de renderer gaan en kwam er `&lt;p&gt;` in beeld. De opgeslagen
+ * inhoud van zo'n veld is dus leidend; alleen tekst zonder één stukje opmaak
+ * (de platte tekst van een doorgezette taak) gaat alsnog door de poort.
+ */
+export function bevatHtmlOpmaak(tekst: string): boolean {
+  const t = tekst || "";
+  return SLUITTAG.test(t) || LOSSE_TAG.test(t);
+}
+
 /** De site-URL in de twee vormen die de twee onderliggende functies willen. */
 function siteVormen(basis?: string): { base: string; host: string } {
   const ruw = (basis || "").trim();

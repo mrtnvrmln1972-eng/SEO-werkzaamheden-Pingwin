@@ -16,12 +16,17 @@ export async function GET(req: NextRequest) {
   const [rec, client] = await Promise.all([getOrgData(slug), getClientBySlug(slug)]);
   const domain = (client?.domain || "").trim();
   const site = domain ? (domain.match(/^https?:\/\//i) ? domain : `https://${domain}`).replace(/\/+$/, "") : "";
-  let sitewideJsonld = "", plugin = "", gekoppeld = false;
+  let sitewideJsonld = "", plugin = "", gekoppeld = false, anchorId = "";
   if (site && rec.data.bedrijfsnaam) {
     const detectie = await detectSitewideAnchor(site).catch(() => ({ pluginLabel: "", gekoppeld: false, anchor: null as { id: string; type: string } | null }));
     sitewideJsonld = buildSitewideJsonLd(rec.data, site, detectie.anchor);
-    plugin = detectie.gekoppeld ? detectie.pluginLabel : "";
+    // Het volledige label gaat mee, ook "handmatig/onbekend": de pagina maakt er
+    // met plaatsingsZin() een echte zin van (lib/structured-taak.ts), en die zin
+    // is dezelfde als in de taak en de mail. Hier stond een eigen versie, en
+    // daarin werd het label letterlijk als onderwerp in de zin geplakt.
+    plugin = detectie.pluginLabel;
     gekoppeld = !!detectie.anchor;
+    anchorId = detectie.anchor?.id || "";
   }
   return NextResponse.json({
     ok: true,
@@ -31,6 +36,7 @@ export async function GET(req: NextRequest) {
     sitewideJsonld,
     plugin,
     gekoppeld,
+    anchorId,
     updatedAt: rec.updatedAt,
   });
 }

@@ -7,6 +7,7 @@ import Kennisbank from "./Kennisbank";
 import MailPopup from "./MailPopup";
 import { ontbrekendeSleutels, ontbrekendeVelden, LEGE_VESTIGING, type OrgVestiging } from "../../../../lib/org-vereist";
 import { mdToHtml } from "../../../../lib/markdown";
+import { sitewideMailHtml } from "../../../../lib/structured-taak";
 import { Omlaag, Slot, Uitklap } from "../../../_ui/Pijl";
 
 // ── "Laatste stand structured data": één knop + "?", geen eigen balk meer ──
@@ -399,24 +400,31 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   const [devJsonOpen, setDevJsonOpen] = useState(false);
   const [devJsonBusy, setDevJsonBusy] = useState(false);
   const [devJsonCopied, setDevJsonCopied] = useState(false);
+  // Kan de developer het JSON-bestand ook echt openen? Drive zet het op
+  // "iedereen met de link"; lukt dat niet, dan hoort dat hier te staan en niet
+  // pas als hij belt dat hij toegang moet aanvragen.
+  const [devGedeeld, setDevGedeeld] = useState(true);
+  const [devLinkCopied, setDevLinkCopied] = useState<"" | "json" | "overzicht">("");
   async function openDevDeel() {
     if (busy) return;
     setBusy("dev"); setMsg("");
     try {
       const d = await fetch("/api/admin/org-data/sitewide", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((r) => r.json());
       if (!d.ok) { setMsg(d.error || "Voorbereiden mislukt."); return; }
-      setDevLink(d.jsonLink); setDevJson(""); setDevJsonOpen(false);
-      const devDashUrl = typeof window !== "undefined" ? `${window.location.origin}/admin/developer` : "";
+      setDevLink(d.jsonLink); setDevJson(""); setDevJsonOpen(false); setDevGedeeld(d.gedeeld !== false);
       const naam = data?.bedrijfsnaam || "";
       setDevPopSubject(`Structured data klaar${naam ? ` – ${naam}` : ""}`);
-      const linkjes = [
-        `<li>JSON-bestand (plakken in de &lt;head&gt;, als los blok naast wat er al staat; niets aan bestaande plugin-code wijzigen): <a href="${d.jsonLink}">${d.jsonLink}</a></li>`,
-        devShareUrl ? `<li>Volledig overzicht met alle bedrijfsgegevens erachter: <a href="${devShareUrl}">${devShareUrl}</a></li>` : "",
-        devDashUrl ? `<li>Ook terug te vinden in het Developer Overview: <a href="${devDashUrl}">${devDashUrl}</a></li>` : "",
-      ].filter(Boolean).join("");
-      setDevPopHtml(`<p>Hoi,</p><p>Voor${naam ? ` ${naam}` : " deze klant"} staat de structured data klaar: onzichtbare code (schema.org) die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat het doet.</p><ul>${linkjes}</ul><p>Alvast bedankt!</p><p>Groet,<br>Maarten</p>`);
+      // Exact dezelfde boodschap als in de taak die hier zojuist van gemaakt is;
+      // zie lib/structured-taak.ts. Het Developer Overview staat er bewust niet
+      // meer bij: dat scherm zit achter een inlog en gaat voor een externe
+      // sitebouwer dus niet open.
+      setDevPopHtml(sitewideMailHtml(naam, { jsonLink: d.jsonLink, devUrl: d.devUrl || devShareUrl }));
       setDevPopOpen(true);
     } catch { setMsg("Voorbereiden mislukt."); } finally { setBusy(""); }
+  }
+  async function kopieer(tekst: string, welke: "json" | "overzicht") {
+    if (!tekst) return;
+    try { await navigator.clipboard.writeText(tekst); setDevLinkCopied(welke); setTimeout(() => setDevLinkCopied(""), 2000); } catch { /* handmatig */ }
   }
   async function bekijkJson() {
     if (devJson) { setDevJsonOpen((v) => !v); return; }
@@ -540,17 +548,36 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
         onderwerp={devPopSubject}
         berichtHtml={devPopHtml}
         extra={
-          <div>
-            <div className="muted" style={{ wordBreak: "break-word" }}>JSON-bestand: <a href={devLink} target="_blank" rel="noreferrer">{devLink}</a></div>
-            <button type="button" className="btn btn-ghost btn-klein" style={{ marginTop: "var(--s-2)" }} onClick={() => void bekijkJson()}>
-              {devJsonBusy ? "Laden…" : devJsonOpen ? "Verberg de JSON-code" : "Bekijk de JSON-code"}
-            </button>
-            {devJsonOpen && devJson && (
-              <>
-                <button type="button" className="btn btn-ghost btn-klein" style={{ marginLeft: "var(--s-2)" }} onClick={() => void copyJson()}>{devJsonCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
-                <pre className="sch-json-pre" style={{ marginTop: "var(--s-2)" }}>{devJson}</pre>
-              </>
+          // Twee links, en bij allebei staat of de developer hem kan openen. Dat
+          // was precies de vraag die openstond: het JSON-bestand staat in Drive
+          // (dus: is het gedeeld?) en het overzicht staat in dit dashboard (dus:
+          // moet hij inloggen?). Nu hoeft niemand dat meer te gokken.
+          <div className="dev-deel-links">
+            {/* De adressen zelf staan al uitgeschreven in de mail eronder; hier
+                staat wat het is, of hij het kan openen, en een kopieerknop. */}
+            <div className="dev-deel-rij">
+              <a className="dev-deel-naam" href={devLink} target="_blank" rel="noreferrer">De code als JSON-bestand</a>
+              <span className={"dev-deel-stand" + (devGedeeld ? "" : " dev-deel-stand-let")}>
+                {devGedeeld ? "iedereen met de link kan hem openen" : "delen lukte niet; zet hem in Drive zelf op ‘iedereen met de link’"}
+              </span>
+              <button type="button" className="btn btn-ghost btn-klein" onClick={() => void kopieer(devLink, "json")}>{devLinkCopied === "json" ? "✓ gekopieerd" : "Kopieer link"}</button>
+            </div>
+            {devShareUrl && (
+              <div className="dev-deel-rij">
+                <a className="dev-deel-naam" href={devShareUrl} target="_blank" rel="noreferrer">Alle bedrijfsgegevens plus deze code</a>
+                <span className="dev-deel-stand">alleen-lezen, geen inlog nodig</span>
+                <button type="button" className="btn btn-ghost btn-klein" onClick={() => void kopieer(devShareUrl, "overzicht")}>{devLinkCopied === "overzicht" ? "✓ gekopieerd" : "Kopieer link"}</button>
+              </div>
             )}
+            <div className="dev-deel-rij">
+              <button type="button" className="btn btn-ghost btn-klein" onClick={() => void bekijkJson()}>
+                {devJsonBusy ? "Laden…" : devJsonOpen ? "Verberg de JSON-code" : "Bekijk de JSON-code"}
+              </button>
+              {devJsonOpen && devJson && (
+                <button type="button" className="btn btn-ghost btn-klein" onClick={() => void copyJson()}>{devJsonCopied ? "✓ gekopieerd" : "Kopieer JSON"}</button>
+              )}
+            </div>
+            {devJsonOpen && devJson && <pre className="sch-json-pre">{devJson}</pre>}
           </div>
         }
       />

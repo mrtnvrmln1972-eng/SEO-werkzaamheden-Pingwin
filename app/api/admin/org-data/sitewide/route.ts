@@ -6,6 +6,7 @@ import { getClientBySlug } from "../../../../../lib/clients";
 import { buildSitewideJsonLd, detectSitewideAnchor } from "../../../../../lib/page-schema";
 import { uploadPlainFile } from "../../../../../lib/drive";
 import { getTasks, deleteTasksByIds, appendTasks } from "../../../../../lib/tasks";
+import { sitewideToelichting } from "../../../../../lib/structured-taak";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -82,15 +83,16 @@ export async function POST(req: NextRequest) {
     // gaat mee in de taak, zodat afvinken in Werkzaamheden en delen met de
     // developer via dezelfde taak lopen in plaats van los van elkaar.
     const devUrl = rec.devShareToken ? `${req.nextUrl.origin}/share/org-dev/${rec.devShareToken}` : "";
-    const plugToelichting = detectie.anchor
-      ? `Deze code is AANVULLEND op het organisatie-schema dat ${detectie.pluginLabel} al op de homepage zet (zelfde @id: ${detectie.anchor.id}); naam, adres, telefoon en openingstijden blijven van de plugin, hier staan alleen dingen bij die de plugin niet levert (vestigingen, reviewcijfer, KVK/BTW, social-profielen). Gewoon toevoegen naast de bestaande plugin-code, niets aanpassen aan de plugin zelf.`
-      : detectie.pluginLabel
-        ? `${detectie.pluginLabel} staat al op de site maar we konden zijn organisatie-ID niet vinden; dit is daarom een zelfstandig blok. Loop na of dit niet dubbel op iets van de plugin staat voordat je het plaatst.`
-        : "Er is geen bestaand organisatie-schema op de homepage gevonden; dit is het volledige, zelfstandige blok.";
+    // De tekst zelf staat in lib/structured-taak.ts, want exact dezelfde
+    // boodschap gaat ook de mail in en staat op de deelpagina. Markdown, dus
+    // met benoemde links in plaats van twee kale webadressen in een lap tekst.
     const ids = await appendTasks(slug, [{
       categorie: "Structured data",
       taak: TAAK_TITEL,
-      toelichting: `JSON-LD (copy-paste, toevoegen in de head van elke pagina, als los script-blok naast wat er al staat): ${json.link}${devUrl ? `\nLeesbaar overzicht voor de sitebouwer (bedrijfsgegevens + deze code, alleen-lezen): ${devUrl}` : ""}\n${plugToelichting}\nNa plaatsing controleren met search.google.com/test/rich-results.`,
+      toelichting: sitewideToelichting(
+        { jsonLink: json.link, devUrl },
+        { pluginLabel: detectie.pluginLabel, gekoppeld: !!detectie.anchor, anchorId: detectie.anchor?.id },
+      ),
       klantToelichting: "We voegen de vaste bedrijfsinformatie (naam, contact, profielen) als onzichtbare structured data toe aan de hele site, zodat Google en AI-zoekmachines het bedrijf herkennen.",
       // "Naar dev", niet "Gepland": dit is de knop "Delen met developer", dus dit
       // ís het moment van doorzetten. Op "Gepland" bleef de taak alleen in
@@ -103,7 +105,11 @@ export async function POST(req: NextRequest) {
       docLink: json.link,
       klantZichtbaar: true,
     }]);
-    return NextResponse.json({ ok: true, taskId: ids[0], jsonLink: json.link });
+    // `gedeeld` is de enige eerlijke manier om te weten of de developer dat
+    // bestand ook echt kan openen: Drive zet het op "iedereen met de link", en
+    // lukt dat niet (rechten, beleid), dan krijgt hij een toegang-aanvragen-
+    // scherm. Dat hoort in beeld te staan vóór de mail de deur uit gaat.
+    return NextResponse.json({ ok: true, taskId: ids[0], jsonLink: json.link, gedeeld: !!json.shared, devUrl });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message || "Doorzetten mislukt." }, { status: 500 });
   }

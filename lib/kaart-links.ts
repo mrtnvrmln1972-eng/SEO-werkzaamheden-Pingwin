@@ -74,6 +74,39 @@ function alsTekst(html: string): string {
  * zeggende) label wint: "Elzentlaan 143, 5611 LL Eindhoven" is bruikbaarder dan
  * "hier".
  */
+/**
+ * Een leesbare naam voor een link die alleen als kaal adres in de tekst staat.
+ *
+ * Waarom dit er is: in het taakvenster staat een blok "Links uit deze taak", en
+ * daar stonden bij een doorgezette structured-data-taak twee regels van tachtig
+ * tekens (een Drive-adres met een sleutel erin, en een deel-link met een token).
+ * Aan zo'n regel is niet te zien waar hij heen gaat, en hij duwt de rest van het
+ * venster uit elkaar. De bekende adressen krijgen daarom hun eigen naam; de rest
+ * wordt het domein plus het eerste stukje pad.
+ */
+export function linkNaam(url: string): string {
+  const u = (url || "").trim();
+  if (!u) return "";
+  if (/drive\.google\.com|docs\.google\.com/i.test(u)) {
+    if (/\/document\//i.test(u)) return "Google-document";
+    if (/\/spreadsheets\//i.test(u)) return "Google-spreadsheet";
+    return "Bestand in Google Drive";
+  }
+  if (/\/share\/org-dev\//i.test(u)) return "Bedrijfsgegevens plus de code (deelbare link)";
+  if (/\/share\/org\//i.test(u)) return "Bedrijfsgegevens-formulier (deelbare link)";
+  if (/\/share\/werklijst\//i.test(u)) return "Werklijst voor de sitebouwer";
+  if (/\/share\/opruim\//i.test(u)) return "Opruimrapport (deelbare link)";
+  if (/\/share\/sitemap\//i.test(u)) return "Sitemap-controle (deelbare link)";
+  if (/search\.google\.com\/test\/rich-results/i.test(u)) return "Rich results-test van Google";
+  try {
+    const { hostname, pathname } = new URL(u);
+    const host = hostname.replace(/^www\./i, "");
+    const pad = pathname.replace(/\/+$/, "");
+    const kort = `${host}${pad}`;
+    return kort.length > 46 ? `${host}${pad.slice(0, 40 - host.length)}…` : kort;
+  } catch { return u; }
+}
+
 export function kaartLinks(...stukken: (string | null | undefined)[]): KaartLink[] {
   const perUrl = new Map<string, string>();
   const zet = (url: string, label: string) => {
@@ -96,14 +129,22 @@ export function kaartLinks(...stukken: (string | null | undefined)[]): KaartLink
     const ankers = html.matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi);
     for (const m of ankers) zet(ontsnap(m[1]), alsTekst(m[2]));
 
-    // 2. Kale adressen in de lopende tekst. Alleen buiten de ankers hierboven,
-    //    anders komt dezelfde link twee keer langs met een slechter label.
+    // 2. Markdown-links [naam](adres). De tekst van een doorgezette taak is
+    //    markdown, geen HTML: zonder deze stap viel de naam eraf en bleef het
+    //    kale adres over, precies wat stap 3 hieronder eruit vist.
     const zonderAnkers = html.replace(/<a\b[^>]*>[\s\S]*?<\/a>/gi, " ");
-    const kaal = alsTekst(zonderAnkers);
+    let kaal = alsTekst(zonderAnkers);
+    for (const m of kaal.matchAll(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g)) zet(m[2], m[1]);
+    kaal = kaal.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, " ");
+
+    // 3. Kale adressen in de lopende tekst. Alleen buiten de ankers en de
+    //    markdown-links hierboven, anders komt dezelfde link twee keer langs met
+    //    een slechter label.
     for (const m of kaal.matchAll(/https?:\/\/[^\s<>"')\]]+/gi)) zet(m[0], m[0]);
   }
 
-  return [...perUrl.entries()].map(([url, label]) => ({ label, url }));
+  // Een link zonder eigen naam krijgt er een; zie linkNaam hierboven.
+  return [...perUrl.entries()].map(([url, label]) => ({ label: label === url ? linkNaam(url) : label, url }));
 }
 
 /**

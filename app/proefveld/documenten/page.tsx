@@ -30,6 +30,25 @@ const VERSIES = [
   },
 ];
 
+// En de tweede situatie (21-08-2026, Bogard): structured data. Twee regels die
+// over hetzelfde document gaan, waarvan de bovenste heette "Geldende versie na
+// verwerken van «...»", vier regels lang. Precies zoals ze in de database staan.
+const VERSIES_STRUCTURED = [
+  {
+    id: 18, kind: "structured", source: "pingwin",
+    naam: 'Geldende versie na verwerken van "Bogard_Structured-Data_Advies-en-Inventarisatie v2.docx"',
+    driveLink: "https://drive.google.com/file/d/voorbeeld18/view", samenvatting: "Aangeleverde versie is de nieuwe geldende versie.",
+    vergelijking: "", status: "verwerkt", createdAt: "2026-08-07T07:36:14.967Z", goedgekeurd: false,
+    inhoudDatum: "", datumBron: "onbekend", datumUitleg: "Van dit materiaal is geen datum te vinden.",
+  },
+  {
+    id: 14, kind: "structured", source: "klant", naam: "Bogard_Structured-Data_Advies-en-Inventarisatie v2.docx",
+    driveLink: "https://drive.google.com/file/d/voorbeeld14/view", samenvatting: "Advies- en inventarisatiedocument met de schema-gegevens die de site nodig heeft.",
+    vergelijking: "nieuw", status: "verwerkt", createdAt: "2026-08-07T07:24:50.437Z", goedgekeurd: false,
+    inhoudDatum: "", datumBron: "onbekend", datumUitleg: "Van dit materiaal is geen datum te vinden.",
+  },
+];
+
 const PLAN = {
   kop: "Dit stuk pakt de onderhoudsvragen en stuurt de aanvragen door naar de aanlegpagina.",
   doelen: [{
@@ -59,7 +78,10 @@ if (typeof window !== "undefined" && !(window as unknown as { __proefStub?: bool
   window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const adres = String(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
     const json = (data: unknown) => new Response(JSON.stringify(data), { headers: { "Content-Type": "application/json" } });
-    if (adres.includes("/api/admin/page-doc/upload")) return json({ ok: true, versions: VERSIES });
+    if (adres.includes("/api/admin/page-doc/upload")) {
+      return json({ ok: true, versions: adres.includes("taak%3A2") ? VERSIES_STRUCTURED : VERSIES });
+    }
+    if (adres.includes("/api/admin/org-data")) return json({ ok: true, devShareToken: "xOZkxuMVTKVBiNnL78fxpF69" });
     if (adres.includes("/api/admin/urls")) {
       return json({ ok: true, urls: [
         { url: "https://voorbeeld.nl/natuurzwembad-aanleggen/" },
@@ -87,6 +109,18 @@ export default function ProefDocumenten() {
         <div className="wp-overdeze">
           <DocVersies slug="voorbeeld" url="taak:1" taakId={1} open
             driveMap={{ id: "map1", name: "GardenSwimm", path: "Klanten / GardenSwimm / Content" }}
+            onKiesMap={() => { /* de echte kiezer hangt aan de kaart */ }} />
+        </div>
+      </div>
+      <p className="muted">
+        En hetzelfde blok bij structured data: bovenaan wat er geldt en wat de developer krijgt, daaronder
+        het archief. De naam van de verwerkte kopie is de naam van het bronbestand met een merkje, en die
+        kopie springt in onder het stuk waar hij uit komt.
+      </p>
+      <div className="wp-card wp-open">
+        <div className="wp-overdeze">
+          <DocVersies slug="voorbeeld" url="taak:2" taakId={2} open
+            driveMap={{ id: "map1", name: "Bogard", path: "Klanten / Bogard" }}
             onKiesMap={() => { /* de echte kiezer hangt aan de kaart */ }} />
         </div>
       </div>

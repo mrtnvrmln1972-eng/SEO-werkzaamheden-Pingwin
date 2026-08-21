@@ -128,7 +128,10 @@ export default function MailPopup({
 
   return createPortal(
     <div className="compose-overlay" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="compose-modal" onClick={(e) => e.stopPropagation()}>
+      {/* Iets breder dan een gewoon venster: in een mail staan volledige
+          webadressen, en die braken op 560 pixels over drie regels. Alleen de
+          breedte wijkt af; verder is het exact hetzelfde venster. */}
+      <div className="compose-modal compose-modal-mail" onClick={(e) => e.stopPropagation()}>
         <div className="compose-head"><span>{titel}</span><button type="button" className="chat-float-close" onClick={onClose} aria-label="Sluiten">&times;</button></div>
         <div className="compose-body">
           <label className="compose-label">Aan</label>

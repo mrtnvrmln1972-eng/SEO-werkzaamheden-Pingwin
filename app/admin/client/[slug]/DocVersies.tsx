@@ -18,7 +18,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { mdToHtml } from "../../../../lib/markdown";
 import { netteHtml } from "../../../../lib/nette-html";
-import { groepeer, groepAantallen } from "../../../../lib/doc-groepen";
+import { groepeer, groepAantallen, documentVolgorde } from "../../../../lib/doc-groepen";
+import { bronUitNaam, docLabel, zelfdeBestand } from "../../../../lib/doc-naam";
 import { driveIdFromUrl, docsBewerkLink } from "../../../../lib/drive-id";
 import type { DriveMap } from "./DriveMapKiezer";
 
@@ -108,34 +109,30 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
   // in één taak (twee blogs, twee pagina's), dan kreeg je een keuze voorgelegd
   // die niet bestaat, en leek het stuk dat je niet aanvinkte vervallen. Nu telt
   // ook het onderwerp mee, uit de naam; zie lib/doc-groepen.ts.
-  const groepVan = groepeer(versies.map((v) => ({ id: v.id, kind: v.kind, naam: v.naam, bronId: v.bronId })));
-  const aantalPerGroep = groepAantallen(versies.map((v) => ({ id: v.id, kind: v.kind, naam: v.naam, bronId: v.bronId })), groepVan);
+  //
+  // Kent een document zijn bron niet (`bronId` 0), maar verklapt zijn naam hem
+  // wel ("Geldende versie na verwerken van «X»"), dan telt dat net zo hard. Zo
+  // gaan de twee regels die op de kaart van Bogard onder elkaar stonden weer bij
+  // elkaar horen in plaats van als twee losse versies te lezen (21-08-2026).
+  const bronVan = (v: Versie): number => {
+    if (v.bronId) return v.bronId;
+    const bron = bronUitNaam(v.naam);
+    if (!bron) return 0;
+    return versies.find((x) => x.id !== v.id && zelfdeBestand(x.naam, bron))?.id || 0;
+  };
+  // De bron één keer oplossen; daarna rekent de rest met `bronId` alsof hij er
+  // altijd al stond.
+  const metBron = versies.map((v) => ({ ...v, bronId: bronVan(v) }));
+  const groepVan = groepeer(metBron);
+  const aantalPerGroep = groepAantallen(metBron, groepVan);
   /** Hoeveel documenten gaan er over hetzelfde als dit document? */
   const inGroep = (v: Versie) => aantalPerGroep[groepVan[v.id]] || 1;
 
-  // ── De volgorde: bij elkaar wat bij elkaar hoort (21-08-2026) ──
-  // De lijst stond op proces-stap en daarbinnen op datum. Maak je van een
-  // aangeleverd stuk een ondersteunende versie, dan is die van vandaag en het
-  // origineel van eergisteren, dus schoof een document van een héél ander project
-  // er tussendoor. Maartens woorden: "nu staat het andere project daar tussen".
-  // Dat onderwerp is al bekend (`groepVan`), het werd alleen niet gebruikt om te
-  // sorteren. Nu wel: eerst de stap, dan het onderwerp (het onderwerp met het
-  // nieuwste document bovenaan), en pas daarbinnen nieuwste eerst. Zo staat een
-  // ondersteunende versie altijd pal bij het stuk waar hij uit voortkomt.
-  const sleutelVan = (v: Versie) => groepVan[v.id] || `los-${v.id}`;
-  const nieuwsteInGroep: Record<string, string> = {};
-  for (const v of versies) {
-    const g = sleutelVan(v);
-    if (!nieuwsteInGroep[g] || nieuwsteInGroep[g] < v.createdAt) nieuwsteInGroep[g] = v.createdAt;
-  }
-  const RANG: Record<string, number> = { analyse: 1, blauwdruk: 2, copy: 3, structured: 4 };
-  const opVolgorde = [...versies].sort((a, b) => {
-    const va = RANG[a.kind] || 9, vb = RANG[b.kind] || 9;
-    if (va !== vb) return va - vb;
-    const ga = sleutelVan(a), gb = sleutelVan(b);
-    if (ga !== gb) return nieuwsteInGroep[ga] < nieuwsteInGroep[gb] ? 1 : -1;
-    return a.createdAt < b.createdAt ? 1 : -1;
-  });
+  // De volgorde staat in lib/doc-groepen.ts (proces-stap, dan onderwerp, dan
+  // nieuwste eerst, met een afgeleid stuk direct onder zijn bron) en wordt
+  // nagerekend door proeven/doc-groepen.proef.ts.
+  const opVolgorde = documentVolgorde(metBron, groepVan);
+
   // Ligt er van één onderwerp meer dan één versie zonder dat er één is
   // aangewezen? Dan wachten de mail en de sitebouwer op jouw keuze, en gaat het
   // blok open. Structured data telt hier niet in mee: daarvoor is de kennisbank
@@ -146,6 +143,29 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
 
   // De kaart tekent de knop voor dit blok, dus die moet weten wat erin zit.
   useEffect(() => { onStand?.({ aantal: versies.length, moetKiezen }); }, [versies.length, moetKiezen, onStand]);
+
+  // ── De deelbare pagina voor de developer ──
+  // Alleen ophalen als er structured data ligt én de lijst openstaat: op elke
+  // andere kaart is dit een rondje naar de server voor niets.
+  const heeftStructured = versies.some((v) => v.kind === "structured");
+  const [devDeelUrl, setDevDeelUrl] = useState("");
+  const [deelGekopieerd, setDeelGekopieerd] = useState(false);
+  useEffect(() => {
+    if (!open || !heeftStructured || devDeelUrl) return;
+    let af = false;
+    fetch(`/api/admin/org-data?slug=${encodeURIComponent(slug)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (af || !d?.ok || !d.devShareToken || typeof window === "undefined") return;
+        setDevDeelUrl(`${window.location.origin}/share/org-dev/${d.devShareToken}`);
+      })
+      .catch(() => { /* dan staat de regel er zonder link; de kaart werkt gewoon */ });
+    return () => { af = true; };
+  }, [open, heeftStructured, devDeelUrl, slug]);
+  async function kopieerDeelLink() {
+    if (!devDeelUrl) return;
+    try { await navigator.clipboard.writeText(devDeelUrl); setDeelGekopieerd(true); setTimeout(() => setDeelGekopieerd(false), 2000); } catch { /* handmatig */ }
+  }
 
   const laad = useCallback(async () => {
     const d = await fetch(`/api/admin/page-doc/upload?slug=${encodeURIComponent(slug)}&url=${encodeURIComponent(url)}`)
@@ -361,6 +381,31 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
           soort zonder dat je hebt aangewezen welke geldt, dan zet die rij dit
           blok vanzelf open; dat is een keuze waar de mail en de sitebouwer op
           wachten en die hoort niet achter een dicht klepje te verdwijnen. */}
+      {/* ── Structured data: wat geldt, en wat de developer krijgt ──
+          Liggen hier structured-data-documenten, dan is de vraag die je bij deze
+          lijst hebt niet "welke versie geldt" maar "wat gaat er naar de
+          sitebouwer". Dat is nooit een van deze bestanden: hij krijgt de code en
+          het leesbare overzicht. Stond dat er niet bij, dan opende je een
+          aangeleverd Word-document en keek je naar een advies in de huisstijl,
+          terwijl je een JSON-bestand zocht (21-08-2026). */}
+      {open && heeftStructured && (
+        <div className="wp-doc-uitleg">
+          <span className="wp-doc-uitleg-kop">Structured data</span>
+          <p>
+            Wat er geldt staat per gegeven in de <a href={`/admin/client/${slug}?tab=klant#fund-structured-data`}>kennisbank van deze klant</a>.
+            De bestanden hieronder zijn het archief van wat er is aangeleverd; ze gaan niet als document naar de developer.
+          </p>
+          {devDeelUrl ? (
+            <p>
+              De developer krijgt de code: <a href={devDeelUrl} target="_blank" rel="noreferrer">alle bedrijfsgegevens plus de kant-en-klare JSON-LD</a>, alleen-lezen en zonder inloggen te openen.
+              <button type="button" className="btn btn-ghost btn-klein" onClick={() => void kopieerDeelLink()}>{deelGekopieerd ? "✓ gekopieerd" : "Kopieer link"}</button>
+            </p>
+          ) : (
+            <p className="muted">De deelbare pagina voor de developer wordt opgehaald…</p>
+          )}
+        </div>
+      )}
+
       {versies.length > 0 && open && (
         <ul className="wp-doclijst">
           {/* Leesvolgorde = proces-volgorde (analyse, blauwdruk, copy), daarbinnen
@@ -401,9 +446,15 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                     if (e.key === "Escape") setHernoem(null);
                   }} />
               ) : (
+                // De naam zonder de zin eromheen, plus een merkje dat vertelt wat
+                // het is. Zie lib/doc-naam.ts: de échte naam blijft de echte naam
+                // (hij staat in de tooltip en verschijnt zodra je hem hernoemt).
                 <button type="button" className="wp-docrij-naam"
                   onClick={(e) => { e.stopPropagation(); setHernoem({ id: v.id, naam: v.naam || "" }); }}
-                  title="Klik om de naam aan te passen">{v.naam || "document"}</button>
+                  title={`${v.naam || "document"}\n\nKlik om de naam aan te passen`}>
+                  {docLabel(v.naam).toon}
+                  {docLabel(v.naam).merk && <span className="wp-docrij-merk">{docLabel(v.naam).merk}</span>}
+                </button>
               )}
 
               <span className="wp-docrij-acties" onClick={(e) => e.stopPropagation()}>
@@ -441,7 +492,12 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                     title="Maak dit stuk ondersteunend aan een landingspagina in plaats van concurrerend: de landingspagina houdt zijn zoekwoord, dit stuk pakt de vragen eromheen en geeft zijn kracht door met een interne link"
                     onClick={() => openSteun(v.id)}>Ondersteunend maken</button>
                 )}
-                {v.source === "klant" && (
+                {/* Niet bij structured data: die toets legt een tekst langs de
+                    SEO-criteria voor een landingspagina (koppen, zoekwoorddekking,
+                    meta's). Een inventarisatie van bedrijfsgegevens heeft daar
+                    niets mee te maken, dus dat leverde alleen een oordeel op dat
+                    nergens over ging. */}
+                {v.source === "klant" && v.kind !== "structured" && (
                   <button type="button" className="btn btn-ghost btn-klein" disabled={!!busy}
                     title="Kijk of deze teruggekregen versie nog aan de SEO-criteria voldoet"
                     onClick={async () => {

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { cleanPastedHtml, lijktOpMarkdown, linkifyPlainText } from "../../lib/rich-paste";
 import { benoemDriveLinks } from "../../lib/drive-naam";
 import { mdToHtml } from "../../lib/markdown";
+import { bevatHtmlOpmaak, netteHtml } from "../../lib/nette-html";
 import { Ketting, Omlaag, Vink } from "../_ui/Pijl";
 import {
   beeldHtml,
@@ -284,7 +285,14 @@ export default function RijkTekstVeld({
 
   useEffect(() => {
     if (!gevuldRef.current && editorRef.current) {
-      editorRef.current.innerHTML = waarde || "";
+      // Door dezelfde poort als al het andere op het scherm (lib/nette-html.ts).
+      // Wat er binnenkomt is niet altijd HTML: de tekst van een doorgezette taak
+      // is platte tekst met regeleindes, en in HTML bestaat een regeleinde niet.
+      // Die tekst plakte hier dus aan elkaar tot één brei, met kale webadressen
+      // ertussen (Bogard, 21-08-2026). Al opgemaakte inhoud gaat ongemoeid naar
+      // binnen: dat is de eigen HTML van dit veld (uitklappers, vinklijstjes,
+      // beelden), en die hoort niet opnieuw gerenderd te worden.
+      editorRef.current.innerHTML = bevatHtmlOpmaak(waarde || "") ? (waarde || "") : netteHtml(waarde || "");
       // Oude inhoud die met eerdere versies scheef geraakt is, heelt hier vanzelf.
       // Alleen doorgeven als er echt iets rechtgezet is, anders schrijft élk
       // openen van een klantscherm een opslag weg.

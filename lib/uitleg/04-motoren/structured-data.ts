@@ -41,6 +41,18 @@ export const BLOKKEN: Uitklapper[] = [
       "JSON-code'; die staat standaard dicht. Zo ook 'Link kopiëren' en 'Mail naar klant': dat waren twee " +
       "knoppen voor bijna hetzelfde, nu is dat 'Delen met klant', één mailvenster met de deel-link erin én " +
       "een eigen kopieerknop voor die link.\n\n" +
+      "**Wat de developer krijgt, kan hij ook openen (21 augustus 2026).** Er gaan precies twee dingen mee, " +
+      "en bij allebei staat in het mailvenster of hij erbij kan: het JSON-bestand in Drive (dat wordt bij " +
+      "het aanmaken op 'iedereen met de link' gezet, en lukt dat niet, dan zegt het venster dat) en een " +
+      "deelbare pagina met alle bedrijfsgegevens plus dezelfde code, alleen-lezen en zonder inloggen. De " +
+      "verwijzing naar het developer-overzicht is uit de mail gehaald: dat scherm zit achter een teamlogin, " +
+      "dus voor een externe sitebouwer was het een deur die niet opengaat. De mail staat voortaan in zijn " +
+      "geheel in beeld in plaats van in een eigen schuifvakje. De opdracht die in de taak belandt is " +
+      "opgemaakt (een regel wat er moet gebeuren, de twee links met een naam in plaats van een adres van " +
+      "tachtig tekens, en wat er over het plaatsen te weten valt); daarvoor was het één blok tekst van acht " +
+      "regels aan elkaar. Op de taakkaart zelf staat bij structured-data-documenten nu bovenaan wat er " +
+      "geldt (de kennisbank) en wat de developer krijgt (die deelbare pagina), zodat je niet in een " +
+      "aangeleverd Word-document zoekt naar een JSON-bestand.\n\n" +
       "**Geen mailto meer.** Beide mailvensters versturen, als er een Microsoft 365-koppeling is, de mail " +
       "rechtstreeks vanuit het dashboard (zelfde route als de mail-knoppen in Werkzaamheden); zonder " +
       "koppeling opent een knop het eigen mailprogramma via een onzichtbare link (niet via `window.open`, " +

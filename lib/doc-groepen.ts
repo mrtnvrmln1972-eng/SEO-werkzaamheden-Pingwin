@@ -110,6 +110,60 @@ export function groepeer(docs: Groepeerbaar[]): Record<number, string> {
   return uit;
 }
 
+/**
+ * De volgorde waarin documenten in een lijst horen te staan.
+ *
+ * Drie regels, in deze volgorde:
+ *  1. de proces-stap (analyse, blauwdruk, copy, structured data);
+ *  2. daarbinnen per onderwerp bij elkaar, het onderwerp met het nieuwste stuk
+ *     bovenaan (anders schuift een ander project ertussen);
+ *  3. en binnen een onderwerp nieuwste eerst, behálve een stuk dat uit een ander
+ *     stuk voortkomt: dat staat direct ónder zijn bron.
+ *
+ * Die laatste regel is van 21-08-2026. Een afgeleid stuk is altijd nieuwer, dus
+ * "nieuwste eerst" zette het bovenaan, mét het inspringstreepje dat zegt "ik hoor
+ * bij het stuk hierboven", terwijl dat stuk eronder stond. Maartens woorden: "het
+ * is mij onduidelijk wat de bovenste versie is en welke later is."
+ */
+const STAP_RANG: Record<string, number> = { analyse: 1, blauwdruk: 2, copy: 3, structured: 4 };
+
+export function documentVolgorde<T extends Groepeerbaar & { createdAt: string }>(
+  docs: T[], groepVan: Record<number, string>,
+): T[] {
+  const sleutelVan = (d: T) => groepVan[d.id] || `los-${d.id}`;
+  const nieuwsteInGroep: Record<string, string> = {};
+  for (const d of docs) {
+    const g = sleutelVan(d);
+    if (!nieuwsteInGroep[g] || nieuwsteInGroep[g] < d.createdAt) nieuwsteInGroep[g] = d.createdAt;
+  }
+  const gesorteerd = [...docs].sort((a, b) => {
+    const va = STAP_RANG[a.kind] || 9, vb = STAP_RANG[b.kind] || 9;
+    if (va !== vb) return va - vb;
+    const ga = sleutelVan(a), gb = sleutelVan(b);
+    if (ga !== gb) return nieuwsteInGroep[ga] < nieuwsteInGroep[gb] ? 1 : -1;
+    return a.createdAt < b.createdAt ? 1 : -1;
+  });
+  const kinderen = new Map<number, T[]>();
+  const isKind = new Set<number>();
+  for (const d of gesorteerd) {
+    const bron = d.bronId || 0;
+    if (!bron || !gesorteerd.some((x) => x.id === bron)) continue;
+    kinderen.set(bron, [...(kinderen.get(bron) || []), d]);
+    isKind.add(d.id);
+  }
+  const uit: T[] = [];
+  const gezet = new Set<number>();
+  const zetNeer = (d: T) => {
+    if (gezet.has(d.id)) return;                 // een kringetje kan nooit blijven hangen
+    gezet.add(d.id);
+    uit.push(d);
+    for (const kind of kinderen.get(d.id) || []) zetNeer(kind);
+  };
+  for (const d of gesorteerd) if (!isKind.has(d.id)) zetNeer(d);
+  for (const d of gesorteerd) zetNeer(d);        // een afgeleide zonder bron in beeld
+  return uit;
+}
+
 /** Hoeveel documenten zitten er in elke groep? */
 export function groepAantallen(docs: Groepeerbaar[], groepVan: Record<number, string>): Record<string, number> {
   const uit: Record<string, number> = {};

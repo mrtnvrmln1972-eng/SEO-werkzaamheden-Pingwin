@@ -14,6 +14,8 @@
 
 import { notFound } from "next/navigation";
 import DeveloperOverview from "../../admin/developer/DeveloperOverview";
+import { sitewideToelichting } from "../../../lib/structured-taak";
+import { kaartLinks } from "../../../lib/kaart-links";
 
 const TAAK = {
   clientSlug: "voorbeeld", clientName: "Voorbeeldklant", taskKey: "wp:1",
@@ -29,7 +31,34 @@ const TAAK = {
   ],
 };
 
+// En de tweede situatie waar het om ging (21-08-2026): een taak die door de knop
+// "Delen met developer" is aangemaakt. Die tekst is platte tekst met markdown,
+// geen HTML, en plakte in het venster aan elkaar tot één blok met twee volledige
+// webadressen erin. Hij staat hier letterlijk zoals hij in de database komt.
+const TAAK_STRUCTURED = {
+  ...TAAK,
+  taskKey: "wp:2",
+  taak: "Site-brede structured data doorvoeren (alle pagina's)",
+  kaartOpm: "",
+  link: "",
+  docs: [],
+  toelichting: sitewideToelichting(
+    {
+      jsonLink: "https://drive.google.com/file/d/1KMCBBn4LHmuFhHBaecRZDNZJ3-cB0F84/view?usp=sharing",
+      devUrl: "https://pingwin-seo-dashboard.vercel.app/share/org-dev/xOZkxuMVTKVBiNnL78fxpF69",
+    },
+    { pluginLabel: "handmatig/onbekend", gekoppeld: true, anchorId: "https://voorbeeld.nl/#organization" },
+  ),
+  kaartLinks: kaartLinks(sitewideToelichting(
+    {
+      jsonLink: "https://drive.google.com/file/d/1KMCBBn4LHmuFhHBaecRZDNZJ3-cB0F84/view?usp=sharing",
+      devUrl: "https://pingwin-seo-dashboard.vercel.app/share/org-dev/xOZkxuMVTKVBiNnL78fxpF69",
+    },
+    { pluginLabel: "handmatig/onbekend", gekoppeld: true, anchorId: "https://voorbeeld.nl/#organization" },
+  )),
+};
+
 export default function ProefTaakVenster() {
   if (process.env.NODE_ENV === "production") notFound();
-  return <DeveloperOverview initialTasks={[TAAK]} embedded slug="voorbeeld" clientName="Voorbeeldklant" />;
+  return <DeveloperOverview initialTasks={[TAAK, TAAK_STRUCTURED]} embedded slug="voorbeeld" clientName="Voorbeeldklant" />;
 }
