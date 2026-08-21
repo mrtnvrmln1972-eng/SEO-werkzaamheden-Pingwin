@@ -64,7 +64,9 @@ const SORTEERBAAR: { kolom: Exclude<SortKolom, "">; label: string }[] = [
   { kolom: "eenmalig", label: "Eenmalig" },
   // Wat dat eenmalige werk jou kost (de bouwer van de website, de fotograaf).
   // Staat naast de opbrengst, want daar reken je het tegen af.
-  { kolom: "eenmaligKosten", label: "Kosten eenmalig" },
+  // Kort, want een kopregel bepaalt hoe breed de kolom wordt en de tabel is al
+  // breed. "Kosten eenmalig" voluit koste vijftig pixels extra.
+  { kolom: "eenmaligKosten", label: "Kosten eenm." },
   { kolom: "start", label: "Verwacht klant" },
 ];
 
