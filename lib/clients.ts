@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
 import { hashPassword, generatePassword } from "./password";
+import { dagUitDb } from "./dag-uit-db";
 
 // ═══════════════════════════════════════════════════════════
 // KLANTEN (multi-client, uit de database)
@@ -152,7 +153,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     ahrefsKeyRef: r.ahrefs_key_ref || null,
     backendUrl: r.backend_url || null,
     toonOntwikkeling: !!r.toon_ontwikkeling,
-    opvolgDatum: r.opvolg_datum ? String(r.opvolg_datum).slice(0, 10) : null,
+    opvolgDatum: dagUitDb(r.opvolg_datum),
     budget: {
       maandbudget: Number(r.maandbudget),
       linkbuilding: Number(r.linkbuilding),

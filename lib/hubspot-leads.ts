@@ -11,6 +11,7 @@ import {
   hsContacten, hsVelden, veldAlsDatum,
   type HsDeal, type HsPijplijn, type HsVeld,
 } from "./hubspot";
+import { dagUitDb } from "./dag-uit-db";
 
 // ═══════════════════════════════════════════════════════════
 // VAN HUBSPOT-DEAL NAAR LEAD IN HET DASHBOARD
@@ -153,7 +154,9 @@ type LeadRow = {
   soort: string;
 };
 
-const alsDag = (v: string | null): string | null => (v ? new Date(v).toISOString().slice(0, 10) : null);
+// Eén manier om een DATE-kolom te lezen, voor het hele dashboard; zie
+// lib/dag-uit-db.ts waarom dat niet met String(...).slice(0, 10) kan.
+const alsDag = (v: unknown): string | null => dagUitDb(v);
 
 function toLead(r: LeadRow): HubspotLead {
   return {

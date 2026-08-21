@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
+import { dagUitDb } from "./dag-uit-db";
 
 // ═══════════════════════════════════════════════════════════
 // MEER DAN ÉÉN REGEL PER KLANT OF LEAD
@@ -107,7 +108,7 @@ function naarRegel(r: Rij): KlantRegel {
     eenmaligKosten: Number(r.eenmalig_kosten) || 0,
     startMaand: r.start_maand || null,
     kans: r.kans === null || r.kans === undefined ? null : Math.min(100, Math.max(0, Number(r.kans))),
-    opvolgDatum: r.opvolg_datum ? String(r.opvolg_datum).slice(0, 10) : null,
+    opvolgDatum: dagUitDb(r.opvolg_datum),
   };
 }
 
