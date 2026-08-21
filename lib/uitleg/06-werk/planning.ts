@@ -64,6 +64,25 @@ export const BLOKKEN: Uitklapper[] = [
       "daar werd de aantekening helemaal niet meegeleverd, dus was het veld daar altijd leeg. Allebei " +
       "gerepareerd: wat je bewaart komt meteen in de lijst te staan, en een proef bewaakt nu dat een kaart " +
       "geen veld kan uitlezen dat de vraag aan de database niet ophaalt.\n\n" +
+      "**Een screendump sleep je er gewoon in (21 augustus 2026).** Trek een schermafbeelding vanaf je " +
+      "bureaublad in het aantekeningenveld, of plak hem met Cmd+V nadat je hem hebt geknipt, en hij staat er " +
+      "meteen in beeld. Klik erop en je ziet hem op ware grootte in een nieuw tabblad. Zo heb je bij één blik " +
+      "op de kaart het hele verhaal, in plaats van een link naar een map waar het plaatje in staat. Er is ook " +
+      "een knopje \"beeld\" in de balk erboven, voor als het bestand al ergens staat. Het beeld wordt in het " +
+      "dashboard zelf bewaard, achter je inlog, en het staat in de aantekening als een kort adres in plaats " +
+      "van als een blok gegevens; anders zou je elke toetsaanslag een paar megabyte heen en weer sturen.\n\n" +
+      "**Een punt onder een punt: Tab.** In een opsomming, een genummerde lijst en een vinklijst schuif je een " +
+      "regel met Tab een niveau naar binnen en met Shift+Tab weer terug. Een genummerde lijst begint binnenin " +
+      "vanzelf weer bij 1 en een opsomming krijgt een ander bolletje, dus je ziet ook echt dat het een " +
+      "onderdeel van de regel erboven is. Staat je cursor in gewone tekst, dan doet Tab gewoon wat Tab altijd " +
+      "doet: naar het volgende veld.\n\n" +
+      "**En het veld springt niet meer weg onder je handen (21 augustus 2026).** Tijdens het typen kwam er om " +
+      "de paar tellen het woordje \"bewaren…\" in de knoppenbalk, dan \"bewaard\", dan weer niets. Die balk " +
+      "stond precies vol, dus dat ene woord duwde hem naar twee regels en het tekstvak eronder sprong bijna " +
+      "dertig pixels op en neer, keer op keer. Nu is het een stipje van vaste breedte: grijs terwijl hij " +
+      "bewaart, groen als het klaar is, en er beweegt niets. Alleen als het bewaren écht mislukt komt er tekst " +
+      "bij, want dan mág het opvallen. Tegelijk werd de hele takenlijst bij elke bewaarde aantekening opnieuw " +
+      "opgebouwd, dus tientallen keren per minuut terwijl je zat te typen; dat gebeurt niet meer.\n\n" +
       "**Zelf een taak toevoegen is één regel typen.** Er stonden eerder drie dingen bij: een apart veld voor " +
       "de pagina, een keuze SEO / sitebouwer / klant, en een regel die herhaalde op welke dag hij zou komen. " +
       "Alle drie eruit. De dag zet je zelf met de datumknop op de regel, het werk komt hoe dan ook langs " +

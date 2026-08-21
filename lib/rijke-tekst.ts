@@ -31,6 +31,11 @@ export const KL_CHECK_AF = "rtv-check-af";
 export const KL_VOUW = "rtv-vouw";
 export const KL_VOUW_BODY = "rtv-vouw-body";
 export const KL_SLEEPT = "rtv-blok-sleept";
+export const KL_BEELD = "rtv-beeld";
+/** Voorvoegsel van de inspring-klasse op een vinkpunt: `rtv-diep-1` tot `-3`. */
+export const KL_DIEP = "rtv-diep-";
+/** Hoe ver een vinkpunt mag inspringen. Dieper wordt onleesbaar smal. */
+export const MAX_DIEPTE = 3;
 
 export const PLACEHOLDER_ONDERWERP = "Onderwerp";
 export const PLACEHOLDER_VOUW_BODY = "Zet hier neer wat erbij hoort.";
@@ -75,6 +80,115 @@ export function checklistItemHtml(inhoud = "", af = false): string {
     + `<label contenteditable="false" class="${KL_CHECK_BOX}"><input type="checkbox"${vinkje}></label>`
     + `<span class="${KL_CHECK_TEKST}">${inhoud.trim() || "<br>"}</span>`
     + `</div>`;
+}
+
+/** Het HTML-blokje van één beeld in de tekst (een gesleepte of geplakte screendump). */
+export function beeldHtml(url: string, naam = ""): string {
+  const veilig = (t: string) => t.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  return `<p><img class="${KL_BEELD}" src="${veilig(url)}" alt="${veilig(naam || "schermafbeelding")}"></p>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INSPRINGEN: EEN PUNT ONDER EEN PUNT
+// ═══════════════════════════════════════════════════════════
+// Met Tab schuift een regel een niveau naar binnen, met Shift+Tab weer terug.
+// Dat werkt op alle drie de soorten, maar niet op dezelfde manier, en dat is met
+// opzet:
+//
+//   * Een lijstregel (opsomming of genummerd) gaat in een ÉCHTE lijst binnen de
+//     regel erboven. Alleen dan doet de browser de rest vanzelf: een opsomming
+//     krijgt een ander bolletje op het tweede niveau, en een genummerde lijst
+//     begint binnenin weer bij 1 in plaats van door te tellen. Zou je hem alleen
+//     een marge geven, dan zag je "3." onder "2." staan met een inspringing, en
+//     dat leest als een fout.
+//   * Een vinkpunt kán dat niet: dat is geen lijst maar een rij losse blokjes
+//     (zie de uitleg bij `haalVinkpuntenUitLijsten`). Dat krijgt dus een
+//     niveau-klasse, en de opmaak zet de inspringing.
+//
+// Beide gaan door `herstelStructuur` heen zonder er iets van te merken: een
+// geneste lijst is gewoon een lijst, en een extra klasse op een vinkpunt blijft
+// staan.
+
+/** Het niveau van een vinkpunt: 0 (helemaal links) tot MAX_DIEPTE. */
+export function diepteVan(item: HTMLElement): number {
+  for (let n = MAX_DIEPTE; n >= 1; n--) if (item.classList.contains(`${KL_DIEP}${n}`)) return n;
+  return 0;
+}
+
+function zetDiepte(item: HTMLElement, diepte: number) {
+  for (let n = 1; n <= MAX_DIEPTE; n++) haalKlasseWeg(item, `${KL_DIEP}${n}`);
+  if (diepte > 0) item.classList.add(`${KL_DIEP}${diepte}`);
+}
+
+/**
+ * Schuif dit onderdeel één niveau naar binnen. Geeft `true` als er echt iets
+ * veranderd is.
+ *
+ * Een lijstregel kan alleen naar binnen als er een regel bóven staat om onder te
+ * hangen; de eerste regel van een lijst heeft geen ouder, en die zou dus in het
+ * niets zweven. Dat is precies hoe elke andere editor het ook doet.
+ */
+export function springIn(blok: HTMLElement): boolean {
+  if (!blok) return false;
+  if (blok.classList.contains(KL_CHECK_ITEM)) {
+    const diepte = diepteVan(blok);
+    if (diepte >= MAX_DIEPTE) return false;
+    // Zelfde regel als bij een lijst: er moet een punt bóven staan om onder te
+    // hangen, en je kunt geen niveau overslaan. Anders staat het eerste punt van
+    // een lijstje ingesprongen onder niets.
+    const vorige = blok.previousElementSibling as HTMLElement | null;
+    if (!vorige || !vorige.classList.contains(KL_CHECK_ITEM) || diepteVan(vorige) < diepte) return false;
+    zetDiepte(blok, diepte + 1);
+    return true;
+  }
+  if (blok.tagName !== "LI") return false;
+  const lijst = blok.parentElement;
+  if (!lijst || (lijst.tagName !== "UL" && lijst.tagName !== "OL")) return false;
+  const vorige = blok.previousElementSibling as HTMLElement | null;
+  if (!vorige || vorige.tagName !== "LI") return false;
+  // Hangt er al een sublijst onder de regel erboven, dan sluit deze regel daarbij
+  // aan in plaats van er een tweede naast te zetten.
+  const laatste = vorige.lastElementChild;
+  const bestaand = laatste && laatste.tagName === lijst.tagName ? (laatste as HTMLElement) : null;
+  const doel = bestaand || vorige.ownerDocument.createElement(lijst.tagName.toLowerCase());
+  if (!bestaand) vorige.appendChild(doel);
+  doel.appendChild(blok);
+  return true;
+}
+
+/**
+ * Schuif dit onderdeel één niveau terug naar buiten. Geeft `true` als er echt
+ * iets veranderd is.
+ *
+ * Wat er ná deze regel in de sublijst stond, blijft eronder hangen: die punten
+ * horen bij deze regel, niet bij de regel erboven. Zonder dat zou Shift+Tab op
+ * een middelste punt de rest van het lijstje stilletjes één niveau omhoog
+ * trekken.
+ */
+export function springUit(blok: HTMLElement): boolean {
+  if (!blok) return false;
+  if (blok.classList.contains(KL_CHECK_ITEM)) {
+    const diepte = diepteVan(blok);
+    if (diepte <= 0) return false;
+    zetDiepte(blok, diepte - 1);
+    return true;
+  }
+  if (blok.tagName !== "LI") return false;
+  const lijst = blok.parentElement;
+  if (!lijst || (lijst.tagName !== "UL" && lijst.tagName !== "OL")) return false;
+  const ouderRegel = lijst.parentElement;
+  if (!ouderRegel || ouderRegel.tagName !== "LI") return false;
+
+  const erna: HTMLElement[] = [];
+  for (let n = blok.nextElementSibling; n; n = n.nextElementSibling) erna.push(n as HTMLElement);
+  if (erna.length) {
+    const staart = lijst.ownerDocument.createElement(lijst.tagName.toLowerCase());
+    for (const el of erna) staart.appendChild(el);
+    blok.appendChild(staart);
+  }
+  ouderRegel.after(blok);
+  if (!lijst.childElementCount) lijst.remove();
+  return true;
 }
 
 /** Het HTML-blokje van één verse uitklapper, met een lege regel erachter om verder te typen. */

@@ -1580,6 +1580,22 @@ details.opr-onderwerp[open] > summary.opr-onderwerp-kop::before,
   font-size: var(--type-label); line-height: var(--regel-bijschrift);
 }
 .md pre.md-code code, .chat-md pre.md-code code, .focus-rich pre.md-code code { background: none; padding: 0; color: inherit; }
+/* ── Een beeld in lopende tekst ───────────────────────────────────────────────
+   Een screendump die in een aantekening gesleept is, hoort er hetzelfde uit te
+   zien als waar hij ook staat: op leesbreedte, met dezelfde ronding en rand als
+   de rest, en nooit breder dan het vak eromheen. Staat hier in het gedeelde blok
+   en niet bij één scherm, precies zoals bij koppen, bullets en tabellen. */
+.md img, .chat-md img, .focus-rich img {
+  display: block; max-width: 100%; height: auto;
+  margin: var(--ruimte-naast) 0;
+  border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop);
+  background: var(--kleur-rustig);
+}
+/* Aanklikbaar om hem op ware grootte te bekijken; dat is bij een schermafbeelding
+   met kleine letters bijna altijd nodig. */
+.focus-rich img.rtv-beeld { cursor: zoom-in; }
+.focus-rich img.rtv-beeld:hover { border-color: var(--kleur-rand-accent); }
+
 /* ── Tabellen in lopende tekst: ÉÉN uiterlijk ─────────────────────────────────
    Er bestonden er vier naast elkaar, met een donkere kop, een witte kop, een
    grijze hoofdletterkop en een licht-oranje kop, afhankelijk van wélk scherm de
@@ -3778,7 +3794,13 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .wp-notitie-kop { display: flex; align-items: center; gap: var(--ruimte-naast); margin-bottom: var(--ruimte-naast);
   font-size: var(--type-label); line-height: var(--regel-label); text-transform: uppercase;
   letter-spacing: .08em; font-weight: 700; color: var(--kleur-tekst-zacht); }
-.wp-notitie-ok { color: var(--kleur-goed); text-transform: none; letter-spacing: 0; font-weight: 600; }
+/* De bewaar-stand als stipje. Het stipje staat er ALTIJD, ook als er niets aan
+   de hand is: alleen dan blijft de knoppenbalk even breed en springt het
+   tekstvak eronder niet op en neer terwijl je typt (zie KaartNotitie.tsx). */
+.wp-notitie-stip { flex: 0 0 auto; width: 7px; height: 7px; border-radius: var(--ronding-pil); background: transparent; }
+.wp-notitie-stip-bezig { background: var(--kleur-rand); }
+.wp-notitie-stip-bewaard { background: var(--kleur-goed); }
+.wp-notitie-stip-fout { background: var(--danger); }
 .wp-notitie-fout { color: var(--danger); text-transform: none; letter-spacing: 0; font-weight: 600; }
 .wp-notitie-veld { min-height: 4.5rem; }
 
@@ -7649,6 +7671,13 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
 .focus-rich .rtv-check-box input { width: 0.95em; height: 0.95em; cursor: pointer; accent-color: var(--kleur-accent); }
 .focus-rich .rtv-check-tekst { flex: 1 1 auto; min-width: 0; overflow-wrap: break-word; }
 .focus-rich .rtv-check-item.rtv-check-af .rtv-check-tekst { text-decoration: line-through; color: var(--kleur-tekst-stil); }
+/* Een vinkpunt onder een vinkpunt (Tab om in te springen, Shift+Tab om terug
+   te gaan). Een opsomming en een genummerde lijst kunnen dit zelf, want die
+   nesten écht; een vinklijst is een rij losse blokjes en heeft daarom een
+   niveau. Drie stappen is genoeg: dieper blijft er geen leesbreedte over. */
+.focus-rich .rtv-check-item.rtv-diep-1 { margin-left: var(--s-6); }
+.focus-rich .rtv-check-item.rtv-diep-2 { margin-left: calc(var(--s-6) * 2); }
+.focus-rich .rtv-check-item.rtv-diep-3 { margin-left: calc(var(--s-6) * 3); }
 
 /* ── Onderdelen slepen in een opmaakbaar tekstveld ─────────────────────────
    Een uitklapper, een vinkpunt, een bullet: elk onderdeel is te verslepen naar
@@ -7675,6 +7704,16 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
 .rtv-drop-indicator {
   display: none; position: absolute; height: 2px; background: var(--kleur-accent);
   border-radius: var(--ronding-pil); z-index: 5; pointer-events: none;
+}
+/* Wat er met een gesleepte schermafbeelding gebeurt. Zweeft over het veld heen
+   en neemt dus geen ruimte in: een melding die de knoppenbalk breder maakt,
+   duwt hem naar een tweede regel en dan springt het hele blok. */
+.rtv-beeld-melding {
+  position: absolute; right: var(--ruimte-naast); bottom: var(--ruimte-naast); z-index: 7;
+  padding: var(--ruimte-krap) var(--ruimte-naast); max-width: 90%;
+  background: var(--kleur-accent-waas); border: 1px solid var(--kleur-rand-accent);
+  border-radius: var(--ronding-klein); color: var(--kleur-accent-diep);
+  font-size: var(--type-label); line-height: var(--regel-label); pointer-events: none;
 }
 .rtv-drop-indicator-actief { display: block; }
 .focus-rich .rtv-blok-sleept { opacity: 0.35; }

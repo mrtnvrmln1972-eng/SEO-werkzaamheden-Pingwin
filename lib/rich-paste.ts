@@ -116,6 +116,19 @@ function walk(node: Node, opts: Opts): string {
         return;
       }
       if (tag === "hr") { out += "<hr>"; return; }
+      // Een beeld dat al in het dashboard staat (een gesleepte screendump)
+      // blijft staan als je een stuk aantekening kopieert en ergens anders
+      // neerzet. Een plaatje van BUITEN gaat er wél uit: dat zou een adres
+      // worden dat morgen verlopen of weg kan zijn, en dan staat er een kapot
+      // vak in je aantekening. Zelfde afweging als bij lettertypes en kleuren:
+      // meenemen wat van ons is, de rest niet.
+      if (tag === "img") {
+        const src = (el.getAttribute("src") || "").replace(/^https?:\/\/[^/]+/i, "");
+        if (/^\/api\/admin\/beeld\/\d+$/.test(src)) {
+          out += `<img class="rtv-beeld" src="${src}" alt="${escapeHtml(el.getAttribute("alt") || "")}">`;
+        }
+        return;
+      }
       if (tag === "u" || tag === "ins") { out += `<u>${walk(el, opts)}</u>`; return; }
       if (tag === "ul" || tag === "ol") { const inner = walk(el, opts); if (inner.trim()) out += `<${tag}>${inner}</${tag}>`; return; }
       if (tag === "li") { out += `<li>${walk(el, opts).trim()}</li>`; return; }

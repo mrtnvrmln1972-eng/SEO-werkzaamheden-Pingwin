@@ -1,19 +1,23 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { cleanPastedHtml, lijktOpMarkdown, linkifyPlainText } from "../../lib/rich-paste";
 import { benoemDriveLinks } from "../../lib/drive-naam";
 import { mdToHtml } from "../../lib/markdown";
 import { Ketting, Omlaag, Vink } from "../_ui/Pijl";
 import {
+  beeldHtml,
   blokVoorSlepen,
   blokOpHoogte,
   checklistItemHtml,
   herstelStructuur,
   magSlepenNaar,
   regelsUitFragment,
+  springIn,
+  springUit,
   uitklapperHtml,
   verplaatsBlok,
+  KL_BEELD,
   KL_CHECK_ITEM,
   KL_CHECK_TEKST,
   KL_VOUW_BODY,
@@ -46,13 +50,17 @@ import {
  * het veld verlaat.
  */
 export default function RijkTekstVeld({
-  waarde, onChange, klasse, autoFocus, placeholder, onKlaar, toolbarExtra, toolbarLabel, compact,
+  waarde, onChange, klasse, autoFocus, placeholder, onKlaar, toolbarExtra, toolbarLabel, compact, slug,
 }: {
   waarde: string;
   onChange: (html: string) => void;
   klasse?: string;
   autoFocus?: boolean;
   placeholder?: string;
+  /** Bij welke klant hoort dit veld? Alleen nodig voor een gesleepte
+      schermafbeelding: die krijgt dan hetzelfde bereik als de rest van die
+      klant. Zonder slug werkt het veld precies zoals het altijd deed. */
+  slug?: string;
   /** Escape of klikken buiten het veld: bijvoorbeeld het bewerken sluiten. */
   onKlaar?: () => void;
   toolbarExtra?: React.ReactNode;
@@ -67,6 +75,12 @@ export default function RijkTekstVeld({
 }) {
   const editorRef = useRef<HTMLDivElement | null>(null);
   const gevuldRef = useRef(false);
+  const kiezerRef = useRef<HTMLInputElement | null>(null);
+  // "" = niets aan de hand, anders de melding die over het veld komt te staan.
+  // Bewust over het veld heen (een overlay) en niet in de knoppenbalk: die balk
+  // is een omslaande rij, dus een woord dat erbij komt duwt hem naar twee regels
+  // en dan springt het hele blok. Precies de fout die hierboven al bestond.
+  const [beeldMelding, setBeeldMelding] = useState("");
 
   // ── Onderdelen slepen ──
   // handleRef: het grijpvlekje (zes puntjes) dat meebeweegt naar het onderdeel
@@ -196,9 +210,22 @@ export default function RijkTekstVeld({
     toonHandleBij(null);
   }
 
+  /** Sleept iemand een bestand van buiten de browser naar binnen? */
+  function sleeptBestand(e: React.DragEvent): boolean {
+    return Array.from(e.dataTransfer?.types || []).includes("Files");
+  }
+
   function onWrapDragOver(e: React.DragEvent) {
     const veld = editorRef.current;
     const sleepBlok = sleepBlokRef.current;
+    // Een bestand van het bureaublad: de browser opent dat standaard als pagina
+    // en dan ben je weg uit het dashboard. Dit tegenhouden is dus niet netjes
+    // maar noodzakelijk, en het moet bij élke beweging opnieuw.
+    if (!sleepBlok && sleeptBestand(e)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      return;
+    }
     if (!veld || !sleepBlok) return;
     e.preventDefault();
     const el = document.elementFromPoint(e.clientX, e.clientY);
@@ -230,6 +257,19 @@ export default function RijkTekstVeld({
     const veld = editorRef.current;
     const sleepBlok = sleepBlokRef.current;
     const doel = doelRef.current;
+    // Een bestand van buiten: dat is geen verhuizing binnen het veld maar iets
+    // nieuws. Hij landt op de hoogte waar je hem loslaat, niet onderaan.
+    if (!sleepBlok) {
+      const beelden = beeldenUit(e.dataTransfer?.files);
+      if (beelden.length) {
+        const na = veld ? blokOpHoogte(veld, e.clientY) : null;
+        void zetBeeldenNeer(beelden, na);
+      } else if (sleeptBestand(e)) {
+        meldBeeld("Dit kan hier niet: alleen een afbeelding (png, jpg, gif of webp).", true);
+      }
+      opruimenNaSlepen();
+      return;
+    }
     // Alle sloten zitten in `verplaatsBlok`: beide onderdelen moeten in het
     // tekstvak zitten, een blok mag niet in zijn eigen inhoud verdwijnen, en de
     // vorm wordt daarna hersteld. Eén verdwaalde drop die inhoud buiten het veld
@@ -301,14 +341,14 @@ export default function RijkTekstVeld({
   // onderdeel waar de cursor in staat, of erbovenop als dat een lege regel is.
   // Staat de cursor in een uitklapper, dan is dat onderdeel de alinea binnen de
   // uitklapper, dus komt het nieuwe blok daar netjes in te staan.
-  function zetBlokNeer(html: string): HTMLElement[] {
+  function zetBlokNeer(html: string, hierNa?: HTMLElement | null): HTMLElement[] {
     const veld = editorRef.current;
     if (!veld) return [];
     const bak = document.createElement("div");
     bak.innerHTML = html;
     const nieuw = Array.from(bak.children) as HTMLElement[];
     if (!nieuw.length) return [];
-    const hier = blokVoorSlepen(veld, bijCursor());
+    const hier = hierNa && veld.contains(hierNa) ? hierNa : blokVoorSlepen(veld, bijCursor());
     const legeRegel = hier && !hier.textContent?.trim() && hier.tagName === "P";
     let na: Node = hier || veld.lastElementChild || veld;
     for (const blok of nieuw) {
@@ -385,6 +425,87 @@ export default function RijkTekstVeld({
     meld();
   }
 
+  // ── Een screendump erin slepen ────────────────────────────────────────────
+  // Je sleept of plakt een schermafbeelding en hij staat er, op ware grootte in
+  // beeld, klikbaar om hem groot te bekijken. Zonder dit moest je hem eerst
+  // ergens opslaan, dan naar Drive, dan de link terugplakken, en dan zag je nog
+  // steeds alleen een link.
+  //
+  // Het beeld gaat éérst naar de server en komt pas daarna in de tekst. Dat
+  // voelt een tel trager, maar het is de enige volgorde die veilig is: zou het
+  // beeld er meteen staan met een tijdelijk browser-adres (`blob:`), dan schrijft
+  // het veld dat adres mee weg zodra je een letter typt, en dat adres bestaat na
+  // het verversen van de pagina niet meer. Dan staat er een kapot plaatje.
+
+  const meldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function meldBeeld(tekst: string, verdwijnt = false) {
+    if (meldTimerRef.current) clearTimeout(meldTimerRef.current);
+    setBeeldMelding(tekst);
+    if (verdwijnt && tekst) meldTimerRef.current = setTimeout(() => setBeeldMelding(""), 6000);
+  }
+  useEffect(() => () => { if (meldTimerRef.current) clearTimeout(meldTimerRef.current); }, []);
+
+  /** De afbeeldingen uit een sleep- of plakactie. */
+  function beeldenUit(lijst: FileList | null | undefined): File[] {
+    return Array.from(lijst || []).filter((f) => f.type.startsWith("image/"));
+  }
+
+  /**
+   * Een heel groot beeld kleiner maken vóór het de deur uit gaat.
+   *
+   * Een gewone schermafbeelding blijft ruim onder de grens en gaat dus
+   * ongewijzigd mee: geen kwaliteitsverlies waar het niet nodig is. Alleen een
+   * uitzonderlijk groot bestand (een foto uit een telefoon) wordt teruggeschaald,
+   * want anders wordt hij simpelweg geweigerd en heb je niets.
+   */
+  async function kleinerAlsNodig(bestand: File): Promise<File> {
+    const GRENS = 12 * 1024 * 1024;
+    if (bestand.size <= GRENS) return bestand;
+    try {
+      const beeld = await createImageBitmap(bestand);
+      const schaal = Math.min(1, 2000 / Math.max(beeld.width, beeld.height));
+      const doek = document.createElement("canvas");
+      doek.width = Math.round(beeld.width * schaal);
+      doek.height = Math.round(beeld.height * schaal);
+      doek.getContext("2d")?.drawImage(beeld, 0, 0, doek.width, doek.height);
+      const blob = await new Promise<Blob | null>((klaar) => doek.toBlob(klaar, "image/jpeg", 0.9));
+      if (!blob || blob.size >= bestand.size) return bestand;
+      return new File([blob], (bestand.name || "schermafbeelding").replace(/\.\w+$/, "") + ".jpg", { type: "image/jpeg" });
+    } catch {
+      return bestand;
+    }
+  }
+
+  async function zetBeeldenNeer(bestanden: File[], naBlok?: HTMLElement | null) {
+    const veld = editorRef.current;
+    if (!veld || !bestanden.length) return;
+    // De plek onthouden waar hij hoort te landen: na het wachten op de server is
+    // de selectie vaak weg, en dan zou het beeld onderaan het veld belanden in
+    // plaats van waar je hem liet vallen.
+    let na = naBlok || blokVoorSlepen(veld, bijCursor());
+    meldBeeld(bestanden.length > 1 ? `${bestanden.length} afbeeldingen toevoegen…` : "Afbeelding toevoegen…");
+    for (const bestand of bestanden) {
+      try {
+        const klaar = await kleinerAlsNodig(bestand);
+        const form = new FormData();
+        form.append("beeld", klaar, klaar.name || "schermafbeelding.png");
+        if (slug) form.append("slug", slug);
+        const d = await fetch("/api/admin/beeld", { method: "POST", body: form }).then((r) => r.json());
+        if (!d?.ok) { meldBeeld(d?.error || "De afbeelding kon niet bewaard worden.", true); return; }
+        na = zetBlokNeer(beeldHtml(d.url, d.naam), na)[0] || na;
+      } catch {
+        meldBeeld("De afbeelding kon niet bewaard worden.", true);
+        return;
+      }
+    }
+    herstelEnMeld();
+    meldBeeld("");
+  }
+
+  function kiesBeeld() {
+    kiezerRef.current?.click();
+  }
+
   // Klik op een link opent hem in een nieuw tabblad, ook tijdens het bewerken.
   function onClick(e: React.MouseEvent) {
     const t = e.target as HTMLElement;
@@ -416,6 +537,15 @@ export default function RijkTekstVeld({
     // nog "Zet hier neer wat erbij hoort." staat, dan gaat die meteen weg.
     const vouwBody = (t.classList?.contains(KL_VOUW_BODY) ? t : t.closest(`.${KL_VOUW_BODY}`)) as HTMLElement | null;
     if (vouwBody && selecteerAlsPlaceholder(vouwBody, PLACEHOLDER_VOUW_BODY)) return;
+    // Een beeld in de tekst: klikken opent hem op ware grootte in een nieuw
+    // tabblad. In de kaart staat hij op leesbreedte, en dat is voor een
+    // schermafbeelding met kleine letters vaak net te klein.
+    if (t.tagName === "IMG" && t.classList.contains(KL_BEELD)) {
+      e.preventDefault();
+      const w = window.open((t as HTMLImageElement).src, "_blank");
+      if (w) w.opener = null;
+      return;
+    }
     const a = (t.tagName === "A" ? t : t.closest("a")) as HTMLAnchorElement | null;
     if (a && a.href && !a.href.startsWith("javascript:")) {
       e.preventDefault();
@@ -486,6 +616,39 @@ export default function RijkTekstVeld({
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); addLink(); return; }
     if (e.key === "Escape" && onKlaar) { e.preventDefault(); onKlaar(); return; }
 
+    // ── Tab: een punt onder een punt ────────────────────────────────────────
+    // Werkt op een opsomming, een genummerde lijst en een vinklijst. Alleen
+    // daar: staat de cursor in gewone tekst, dan houdt Tab zijn normale werk
+    // (naar het volgende veld springen), want dat is de enige manier om met het
+    // toetsenbord uit dit vak te komen.
+    if (e.key === "Tab" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const veld = editorRef.current;
+      const blok = veld ? blokVoorSlepen(veld, bijCursor()) : null;
+      const kanInspringen = !!blok && (blok.tagName === "LI" || blok.classList.contains(KL_CHECK_ITEM));
+      if (blok && kanInspringen) {
+        e.preventDefault();
+        // Waar de cursor stond onthouden en terugzetten: het onderdeel verhuist
+        // naar een andere plek in de boom, en dan raakt de browser de cursor
+        // kwijt. Zonder dit sta je na één Tab ineens ergens anders te typen.
+        const sel = window.getSelection();
+        const plek = sel && sel.rangeCount ? { knoop: sel.anchorNode, offset: sel.anchorOffset } : null;
+        const gelukt = e.shiftKey ? springUit(blok) : springIn(blok);
+        if (gelukt) {
+          if (plek?.knoop && veld?.contains(plek.knoop)) {
+            const r = document.createRange();
+            try {
+              r.setStart(plek.knoop, plek.offset);
+              r.collapse(true);
+              sel?.removeAllRanges();
+              sel?.addRange(r);
+            } catch { /* de knoop is opgegaan in het verplaatsen; cursor blijft waar hij is */ }
+          }
+          herstelEnMeld();
+        }
+        return;
+      }
+    }
+
     // Backspace vooraan op een vinkregel haalde het vakje weg en liet een halve
     // regel achter die zich nergens meer naar gedroeg (het vakje staat op
     // "niet bewerkbaar", dus de browser wist het in één keer). Nu wordt het een
@@ -536,6 +699,16 @@ export default function RijkTekstVeld({
   }
 
   function onPaste(e: React.ClipboardEvent) {
+    // Een screendump uit het klembord (Cmd+Shift+4 op de Mac, of "kopieer
+    // afbeelding" op een webpagina) komt hier binnen als bestand. Eerst kijken,
+    // want zo'n plakactie heeft vaak óók een stukje HTML bij zich, en dan zou de
+    // tekstroute hieronder het beeld stilletjes weglaten.
+    const geplakteBeelden = beeldenUit(e.clipboardData?.files);
+    if (geplakteBeelden.length) {
+      e.preventDefault();
+      void zetBeeldenNeer(geplakteBeelden);
+      return;
+    }
     const pasteHtml = e.clipboardData.getData("text/html");
     const pasteText = e.clipboardData.getData("text/plain");
 
@@ -590,8 +763,23 @@ export default function RijkTekstVeld({
         <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={voegUitklapperToe} title="Uitklapper: een onderwerp met een driehoekje, en daaronder alles wat erbij hoort"><Omlaag /> uitklapper</button>
         <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={addLink} title="Link toevoegen (Cmd+K)"><Ketting /> link</button>
         <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={() => cmd("unlink")} title="Link verwijderen">link weg</button>
+        <button type="button" className="werkbalk-knop" onMouseDown={(e) => e.preventDefault()} onClick={kiesBeeld} title="Schermafbeelding toevoegen (slepen of plakken kan ook)">beeld</button>
         {toolbarExtra}
       </div>
+      {/* Het beeld kiezen via de knop. Slepen en plakken lopen langs dezelfde
+          weg; dit is er voor als je het bestand al ergens hebt staan. */}
+      <input
+        ref={kiezerRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        multiple
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const gekozen = beeldenUit(e.target.files);
+          e.target.value = "";
+          void zetBeeldenNeer(gekozen);
+        }}
+      />
       <div
         ref={editorRef}
         className={"focus-rich focus-editable " + (klasse || "")}
@@ -619,6 +807,10 @@ export default function RijkTekstVeld({
         <span /><span /><span /><span /><span /><span />
       </div>
       <div ref={indicatorRef} className="rtv-drop-indicator" />
+      {/* Wat er met een gesleept beeld gebeurt. Bewust hierboven en niet in de
+          knoppenbalk: die balk slaat om naar een tweede regel zodra er een woord
+          bij komt, en dan springt het hele blok onder je handen weg. */}
+      {beeldMelding && <div className="rtv-beeld-melding">{beeldMelding}</div>}
     </div>
   );
 }

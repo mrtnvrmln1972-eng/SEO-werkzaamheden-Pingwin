@@ -228,6 +228,114 @@ const woordenVoor = voorSleep.split(" ").sort().join(" ");
 const woordenNa = naSleep.split(" ").sort().join(" ");
 check("slepen kost geen woord", woordenVoor === woordenNa, `voor: ${voorSleep}\n       na:   ${naSleep}`);
 
+// ── 9. Inspringen met Tab ──
+// De vorm zelf wordt in `proeven/aantekeningen.proef.ts` nagerekend; hier gaat
+// het om de toets. Twee dingen die alleen een echte browser laat zien: dat Tab
+// niet uit het veld wegspringt, en dat je cursor blijft staan waar hij stond
+// (het onderdeel verhuist immers in de boom). Zonder dat laatste typ je na één
+// Tab ineens ergens anders.
+await page.evaluate(() => {
+  const veld = document.querySelector(".focus-editable");
+  veld.innerHTML = "<p>begin</p><ul><li>Tony</li><li>Marijke</li></ul>";
+  const doel = veld.querySelectorAll("li")[1].firstChild;
+  const r = document.createRange();
+  r.setStart(doel, 3);
+  r.collapse(true);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  veld.focus();
+});
+await page.keyboard.press("Tab");
+await page.waitForTimeout(150);
+check("Tab springt een lijstregel in",
+  (await page.locator(".focus-editable li > ul > li").count()) === 1, await uit());
+check("en de cursor is niet uit het veld gesprongen",
+  await page.evaluate(() => document.activeElement?.classList.contains("focus-editable")));
+await page.keyboard.type("X");
+await page.waitForTimeout(150);
+check("je typt gewoon verder op de plek waar je stond",
+  await page.evaluate(() => (document.querySelector(".focus-editable li > ul > li")?.textContent || "") === "MarXijke"),
+  await uit());
+await page.keyboard.press("Shift+Tab");
+await page.waitForTimeout(150);
+check("Shift+Tab haalt hem er weer uit",
+  (await page.locator(".focus-editable li > ul").count()) === 0
+  && (await page.locator(".focus-editable > ul > li").count()) === 2,
+  await uit());
+
+// In gewone tekst blijft Tab doen wat Tab hoort te doen: uit het veld stappen.
+// Dat is de enige manier om er met het toetsenbord uit te komen.
+await page.evaluate(() => {
+  const veld = document.querySelector(".focus-editable");
+  const p = veld.querySelector("p");
+  const r = document.createRange();
+  r.selectNodeContents(p); r.collapse(false);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  veld.focus();
+});
+await page.keyboard.press("Tab");
+await page.waitForTimeout(150);
+check("in gewone tekst stapt Tab gewoon uit het veld",
+  await page.evaluate(() => !document.activeElement?.classList.contains("focus-editable")));
+
+// ── 10. Een screendump erin plakken en erin slepen ──
+// De server doet hier niet mee (die heeft een database nodig), dus het bewaren
+// wordt onderschept en beantwoord alsof het gelukt is. Wat hier bewezen wordt is
+// de kant die in de browser gebeurt: komt het beeld in de tekst, staat het ook
+// in de opgeslagen HTML, en blijft er géén tijdelijk browser-adres (`blob:`)
+// achter. Dat laatste is het echte risico: zo'n adres bestaat na het verversen
+// van de pagina niet meer, en dan staat er een kapot plaatje in je aantekening.
+let bewaardeBeelden = 0;
+await page.route("**/api/admin/beeld", async (route) => {
+  bewaardeBeelden++;
+  await route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ ok: true, id: 7, url: "/api/admin/beeld/7", naam: "schermafbeelding.png" }),
+  });
+});
+const EEN_PIXEL = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+await page.route("**/api/admin/beeld/7", async (route) => {
+  await route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from(EEN_PIXEL, "base64") });
+});
+
+/** Een echt bestand in het klembord of in een sleepactie stoppen. */
+const beeldGebeurtenis = async (soort) => page.evaluate(async ([soortNaam, base64]) => {
+  const veld = document.querySelector(".focus-editable");
+  veld.focus();
+  const r = document.createRange();
+  r.selectNodeContents(veld.querySelector("p"));
+  r.collapse(false);
+  const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  const bestand = new File([bytes], "schermafbeelding.png", { type: "image/png" });
+  const dt = new DataTransfer();
+  dt.items.add(bestand);
+  const doel = soortNaam === "paste" ? veld : veld.parentElement;
+  doel.dispatchEvent(soortNaam === "paste"
+    ? new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true })
+    : new DragEvent("drop", { dataTransfer: dt, bubbles: true, cancelable: true, clientX: 200, clientY: 200 }));
+}, [soort, EEN_PIXEL]);
+
+await page.evaluate(() => { document.querySelector(".focus-editable").innerHTML = "<p>begin</p>"; });
+await beeldGebeurtenis("paste");
+await page.waitForTimeout(600);
+check("een geplakte screendump komt in de tekst",
+  (await page.locator(".focus-editable img.rtv-beeld").count()) === 1, await uit());
+check("en staat ook in de opgeslagen tekst", (await uit()).includes('src="/api/admin/beeld/7"'), await uit());
+
+await beeldGebeurtenis("drop");
+await page.waitForTimeout(600);
+check("een gesleepte screendump komt er ook in",
+  (await page.locator(".focus-editable img.rtv-beeld").count()) === 2, await uit());
+check("het bewaren is twee keer gevraagd", bewaardeBeelden === 2, `${bewaardeBeelden} keer`);
+check("er staat geen tijdelijk browser-adres in de opgeslagen tekst",
+  !/blob:|data:image/.test(await uit()), await uit());
+check("het beeld is echt geladen (geen kapot vak)",
+  await page.evaluate(() => {
+    const img = document.querySelector(".focus-editable img.rtv-beeld");
+    return !!img && img.complete && img.naturalWidth > 0;
+  }));
+
 console.log(fouten === 0 ? "\nAlles goed in een echte browser." : `\n${fouten} punt(en) mis.`);
 await browser.close();
 process.exit(fouten === 0 ? 0 : 1);

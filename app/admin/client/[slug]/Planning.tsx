@@ -154,17 +154,28 @@ export default function Planning({
   // aantekening: het leek alsof er niets bewaard was, en typte je daarop verder
   // dan overschreef dat de goede tekst. Wat de kaart bewaart, komt daarom
   // meteen hierin te staan, en een verversing van het bord laat het staan.
+  //
+  // ── En waarom hier géén setTaken meer staat (21-08-2026) ──
+  // Dat stond er wel, en dat betekende: elke bewaarde aantekening tekende het
+  // hele bord opnieuw. Tijdens het typen gebeurt dat om de 400 milliseconden,
+  // dus terwijl je in het veld zat werd alles eromheen tientallen keren per
+  // minuut opnieuw opgebouwd, inclusief de kaartteksten. Dat is de tweede
+  // oorzaak van "hij verspringt de hele tijd" (de eerste zit in KaartNotitie).
+  // Het is ook niet nodig: de verse tekst wordt hieronder bij het tekenen van de
+  // regel over de taak heen gelegd, dus een kaart die dichtklapt en weer opengaat
+  // krijgt hem net zo goed mee. Zet hier dus nooit weer een setTaken neer.
   const verseNotities = useRef<Map<string, string>>(new Map());
   function metVerseNotities(lijst: Taak[]): Taak[] {
     if (!verseNotities.current.size) return lijst;
-    return lijst.map((t) => {
-      const vers = verseNotities.current.get(`${t.slug}:${t.id}`);
-      return vers === undefined ? t : { ...t, notitie: vers };
-    });
+    return lijst.map(metVerseNotitie);
+  }
+  /** Eén taak, met de aantekening zoals hij nu écht is. */
+  function metVerseNotitie(t: Taak): Taak {
+    const vers = verseNotities.current.get(`${t.slug}:${t.id}`);
+    return vers === undefined || vers === t.notitie ? t : { ...t, notitie: vers };
   }
   function notitieBewaard(t: Taak, html: string) {
     verseNotities.current.set(`${t.slug}:${t.id}`, html);
-    setTaken((lijst) => lijst.map((x) => (x.id === t.id && x.slug === t.slug ? { ...x, notitie: html } : x)));
   }
 
   // ── Laden ──
@@ -614,7 +625,7 @@ export default function Planning({
         {open === sleutel && (
           <div className="wb-kaart">
             <WeekplanCard
-              slug={t.slug} t={t as unknown as WpTask} page={p}
+              slug={t.slug} t={metVerseNotitie(t) as unknown as WpTask} page={p}
               open inRij
               onToggleOpen={() => setOpen(null)}
               onDragStart={() => setSleep(t)} onDragEnd={sleepKlaar}

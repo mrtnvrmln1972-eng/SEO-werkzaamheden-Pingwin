@@ -152,14 +152,28 @@ export default function KaartNotitie({ slug, id, start, toolbarExtra, onBewaard 
         onChange={bewaarStraks}
         onKlaar={() => void bewaar(nu.current)}
         klasse="wp-notitie-veld"
-        placeholder="Wat je zelf wilt onthouden bij deze taak: afspraken, aandachtspunten, wat de klant zei."
+        placeholder="Wat je zelf wilt onthouden bij deze taak: afspraken, aandachtspunten, wat de klant zei. Een screendump erin slepen mag ook."
         compact
+        slug={slug}
         toolbarExtra={toolbarExtra}
         toolbarLabel={
           <>
             Aantekeningen
-            {stand === "bezig" && <span className="muted">bewaren…</span>}
-            {stand === "bewaard" && <span className="wp-notitie-ok">bewaard</span>}
+            {/* ── Waarom dit een stipje is en geen woord (21-08-2026) ──
+                Hier stond "bewaren…", dan "bewaard", dan weer niets, en dat
+                herhaalt zich elke keer dat je even ophoudt met typen. De
+                knoppenbalk is een omslaande rij die precies vol staat, dus dat
+                woord duwde hem naar twéé regels en het tekstvak eronder sprong
+                29 pixels op en neer, om de paar tellen, terwijl je aan het typen
+                was. Maartens woorden: "verspringt dat hele venster de hele tijd".
+                Een stipje is altijd even breed, dus er beweegt niets meer.
+                Alleen als het bewaren écht mislukt komt er tekst bij: dan mág
+                het opvallen, en dan is dat sprongetje juist het signaal. */}
+            <span
+              className={"wp-notitie-stip" + (stand ? ` wp-notitie-stip-${stand}` : "")}
+              title={stand === "bezig" ? "bewaren…" : stand === "bewaard" ? "bewaard" : stand === "fout" ? "bewaren mislukte" : ""}
+              aria-hidden={!stand}
+            />
             {stand === "fout" && <span className="wp-notitie-fout">bewaren mislukte</span>}
           </>
         }
