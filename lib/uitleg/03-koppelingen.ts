@@ -97,7 +97,17 @@ export const HOOFDSTUK: Hoofdstuk = {
         "het andere in dezelfde minuut \"De site weigert de koppeling\". Allebei klopte het, want het waren " +
         "twee verschillende wachtwoorden. Nu is het er één, hij wordt vóór het opslaan altijd echt bij de site " +
         "getest, en het invulvenster verschijnt vanzelf op het scherm waar iets misgaat in plaats van achter " +
-        "een knop die als statusmelding leest.",
+        "een knop die als statusmelding leest.\n\n" +
+        "**Als de site de wijziging wel accepteert maar niet bewaart.** Rank Math (en Yoast) leggen de " +
+        "paginatitel en de meta-omschrijving bij de pagina neer, maar melden die velden niet aan bij de " +
+        "WordPress-API. De site antwoordt dan \"gelukt\" en gooit de waarde daarna weg. Het dashboard leest het " +
+        "veld terug en ziet dat, dus het meldt nooit ten onrechte dat iets doorgevoerd is. Er zijn twee " +
+        "uitwegen, in deze volgorde: eerst wordt de eigen schrijfroute van Rank Math geprobeerd (dan is er " +
+        "niets te installeren, en de uitkomst wordt op de pagina zelf nagekeken); lukt dat niet, dan staat er " +
+        "op het scherm een knop \"Uitleg voor de sitebouwer\" met een bestand van twintig regels, de " +
+        "instructie om door te sturen en de code om te plakken. Dat bestand meldt vier bestaande velden aan " +
+        "bij de API, met een rechtencontrole erbij; het verstuurt niets, leest niets uit en is met één " +
+        "handeling weer weg.",
     },
     {
       titel: "Moneybird (de boekhouding)",

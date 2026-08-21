@@ -17,6 +17,7 @@
 
 import { sql, ensureSchema } from "./db";
 import { getWpCreds, wpKoppelingStand } from "./wp-creds";
+import { measurePage } from "./page-measure";
 
 // De opslag van de koppeling zelf staat in `lib/wp-creds.ts`; dit bestand
 // gebruikt hem alleen. Dat was tot 21-08-2026 niet zo: hier stond een tweede
@@ -36,6 +37,26 @@ export async function authFor(slug: string, pageUrl: string): Promise<WpAuth> {
   const pass = creds.appPassword.replace(/\s+/g, "");
   const origin = new URL(pageUrl).origin;
   return { origin, header: "Basic " + Buffer.from(`${creds.user}:${pass}`).toString("base64") };
+}
+
+/**
+ * Hetzelfde als `wpFetch`, maar voor een andere hoek van de API dan wp/v2.
+ *
+ * Nodig voor het laatste redmiddel bij Rank Math: die plugin heeft een eigen
+ * route (rankmath/v1) waarmee zijn eigen editor de velden wegschrijft. Die werkt
+ * ook als de velden níet bij de gewone API zijn aangemeld, en scheelt dus soms
+ * een gang naar de sitebouwer.
+ */
+export async function wpFetchNs(auth: WpAuth, namespace: string, path: string, init?: RequestInit): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    return await fetch(`${auth.origin}/wp-json/${namespace}${path}`, {
+      ...init,
+      headers: { Authorization: auth.header, "Content-Type": "application/json", ...(init?.headers || {}) },
+      signal: ctrl.signal,
+    });
+  } finally { clearTimeout(timer); }
 }
 
 export async function wpFetch(auth: WpAuth, path: string, init?: RequestInit): Promise<Response> {
@@ -103,9 +124,56 @@ export async function pushMetaToSite(slug: string, pageUrl: string, fields: { ti
     const titleOk = !fields.title || (velden.title in m && m[velden.title] === fields.title);
     const descOk = !fields.desc || (velden.desc in m && m[velden.desc] === fields.desc);
     if (titleOk && descOk) return { ok: true, detail: `Doorgevoerd op de site (${PLUGIN_NAAM[plugin]}).` };
-    laatste = `De site heeft de wijziging niet opgeslagen: de ${PLUGIN_NAAM[plugin]}-velden staan niet open voor de REST API. Laat het Pingwin-snippet op de site installeren (eenmalig, vraag Maarten of de sitebouwer) en probeer het opnieuw.`;
+
+    // ── Laatste redmiddel: de eigen route van Rank Math ──────────────────────
+    // Staan de velden niet open voor de gewone API, dan is de gang naar de
+    // sitebouwer nog niet de enige uitweg: Rank Math schrijft ze in zijn eigen
+    // editor weg via rankmath/v1, en die route werkt met een applicatiewachtwoord
+    // net zo goed. Lukt dat, dan is er niets te installeren.
+    if (plugin === "rankmath" && await viaRankMathRoute(auth, post, fields)) {
+      // Nakijken kan hier niet via de API (het veld komt daar juist niet uit),
+      // dus we lezen de pagina zelf. Dat is sowieso het eerlijkste bewijs: het
+      // gaat erom wat Google straks ziet.
+      if (await staatHetErOpDePagina(pageUrl, fields)) {
+        return { ok: true, detail: "Doorgevoerd op de site (via Rank Math zelf) en nagekeken op de pagina." };
+      }
+    }
+
+    laatste = `De site heeft de wijziging niet opgeslagen: de ${PLUGIN_NAAM[plugin]}-velden staan niet open voor de WordPress-API. Dat is eenmalig op te lossen met een klein bestand op de site; de knop "Uitleg voor de sitebouwer" hierboven geeft het bestand plus de instructie.`;
   }
   return { ok: false, detail: laatste || "De site heeft de wijziging niet opgeslagen." };
+}
+
+/**
+ * De eigen schrijfroute van Rank Math proberen.
+ *
+ * Geeft alleen terug óf het verzoek geaccepteerd is; of het ook echt op de
+ * pagina staat, wordt daarna aan de pagina zelf gevraagd. Een route die "ok"
+ * zegt en niets doet is precies het gedrag waar deze hele terugcontrole voor
+ * bestaat.
+ */
+async function viaRankMathRoute(auth: WpAuth, post: { type: string; id: number }, fields: { title?: string; desc?: string }): Promise<boolean> {
+  const meta: Record<string, string> = {};
+  if (fields.title) meta.rank_math_title = fields.title;
+  if (fields.desc) meta.rank_math_description = fields.desc;
+  try {
+    const res = await wpFetchNs(auth, "rankmath/v1", "/updateMeta", {
+      method: "POST",
+      body: JSON.stringify({ objectID: post.id, objectType: "post", meta }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Staat de nieuwe titel of omschrijving nu echt op de live pagina? */
+async function staatHetErOpDePagina(pageUrl: string, fields: { title?: string; desc?: string }): Promise<boolean> {
+  const meting = await measurePage(pageUrl).catch(() => null);
+  if (!meting?.ok) return false;
+  const titelOk = !fields.title || meting.metaTitle.trim() === fields.title.trim();
+  const omschrijvingOk = !fields.desc || meting.metaDescription.trim() === fields.desc.trim();
+  return titelOk && omschrijvingOk;
 }
 
 type SeoPlugin = "yoast" | "rankmath";

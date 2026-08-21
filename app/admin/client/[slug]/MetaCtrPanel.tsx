@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
 import WpKoppeling from "./WpKoppeling";
+import WpSnippet from "./WpSnippet";
 import { checkMetaTitle, checkMetaDescription, type MetaCheck } from "../../../../lib/meta-rules";
 import { urlKey } from "../../../../lib/url-key";
 import { Omlaag, Uitklap } from "../../../_ui/Pijl";
@@ -129,6 +130,16 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
   // koppeling" terwijl het tabblad Wijzigingen "gekoppeld" meldde, want dat waren
   // twee verschillende wachtwoorden. Zie WpKoppeling.tsx en lib/wp-creds.ts.
   const [wp, setWp] = useState<{ connected: boolean; username: string | null } | null>(null);
+  // De site bewaart het veld niet omdat de SEO-plugin het niet openstelt voor de
+  // WordPress-API. Dat is iets ánders dan een koppeling die geweigerd wordt, en
+  // het heeft een eigen oplossing (zie WpSnippet.tsx). Alleen dán tonen we die.
+  const veldenDicht = /niet open voor de WordPress-API|niet opgeslagen/i.test(error);
+  /** Het domein van deze klant, uit de eerste pagina in de lijst; alleen om de
+      instructie voor de sitebouwer te kunnen benoemen. */
+  const domein = (() => {
+    const eerste = (rows || [])[0]?.url || "";
+    try { return eerste ? new URL(eerste).hostname : ""; } catch { return ""; }
+  })();
   const onWpStand = useCallback((s: { gekoppeld: boolean; gebruiker: string }) => {
     setWp({ connected: s.gekoppeld, username: s.gebruiker || null });
   }, []);
@@ -385,6 +396,10 @@ export default function MetaCtrPanel({ slug, domain, backendUrl, onOpenPage, ope
         <WpKoppeling slug={slug} onStand={onWpStand}
           waarvoor="Goedgekeurde meta's en alt-teksten worden hiermee rechtstreeks op de site gezet."
           probleem={/weigert de koppeling|inloggegevens|applicatie-wachtwoord|applicatiewachtwoord/i.test(error) ? error : undefined} />
+        {/* De koppeling werkt, maar de site bewaart het veld niet: dan is dit
+            het antwoord, met het bestand en de instructie erbij. Hij staat er
+            alleen als je er tegenaan loopt, want anders is het ruis. */}
+        {veldenDicht && <WpSnippet slug={slug} domein={domein} melding={error} />}
       </div>
       {meetMsg && <p className="wz-item-sub" style={{ color: /mislukt/i.test(meetMsg) ? "var(--bad)" : "var(--dark)" }}>{meetMsg}</p>}
       {error && <p className="wz-item-sub" style={{ color: "var(--bad)" }}>{error}</p>}

@@ -2884,6 +2884,13 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 .wp-koppel-veld { flex: 1 1 260px; min-width: 0; }
 .wp-koppel-invoer { width: 100%; }
 .wp-koppel-acties { margin-top: var(--ruimte-naast); }
+/* De uitleg plus het bestand waarmee de sitebouwer de SEO-velden openzet voor de
+   WordPress-API (app/admin/client/[slug]/WpSnippet.tsx). */
+.wp-snip { flex-basis: 100%; }
+.wp-snip-tekst { font-size: var(--type-bijschrift); line-height: var(--regel-lopend); margin: var(--ruimte-naast) 0; max-width: 900px; }
+.wp-snip-acties { margin: var(--ruimte-regel) 0; }
+.wp-snip-code > summary { cursor: pointer; font-size: var(--type-bijschrift); color: var(--kleur-accent-diep); }
+.wp-snip-code pre { max-height: 22rem; overflow: auto; }
 
 /* Pagina-overzicht: kans-kolommen */
 .pg-sort { cursor: pointer; user-select: none; white-space: nowrap; }
