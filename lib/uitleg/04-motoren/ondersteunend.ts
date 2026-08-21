@@ -29,12 +29,26 @@ export const BLOKKEN: Uitklapper[] = [
       "**Drie dingen worden nagerekend in plaats van beloofd.** Een instructie aan een taalmodel is een " +
       "verzoek, geen poort, dus het dashboard controleert zelf: staat de hoofdterm niet in de titel, de " +
       "meta-title of de eerste kop; loopt er echt een link naar elke gekozen landingspagina; en staat de " +
-      "hoofdterm in de linktekst van die link. Klopt er iets niet, dan staat dat als waarschuwing in beeld " +
-      "én in het document, in plaats van dat het er goed uitziet en het tegenovergestelde doet.\n\n" +
+      "hoofdterm in de linktekst van die link. Klopt er iets niet, dan staat dat op het scherm bij het " +
+      "document, in plaats van dat het er goed uitziet en het tegenovergestelde doet.\n\n" +
+      "**Het document is een oplevering, geen lijst met huiswerk (21 augustus 2026).** Er stond een kopje " +
+      "\"Let op\" in met daaronder de opmerkingen, en dat document gaat naar de klant en de sitebouwer. Die " +
+      "lazen daar dus dingen als \"het verdient aanbeveling om ook de meta-description van de landingspagina " +
+      "te optimaliseren\" en \"controleer of dit aansluit bij de interne linkstrategie\". Allebei geen " +
+      "klantboodschap: het eerste is werk dat wij gewoon doen, het tweede is een interne afweging. Sindsdien " +
+      "geldt: kunnen we het zelf, dan doen we het. Een betere paginatitel of omschrijving voor de " +
+      "landingspagina wordt geschreven en staat kant-en-klaar bij \"Voor de sitebouwer\"; kan de hoofdterm " +
+      "niet uit de titel of de kop, dan wordt er een ándere titel voorgesteld in plaats van een opmerking dat " +
+      "het lastig is. Wat er daarna nog overblijft, is voor jou en staat alleen op het scherm.\n\n" +
       "**Wat er in het document komt:** wat dit stuk nu doet, een tabel met de rolverdeling (welke pagina " +
       "blijft de baas op welke term, en waar mikt dit stuk op), wat er is aangepast, de paginatitel en " +
-      "meta-description, de links die de sitebouwer moet leggen met hun linktekst, welke bestaande pagina's " +
-      "naar dit stuk zouden moeten linken, en daaronder de volledige aangepaste tekst.\n\n" +
+      "meta-description, eventueel de betere meta voor de landingspagina zelf, de links die de sitebouwer " +
+      "moet leggen met hun linktekst, welke bestaande pagina's naar dit stuk zouden moeten linken, en " +
+      "daaronder de volledige aangepaste tekst.\n\n" +
+      "**En het staat in de lijst pal onder het stuk waar het uit komt.** Een ondersteunende versie krijgt " +
+      "vaak met opzet een andere titel, en daardoor las hij als een los project: er schoof een document van " +
+      "iets heel anders tussen. Het dashboard onthoudt nu waar een document uit voortkomt, dus die twee staan " +
+      "altijd bij elkaar, met een oranje streepje ernaast.\n\n" +
       "Deze motor raakt geen Ahrefs-units aan: hij leest de pagina's zelf en gebruikt Search Console.",
   },
 ];

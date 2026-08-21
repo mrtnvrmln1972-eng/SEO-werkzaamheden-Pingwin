@@ -18,7 +18,10 @@
 // Deze proef bewaakt dat die controle blijft werken. Gaat hij stuk, dan levert
 // de knop stukken op die er goed uitzien en precies het tegenovergestelde doen.
 
-import { controleerPlan } from "../lib/ondersteunend";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { botsendeTermen, controleerPlan } from "../lib/ondersteunend";
+import { groepeer } from "../lib/doc-groepen";
 
 let fouten = 0;
 function proef(naam: string, goed: boolean, uitleg = "") {
@@ -40,6 +43,7 @@ function goedPlan() {
     wijzigingen: ["Titel gericht op onderhoud in plaats van op aanleg."],
     links: [{ naar: DOEL, anker: "een natuurzwembad aanleggen", plek: "in de alinea over de start" }],
     linksNaarBlog: [],
+    landingMetas: [],
     waarschuwingen: [],
     tekst: "## Zo houd je een natuurzwembad helder\n\nEen alinea.",
   };
@@ -94,6 +98,68 @@ proef("de tweede doelpagina wordt óók nagerekend", rTwee.some((r) => r.include
 const geenTerm = goedPlan();
 geenTerm.doelen = [{ url: DOEL, hoofdterm: "", steuntermen: [] }];
 proef("een doel zonder hoofdterm levert geen loze meldingen op", controleerPlan(geenTerm).length === 0);
+
+// ═══════════════════════════════════════════════════════════
+// HET DOCUMENT IS EEN OPLEVERING, GEEN LIJST MET HUISWERK (21-08-2026)
+// ═══════════════════════════════════════════════════════════
+// Er stond een kopje "Let op" in het document met de waarschuwingen eronder.
+// Dat document gaat naar de klant en de sitebouwer, en dan lees je daar
+// aanbevelingen die wíj hadden moeten uitvoeren ("het verdient aanbeveling ook de
+// meta-description van de landingspagina te optimaliseren") en een interne
+// afweging ("controleer of dit aansluit bij de interne linkstrategie die Maarten
+// voor ogen heeft"). Maartens woorden: "dat roept vragen op of de klant dan zelf
+// nog iets moet doen". Deze drie controles houden dat weg.
+
+const bron = readFileSync(join(__dirname, "..", "lib", "ondersteunend.ts"), "utf8");
+proef(
+  "er staat geen kopje 'Let op' meer in het document",
+  !/text:\s*"Let op"/.test(bron),
+  "De waarschuwingen zijn voor Maarten en horen op het scherm, niet in het document dat de klant leest.",
+);
+proef(
+  "de waarschuwingen gaan niet mee het document in",
+  !/plan\.waarschuwingen[^\n]*bullets/.test(bron),
+  "Zet plan.waarschuwingen nooit als bullets in de DocSpec.",
+);
+proef(
+  "een betere meta voor de landingspagina wordt geleverd, niet aanbevolen",
+  bron.includes("landingMetas") && bron.includes("Ook overnemen op de landingspagina"),
+  "Een aanbeveling die we zelf kunnen uitvoeren hoort een kant-en-klare waarde te zijn.",
+);
+proef(
+  "een botsende titel wordt eerst hersteld en pas daarna gemeld",
+  bron.includes("herstelBotsendeTitel") && bron.includes("botsendeTermen(plan)"),
+  "Kan de hoofdterm niet in de titel blijven, dan stellen we een andere titel voor in plaats van het te melden.",
+);
+
+// De herkenning zelf: welke term botst er?
+const botst = goedPlan();
+botst.titel = "Natuurzwembad aanleggen in IJsselmuiden";
+proef("de botsende term wordt herkend", botsendeTermen(botst).includes("natuurzwembad aanleggen"), botsendeTermen(botst).join(" | "));
+proef("een schoon plan levert geen botsende term op", botsendeTermen(goedPlan()).length === 0);
+
+// ═══════════════════════════════════════════════════════════
+// EEN ONDERSTEUNENDE VERSIE HOORT BIJ ZIJN ORIGINEEL
+// ═══════════════════════════════════════════════════════════
+// De lijst groepeerde op de woorden in de naam. Dat werkt voor een klantversie
+// die bijna hetzelfde heet, maar juist niet voor een stuk dat ondersteunend is
+// gemaakt: dat krijgt met opzet een ándere titel, want de oude botste met de
+// landingspagina. Dan las het als een los project en schoof er een document van
+// iets heel anders tussen. Vandaar de harde verwijzing (bronId).
+{
+  const docs = [
+    { id: 3, kind: "copy", naam: "Zo blijft het water in IJsselmuiden helder", bronId: 1 },
+    { id: 2, kind: "copy", naam: "Natuurlijke zwemvijver in Zeeland.docx" },
+    { id: 1, kind: "copy", naam: "Strak natuurzwembad in IJsselmuiden.docx" },
+  ];
+  const g = groepeer(docs);
+  proef("een ondersteunende versie zit in de groep van zijn origineel", g[3] === g[1], JSON.stringify(g));
+  proef("een los project blijft een eigen groep", g[2] !== g[1], JSON.stringify(g));
+  // De lijst komt op nieuwste-eerst binnen, dus de bron kan ná zijn afgeleide
+  // langskomen. Andersom moet het net zo goed werken.
+  const omgekeerd = groepeer([...docs].reverse());
+  proef("ook als het origineel later in de lijst staat", omgekeerd[3] === omgekeerd[1], JSON.stringify(omgekeerd));
+}
 
 console.log(fouten === 0 ? "\nAlles goed." : `\n${fouten} fout(en).`);
 process.exit(fouten === 0 ? 0 : 1);

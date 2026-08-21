@@ -62,26 +62,50 @@ export function zelfdeOnderwerp(naamA: string, naamB: string): boolean {
   return gedeeld >= Math.max(1, Math.ceil(kleinste / 2));
 }
 
-export type Groepeerbaar = { id: number; kind: string; naam: string };
+export type Groepeerbaar = {
+  id: number; kind: string; naam: string;
+  /** Uit welk document dit voortkomt (0 of leeg = uit niets). Zie hieronder. */
+  bronId?: number;
+};
 
 /**
  * Per document de groep waar het in valt: hetzelfde soort én hetzelfde
  * onderwerp. Geeft per document-id een groepsleutel terug.
+ *
+ * ── Een verwijzing wint van een gelijkende naam (21-08-2026) ──
+ * Het onderwerp uit de naam halen werkt goed voor een klantversie die bijna
+ * hetzelfde heet als wat wij stuurden. Het werkt juist NIET bij een stuk dat we
+ * ondersteunend hebben gemaakt: dat krijgt vaak met opzet een andere titel, want
+ * de oude botste met de landingspagina. Dan las het als een los project en
+ * schoof er een document van iets heel anders tussen. Kent een document zijn
+ * bron, dan is dat geen gok maar een feit, en die gaat dus vóór.
  */
 export function groepeer(docs: Groepeerbaar[]): Record<number, string> {
   const uit: Record<number, string> = {};
-  const groepen: { sleutel: string; kind: string; namen: string[] }[] = [];
+  const groepen: { sleutel: string; kind: string; namen: string[]; ids: number[] }[] = [];
   for (const d of docs) {
     const kind = d.kind || "overig";
-    const bestaand = groepen.find((g) => g.kind === kind && g.namen.some((n) => zelfdeOnderwerp(n, d.naam)));
+    const bestaand =
+      groepen.find((g) => d.bronId && g.ids.includes(d.bronId))
+      || groepen.find((g) => g.kind === kind && g.namen.some((n) => zelfdeOnderwerp(n, d.naam)));
     if (bestaand) {
       bestaand.namen.push(d.naam);
+      bestaand.ids.push(d.id);
       uit[d.id] = bestaand.sleutel;
     } else {
       const sleutel = `${kind}#${groepen.filter((g) => g.kind === kind).length}`;
-      groepen.push({ sleutel, kind, namen: [d.naam] });
+      groepen.push({ sleutel, kind, namen: [d.naam], ids: [d.id] });
       uit[d.id] = sleutel;
     }
+  }
+  // Een bron kan ná zijn afgeleide langskomen (de lijst staat op nieuwste eerst).
+  // Dan zijn het nu twee groepen die één groep hadden moeten zijn; hier worden ze
+  // alsnog samengevoegd, op de groep van de bron.
+  for (const d of docs) {
+    if (!d.bronId || !uit[d.bronId] || uit[d.bronId] === uit[d.id]) continue;
+    const oud = uit[d.id];
+    const nieuw = uit[d.bronId];
+    for (const x of docs) if (uit[x.id] === oud) uit[x.id] = nieuw;
   }
   return uit;
 }

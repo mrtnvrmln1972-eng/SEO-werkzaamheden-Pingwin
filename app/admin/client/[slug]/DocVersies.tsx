@@ -30,6 +30,9 @@ type Versie = {
       moment waarop het bestand hier binnenkwam. Twee documenten die je op één
       ochtend toevoegt hebben dezelfde createdAt en zeggen dan niets. */
   inhoudDatum: string; datumBron: string; datumUitleg: string;
+  /** Uit welk document dit voortkomt (0 = uit niets), bijvoorbeeld een stuk dat
+      hier ondersteunend van is gemaakt. Zie lib/doc-groepen.ts. */
+  bronId: number;
 };
 
 const DATUM_BRON: Record<string, string> = {
@@ -52,6 +55,8 @@ type SteunPlan = {
   wijzigingen: string[];
   links: { naar: string; anker: string; plek: string }[];
   linksNaarBlog: { van: string; anker: string }[];
+  landingMetas: { url: string; metaTitle: string; metaDescription: string }[];
+  /** Alleen voor Maarten; deze staan bewust NIET in het document (zie lib/ondersteunend.ts). */
   waarschuwingen: string[];
 };
 const OORDEEL_KLEUR: Record<Toets["oordeel"], string> = { "goed": "wp-toets-goed", "let-op": "wp-toets-letop", "niet-goed": "wp-toets-fout" };
@@ -103,10 +108,34 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
   // in één taak (twee blogs, twee pagina's), dan kreeg je een keuze voorgelegd
   // die niet bestaat, en leek het stuk dat je niet aanvinkte vervallen. Nu telt
   // ook het onderwerp mee, uit de naam; zie lib/doc-groepen.ts.
-  const groepVan = groepeer(versies.map((v) => ({ id: v.id, kind: v.kind, naam: v.naam })));
-  const aantalPerGroep = groepAantallen(versies.map((v) => ({ id: v.id, kind: v.kind, naam: v.naam })), groepVan);
+  const groepVan = groepeer(versies.map((v) => ({ id: v.id, kind: v.kind, naam: v.naam, bronId: v.bronId })));
+  const aantalPerGroep = groepAantallen(versies.map((v) => ({ id: v.id, kind: v.kind, naam: v.naam, bronId: v.bronId })), groepVan);
   /** Hoeveel documenten gaan er over hetzelfde als dit document? */
   const inGroep = (v: Versie) => aantalPerGroep[groepVan[v.id]] || 1;
+
+  // ── De volgorde: bij elkaar wat bij elkaar hoort (21-08-2026) ──
+  // De lijst stond op proces-stap en daarbinnen op datum. Maak je van een
+  // aangeleverd stuk een ondersteunende versie, dan is die van vandaag en het
+  // origineel van eergisteren, dus schoof een document van een héél ander project
+  // er tussendoor. Maartens woorden: "nu staat het andere project daar tussen".
+  // Dat onderwerp is al bekend (`groepVan`), het werd alleen niet gebruikt om te
+  // sorteren. Nu wel: eerst de stap, dan het onderwerp (het onderwerp met het
+  // nieuwste document bovenaan), en pas daarbinnen nieuwste eerst. Zo staat een
+  // ondersteunende versie altijd pal bij het stuk waar hij uit voortkomt.
+  const sleutelVan = (v: Versie) => groepVan[v.id] || `los-${v.id}`;
+  const nieuwsteInGroep: Record<string, string> = {};
+  for (const v of versies) {
+    const g = sleutelVan(v);
+    if (!nieuwsteInGroep[g] || nieuwsteInGroep[g] < v.createdAt) nieuwsteInGroep[g] = v.createdAt;
+  }
+  const RANG: Record<string, number> = { analyse: 1, blauwdruk: 2, copy: 3, structured: 4 };
+  const opVolgorde = [...versies].sort((a, b) => {
+    const va = RANG[a.kind] || 9, vb = RANG[b.kind] || 9;
+    if (va !== vb) return va - vb;
+    const ga = sleutelVan(a), gb = sleutelVan(b);
+    if (ga !== gb) return nieuwsteInGroep[ga] < nieuwsteInGroep[gb] ? 1 : -1;
+    return a.createdAt < b.createdAt ? 1 : -1;
+  });
   // Ligt er van één onderwerp meer dan één versie zonder dat er één is
   // aangewezen? Dan wachten de mail en de sitebouwer op jouw keuze, en gaat het
   // blok open. Structured data telt hier niet in mee: daarvoor is de kennisbank
@@ -334,18 +363,15 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
           wachten en die hoort niet achter een dicht klepje te verdwijnen. */}
       {versies.length > 0 && open && (
         <ul className="wp-doclijst">
-          {/* Leesvolgorde = proces-volgorde (analyse, blauwdruk, copy), binnen een
-              stap nieuwste eerst. Puur op datum stond copy bovenaan en las de
-              lijst als een omgekeerd proces. */}
-          {/* Hoeveel versies liggen er per soort? Bepaalt of het vinkje "geldt" een
-              echte keuze is of alleen een klusje (zie de rij hieronder). */}
-          {[...versies].sort((a, b) => {
-            const rang: Record<string, number> = { analyse: 1, blauwdruk: 2, copy: 3, structured: 4 };
-            const va = rang[a.kind] || 9, vb = rang[b.kind] || 9;
-            return va !== vb ? va - vb : (a.createdAt < b.createdAt ? 1 : -1);
-          }).map((v) => (
+          {/* Leesvolgorde = proces-volgorde (analyse, blauwdruk, copy), daarbinnen
+              per onderwerp bij elkaar en pas dán nieuwste eerst. Zie de uitleg bij
+              `opVolgorde` hierboven. */}
+          {opVolgorde.map((v) => (
             <li key={v.id}
-              className={"wp-docrij" + (gekozen === v.id ? " wp-docrij-aan" : "") + (v.goedgekeurd ? " wp-docrij-geldt" : "")}
+              className={"wp-docrij" + (gekozen === v.id ? " wp-docrij-aan" : "") + (v.goedgekeurd ? " wp-docrij-geldt" : "")
+                // Springt een stukje in onder het stuk waar hij uit voortkomt, zodat
+                // je ziet dat die twee bij elkaar horen en niet twee losse projecten zijn.
+                + (v.bronId && versies.some((x) => x.id === v.bronId) ? " wp-docrij-afgeleid" : "")}
               tabIndex={0}
               onClick={() => setGekozen(gekozen === v.id ? null : v.id)}
               onDoubleClick={() => setPreview(v)}
@@ -522,8 +548,22 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                       "**Links vanuit dit stuk:** " + steunUit.plan.links.map((l) => `${padVan(l.naar)} met linktekst "${l.anker}"`).join("; "),
                     ) }} />
                   )}
+                  {(steunUit.plan.landingMetas || []).length > 0 && (
+                    <div dangerouslySetInnerHTML={{ __html: netteHtml(
+                      "**Ook overnemen op de landingspagina:** " + steunUit.plan.landingMetas
+                        .map((m) => `${padVan(m.url)} krijgt titel "${m.metaTitle}"${m.metaDescription ? ` en omschrijving "${m.metaDescription}"` : ""}`)
+                        .join("; ") + ". Dit staat kant-en-klaar in het document.",
+                    ) }} />
+                  )}
+                  {/* Alleen voor jou. Deze regels stonden eerder ook in het
+                      document, onder "Let op", en dan las de klant aanbevelingen
+                      die wij hadden moeten doen of een interne afweging over de
+                      linkstrategie. Sinds 21-08-2026 staan ze alleen hier. */}
                   {steunUit.plan.waarschuwingen.length > 0 && (
-                    <ul className="wp-steun-letop">{steunUit.plan.waarschuwingen.map((w, i) => <li key={i}>{w}</li>)}</ul>
+                    <>
+                      <p className="wp-steun-intern">Alleen voor jou, dit staat niet in het document:</p>
+                      <ul className="wp-steun-letop">{steunUit.plan.waarschuwingen.map((w, i) => <li key={i}>{w}</li>)}</ul>
+                    </>
                   )}
                   {steunUit.link && <p><a href={docsBewerkLink(steunUit.link)} target="_blank" rel="noreferrer">het aangepaste document openen</a></p>}
                 </div>

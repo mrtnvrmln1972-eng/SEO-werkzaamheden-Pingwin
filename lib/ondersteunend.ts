@@ -31,8 +31,28 @@ import { registerGeneratedVersion } from "./doc-versions";
 //   2. er moet vanuit de blog minstens één link naar elke doelpagina lopen;
 //   3. de ankertekst van die link moet de hoofdterm bevatten, want dat is het
 //      signaal dat je wilt doorgeven.
-// Klopt er iets niet, dan komt dat als waarschuwing in beeld én in het document,
-// in plaats van dat het stilletjes goed lijkt.
+//
+// ── HET DOCUMENT IS EEN OPLEVERING, GEEN LIJST MET HUISWERK (21-08-2026) ──
+// Er stond een kopje "Let op" in het document met daaronder de waarschuwingen.
+// Dat document gaat naar de klant en naar de sitebouwer, en dan lees je daar
+// dingen als "het verdient aanbeveling om ook de meta-description van de
+// landingspagina te optimaliseren" en "controleer of dit aansluit bij de interne
+// linkstrategie die Maarten voor ogen heeft". Maartens woorden: "dat roept
+// vragen op of de klant dan zelf nog iets moet doen". Terecht, want die punten
+// horen niet bij hen: het eerste is werk dat wíj gewoon doen, het tweede is een
+// interne afweging.
+//
+// Sindsdien geldt hier één regel, en die zit zowel in de prompt als in de vorm
+// van het document:
+//   * Kun je het zelf, doe het dan. Een betere meta-title voor de landingspagina
+//     schrijf je, je beveelt hem niet aan; hij staat als kant-en-klare waarde in
+//     "Voor de sitebouwer".
+//   * Kan de hoofdterm niet uit de titel of de H1, dan stel je een ándere titel
+//     voor. Er wordt hieronder één herstelronde gedraaid die precies dat doet,
+//     en pas als die ook niet lukt blijft er iets over.
+//   * Wat er dan nog over is, is voor Maarten en staat op het scherm; het komt
+//     NIET in het document. Zo staat er in het document alleen wat af is en wat
+//     de sitebouwer moet overnemen.
 // ═══════════════════════════════════════════════════════════
 
 export type OndersteunendDoel = {
@@ -51,6 +71,20 @@ export type OndersteunendeLink = {
   plek: string;
 };
 
+/**
+ * Een betere meta-title en meta-description voor de LANDINGSPAGINA zelf.
+ *
+ * Dit stond eerder als aanbeveling in het document ("het verdient aanbeveling om
+ * ook de meta-description van de landingspagina te optimaliseren"). Een
+ * aanbeveling die wij zelf kunnen uitvoeren hoort geen aanbeveling te zijn, dus
+ * hij wordt geschreven en als waarde meegeleverd.
+ */
+export type LandingMeta = {
+  url: string;
+  metaTitle: string;
+  metaDescription: string;
+};
+
 export type OndersteunendPlan = {
   kop: string;
   doelen: OndersteunendDoel[];
@@ -61,6 +95,9 @@ export type OndersteunendPlan = {
   links: OndersteunendeLink[];
   /** Bestaande pagina's die naar deze blog zouden moeten linken. */
   linksNaarBlog: { van: string; anker: string }[];
+  /** Kant-en-klare meta's voor de landingspagina's zelf; leeg als ze al goed zijn. */
+  landingMetas: LandingMeta[];
+  /** ALLEEN voor Maarten, op het scherm. Komt nooit in het document. */
   waarschuwingen: string[];
   /** De aangepaste tekst, met ## en ### voor de koppen. */
   tekst: string;
@@ -80,6 +117,13 @@ MINIMAAL INGRIJPEN (net zo belangrijk):
 - Je past alleen aan wat nodig is om de botsing weg te nemen: de titel, de H1, de koppen die op de hoofdterm zitten, de eerste alinea, en de zinnen waar een interne link in komt. Voeg hooguit één korte afsluitende alinea toe die naar de landingspagina verwijst.
 - Elke aanpassing die je doet, benoem je in "wijzigingen". Wat je niet noemt, heb je niet veranderd.
 
+DIT DOCUMENT IS EEN OPLEVERING, GEEN LIJST MET HUISWERK (dit is een harde regel):
+- Het document gaat naar de klant en naar de sitebouwer. Alles wat erin staat is óf al gedaan door ons, óf een concrete waarde die zij overnemen. Er staat nooit iets in waarvan de klant zich afvraagt of hij zelf nog iets moet uitzoeken.
+- Geef daarom NOOIT een aanbeveling die je zelf kunt uitvoeren. Kun je het zelf, doe het, en zet het in "wijzigingen". Dus niet "het verdient aanbeveling de meta-description aan te scherpen", maar de aangescherpte meta-description zelf.
+- Vind je dat de meta-title of de meta-description van de LANDINGSPAGINA beter kan (te lang, te kort, geen klikprikkel, hoofdterm niet vooraan), schrijf ze dan zelf en zet ze in "landingMetas". Zijn ze al goed, laat "landingMetas" dan leeg; verzin geen werk.
+- Kan de hoofdterm niet uit de titel of de H1 zonder dat het stuk zijn onderwerp verliest, kies dan alsnog een andere titel en H1 die hetzelfde onderwerp dekken zonder die term (een plaatsnaam, het merk, het type project, de invalshoek). Er is altijd een alternatief; lever dat alternatief, in plaats van een opmerking dat het lastig is.
+- "waarschuwingen" is UITSLUITEND voor Maarten en komt niet in het document. Zet daar alleen wat echt een keuze van hem vraagt (een strategische afweging, iets wat je niet kon controleren). Nooit iets over de interne linkstrategie of over ons eigen werk; dat is geen klantboodschap. Meestal is deze lijst leeg.
+
 HARDE REGELS:
 - De hoofdterm van een landingspagina staat NIET in de titel, NIET in de meta-title en NIET in de H1 van de blog. Ook geen letterlijke variant die er als hetzelfde uitziet voor Google.
 - Per landingspagina minstens één, hooguit drie interne links vanuit de blog, met de hoofdterm (of een natuurlijke variant daarvan) als ankertekst. Nooit "lees meer" of "klik hier".
@@ -96,7 +140,8 @@ Antwoord met UITSLUITEND geldige JSON, niets eromheen:
  "wijzigingen":["korte regels: wat je hebt aangepast en waarom, maximaal 6"],
  "links":[{"naar":"de doel-URL","anker":"de ankertekst","plek":"in welke alinea, in gewone taal"}],
  "linksNaarBlog":[{"van":"bestaande pagina die naar deze blog zou moeten linken","anker":"voorgestelde ankertekst"}],
- "waarschuwingen":["alleen als er iets is dat Maarten moet weten, anders lege lijst"],
+ "landingMetas":[{"url":"de landingspagina","metaTitle":"maximaal 60 tekens","metaDescription":"maximaal 155 tekens"}],
+ "waarschuwingen":["alleen wat een keuze van Maarten vraagt; niet voor de klant, meestal leeg"],
  "tekst":"de volledige aangepaste tekst, met ## voor koppen en ### voor subkoppen, links als [ankertekst](url)"}`;
 
 /** Staat een term (los van hoofdletters en meervoud-s) in deze regel tekst? */
@@ -121,6 +166,25 @@ function eersteKop(tekst: string): string {
  * waarschuwing teruggegeven. Er wordt niets stilgehouden en niets geweigerd:
  * Maarten ziet wat er niet klopt en beslist zelf.
  */
+/**
+ * De hoofdtermen die nog in de titel, de meta-title of de H1 staan.
+ *
+ * Apart van `controleerPlan` omdat dit het enige punt uit de poort is dat je kunt
+ * hérstellen in plaats van melden: een titel is drie regels, de tekst niet. Wat
+ * hier uitkomt gaat naar de herstelronde; wat daarna nog botst wordt alsnog een
+ * melding voor Maarten.
+ */
+export function botsendeTermen(plan: OndersteunendPlan): string[] {
+  const kop = eersteKop(plan.tekst);
+  const uit: string[] = [];
+  for (const doel of plan.doelen || []) {
+    const term = (doel.hoofdterm || "").trim();
+    if (!term) continue;
+    if (bevatTerm(plan.titel, term) || bevatTerm(plan.metaTitle, term) || bevatTerm(kop, term)) uit.push(term);
+  }
+  return [...new Set(uit)];
+}
+
 export function controleerPlan(plan: OndersteunendPlan): string[] {
   const uit: string[] = [];
   const kop = eersteKop(plan.tekst);
@@ -141,6 +205,84 @@ export function controleerPlan(plan: OndersteunendPlan): string[] {
     }
   }
   return uit;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HERSTELRONDE: EEN BOTSENDE TITEL WORDT VERVANGEN, NIET GEMELD
+// ═══════════════════════════════════════════════════════════
+// De poort hierboven zag het al: de hoofdterm staat nog in de titel of de H1, en
+// dan blijft dit stuk concurreren met de landingspagina. Dat kwam als zin in het
+// document terecht ("haal hem daar weg en laat hem alleen in de linktekst
+// staan"), en dat is een opdracht aan iemand die hem niet gaat uitvoeren.
+//
+// Dit is het enige punt uit de poort dat je écht kunt oplossen zonder de tekst te
+// herschrijven: een titel, een meta-title en een H1 zijn drie regels. Dus wordt
+// er één korte ronde gedraaid die om een alternatief vraagt, en pas als dát ook
+// de term nog bevat blijft er een melding over, voor Maarten, op het scherm.
+
+const HERSTEL_SYSTEM = `Je bent SEO-specialist bij bureau Pingwin. Een blog of projectverhaal is ondersteunend gemaakt aan een landingspagina, maar de titel of de H1 bevat nog steeds de commerciële hoofdterm van die landingspagina. Zo blijven ze om hetzelfde zoekwoord vechten.
+
+Bedenk een andere titel, meta-title en H1 die exact hetzelfde stuk dekken, maar de hoofdterm NIET bevatten, ook geen variant die er voor Google hetzelfde uitziet. Gebruik wat het stuk wél onderscheidt: de plaats, het merk, het type project, de invalshoek, de vraag die het beantwoordt. Blijf bij de inhoud van het stuk; verzin geen nieuwe feiten.
+
+Antwoord met UITSLUITEND geldige JSON:
+{"titel":"de nieuwe titel","metaTitle":"maximaal 60 tekens","h1":"de nieuwe H1 boven het stuk","uitleg":"één korte regel: wat je veranderd hebt en waarom"}`;
+
+/** De eerste kopregel in de tekst vervangen door een nieuwe H1. */
+function vervangEersteKop(tekst: string, nieuweKop: string): string {
+  const regels = (tekst || "").split("\n");
+  for (let i = 0; i < regels.length; i++) {
+    const m = regels[i].match(/^(#{1,3})\s+(.*)$/);
+    if (m) { regels[i] = `${m[1]} ${nieuweKop}`; return regels.join("\n"); }
+  }
+  return `# ${nieuweKop}\n\n${tekst}`;
+}
+
+/**
+ * Eén ronde om een botsende titel te vervangen. Geeft terug of het gelukt is.
+ *
+ * Het antwoord wordt nagerekend met dezelfde `bevatTerm` als de poort: lost het
+ * alternatief het niet op, dan wordt er níets toegepast en blijft de melding
+ * staan. Een half hersteld plan is erger dan een eerlijk gemeld plan.
+ */
+async function herstelBotsendeTitel(
+  plan: OndersteunendPlan,
+  termen: string[],
+  ctx: { slug: string },
+): Promise<boolean> {
+  if (!termen.length) return false;
+  const user = `HOOFDTERMEN DIE ER NIET IN MOGEN: ${termen.join(", ")}
+
+HUIDIGE TITEL: ${plan.titel}
+HUIDIGE META-TITLE: ${plan.metaTitle}
+HUIDIGE H1: ${eersteKop(plan.tekst)}
+
+WAAR HET STUK OVER GAAT:
+${plan.tekst.slice(0, 2000)}`;
+  try {
+    const raw = await callClaude(HERSTEL_SYSTEM, [{ role: "user", content: user }], 700, { slug: ctx.slug, action: "ondersteunend-titel-herstel" });
+    const schoon = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const p = JSON.parse(schoon.slice(schoon.indexOf("{"), schoon.lastIndexOf("}") + 1)) as
+      { titel?: string; metaTitle?: string; h1?: string; uitleg?: string };
+    const titel = String(p.titel || "").trim();
+    const metaTitle = String(p.metaTitle || "").trim();
+    const h1 = String(p.h1 || "").trim();
+    if (!titel || !h1) return false;
+    // Nareken: staat de term er nog steeds in, dan heeft dit niets opgelost.
+    for (const term of termen) {
+      if (bevatTerm(titel, term) || bevatTerm(metaTitle || titel, term) || bevatTerm(h1, term)) return false;
+    }
+    plan.titel = titel;
+    if (metaTitle) plan.metaTitle = metaTitle;
+    plan.tekst = vervangEersteKop(plan.tekst, h1);
+    plan.wijzigingen = [
+      ...plan.wijzigingen,
+      String(p.uitleg || "").trim()
+        || `De titel en de kop zijn aangepast naar "${titel}", zodat dit stuk niet meer op dezelfde zoekterm mikt als de landingspagina.`,
+    ].slice(0, 8);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Regels met ## en ### omzetten naar de blokken van een Pingwin-document. */
@@ -172,7 +314,11 @@ async function doelBeeld(domain: string, url: string): Promise<string> {
   ]);
   const regels: string[] = [`PAGINA: ${url}`];
   if (meting?.ok) {
-    regels.push(`Titel: ${meting.metaTitle || "(geen)"}`);
+    regels.push(`Titel: ${meting.metaTitle || "(geen)"} (${meting.titleLength} tekens)`);
+    // De meta-description hoort erbij sinds het document zelf een betere meta
+    // mag meeleveren in plaats van hem aan te bevelen: zonder de huidige tekst
+    // kun je niet zien of hij beter kan.
+    regels.push(`Meta-description: ${meting.metaDescription || "(geen)"} (${meting.descriptionLength} tekens)`);
     if (meting.h1?.length) regels.push(`H1: ${meting.h1.join(" | ")}`);
     if (meting.h2?.length) regels.push(`Koppen: ${meting.h2.slice(0, 12).join(" | ")}`);
   } else {
@@ -241,6 +387,11 @@ ${bron.slice(0, 16000)}`;
       linksNaarBlog: (Array.isArray(p.linksNaarBlog) ? p.linksNaarBlog : []).map((l) => ({
         van: String(l?.van || "").trim(), anker: String(l?.anker || "").trim(),
       })).filter((l) => l.van).slice(0, 5),
+      landingMetas: (Array.isArray(p.landingMetas) ? p.landingMetas : []).map((m) => ({
+        url: String(m?.url || "").trim(),
+        metaTitle: String(m?.metaTitle || "").trim(),
+        metaDescription: String(m?.metaDescription || "").trim(),
+      })).filter((m) => m.url && (m.metaTitle || m.metaDescription)).slice(0, 2),
       waarschuwingen: (Array.isArray(p.waarschuwingen) ? p.waarschuwingen : []).map(String).slice(0, 5),
       tekst: String(p.tekst || "").trim(),
     };
@@ -252,6 +403,12 @@ ${bron.slice(0, 16000)}`;
   // Geen doelen teruggekregen? Dan valt er ook niets na te rekenen, dus vullen we
   // ze aan met wat Maarten koos. Zonder dit zou de poort stilzwijgend niets doen.
   if (!plan.doelen.length) plan.doelen = doelUrls.map((u) => ({ url: u, hoofdterm: "", steuntermen: [] }));
+
+  // Botst de titel nog met de landingspagina, dan eerst één ronde om een ander
+  // voorstel vragen. Melden dat het niet kan is de laatste stap, niet de eerste.
+  const botsend = botsendeTermen(plan);
+  if (botsend.length) await herstelBotsendeTitel(plan, botsend, { slug });
+
   plan.waarschuwingen = [...plan.waarschuwingen, ...controleerPlan(plan)];
 
   // Het document: eerst wat er veranderd is en wat de sitebouwer moet doen, dan
@@ -273,8 +430,14 @@ ${bron.slice(0, 16000)}`;
             headers: ["Landingspagina", "Blijft de baas op", "Dit stuk mikt op"],
             rows: plan.doelen.map((d) => [d.url, d.hoofdterm || "(niet bepaald)", d.steuntermen.join(", ") || "(niet bepaald)"]),
           }] : []),
+          // Hier stond ook een kopje "Let op" met de waarschuwingen eronder. Dat
+          // document gaat naar de klant en naar de sitebouwer, en dan lees je
+          // daar aanbevelingen die wíj hadden moeten doen, of een interne
+          // afweging over de linkstrategie. Beide roepen dezelfde vraag op:
+          // "moet ik hier zelf nog iets mee?" Wat er te doen viel is nu gedaan
+          // en staat hierboven; wat er overblijft is voor Maarten en staat op
+          // het scherm bij het document. Zet dit kopje hier nooit terug.
           ...(plan.wijzigingen.length ? [{ type: "subheading" as const, text: "Wat er is aangepast" }, { type: "bullets" as const, items: plan.wijzigingen }] : []),
-          ...(plan.waarschuwingen.length ? [{ type: "subheading" as const, text: "Let op" }, { type: "bullets" as const, items: plan.waarschuwingen }] : []),
         ],
       },
       {
@@ -284,6 +447,15 @@ ${bron.slice(0, 16000)}`;
             ["Paginatitel (meta-title)", plan.metaTitle || "(niet ingevuld)"],
             ["Meta-description", plan.metaDescription || "(niet ingevuld)"],
           ] },
+          // Kant-en-klaar, geen aanbeveling: staat hier alleen als de huidige
+          // meta van de landingspagina echt beter kan.
+          ...(plan.landingMetas.length ? [
+            { type: "subheading" as const, text: "Ook overnemen op de landingspagina" },
+            { type: "table" as const, headers: ["Pagina", "Veld", "Waarde"], rows: plan.landingMetas.flatMap((m) => [
+              ...(m.metaTitle ? [[pad(m.url), "Paginatitel (meta-title)", m.metaTitle]] : []),
+              ...(m.metaDescription ? [[pad(m.url), "Meta-description", m.metaDescription]] : []),
+            ]) },
+          ] : []),
           ...(plan.links.length ? [
             { type: "subheading" as const, text: "Links vanuit dit stuk" },
             { type: "table" as const, headers: ["Naar", "Linktekst", "Waar"], rows: plan.links.map((l) => [l.naar, l.anker, l.plek]) },
@@ -327,7 +499,10 @@ ${bron.slice(0, 16000)}`;
   // Als nieuw document in dezelfde taak, mét de doelpagina in de naam. Het
   // aangeleverde stuk blijft gewoon staan: er wordt nooit iets overschreven.
   const naam = `${plan.titel} (ondersteunend aan ${doelUrls.map(pad).join(" en ")})`;
-  await registerGeneratedVersion(slug, String(versie.url), String(versie.kind || "copy"), naam, link, plan.tekst, plan.kop)
+  // De bron erbij: dit stuk komt voort uit dát document, en hoort er in de lijst
+  // dus pal onder te staan. Uit de naam afleiden werkt hier juist níet, want een
+  // ondersteunende versie krijgt vaak een andere titel; dat is het hele punt.
+  await registerGeneratedVersion(slug, String(versie.url), String(versie.kind || "copy"), naam, link, plan.tekst, plan.kop, versieId)
     .catch(() => { /* het bestand staat er; de lijst vult zich bij de volgende ronde */ });
 
   return { ok: true, plan, link, naam };

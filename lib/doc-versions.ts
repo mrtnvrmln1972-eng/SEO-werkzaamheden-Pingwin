@@ -40,12 +40,23 @@ export type DocVersion = {
   inhoudDatum: string;
   datumBron: DatumBron;
   datumUitleg: string;
+  /**
+   * Uit welk document dit document voortkomt (0 = uit niets).
+   *
+   * Een ondersteunende versie van een aangeleverd stuk hoort in de lijst pal
+   * onder dat stuk te staan. Dat werd tot 21-08-2026 uit de naam afgeleid, en dat
+   * ging precies mis waar het het hardst nodig is: een ondersteunende versie
+   * krijgt vaak juist een ándere titel (dat is het hele punt, de oude botste met
+   * de landingspagina), en dan lijkt hij een los project. Een verwijzing kun je
+   * niet mislezen, dus die staat er nu bij.
+   */
+  bronId: number;
 };
 
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "doc-versions-3304b82d";
+const SCHEMA_VERSIE = "doc-versions-d9cf7d57";
 
 function ensureTable(): Promise<void> {
   return eenmalig("doc-versions", SCHEMA_VERSIE, doEnsure);
@@ -79,6 +90,8 @@ async function doEnsure(): Promise<void> {
   await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS inhoud_datum TIMESTAMPTZ`;
   await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS datum_bron TEXT`;
   await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS datum_uitleg TEXT`;
+  // Uit welk document dit document voortkomt. Zie de uitleg bij `bronId`.
+  await sql`ALTER TABLE page_doc_versions ADD COLUMN IF NOT EXISTS bron_id INTEGER`;
   // Met terugwerkende kracht: staat er van een soort maar één document, dan geldt
   // hij vanzelf (zie geldtAlsEnige hieronder voor het waarom). Zonder deze regel
   // gold de nieuwe afspraak alleen voor documenten van na vandaag, en bleven de
@@ -104,6 +117,7 @@ function rowToVersion(r: Record<string, unknown>): DocVersion {
     inhoudDatum: r.inhoud_datum ? new Date(r.inhoud_datum as string).toISOString() : "",
     datumBron: ((r.datum_bron as string) || "onbekend") as DatumBron,
     datumUitleg: (r.datum_uitleg as string) || GEEN_DATUM.uitleg,
+    bronId: Number(r.bron_id || 0),
   };
 }
 
@@ -132,7 +146,7 @@ export async function listVersions(slug: string, url: string): Promise<DocVersio
   await ensureTable();
   const { rows } = await sql`
     SELECT id, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at, goedgekeurd,
-           inhoud_datum, datum_bron, datum_uitleg
+           inhoud_datum, datum_bron, datum_uitleg, bron_id
     FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND status <> 'genegeerd'
     ORDER BY id DESC LIMIT 40`;
   return ontdubbelVersies(rows.map(rowToVersion));
@@ -148,7 +162,7 @@ export async function listVersionsForKey(slug: string, url: string): Promise<Doc
   const k = urlKey(url);
   const { rows } = await sql`
     SELECT id, url, kind, source, naam, drive_link, samenvatting, vergelijking, status, created_at, goedgekeurd,
-           inhoud_datum, datum_bron, datum_uitleg
+           inhoud_datum, datum_bron, datum_uitleg, bron_id
     FROM page_doc_versions WHERE client_slug = ${slug} AND status <> 'genegeerd'
     ORDER BY id DESC LIMIT 400`;
   return ontdubbelVersies(rows.filter((r) => urlKey(String(r.url || "")) === k).slice(0, 40).map(rowToVersion));
@@ -156,13 +170,13 @@ export async function listVersionsForKey(slug: string, url: string): Promise<Doc
 
 // Elke generator-run legt zijn resultaat ook als versie in het archief
 // (best effort: het archief mag een run nooit laten mislukken).
-export async function registerGeneratedVersion(slug: string, url: string, kind: string, naam: string, driveLink: string, tekst: string, samenvatting?: string): Promise<void> {
+export async function registerGeneratedVersion(slug: string, url: string, kind: string, naam: string, driveLink: string, tekst: string, samenvatting?: string, bronId?: number): Promise<void> {
   try {
     await ensureSchema();
     await ensureTable();
     await sql`
-      INSERT INTO page_doc_versions (client_slug, url, kind, source, naam, drive_link, tekst, samenvatting, vergelijking, status)
-      VALUES (${slug}, ${url}, ${kind}, 'pingwin', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting || "Gegenereerd door het dashboard."}, ${null}, 'verwerkt')
+      INSERT INTO page_doc_versions (client_slug, url, kind, source, naam, drive_link, tekst, samenvatting, vergelijking, status, bron_id)
+      VALUES (${slug}, ${url}, ${kind}, 'pingwin', ${naam || null}, ${driveLink || null}, ${(tekst || "").slice(0, 60000) || null}, ${samenvatting || "Gegenereerd door het dashboard."}, ${null}, 'verwerkt', ${bronId || null})
       RETURNING id`;
     const nieuw = await sql`SELECT id FROM page_doc_versions WHERE client_slug = ${slug} AND url = ${url} AND kind = ${kind} ORDER BY id DESC LIMIT 1`;
     if (nieuw.rows[0]) await geldtAlsEnige(slug, url, kind, Number(nieuw.rows[0].id));
