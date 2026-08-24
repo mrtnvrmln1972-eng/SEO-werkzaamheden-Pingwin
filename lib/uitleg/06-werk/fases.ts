@@ -46,6 +46,27 @@ export const BLOKKEN: Uitklapper[] = [
       "beide plekken waar de chat staat: bij de pagina in Pagina's én op de projectkaart in de planning. " +
       "Zonder die klik draaien de volgende fases op de live data alleen, zonder de conclusies uit het " +
       "gesprek.\n\n" +
+      "**Een aangeleverd document loopt vanzelf mee in élke fase (sinds 24 augustus 2026).** Noem je ergens " +
+      "bij een pagina een Google-document (een strategiestuk, een schrijfopdracht, een linkregister met de " +
+      "interne links per pagina), dan hoort dat document vanaf dat moment bij die pagina. Je hoeft er verder " +
+      "niets voor te doen: niet op een knop drukken, niet zorgen dat het in het juiste veld staat, niet " +
+      "nakijken of de samenvatting het heeft overgenomen. Het dashboard zoekt de links zelf op in de " +
+      "vastgelegde strategie, in élk gesprek over die pagina, in meegegeven cluster-advies en in de extra " +
+      "sturing die je bij het starten van een fase meegeeft.\n\n" +
+      "Wat er daarna gebeurt: het document wordt volledig uitgelezen (een werkblad met álle tabbladen, niet " +
+      "alleen het eerste) en één keer uitgewerkt tot een werkbriefing voor precies díe pagina, met de " +
+      "interne links uitgeschreven per stuk (bestemming, exacte ankertekst, plek op de pagina), de " +
+      "zoekwoorden, de opbouw en de verboden. Staat er een voorwaarde in waaraan nog niet is voldaan " +
+      "(\"niet schrijven zolang er geen twee eigen projecten zijn\"), dan komt die bovenaan te staan in " +
+      "plaats van te verdwijnen. Die briefing gaat compleet mee in de strategie-chat, de analyse, de " +
+      "blauwdruk en de copy, met de documenten zelf eronder. Hij wordt bewaard en opnieuw gemaakt zodra er " +
+      "een letter in een document verandert, dus je betaalt de wachttijd één keer en nooit met een " +
+      "verouderde versie.\n\n" +
+      "Waarom dit er kwam: het strategieveld ging altijd al letterlijk mee de fases in, maar een link daarin " +
+      "was dode tekst. De motor kan een pagina en concurrenten uitmeten, en een gewoon opgehaald " +
+      "Google-adres geeft geen tekst terug (ook niet bij een openbaar document; je krijgt de schil van de " +
+      "bewerkomgeving). Het document kwam er dus gewoon uit, en niemand zag dat de afspraken nooit waren " +
+      "meegewogen. Dat is de gevaarlijkste soort fout: hij ziet er goed uit.\n\n" +
       "**Vastleggen is één handeling, en dat is sinds 21 augustus 2026 ook echt zo.** Het gesprek op de " +
       "projectkaart en het gesprek bij de pagina in Pagina's zijn hetzelfde gesprek (één geheugen per " +
       "pagina), maar de knop eronder deed niet overal hetzelfde: legde je de strategie vast vanaf de " +

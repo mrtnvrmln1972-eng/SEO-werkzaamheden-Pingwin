@@ -40,6 +40,34 @@ export function voorvertoningLink(input: string): string {
   return id ? `https://drive.google.com/file/d/${id}/preview` : "";
 }
 
+// ═══════════════════════════════════════════════════════════
+// WELKE GOOGLE-DOCUMENTEN NOEMT DEZE TEKST?
+// ═══════════════════════════════════════════════════════════
+// Staat hier, bij de andere link-herkenning, en niet bij het uitlezen: zo kan
+// ook een scherm in de browser en een proef deze vraag stellen zonder de hele
+// Drive- en database-koppeling mee te trekken.
+//
+// De link komt uit een vrij tekstveld, dus hij staat er in lopende tekst, als
+// markdown of als href in HTML. We knippen op de tekens die in een adres niet
+// voorkomen maar er wel tegenaan geplakt staan, en ontdubbelen op document-id:
+// twee adressen naar hetzelfde stuk (met en zonder ?tab=, met een anker erachter)
+// zijn één document.
+const GOOGLE_LINK = /https?:\/\/(?:docs|drive|sheets|slides)\.google\.com\/[^\s"'<>)\]]+/gi;
+
+export function driveLinksUit(tekst: string): { link: string; id: string }[] {
+  const uit: { link: string; id: string }[] = [];
+  const gezien = new Set<string>();
+  for (const match of (tekst || "").match(GOOGLE_LINK) || []) {
+    // Een opmaakbaar veld levert &amp; op waar & hoort; anders vindt het id-patroon niets.
+    const link = match.replace(/&amp;/gi, "&").replace(/[.,;:]+$/, "");
+    const id = driveIdFromUrl(link);
+    if (!id || gezien.has(id)) continue;
+    gezien.add(id);
+    uit.push({ link, id });
+  }
+  return uit;
+}
+
 export function driveIdFromUrl(input: string): string {
   const s = (input || "").trim();
   const byPath = s.match(/\/d\/([a-zA-Z0-9_-]{20,})/);

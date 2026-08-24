@@ -137,6 +137,34 @@ export function htmlNaarTekstMetKoppen(html: string): string {
   return regels.join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+// ═══════════════════════════════════════════════════════════
+// EEN SHEET HEEFT MEER DAN ÉÉN TABBLAD
+// ═══════════════════════════════════════════════════════════
+// Drive exporteert een Google Sheet naar CSV, en dat is per definitie ÉÉN
+// tabblad: het eerste. Bij een linkregister met de tabbladen Locaties,
+// Projecten en Tekort kwam er dus een derde van de afspraken binnen, zonder
+// enige melding dat de rest ontbrak. Daarom halen we een sheet op als HTML
+// (dan komen alle tabbladen mee) en zetten we elke tabel hier om naar regels
+// met een streepje ertussen, zodat een rij een rij blijft.
+export function htmlTabellenNaarTekst(html: string): string {
+  const ontsnap = (s: string) => s
+    .replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+  const cel = (s: string) => ontsnap(s.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
+  const uit: string[] = [];
+  const tabellen = (html || "").match(/<table[\s\S]*?<\/table>/gi) || [];
+  tabellen.forEach((tabel, i) => {
+    if (tabellen.length > 1) uit.push(`\n## Tabblad ${i + 1}`);
+    for (const rij of tabel.match(/<tr[\s\S]*?<\/tr>/gi) || []) {
+      const cellen = (rij.match(/<t[dh][\s\S]*?<\/t[dh]>/gi) || []).map(cel);
+      while (cellen.length && cellen[cellen.length - 1] === "") cellen.pop();
+      if (cellen.some((c) => c !== "")) uit.push(cellen.join(" | "));
+    }
+  });
+  return uit.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 // Leest de tekstinhoud van een gekoppeld Google-document (Doc/Sheet/Slides) uit,
 // zodat de bird's eye-agent de afgesproken strategie (navigatie, zoekwoorden,
 // werkdocument) echt kan raadplegen in plaats van alleen de link te zien.
@@ -166,8 +194,15 @@ export async function readDriveDoc(
   // een gewone zin. Daardoor kon de koppencontrole de teksten in een aangeleverd
   // document niet terugvinden, ook al stonden ze er gewoon in.
   const alsHtml = !!opts.metKoppen && mime === "application/vnd.google-apps.document";
+  // Een sheet als HTML: dan komen álle tabbladen mee in plaats van alleen het
+  // eerste (zie htmlTabellenNaarTekst hierboven).
+  const sheetAlsHtml = !!opts.metKoppen && mime === "application/vnd.google-apps.spreadsheet";
   let text = "";
-  if (alsHtml) {
+  if (sheetAlsHtml) {
+    const ex = await fetch(`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=text%2Fhtml&supportsAllDrives=true`, { headers: auth });
+    if (!ex.ok) return { ok: false, error: await driveErr(ex, "het uitlezen van het werkblad") };
+    text = htmlTabellenNaarTekst(await ex.text());
+  } else if (alsHtml) {
     const ex = await fetch(`https://www.googleapis.com/drive/v3/files/${id}/export?mimeType=text%2Fhtml&supportsAllDrives=true`, { headers: auth });
     if (!ex.ok) return { ok: false, error: await driveErr(ex, "het uitlezen van het document") };
     text = htmlNaarTekstMetKoppen(await ex.text());

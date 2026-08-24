@@ -5,6 +5,7 @@ import { getTasks } from "./tasks";
 import { callClaude, LIGHT_MODEL } from "./anthropic";
 import { notitiesTekst } from "./notities";
 import { fetchPageContent } from "./page-content";
+import { bronContext } from "./plan-bronnen";
 
 // ═══════════════════════════════════════════════════════════
 // GROUNDING VOOR DE PAGINA-CHAT
@@ -22,6 +23,14 @@ export type Proposal = { plan?: string; tasks?: { taak: string; fase?: string; w
 export async function buildSystemPrompt(slug: string, url: string): Promise<string> {
   const client = await getClientBySlug(slug);
   const domain = client?.domain || "";
+  // Aangeleverde Google-documenten bij deze pagina: opgezocht en uitgewerkt door
+  // lib/plan-bronnen.ts, zodat de strategie erop staat zonder dat iemand eraan
+  // hoeft te denken. Begrensd, want deze route heeft 300 seconden; lukt het niet
+  // op tijd, dan blijft het gereedschap lees_document over.
+  const bronnenBelofte = Promise.race([
+    bronContext(slug, url).catch(() => ""),
+    new Promise<string>((res) => setTimeout(() => res(""), 120000)),
+  ]);
   const [urls, plan, tasks, clusterAdvice, notities, live] = await Promise.all([
     getClientUrls(slug),
     getPagePlan(slug, url),
@@ -35,9 +44,10 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     // ondergraaft het hele advies. Daarom altijd de actuele pagina erbij.
     fetchPageContent(url).catch(() => null),
   ]);
-  const [kw, matrix] = await Promise.all([
+  const [kw, matrix, bronnen] = await Promise.all([
     getGscForPage(domain, url).catch(() => []),
     getGscQueryPageMatrix(domain).catch(() => []),
+    bronnenBelofte,
   ]);
 
   const self = urls.find((u) => normUrl(u.url) === normUrl(url));
@@ -119,6 +129,7 @@ export async function buildSystemPrompt(slug: string, url: string): Promise<stri
     "",
     "BESTAANDE TAKEN VOOR DEZE PAGINA:",
     pageTasks.length ? pageTasks.map((t) => `- [${t.fase || "geen fase"}] ${t.taak} (${t.status})`).join("\n") : "- (geen)",
+    ...(bronnen ? ["", bronnen] : []),
   ].join("\n");
 
   return `Je bent een nuchtere, ervaren SEO-strateeg die adviseert voor een klant van bureau Pingwin. Je werkt gegrond, zoals in een goede sparringsessie: je durft door te vragen.
@@ -133,6 +144,7 @@ HARDE REGELS:
   • ahrefs_url_organic_keywords: waar een URL (eigen of concurrent uit de top-10) op rankt. Voor content-gap.
   • ahrefs_site_authority: Domain Rating, verwijzende domeinen en backlinks van een domein of URL (eigen site of concurrent). Voor de autoriteits-vergelijking.
   • fetch_page_content: de echte on-page inhoud van een URL (titel, H1, koppen, tekst). Om te toetsen of de inhoud bij de intentie past en een content-gap te doen tegen de top-10.
+  • lees_document: de inhoud van een aangeleverd Google-document (Doc, Sheet, Slides). ALTIJD gebruiken zodra er een docs.google.com- of drive.google.com-link in het gesprek, in het plan of in het cluster-advies staat; fetch_page_content krijgt daar niets uit, want er zit een login voor. Doe nooit een uitspraak over wat er in zo'n document staat zonder het eerst zo gelezen te hebben.
   Verzin nooit zoekvolumes, rankings, Domain Ratings of aantallen backlinks; noem je ze, dan komen ze uit deze bronnen. Weet je iets niet en is er geen tool voor, zeg dat dan expliciet.
 - Je kunt sitebreed redeneren: gebruik de zoekwoord→pagina-matrix om cannibalisatie te zien (bijv. de homepage die rankt op "hovenier [plaats]" terwijl er een aparte plaatspagina bestaat) en om de beste zoekterm voor een pagina te kiezen.
 - VRAAG DOOR wanneer dat het advies beter maakt. Als het klantprofiel leeg is of je mist context die je nodig hebt (positionering: prijs vs exclusief/design vs duurzaam; werkgebied: regionaal vs landelijk; welke steden; doelgroep; gewenste term-focus), stel dan EERST één tot drie korte, gerichte vragen aan de gebruiker en wacht op antwoord voordat je een definitief advies geeft. Beter één vraag te veel dan een advies op aannames.
@@ -198,6 +210,11 @@ Het "plan"-veld is markdown met deze structuur (gebruik ECHT deze opmaak, geen r
 - <actie 2>
 
 **Doel-URL:** <doel-URL>
+
+**Bronnen**
+- <volledige Google-link>
+
+BRONNEN: dat blok bevat de aangeleverde Google-documenten (strategie, blauwdruk, linkregister) waarop dit plan rust. Neem elke Google-link uit de analyse LETTERLIJK en volledig over; de blauwdruk- en copy-motor lezen die documenten daarna zelf uit. Verzin nooit een link en laat het hele blok weg als er geen enkele genoemd is.
 
 Regels: neem elke concrete taak uit de analyse mee (kort geformuleerd, één regel per taak). Laat "plan" weg als er geen duidelijk nieuw pagina-plan is; laat "tasks" weg als er geen taken zijn. Bevat de analyse geen concreet voorstel (bijvoorbeeld alleen een verhelderende vraag), antwoord dan met {}. Gebruik nergens emoji.
 FASE per taak: neem de fase over zoals de analyse die aangeeft (bijvoorbeeld een sectie "Fase: Bouwen"). Bepaal je hem zelf, gebruik dan: "Bouwen" voor inhoud/on-page werk (H1, title, meta, tekst schrijven, nieuwe pagina, schema); "Herbedraden" ALLEEN voor interne links/ankers ompunten of content verplaatsen tussen pagina's; "Opschonen" voor redirects, canonical, dubbele content of oude termen weghalen. De meeste on-page-optimalisatietaken zijn dus "Bouwen", niet "Herbedraden".`;

@@ -113,3 +113,26 @@ export async function deleteChat(id: number): Promise<void> {
   await ensureSchema(); await ensureTable();
   await sql`DELETE FROM page_chats WHERE id = ${id}`;
 }
+
+// ═══════════════════════════════════════════════════════════
+// ALLE GESPREKSTEKST VAN ÉÉN PAGINA
+// ═══════════════════════════════════════════════════════════
+// Voor het opsporen van aangeleverde documenten: noem je een Google-link ooit
+// in het gesprek over een pagina, dan hoort die bij die pagina, ook als hij
+// nooit in de vastgelegde strategie belandt. Daarom leest lib/plan-bronnen.ts
+// hierlangs de hele gespreksgeschiedenis, en niet alleen het plan. Tabelkennis
+// blijft in dit bestand; elders wordt page_chats niet aangesproken.
+export async function chatTekstVoorPagina(slug: string, url: string, maxChats = 30): Promise<string> {
+  await ensureSchema(); await ensureTable();
+  const k = urlKey(url);
+  const { rows } = await sql`
+    SELECT url, messages FROM page_chats WHERE client_slug = ${slug} ORDER BY updated_at DESC LIMIT 200`;
+  const stukken: string[] = [];
+  for (const r of rows) {
+    if (urlKey(String(r.url || "")) !== k) continue;
+    const msgs = (r.messages as ChatMsg[]) || [];
+    for (const m of msgs) if (typeof m?.content === "string") stukken.push(m.content);
+    if (stukken.length && --maxChats <= 0) break;
+  }
+  return stukken.join("\n");
+}
