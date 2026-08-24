@@ -65,7 +65,7 @@ export default function KlantKiezer({ klanten, huidig, onKies, onVooruit }: {
     // bladeren. Ze blijven gewoon in de database staan.
     const g = groepeerKlanten(klanten);
     const lijst: Groep[] = [
-      { sleutel: "eigen", label: "Mijn eigen klanten", klanten: g.eigen, standaardOpen: true },
+      { sleutel: "eigen", label: "Mijn klanten", klanten: g.eigen, standaardOpen: true },
       {
         sleutel: "mmc", label: "Multimedia Concepts", klanten: g.mmc,
         // Dicht, tenzij je er zelf in zit: dan zou je niet zien waar je bent.

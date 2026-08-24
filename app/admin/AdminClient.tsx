@@ -537,7 +537,7 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
                 <div className="field">
                   <label>Groep</label>
                   <select className="compose-input" value={form.grp} onChange={(e) => set("grp", e.target.value)}>
-                    <option value="">Mijn eigen klanten</option>
+                    <option value="">Mijn klanten</option>
                     <option value="mmc">Multimedia Concepts (cockpit-only, geen login)</option>
                   </select>
                 </div>
@@ -649,20 +649,34 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
           </div>
         )}
 
-        {/* Leads: eigen lijst boven de klanten. Een lead is dezelfde soort rij
-            als een klant, maar zonder inlog, sheet en budget.
-            Dit blok en de klantenlijst staan open zodra het scherm laadt
-            (20-08-2026). Ze waren dicht om de pagina rustig te houden, maar dit
-            zijn precies de twee lijsten waarvoor je hier komt, en in de leadlijst
-            vul je nu ook bedragen en startmaanden in; dan is elke keer twee keer
-            klikken voordat je iets ziet geen rust maar een drempel. De blokken
-            eronder (Multimedia Concepts, onboarding, klantwaarde, meekijken)
-            blijven wél dicht. */}
+        {/* Mijn klanten staat bovenaan en open; al het andere staat eronder en
+            dicht (24-08-2026, op verzoek). Dit is de lijst waarvoor je hier komt,
+            dus die hoort het eerste te zijn wat je ziet, zonder scrollen en zonder
+            klikken. De leads, de omzetstrook en de blokken daaronder open je als je
+            ze nodig hebt.
+            De knop "Nieuwe klant aanmaken" hoort bij deze lijst en staat dus rechts
+            in de kopbalk van dít blok, niet los onderaan de pagina. */}
+        <Vouwblok
+          titel={showGroups && mmcClients.length > 0 ? "Mijn klanten" : "Klanten"}
+          icoon={<Mensen />}
+          aantal={ownClients.length}
+          standaardOpen
+          actie={isOwner ? (openen) => (
+            <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowForm((v) => !v); }}>
+              {showForm ? "− Formulier sluiten" : "+ Nieuwe klant"}
+            </button>
+          ) : undefined}
+        >
+          {isOwner && showForm && klantForm}
+          {clientTable(ownClients, "Nog geen klanten.")}
+        </Vouwblok>
+
+        {/* Leads: dezelfde soort rij als een klant, maar zonder inlog, sheet en
+            budget. */}
         <Vouwblok
           titel="Leads"
           icoon={<Vlag />}
           aantal={leads.length}
-          standaardOpen
           actie={isOwner ? (openen) => (
             <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowLeadForm((v) => !v); }}>
               {showLeadForm ? "− Formulier sluiten" : "+ Nieuwe lead"}
@@ -716,23 +730,6 @@ export default function AdminClient({ initialClients, isOwner = true, canDev = f
         </Vouwblok>
 
         <MaandStrook isOwner={isOwner} hertel={`${clients.length}-${hertel}`} />
-
-        {/* De knop "Nieuwe klant aanmaken" hoort bij de klantenlijst en staat dus
-            rechts in de kopbalk van dát blok, niet los onderaan de pagina. */}
-        <Vouwblok
-          titel={showGroups && mmcClients.length > 0 ? "Mijn eigen klanten" : "Klanten"}
-          icoon={<Mensen />}
-          aantal={ownClients.length}
-          standaardOpen
-          actie={isOwner ? (openen) => (
-            <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowForm((v) => !v); }}>
-              {showForm ? "− Formulier sluiten" : "+ Nieuwe klant"}
-            </button>
-          ) : undefined}
-        >
-          {isOwner && showForm && klantForm}
-          {clientTable(ownClients, "Nog geen klanten.")}
-        </Vouwblok>
 
         {showGroups && mmcClients.length > 0 && (
           <Vouwblok titel="Multimedia Concepts" aantal={mmcClients.length} icoon={<Gebouw />}>

@@ -550,6 +550,12 @@ body {
 .task-table-wrap thead tr th:last-child { border-top-right-radius: 12px; }
 .task-table-wrap tbody tr:last-child td:first-child { border-bottom-left-radius: 12px; }
 .task-table-wrap tbody tr:last-child td:last-child { border-bottom-right-radius: 12px; }
+/* De kolomkoppen blijven staan terwijl je door een lange lijst scrolt: ze plakken
+   net onder de vaste kopbalk (80px hoog, dezelfde waarde die .pages-table en
+   .kpi-table verderop al gebruiken). Eén regel voor élke lijst in het dashboard,
+   want bij rij dertig niet meer weten welke kolom je invult is overal even
+   onhandig. z-index onder die van de kopbalk (100), zodat de kop erover schuift. */
+.task-table-wrap thead th { position: sticky; top: 80px; z-index: 20; }
 table { width: 100%; border-collapse: collapse; }
 thead th {
   background: var(--dark); color: var(--white); padding: var(--s-3) var(--s-5);
@@ -3044,6 +3050,11 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
    balk zodra er een icoontje bij komt. */
 .vouwblok-actie { position: absolute; top: var(--ruimte-groep); right: var(--ruimte-groep); display: flex; align-items: center; gap: var(--ruimte-naast); }
 .vouwblok .strategy-body > .task-table-wrap { margin: 0; box-shadow: none; }
+/* `clip` in plaats van `hidden`, met opzet: allebei snijden ze de hoeken netjes
+   af, maar `hidden` maakt van de kaart een eigen scrollgebied en dán plakken de
+   kolomkoppen van de tabel erin niet meer aan de bovenkant van het scherm. Met
+   `clip` blijft de sticky kop werken. Geen uiterlijk verschil. */
+.vouwblok.strategy-card { overflow: clip; }
 .strategy-session { border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); background: var(--kleur-kaart); }
 .strategy-session-head { display: flex; align-items: center; gap: var(--ruimte-naast); padding: var(--ruimte-krap) var(--ruimte-naast) var(--ruimte-krap) var(--ruimte-krap); }
 .strategy-session-toggle { flex: 1 1 auto; display: flex; align-items: baseline; gap: var(--ruimte-naast); background: none; border: none; padding: var(--ruimte-naast) var(--ruimte-naast); font-family: inherit; font-size: var(--type-lopend); font-weight: 600; color: var(--dark); text-align: left; cursor: pointer; }

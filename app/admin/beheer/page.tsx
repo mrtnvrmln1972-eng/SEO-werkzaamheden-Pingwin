@@ -26,6 +26,9 @@ export default async function BeheerPage() {
       // een verkeerde HubSpot-ronde stonden er op 19-08-2026 driehonderd rijen,
       // en daarin waren zijn eigen klanten niet meer te vinden.
       clients={clients.filter(isKlant).map((c) => ({
+        // Het nummer uit de database: dat is waarmee het slepen de nieuwe
+        // volgorde doorgeeft, precies zoals in de klantenlijst op /admin.
+        id: c.id,
         slug: c.slug,
         name: c.name,
         email: c.email,

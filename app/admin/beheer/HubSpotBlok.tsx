@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Vouwblok from "../Vouwblok";
+import { Vlag } from "../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // DE HUBSPOT-KOPPELING, IN GEWONE TAAL
@@ -102,9 +104,12 @@ export default function HubSpotBlok() {
   const eigenaarNaam = (id: string) => (stand?.eigenaren || []).find((o) => o.id === id)?.naam || "die eigenaar";
 
   return (
-    <>
-      <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>HubSpot (leads)</h2>
-      <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
+    <Vouwblok
+      titel="HubSpot (leads)"
+      icoon={<Vlag />}
+      aantal={stand?.gekoppeld ? stand.leads.length : undefined}
+    >
+      <p className="muted">
         Je leads uit HubSpot komen hier automatisch binnen: iedereen met de leadstatus die jij hieronder aanwijst, met
         de contactgegevens, de opvolgdatum en de notities die je daar maakte. De bedragen en de maand waarin ze naar
         verwachting starten zet je in het dashboard bij de lead zelf, want daar rekent de prognose ermee.
@@ -384,6 +389,6 @@ export default function HubSpotBlok() {
           </div>
         </>
       )}
-    </>
+    </Vouwblok>
   );
 }

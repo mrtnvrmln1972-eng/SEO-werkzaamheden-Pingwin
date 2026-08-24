@@ -79,11 +79,17 @@ export const BLOKKEN: Uitklapper[] = [
         "Bovenin staat een zoekveldje, en zodra je typt gaan alle groepen open, anders zou een treffer in een " +
         "dichtgeklapte groep onvindbaar zijn. Leads staan bewust niet meer tussen de klanten: dat is een bedrijf " +
         "waar nog niets voor gedaan wordt.\n\n" +
-        "**Het beheerscherm zelf staat standaard dicht.** Leads, klanten, de klanten van een aangesloten bureau, " +
-        "de onboardingrij, klantwaarde en meekijken zijn allemaal blokken met een kopbalk en een pijltje; je " +
-        "klapt open wat je nodig hebt in plaats van langs alles heen te scrollen. De knop die bij een blok hoort " +
-        "staat rechts in diezelfde kopbalk ('+ Nieuwe lead' bij de leads, '+ Nieuwe klant' bij de klanten), dus " +
-        "hij is ook zichtbaar als het blok dicht staat; hij stond eerst helemaal onderaan, achter alle rijen.",
+        "**Op het overzicht staat 'Mijn klanten' bovenaan en open; al het andere staat eronder en dicht.** Leads, " +
+        "de omzetstrook, de klanten van een aangesloten bureau, de onboardingrij, klantwaarde en meekijken zijn " +
+        "allemaal blokken met een kopbalk en een pijltje; je klapt open wat je nodig hebt in plaats van langs " +
+        "alles heen te scrollen. De knop die bij een blok hoort staat rechts in diezelfde kopbalk ('+ Nieuwe klant' " +
+        "bij de klanten, '+ Nieuwe lead' bij de leads), dus hij is ook zichtbaar als het blok dicht staat; hij " +
+        "stond eerst helemaal onderaan, achter alle rijen.\n\n" +
+        "**Het beheerscherm (klanten en team) werkt sinds 24 augustus 2026 net zo:** de klantenlijst bovenaan en " +
+        "open, en team, instellingen, de Google-koppelingen en HubSpot eronder als losse blokken die dicht staan. " +
+        "De klanten staan daar in jouw eigen volgorde en die sleep je aan het greepje links, dezelfde volgorde als " +
+        "op het overzicht. En in élke lijst in het dashboard blijft de zwarte kolomkop nu onder de bovenbalk staan " +
+        "terwijl je scrolt, zodat je bij rij dertig nog steeds ziet welke kolom je invult.",
     },
     {
       titel: "Fundament: wat er per klant gekoppeld en ingevuld is, in één oogopslag",

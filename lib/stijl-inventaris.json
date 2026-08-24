@@ -1,7 +1,7 @@
 {
   "css": {
-    "regels": 9266,
-    "stijlregels": 4486,
+    "regels": 9277,
+    "stijlregels": 4488,
     "classnamen": 3063
   },
   "kleuren": {
@@ -597,7 +597,7 @@
     }
   ],
   "inline": {
-    "totaal": 625,
+    "totaal": 614,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1542,7 +1542,7 @@
     }
   ],
   "icoontekens": {
-    "totaal": 204,
+    "totaal": 205,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
@@ -1564,7 +1564,7 @@
       },
       {
         "teken": "⠿",
-        "aantal": 8
+        "aantal": 9
       },
       {
         "teken": "▲",

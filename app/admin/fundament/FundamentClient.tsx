@@ -58,7 +58,7 @@ export default function FundamentClient({ rijen }: { rijen: FundamentRij[] }) {
     // verloren HubSpot-deal onder "Mijn eigen klanten".
     const g = groepeerKlanten(rijen);
     return [
-      { sleutel: "eigen", label: "Mijn eigen klanten", rijen: g.eigen, standaardOpen: true },
+      { sleutel: "eigen", label: "Mijn klanten", rijen: g.eigen, standaardOpen: true },
       { sleutel: "leads", label: "Leads", rijen: g.leads, standaardOpen: true },
       { sleutel: "mmc", label: "Multimedia Concepts", rijen: g.mmc, standaardOpen: false },
     ].filter((g2) => g2.rijen.length > 0);

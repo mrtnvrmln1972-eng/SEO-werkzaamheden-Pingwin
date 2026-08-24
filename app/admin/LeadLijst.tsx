@@ -636,7 +636,6 @@ export function MaandStrook({ isOwner, hertel }: { isOwner: boolean; hertel: unk
     <Vouwblok
       titel="Omzet per maand"
       icoon={<Munt />}
-      standaardOpen
       sub={<a href="/admin/financien" onClick={(e) => e.stopPropagation()}>Hele prognose</a>}
     >
       <div className="task-table-wrap">

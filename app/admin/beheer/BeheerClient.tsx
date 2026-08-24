@@ -6,9 +6,13 @@ import type { TeamUser } from "../../../lib/team-users";
 import OntwikkelMenu from "../OntwikkelMenu";
 import Tellers from "../Tellers";
 import MeldingenMenu from "../MeldingenMenu";
+import Vouwblok from "../Vouwblok";
 import HubSpotBlok from "./HubSpotBlok";
+import { Ketting, Mensen, Munt, Slot } from "../../_ui/Pijl";
 
 type ClientLite = {
+  /** Het nummer uit de database; nodig om de volgorde te kunnen slepen. */
+  id: number;
   slug: string;
   name: string;
   email: string | null;
@@ -91,6 +95,33 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
   }
 
   // ─────────────────────────────── KLANTEN ───────────────────────────────
+  // De volgorde van deze lijst kun je slepen, dus hij leeft hier in de staat en
+  // niet alleen in wat de server meestuurt. Komt er een verse lading van de
+  // server (na opslaan of verwijderen), dan wint die weer: daar staat de
+  // opgeslagen volgorde in.
+  const [rijen, setRijen] = useState<ClientLite[]>(clients);
+  useEffect(() => { setRijen(clients); }, [clients]);
+  // Welke rij op dit moment gesleept wordt. Zelfde patroon als de klantenlijst
+  // op /admin (AdminClient.sleepVolgorde) en de tweak-wachtrij: de héle nieuwe
+  // volgorde gaat in één keer naar de server, niet één verplaatsing.
+  const [sleep, setSleep] = useState<number | null>(null);
+
+  async function laatVallen(doelId: number) {
+    if (sleep === null || sleep === doelId) { setSleep(null); return; }
+    const ids = rijen.map((c) => c.id);
+    if (!ids.includes(sleep)) { setSleep(null); return; }
+    const zonder = ids.filter((id) => id !== sleep);
+    const plek = zonder.indexOf(doelId);
+    zonder.splice(plek < 0 ? zonder.length : plek, 0, sleep);
+    setSleep(null);
+    setRijen(zonder.map((id) => rijen.find((c) => c.id === id)!));
+    await fetch("/api/admin/clients/volgorde", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: zonder }),
+    }).catch(() => { /* stil: de volgorde staat dan nog op de oude stand */ });
+  }
+
   const [editSlug, setEditSlug] = useState<string | null>(null);
   const [cForm, setCForm] = useState({ name: "", domain: "", email: "", loginEnabled: true, ahrefsKeyRef: "" });
   const [newPassword, setNewPassword] = useState<{ slug: string; password: string } | null>(null);
@@ -360,16 +391,21 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
         )}
 
         {/* ─────────────── KLANTEN ─────────────── */}
-        <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-2) 0 var(--s-2)" }}>Klanten</h2>
-        <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
+        {/* Bovenaan en open; de blokken eronder staan dicht (24-08-2026, op
+            verzoek). De klantenlijst is waarvoor je hier komt, de rest zoek je
+            op het moment dat je hem nodig hebt. */}
+        <Vouwblok titel="Klanten" icoon={<Mensen />} aantal={rijen.length} standaardOpen>
+        <p className="muted">
           Naam, website, e-mail en of de klant-login openstaat. Budget en Google Sheet blijven in de cockpit.
           Alleen lopende klanten: leads en afgesloten deals hebben hun eigen blok op <a href="/admin">het klantenoverzicht</a>.
+          Sleep aan het greepje links om de volgorde te veranderen; die geldt meteen ook in de klantenlijst op <a href="/admin">het overzicht</a>.
         </p>
 
         <div className="task-table-wrap">
           <table>
             <thead>
               <tr>
+                <th></th>
                 <th>Klant</th>
                 <th>Website</th>
                 <th>E-mail</th>
@@ -378,8 +414,24 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
               </tr>
             </thead>
             <tbody>
-              {clients.map((c) => (
-                <tr key={c.slug}>
+              {rijen.map((c) => (
+                <tr
+                  key={c.slug}
+                  className={sleep === c.id ? "tw-item-sleept" : undefined}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); void laatVallen(c.id); }}
+                >
+                  <td>
+                    <span
+                      className="drag-handle tw-greep"
+                      draggable
+                      onDragStart={() => setSleep(c.id)}
+                      onDragEnd={() => setSleep(null)}
+                      title="Sleep om de volgorde te veranderen"
+                    >
+                      ⠿
+                    </span>
+                  </td>
                   <td style={{ fontWeight: 600 }}>{c.name}</td>
                   <td>{c.domain || <span className="muted">&mdash;</span>}</td>
                   <td>{c.email || <span className="muted">&mdash;</span>}</td>
@@ -454,9 +506,20 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           );
         })()}
 
+        </Vouwblok>
+
         {/* ─────────────── TEAM ─────────────── */}
-        <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>Team</h2>
-        <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
+        <Vouwblok
+          titel="Team"
+          icoon={<Slot />}
+          aantal={team.length}
+          actie={(openen) => (
+            <button type="button" className="btn btn-klein" onClick={() => { openen(); setShowTeamForm((v) => !v); setCreated(null); }}>
+              {showTeamForm ? "− Formulier sluiten" : "+ Gast toevoegen"}
+            </button>
+          )}
+        >
+        <p className="muted">
           Gasten kunnen inloggen op dit adminscherm en zien alleen de klanten die je aanvinkt. Standaard is een gast alleen-lezen: rondkijken en openklappen mag, maar geen stappen draaien of iets opslaan. Vink &ldquo;mag wijzigen en uitvoeren&rdquo; aan om dat wel toe te staan.
           Vink je precies één klant aan en heeft die klant een eigen adres, dan logt de gast dáár in; op dat adres bestaat geen andere klant, ook niet als zijn rechten later verruimd worden.
         </p>
@@ -595,12 +658,9 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           );
         })()}
 
-        <div style={{ marginTop: "var(--s-6)" }}>
-          <button type="button" className="btn btn-klein" onClick={() => { setShowTeamForm((v) => !v); setCreated(null); }}>
-            {showTeamForm ? "− Formulier sluiten" : "+ Gast toevoegen"}
-          </button>
-        </div>
-
+        {/* De knop "+ Gast toevoegen" stond hier los onder de tabel; hij hoort bij
+            dit blok en staat nu rechts in de kopbalk ervan, net als "+ Nieuwe
+            klant" op het overzicht. */}
         {showTeamForm && (
           <form className="admin-form" style={{ marginTop: "var(--s-5)" }} onSubmit={createGuest}>
             <div className="form-grid">
@@ -665,11 +725,12 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
           </form>
         )}
 
+        </Vouwblok>
+
         {/* ─────────────── INSTELLINGEN (alleen met Moneybird-koppeling) ─────────────── */}
         {showFinance && (
-          <>
-            <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>Instellingen</h2>
-            <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
+          <Vouwblok titel="Instellingen" icoon={<Munt />}>
+            <p className="muted">
               Het e-mailadres van degene die de administratie bijhoudt. De knop &ldquo;Mail naar administratie&rdquo; bij een openstaande-factuursignaal stuurt de factuurlinks naar dit adres.
             </p>
             <form className="admin-form" onSubmit={(e) => { e.preventDefault(); saveInvoiceMail(); }}>
@@ -683,12 +744,12 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
                 </div>
               </div>
             </form>
-          </>
+          </Vouwblok>
         )}
 
         {/* ─────────────── GOOGLE-KOPPELINGEN ─────────────── */}
-        <h2 style={{ fontSize: "var(--fs-lg)", fontWeight: 700, margin: "var(--s-12) 0 var(--s-2)" }}>Google-koppelingen</h2>
-        <p className="muted" style={{ marginBottom: "var(--s-4)" }}>
+        <Vouwblok titel="Google-koppelingen" icoon={<Ketting />}>
+        <p className="muted">
           Twee losse koppelingen, bewust gescheiden: de <strong>data-koppeling</strong> bepaalt wiens Google-account de
           Search Console- en Analytics-cijfers levert; de <strong>Drive-koppeling</strong> bepaalt in wiens Google Drive
           de documenten landen. Data koppelen geeft dus nooit toegang tot iemands Drive.
@@ -721,8 +782,10 @@ export default function BeheerClient({ clients, team, showFinance = false }: { c
             </tbody>
           </table>
         </div>
+        </Vouwblok>
 
         {/* ─────────────── HUBSPOT ─────────────── */}
+        {/* Dit blok zet zijn eigen inklapkaart neer (standaard dicht). */}
         <HubSpotBlok />
 
         <div className="admin-footer" style={{ marginTop: "var(--s-10)", color: "var(--gray)", fontSize: "var(--fs-sm)" }}>
