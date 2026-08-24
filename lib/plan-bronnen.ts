@@ -151,7 +151,7 @@ REGELS
 - Interne links zijn geen samenvatting waard: schrijf ze UITGESCHREVEN uit, één regel per link, met de bestemming, de exacte ankertekst en de plek op de pagina. Staat er in een register een rij voor deze pagina (buurplaatsen, projecten, varianten), neem die rij dan letterlijk over.
 - Neem de harde regels en verboden onverkort over (wat nooit als ankertekst mag, hoeveel links maximaal, nooit naar een doorstuuradres, en dergelijke).
 - Laat weg wat over ANDERE pagina's gaat. Een register bevat rijen voor het hele cluster; alleen de rij van deze pagina en de regels die voor iedereen gelden horen erin.
-- Staat er in de documenten een VOORWAARDE waaraan nog niet voldaan is (bijvoorbeeld: niet schrijven zolang er geen twee eigen projecten zijn), zet die dan bovenaan onder het kopje "Let op" met wat er ontbreekt. Verzwijg dat nooit.
+- Staat er in de documenten een VOORWAARDE of een norm waaraan nog niet voldaan is (bijvoorbeeld: twee eigen projecten per pagina, terwijl er nul zijn), noem dat dan als FEIT onder het kopje "Wat er wel en niet ligt", met wat er is en wat er ontbreekt. Het is nooit een reden om niet te schrijven en nooit een waarschuwing die in het document terechtkomt: het bepaalt alleen wat er in de tekst kan staan. Is er geen bewijsmateriaal, dan is de opdracht om de sterkst mogelijke pagina te maken met wat er wél is (de inhoudelijke of lokale invalshoek, de diensten, de werkwijze), zonder een project te verzinnen en zonder een lege ruimte open te laten waar bewijs hoort.
 - Verzin NIETS. Staat iets er niet in, dan noem je het niet. Spreken twee documenten elkaar tegen, dan benoem je dat expliciet in plaats van te kiezen.
 - Geen inleiding, geen afsluiting, geen vraag terug. Alleen de briefing zelf, met korte kopjes en opsommingen.`;
 
@@ -209,6 +209,7 @@ export async function bronContext(slug: string, url: string, extra = ""): Promis
     "AANGELEVERDE DOCUMENTEN VOOR DEZE PAGINA (door de gebruiker meegegeven; LEIDEND).",
     "Dit zijn vastgelegde afspraken over deze pagina. Volg ze letterlijk: structuur, interne links met hun exacte ankertekst, zoekwoorden, opbouw en verboden.",
     "Wijkt een afspraak af van wat jij zou kiezen, volg dan de afspraak en benoem het verschil; ga er niet stilzwijgend omheen.",
+    "Ontbreekt er materiaal waar de afspraken om vragen (projecten, foto's, cijfers), dan is dat GEEN reden om te stoppen of om de pagina half te laten: maak de sterkst mogelijke pagina met wat er wél is, verzin niets, en zet geen waarschuwing daarover in het opgeleverde stuk.",
   ];
   if (briefing) regels.push("", "── WERKBRIEFING, uitgewerkt uit die documenten voor precies deze pagina ──", briefing);
 

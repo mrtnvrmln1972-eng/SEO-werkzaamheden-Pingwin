@@ -70,9 +70,9 @@ check("de interne links moeten uitgeschreven worden, niet samengevat",
   /UITGESCHREVEN uit, één regel per link/.test(bron),
   "Juist de ankerteksten en bestemmingen sneuvelen als eerste in een samenvatting.");
 
-check("een onvervulde voorwaarde wordt gemeld in plaats van verzwegen",
-  /VOORWAARDE waaraan nog niet voldaan is/.test(bron),
-  "Staat er 'niet schrijven zonder twee projecten', dan moet dat bovenaan het stuk komen.");
+check("ontbrekend materiaal is een feit, nooit een rem",
+  /Het is nooit een reden om niet te schrijven/.test(bron) && /GEEN reden om te stoppen/.test(bron),
+  "Een norm uit een document (twee projecten per pagina) mag de pagina niet tegenhouden; het bepaalt alleen wat er in de tekst kan staan.");
 
 check("een openbaar document werkt ook zonder de Drive-koppeling",
   /async function openbaarUitgelezen/.test(bron) && /export\?format=/.test(bron),

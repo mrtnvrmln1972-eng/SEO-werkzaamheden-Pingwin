@@ -56,9 +56,10 @@ export const BLOKKEN: Uitklapper[] = [
       "Wat er daarna gebeurt: het document wordt volledig uitgelezen (een werkblad met álle tabbladen, niet " +
       "alleen het eerste) en één keer uitgewerkt tot een werkbriefing voor precies díe pagina, met de " +
       "interne links uitgeschreven per stuk (bestemming, exacte ankertekst, plek op de pagina), de " +
-      "zoekwoorden, de opbouw en de verboden. Staat er een voorwaarde in waaraan nog niet is voldaan " +
-      "(\"niet schrijven zolang er geen twee eigen projecten zijn\"), dan komt die bovenaan te staan in " +
-      "plaats van te verdwijnen. Die briefing gaat compleet mee in de strategie-chat, de analyse, de " +
+      "zoekwoorden, de opbouw en de verboden. Vraagt een document om materiaal dat er nog niet is (twee " +
+      "eigen projecten per pagina bijvoorbeeld), dan staat dat als feit in de briefing en houdt het niets " +
+      "tegen: er wordt gewoon de sterkst mogelijke pagina gemaakt met wat er wél ligt, zonder verzonnen " +
+      "voorbeelden en zonder waarschuwing in het opgeleverde stuk. Die briefing gaat compleet mee in de strategie-chat, de analyse, de " +
       "blauwdruk en de copy, met de documenten zelf eronder. Hij wordt bewaard en opnieuw gemaakt zodra er " +
       "een letter in een document verandert, dus je betaalt de wachttijd één keer en nooit met een " +
       "verouderde versie.\n\n" +
