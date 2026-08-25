@@ -167,7 +167,7 @@ export default function KaartOverDeze({ slug, t, page, mailLinks, onOpenMailDate
           klus die niet over één pagina gaat (een rapportage, een werklijst).
           Het chipje "+ document" staat via een portal in de knoppenbalk van de
           aantekeningen hieronder; de lijst zelf hoort bij de knop hierboven. */}
-      <DocVersies slug={slug} url={t.url || `taak:${t.id}`} taakId={t.id} triggerSlot={notitieDocSlot}
+      <DocVersies slug={slug} url={t.url || `taak:${t.id}`} triggerSlot={notitieDocSlot}
         open={vouw === "docs"} onStand={setDocStand} driveMap={driveMap} onKiesMap={onKiesMap} />
 
       {/* Het archief: de geschreven tekst die van de kaart af is geschoven.
