@@ -52,6 +52,18 @@ export function isKorteTitel(taak: string): boolean {
 }
 
 /**
+ * Het stuk ná de scheiding in een korte titel ("/pad/ · afmaken" → "afmaken").
+ * Dat stuk is niet altijd het automatische werkwoord: past Maarten de titel
+ * met de titel-pen aan tot bijvoorbeeld "/over-ons/ · afmaken", dan verandert
+ * alleen dít woord, en dat woord moet dus ook te zien blijven naast het pad.
+ * Geen match op `isKorteTitel`, dan een lege string.
+ */
+export function werkwoordUitKorteTitel(taak: string): string {
+  const m = /^\/\S*\s·\s(\S+)$/.exec((taak || "").trim());
+  return m ? m[1] : "";
+}
+
+/**
  * De titel in de vaste vorm. Zonder pagina valt hij terug op de eerste zin van
  * de bestaande titel: dan is er geen pad om te tonen, en is een verzonnen
  * puntjesvorm alleen maar misleidend.

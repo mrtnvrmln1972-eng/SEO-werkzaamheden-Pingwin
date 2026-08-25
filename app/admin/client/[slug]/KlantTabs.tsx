@@ -123,6 +123,14 @@ export default function KlantTabs({ basisPad, actief, isLead, onKies }: {
       }}>{t.label}</a>
   );
 
+  // Developer opent altijd in een nieuw tabblad, ook bij een gewone klik: dat
+  // scherm gaat over álle klanten, dus wisselen binnen déze klant-cockpit is
+  // niet wat je wilt. Geen onClick-onderschepping, wél target="_blank".
+  const developerLink = (t: TabItem) => (
+    <a key={t.id} href={href(t.id)} title={t.hint} target="_blank" rel="noopener noreferrer"
+      className={"tab" + (actief === t.id ? " active" : "")}>{t.label}</a>
+  );
+
   // Taken en Pagina's blijven los in de balk staan: daar ga je tien keer per dag
   // heen, die verdien je niet achter een menu te verstoppen. De rest zit in het
   // mega menu, gegroepeerd naar de vraag die het scherm beantwoordt. Developer
@@ -133,7 +141,7 @@ export default function KlantTabs({ basisPad, actief, isLead, onKies }: {
       {isLead && link(TAB_LEAD)}
       {TABS_VOOR.map(link)}
       <KlantMegaMenu label="Alles over deze klant" active={actief} hrefFor={href} onPick={onKies} />
-      {TABS_NA.filter((t) => t.id === "developer").map(link)}
+      {TABS_NA.filter((t) => t.id === "developer").map(developerLink)}
     </nav>
   );
 }

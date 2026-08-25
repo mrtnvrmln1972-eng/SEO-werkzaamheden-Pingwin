@@ -13,7 +13,7 @@
 //  2. Er mag geen opdracht verloren gaan. Wat uit de oude titel wordt gehaald,
 //     hoort er als losse opdrachten weer uit te komen.
 
-import { werkwoordVoor, korteTitel, isKorteTitel, opdrachtenUitTitel, padVan } from "../lib/kaart-titel";
+import { werkwoordVoor, korteTitel, isKorteTitel, werkwoordUitKorteTitel, opdrachtenUitTitel, padVan } from "../lib/kaart-titel";
 
 let fouten = 0;
 function check(naam: string, gekregen: unknown, verwacht: unknown) {
@@ -52,6 +52,14 @@ check("de nieuwe vorm wordt herkend", isKorteTitel(nieuw), true);
 check("en dus blijft hij bij een tweede ronde gelijk", korteTitel(nieuw, URL, { live: false }), nieuw);
 check("de oude vorm wordt niet als kort herkend", isKorteTitel(ECHT), false);
 check("een gewone zin ook niet", isKorteTitel("Fix de 404 op deze pagina"), false);
+
+console.log("\n── Het woord na het pad blijft zichtbaar ──");
+// Regressie: "/over-ons/ · afmaken" is óók een korte titel (één woord na het
+// streepje), dus het rijtje in de planning toonde alleen het pad en liet het
+// woord dat Maarten er zelf bij typte (hier "afmaken") stilletjes vallen.
+check("het automatische werkwoord komt terug", werkwoordUitKorteTitel(nieuw), "herstellen");
+check("een zelf getypt woord komt net zo goed terug", werkwoordUitKorteTitel("/over-ons/ · afmaken"), "afmaken");
+check("geen korte titel levert geen woord op", werkwoordUitKorteTitel("Fix de 404 op deze pagina"), "");
 
 console.log("\n── Er gaat geen opdracht verloren ──");
 const opdrachten = opdrachtenUitTitel(ECHT);
