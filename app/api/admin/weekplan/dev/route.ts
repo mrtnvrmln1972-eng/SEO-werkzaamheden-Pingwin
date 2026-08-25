@@ -8,6 +8,7 @@ import { ALLE_PUNTEN, voorstelPunten, type PuntId } from "../../../../../lib/dev
 import { devSturing } from "../../../../../lib/developer";
 import { planOpvolging } from "../../../../../lib/mail-opvolg";
 import { kaartLinks } from "../../../../../lib/kaart-links";
+import { standaardMee } from "../../../../../lib/naar-developer";
 
 export const runtime = "nodejs";
 
@@ -71,8 +72,14 @@ export async function GET(req: NextRequest) {
   // stond er eerst wél ("Uit de kaart: stappenplan"), en dat las in het
   // mailvenster als een rijtje systeemregels in plaats van als de stukken zelf.
   // Waar iets vandaan komt is voor de ontvanger niet interessant; wát het is wel.
+  // Ze staan er nog wél bij om aan te vinken, maar ze staan niet meer vanzelf
+  // aan: zie lib/naar-developer.ts. Een developer krijgt de link naar het
+  // document plus de zin die Maarten erbij schrijft, en verder niets.
+  // `uitAantekening` markeert ze, zodat de developer-route ze helemaal kan
+  // weglaten en een mail aan de klant ze wél kan aanbieden.
   const uitKaart = kaartLinks(kaart.toelichting || "", kaart.notitie || "")
-    .filter((l) => l.url !== kaart.url && !beschikbaar.some((d) => d.url === l.url));
+    .filter((l) => l.url !== kaart.url && !beschikbaar.some((d) => d.url === l.url))
+    .map((l) => ({ ...l, uitAantekening: true }));
   const alles = [...beschikbaar, ...uitKaart];
 
   return NextResponse.json({
@@ -84,9 +91,11 @@ export async function GET(req: NextRequest) {
     taak: opgeslagen?.taak && opgeslagen.taak !== kaart.taak ? opgeslagen.taak : "",
     toelichting: opgeslagen?.toelichting || "",
     docs: alles,
-    // De pagina, het copy-document en de links uit de kaart staan standaard aan;
-    // de rest kies je zelf.
-    gekozen: gekozen.length ? gekozen.map((d) => d.url) : Array.from(new Set([...(kaart.url ? [kaart.url] : []), ...geldend, ...(copyLink ? [copyLink] : []), ...uitKaart.map((l) => l.url)])),
+    // Alleen de geldende documenten staan aan. De pagina, de oudere versies en de
+    // links uit de aantekeningen stonden hier ook standaard aan, en dat leverde
+    // een developer een rij verwijzingen op waar hij niets mee kon (25-08-2026,
+    // zie lib/naar-developer.ts). Aanvinken kan nog steeds.
+    gekozen: gekozen.length ? gekozen.map((d) => d.url) : standaardMee(beschikbaar),
     voorstelTaak: kaart.taak || "",
     voorstelToelichting: devSturing(kaart.toelichting || ""),
     url: kaart.url || "",

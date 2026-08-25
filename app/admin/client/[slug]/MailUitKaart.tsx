@@ -147,7 +147,7 @@ export default function MailUitKaart({
       .then((r) => r.json())
       .then((d) => {
         if (!d?.ok) return;
-        if (Array.isArray(d.docs)) setDocs(d.docs);
+        if (Array.isArray(d.docs)) setDocs(d.docs);   // filteren gebeurt bij het tonen, want dat hangt af van naar wie de mail gaat
         // De versie die geldt staat standaard aangevinkt; die hoort in de mail.
         if (Array.isArray(d.gekozen) && d.gekozen.length) {
           setLinks((oud) => (Object.keys(oud).length ? oud
@@ -163,10 +163,13 @@ export default function MailUitKaart({
       if (ref.current) ref.current.innerText = c.tekst || "";
       return;
     }
-    // De pagina staat standaard aangevinkt: bij elke mail hierover wil je weten
-    // om wélke pagina het gaat, en die link overtypen was precies het werk dat
-    // dit venster moest wegnemen.
-    setLinks(t.url ? { pagina: true } : {});
+    // Niets staat hier standaard aan; wat er aan hoort, komt uit de lijst
+    // hierboven (`gekozen`). Hier stond `{ pagina: true }`, en dat had twee
+    // gevolgen: bij een taak mét pagina kwam die keuze eerder binnen dan de
+    // documenten, waardoor het geldende document juist NIET aanstond, en bij een
+    // developer stond er standaard een paginalink in een mail die alleen over
+    // het document hoort te gaan (25-08-2026).
+    setLinks({});
     // Het adresveld begint leeg, altijd. Zie de uitleg bij ADRESVELD-REGEL
     // onderaan dit bestand: een onthouden adres uit een andere klant kwam hier
     // terecht en zette twee concurrenten bijna in dezelfde mail.
@@ -198,7 +201,11 @@ export default function MailUitKaart({
       gezien.add(u);
       uit.push({ key, label, url: u, ouder });
     };
-    if (t.url) voegToe("pagina", "De pagina", t.url);
+    // Naar een developer gaat alleen de link naar het document; hij hoeft niet te
+    // kiezen en niet na te denken. De pagina en de stukken uit de aantekeningen
+    // zijn voor een klantmail wél zinnig, dus die blijven daar gewoon staan.
+    // Zie lib/naar-developer.ts (25-08-2026).
+    if (t.url && aud !== "dev") voegToe("pagina", "De pagina", t.url);
     // `docs` komt van dezelfde server-lijst als het doorzet-venster naar de
     // developer (docsVoorPagina): copy, blauwdruk en analyse staan er al in,
     // met de echte bestandsnaam in het label (of "(nog niet in Drive)" als er
@@ -207,7 +214,10 @@ export default function MailUitKaart({
     // pijplijn-copy. Vroeger bouwde dit scherm daar zelf nog een tweede,
     // generiek gelabelde "Copy-doc"-regel bovenop, en dan kon je niet meer
     // zien of dat hetzelfde bestand was als "Copy" of iets anders.
-    for (const d of docs) voegToe(d.url, d.label, d.url, d.ouder);
+    for (const d of docs) {
+      if (aud === "dev" && d.uitAantekening) continue;
+      voegToe(d.url, d.label, d.url, d.ouder);
+    }
     return uit;
   }
 

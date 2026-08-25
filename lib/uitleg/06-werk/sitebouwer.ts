@@ -63,6 +63,18 @@ export const BLOKKEN: Uitklapper[] = [
       "dezelfde vraag om " +
       "bevestiging als in het venster. Een zelf aangemaakte taak bestaat alleen daar en gaat echt weg; een " +
       "doorgezette kaart gaat alleen van de developerlijst af en blijft in de weekplanning staan. Daarvoor " +
-      "moest je voor de meest gebruikte handeling eerst een venster openen.",
+      "moest je voor de meest gebruikte handeling eerst een venster openen.\n\n" +
+      "**Een developer krijgt de link en jouw zin, en verder niets (25 augustus 2026).** In het taakvenster " +
+      "stonden twee blokken met de aantekeningen van de kaart en alle losse verwijzingen die daarin " +
+      "voorkwamen, in het mailvenster stonden diezelfde verwijzingen nog een keer aangevinkt, en in de " +
+      "mailtekst kwamen ze een derde keer terug. Bij GardenSwimm leverde dat een mail op waarin het woord " +
+      "\"mail\" zes keer stond en de opdracht zelf verdronk. Nu staat er standaard alleen de geldende versie " +
+      "van het document aan; de pagina, de oudere versies en de verwijzingen uit de aantekeningen kun je nog " +
+      "aanvinken, maar ze staan uit. Een geschreven mail aan een developer is hooguit twee zinnen: wat er " +
+      "moet gebeuren, en daaronder de link. Voor een klant blijft de context wél staan; die leest een " +
+      "verhaal, een developer voert iets uit.\n\n" +
+      "Dit draait de keuze van 20 augustus terug. Toen ging er een taak weg zonder de stukken die in de " +
+      "aantekeningen stonden, en is besloten om élke link uit dat veld mee te sturen. Dat loste dat ene geval " +
+      "op en maakte alle andere taken rommeliger.",
   },
 ];

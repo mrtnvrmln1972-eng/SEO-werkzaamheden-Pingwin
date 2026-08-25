@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { DevTask } from "../../../lib/developer";
 import RijkTekstVeld from "../../_velden/RijkTekstVeld";
 import { netteHtml } from "../../../lib/nette-html";
-import { notitieTekst } from "../../../lib/kaart-links";
+import { developerMailHtml } from "../../../lib/naar-developer";
 import OntwikkelMenu from "../OntwikkelMenu";
 import Tellers from "../Tellers";
 import MeldingenMenu from "../MeldingenMenu";
@@ -191,32 +191,12 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   // klikbare links, en de terugkoppeling. Bewust simpel (geen tabellen, geen
   // koppen); het is een mail, geen rapport.
   function mailHtml(r: Row, note: string): string {
-    const punten = [`<li>Klant: ${esc(r.clientName)}</li>`, `<li>Taak: ${esc(stripText(r.taak))}</li>`];
-    if (r.link && /^https?:/i.test(r.link)) punten.push(`<li>Pagina: <a href="${esc(r.link)}">${esc(r.link)}</a></li>`);
-    for (const d of r.docs || []) punten.push(`<li>${esc(d.label)}: <a href="${esc(d.url)}">${esc(d.url)}</a></li>`);
-    // De links uit de aantekeningen horen er net zo goed in. Zonder deze regel
-    // ging er een mail de deur uit met "kun jij die vijf vestigingen aanmaken?"
-    // terwijl het stappenplan en de adressen op de kaart stonden (20-08-2026).
-    const alDoor = new Set([...(r.docs || []).map((d) => d.url), r.link]);
-    for (const l of r.kaartLinks || []) {
-      if (alDoor.has(l.url)) continue;
-      punten.push(`<li>${esc(l.label)}: <a href="${esc(l.url)}">${esc(l.url)}</a></li>`);
-    }
-    // De terugkoppeling komt uit een gewoon tekstvak; escapen en de regelovergangen
-    // behouden is genoeg (stripText zou juist de regelovergangen platslaan).
-    const schoon = (note || "").trim();
-    // De aantekeningen als gewone tekst eronder: een mail hoort simpel te blijven
-    // (geen tabellen, geen koppen), maar de gegevens die erin staan zijn precies
-    // wat de ontvanger nodig heeft om te kunnen beginnen.
-    const notities = notitieTekst(r.kaartNotitie, 2500);
-    return [
-      "<p>Hoi,</p>",
-      "<p>Over deze taak uit de developerlijst:</p>",
-      `<ul>${punten.join("")}</ul>`,
-      notities ? `<p>Wat er bij deze taak staat:</p><p>${esc(notities).replace(/\n/g, "<br>")}</p>` : "",
-      schoon ? `<p>${esc(schoon).replace(/\n/g, "<br>")}</p>` : "",
-      "<p>Groet</p>",
-    ].filter(Boolean).join("");
+    // Jouw zin plus de link naar het document. Verder niets: zie
+    // lib/naar-developer.ts voor waarom (25-08-2026). Hier stond een opsomming
+    // met klant, taak, pagina, élke link uit de aantekeningen en de complete
+    // aantekeningen eronder. Bij GardenSwimm kwam het woord "mail" zo zes keer in
+    // één mail te staan, en de opdracht zelf verdronk erin.
+    return developerMailHtml({ zin: note, docs: r.docs || [], esc });
   }
 
   // Slaat de developer-status (klaar + terugkoppeling) van één taak op. Raakt de
@@ -861,35 +841,10 @@ function TaakVenster({ taak, clientSlug, clientName, onLijst, onSluiten }: {
             </div>
           )}
 
-          {/* De aantekeningen van de kaart, in hun geheel en met werkende links.
-              Dit is het veld waar Maarten met de hand het echte verhaal in zet
-              (vestigingen, adressen, een stappenplan, bespreekpunten), en tot
-              20-08-2026 kwam daar niets van bij de developer terecht: die kreeg
-              de titel, de pagina en de pijplijn-documenten, en moest de rest
-              alsnog opvragen. Hier staat het opgemaakt zoals op de kaart, dus de
-              uitklappers, de opsommingen en de links blijven werken. */}
-          {(taak?.kaartNotitie || "").trim() && (
-            <div className="dev-kaart-opm">
-              <div className="dev-kaart-opm-kop">
-                <span>Aantekeningen bij deze taak</span>
-              </div>
-              <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(taak?.kaartNotitie || "") }} />
-            </div>
-          )}
-
-          {/* Alles wat aan te klikken is, nog een keer op een rij. In een lange
-              aantekening staat een link makkelijk verstopt; hier zie je in één
-              blik waar je heen moet. */}
-          {(taak?.kaartLinks || []).length > 0 && (
-            <div className="dev-kaart-opm">
-              <div className="dev-kaart-opm-kop"><span>Links uit deze taak</span></div>
-              <div className="dev-task-docs">
-                {(taak?.kaartLinks || []).map((l) => (
-                  <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="dev-doc-link" title={l.url}>{l.label}</a>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Hier stonden twee blokken met de aantekeningen van de kaart en alle
+              losse verwijzingen die daarin voorkwamen. Allebei weg (25-08-2026):
+              een developer krijgt de documenten en de zin die jij erbij schrijft,
+              en verder niets. Zie lib/naar-developer.ts. Nooit terugzetten. */}
 
           <label className="compose-label">Opmerking voor de developer</label>
           {/* Een afbeelding of document er rechtstreeks in slepen. Het bestand

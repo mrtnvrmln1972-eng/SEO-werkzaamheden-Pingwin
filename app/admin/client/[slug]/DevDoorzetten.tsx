@@ -64,7 +64,10 @@ export default function DevDoorzetten({ slug, id, kaartTitel, onKlaar, onSluit }
         setTaak(String(d.taak || "").replace(/<[^>]*>/g, "").trim());
         setToelichting(String(d.toelichting || ""));
         setHintTaak(String(d.voorstelTaak || "").replace(/<[^>]*>/g, "").trim());
-        setDocs(Array.isArray(d.docs) ? d.docs : []);
+        // De links uit de aantekeningen blijven hier weg: dit venster zet een
+        // taak door naar de developer, en die krijgt de documenten plus jouw
+        // zin. Zie lib/naar-developer.ts (25-08-2026).
+        setDocs(Array.isArray(d.docs) ? d.docs.filter((x: { uitAantekening?: boolean }) => !x.uitAantekening) : []);
         setUrl(String(d.url || ""));
         setPuntKeuzes(Array.isArray(d.puntKeuzes) ? d.puntKeuzes : []);
         const p: Record<string, boolean> = {};

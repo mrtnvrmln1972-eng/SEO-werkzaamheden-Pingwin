@@ -92,9 +92,16 @@ export async function POST(req: NextRequest) {
   ].filter((r) => stijl !== "kans" || !/MAXIMAAL 120 woorden|vetgedrukte woorden|^- Opbouw: aanhef|Vertel NOOIT het proces na/.test(r));
   const doelgroep = audience === "dev"
     ? [
-        `Je schrijft namens Maarten van Pingwin (SEO-bureau) een korte, directe e-mail aan de developer/sitebouwer van de klant "${naam}".`,
-        `Doel: concreet doorgeven wat er op de site moet gebeuren, met de relevante details zodat de developer meteen aan de slag kan. Vakjargon mag.`,
-        ...opmaakRegels,
+        // Een developer voert iets uit; die leest geen verhaal. Hier stond
+        // "met de relevante details", en dat werd een mail vol achtergrond,
+        // paginaverwijzingen en losse links uit de aantekeningen. Maartens
+        // oordeel op 25-08-2026: "een developer moet niet hoeven nadenken; die
+        // moet een eenduidige tekst krijgen om meteen helder te hebben wat je
+        // moet doen." Zie lib/naar-developer.ts.
+        `Je schrijft namens Maarten van Pingwin (SEO-bureau) een e-mail aan de developer/sitebouwer van de klant "${naam}".`,
+        `Doel: in HOOGUIT TWEE ZINNEN zeggen wat er moet gebeuren. Bijvoorbeeld: "Kun je deze aangepaste teksten op de website van ${naam} zetten?"`,
+        `Geen achtergrond, geen uitleg waarom, geen opsomming van wat er speelt, geen verwijzingen naar mails, aantekeningen of andere documenten. De link naar het document wordt apart meegestuurd; noem hem niet nog een keer in de tekst.`,
+        `Schrijf nooit meer dan die twee zinnen plus een aanhef en een afsluiting. Alles wat je extra opschrijft is ruis waar hij doorheen moet lezen.`,
         `- Sluit af met "Groet, Maarten (Pingwin)".`,
       ]
     : audience === "anders"
@@ -177,7 +184,12 @@ export async function POST(req: NextRequest) {
   // assistent "kun jij die vijf vestigingen aanmaken?" en moest de ontvanger de
   // gegevens alsnog opvragen (20-08-2026).
   const notitie = notitieTekst(String(body.notitie || ""), 3000);
-  const user = [
+  // Naar een developer gaat alleen de taak zelf mee. De achtergrond en de
+  // aantekeningen zijn precies wat zijn mail onleesbaar maakte; voor een klant of
+  // een derde blijven ze wél staan (25-08-2026, zie lib/naar-developer.ts).
+  const user = audience === "dev"
+    ? `Taak: ${taak}`
+    : [
     `Taak: ${taak}`,
     url ? `Pagina: ${url}` : ``,
     toelichting ? `Achtergrond en waarom (intern; gebruik wat relevant is voor deze ontvanger):\n${toelichting}` : `Er is nog geen aparte onderbouwing; schrijf op basis van de taak zelf.`,

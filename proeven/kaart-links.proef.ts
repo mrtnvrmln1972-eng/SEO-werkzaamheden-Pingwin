@@ -3,8 +3,14 @@ import path from "node:path";
 import { kaartLinks, notitieTekst } from "../lib/kaart-links";
 
 // ═══════════════════════════════════════════════════════════
-// WAT OP DE KAART STAAT, GAAT MEE NAAR DE DEVELOPER
+// WAT OP DE KAART STAAT, IS TERUG TE VINDEN (MAAR NIET VOOR DE DEVELOPER)
 // ═══════════════════════════════════════════════════════════
+// LET OP, DE RICHTING IS OP 25-08-2026 OMGEDRAAID. Deze proef ging over "alles
+// van de kaart gaat mee naar de developer". Dat geldt niet meer: een developer
+// krijgt de link naar het document plus de zin die Maarten erbij schrijft, en
+// verder niets (zie lib/naar-developer.ts en proeven/naar-developer.proef.ts).
+// Wat hier overblijft gaat over het verzamelen zelf, en over de mail aan de
+// KLANT; daar is de context nog steeds precies wat je nodig hebt.
 // Waarom deze proef bestaat (20-08-2026, taak "Locaties aanhaken" bij Nationaal
 // Oogcentrum): in de aantekeningen van die kaart stond het hele verhaal. Een link
 // naar het stappenplan, een uitklapper met vijf vestigingen (adressen,
@@ -106,48 +112,42 @@ check("de developerlijst verzamelt de links uit kaart én aantekeningen",
   /kaartLinks\(r\.toelichting as string, r\.notitie as string\)/.test(dev),
   "De links moeten uit allebei komen; in de aantekeningen staan meestal de belangrijkste.");
 
-const overzicht = lees("app/admin/developer/DeveloperOverview.tsx");
-check("het taakvenster toont de aantekeningen",
-  /Aantekeningen bij deze taak/.test(overzicht),
-  'De developer opent de taak en moet daar "het verhaal" zien staan, niet alleen een titel.');
-
-check("het taakvenster rendert ze opgemaakt, met werkende links",
-  /netteHtml\(taak\?\.kaartNotitie/.test(overzicht),
-  "Via netteHtml, zoals alles wat het dashboard op het scherm zet; dan blijven de links klikbaar.");
-
-check("het taakvenster zet de links ook los op een rij",
-  /Links uit deze taak/.test(overzicht),
-  "In een lange aantekening staat een link makkelijk verstopt.");
-
-check("de mail naar de developer neemt de links mee",
-  /for \(const l of r\.kaartLinks \|\| \[\]\)/.test(overzicht),
-  'Anders gaat er een mail uit met "kun jij dit doen?" zonder de gegevens erbij.');
-
-check("de mail naar de developer neemt de aantekeningen mee",
-  /notitieTekst\(r\.kaartNotitie/.test(overzicht),
-  "Als tekst, want een mail hoort simpel te blijven; de gegevens erin zijn wat telt.");
+// ── Waar ze NIET meer heen gaan: de developer (25-08-2026) ──────────────────
+// Hier stonden vijf controles die het omgekeerde afdwongen: de aantekeningen en
+// alle losse links moesten in het taakvenster van de developer staan én in zijn
+// mail. Dat kwam uit één geval bij Nationaal Oogcentrum, waar de developer een
+// taak kreeg zonder de stukken die op de kaart stonden. Het loste dat geval op en
+// maakte de standaard slechter: bij GardenSwimm kreeg de developer twee blokken
+// met verwijzingen waarvan er twee letterlijk "Mail" heetten, en kwam het woord
+// "mail" zes keer in één mail te staan. Maartens oordeel: "een developer moet
+// niet hoeven nadenken; die moet een eenduidige tekst krijgen."
+//
+// De regel is omgedraaid en staat nu in lib/naar-developer.ts, met een eigen
+// proef (proeven/naar-developer.proef.ts). Wat hier overblijft gaat alleen nog
+// over het VERZAMELEN van die links, want dat werkt nog steeds en is nog steeds
+// zinnig voor een mail aan de klant.
 
 const doorzet = lees("app/api/admin/weekplan/dev/route.ts");
-check("het doorzet-venster biedt de links uit de kaart aan",
+check("het doorzet-venster kent de links uit de kaart nog steeds",
   /kaartLinks\(kaart\.toelichting/.test(doorzet),
-  "Daar kies je wat er meegaat, dus daar moeten ze in de lijst staan.");
+  "Ze zijn niet weg; ze staan alleen niet meer vanzelf aan.");
 
-check("die links staan standaard aan",
-  /uitKaart\.map\(\(l\) => l\.url\)/.test(doorzet),
-  "Ze zijn er niet voor niets bij gezet; standaard uit betekent dat ze vergeten worden.");
+check("maar ze staan er niet meer standaard aan",
+  !/uitKaart\.map\(\(l\) => l\.url\)/.test(doorzet),
+  "Naar een developer gaat de link naar het document plus de zin die Maarten erbij schrijft.");
 
 check("ze heten naar wat ze zijn, zonder voorvoegsel",
   !/Uit de kaart: \$\{/.test(doorzet),
   'Een rijtje "Uit de kaart: …" las in het mailvenster als systeemregels in plaats van als de stukken zelf.');
 
 const explain = lees("app/api/admin/task/explain/route.ts");
-check("de mailschrijver kent de aantekeningen",
+check("de mailschrijver aan een KLANT kent de aantekeningen",
   /Aantekeningen bij deze taak/.test(explain) && /notitieTekst/.test(explain),
-  "Anders schrijft hij netjes om de gegevens heen die er gewoon zijn.");
+  "Anders schrijft hij netjes om de gegevens heen die er gewoon zijn. Voor een developer gaan ze er juist uit.");
 
 check("de kaart stuurt zijn aantekeningen mee naar de mailschrijver",
   /notitie: t\.notitie/.test(lees("app/admin/client/[slug]/MailUitKaart.tsx")),
   "De server kan ze niet gebruiken als het scherm ze niet meestuurt.");
 
-console.log(fouten === 0 ? "\nWat op de kaart staat, komt bij de developer terecht." : `\n${fouten} fout(en).`);
+console.log(fouten === 0 ? "\nWat op de kaart staat, blijft vindbaar." : `\n${fouten} fout(en).`);
 if (fouten > 0) process.exit(1);

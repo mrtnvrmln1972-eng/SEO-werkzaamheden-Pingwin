@@ -49,6 +49,12 @@ export type VersieDoc = {
   soort?: DocSoort;
   /** Er is een nieuwere versie van dezelfde soort; standaard dichtgeklapt. */
   ouder?: boolean;
+  /**
+   * Dit is geen document maar een link die in de aantekeningen van de kaart
+   * stond. Naar een developer gaan die niet mee: hij krijgt het document en de
+   * zin die Maarten erbij schrijft. Zie lib/naar-developer.ts (25-08-2026).
+   */
+  uitAantekening?: boolean;
 };
 
 /** Een `kind` uit de database naar een soort waar versies van bestaan. */
