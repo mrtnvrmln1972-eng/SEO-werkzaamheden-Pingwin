@@ -70,7 +70,7 @@ for (const t of ONGEMOEID) {
 const html = mdToHtml("Laag 1 — Dienstpagina's");
 check("de gedeelde renderer schoont het op", !/[—–]/.test(html), html);
 
-for (const bestand of ["lib/markdown.ts", "lib/card-info.ts"]) {
+for (const bestand of ["lib/markdown.ts", "lib/card-info.ts", "lib/pingwin-docx.ts"]) {
   check(`${bestand} gebruikt de opschoner`, /zonderLosStreepje/.test(lees(bestand)),
     "Zonder deze aanroep blijven bestaande kaarten en teksten hun streepjes houden.");
 }
@@ -81,6 +81,17 @@ for (const bestand of ["lib/markdown.ts", "lib/card-info.ts"]) {
 check("de instructie aan het model noemt de regel",
   /em-dash|lang streepje|lange streepjes/i.test(lees("lib/chat.ts")),
   "Zet de schrijfregel ook in de instructie, zodat de opschoning een vangnet blijft.");
+
+// ── 5. Élk Pingwin-document (analyse/blauwdruk/copy/schema/...) krijgt de regel mee ──
+// Op 25-08-2026 kwam een streepje terug in een opgeleverd copy-document, doordat
+// de COPY- en COPY_CLIENT-systeemprompt de regel simpelweg niet noemden (alleen
+// SCHEMA_DOC_SYSTEM had hem). Alle documenttypes delen DOCSPEC_FORMAT als
+// afsluiter van hun systeemprompt; die ene plek moet de regel dragen zodat geen
+// nieuw of bestaand documenttype hem kan missen. lib/pingwin-docx.ts (punt 3
+// hierboven) is het vangnet; dit is de eerste linie.
+check("DOCSPEC_FORMAT (gedeeld door alle document-systeemprompts) noemt de regel",
+  /em-dash|lang streepje|lange streepjes/i.test(lees("lib/page-doc.ts")),
+  "Zonder dit in DOCSPEC_FORMAT mist elk nieuw documenttype de instructie, en leunt alles op het vangnet in pingwin-docx.ts.");
 
 console.log(fouten === 0
   ? "\nGeen los liggend lang streepje meer in beeld."

@@ -169,7 +169,8 @@ Toegestane bloktypes in "blocks":
 - {"type":"highlight","text":"belangrijke callout"}
 - {"type":"step","nr":1,"title":"...","text":"..."}
 - {"type":"code","text":"letterlijke code (bijv. JSON), regeleinden met \\n"} — alleen voor code/markup, nooit voor gewone tekst
-Houd het compleet maar compact. Voor NADRUK mag je woorden vet maken door ze tussen **dubbele sterretjes** te zetten (bijvoorbeeld een zoekwoord); gebruik verder geen markdown-tekens. Gebruik NERGENS emoji of symbolen als iconen (ook niet in classificaties: schrijf CRITICAL/MAJOR/MINOR en PASS/FAIL als gewone tekst, geen gekleurde bolletjes of vinkjes).`;
+Houd het compleet maar compact. Voor NADRUK mag je woorden vet maken door ze tussen **dubbele sterretjes** te zetten (bijvoorbeeld een zoekwoord); gebruik verder geen markdown-tekens. Gebruik NERGENS emoji of symbolen als iconen (ook niet in classificaties: schrijf CRITICAL/MAJOR/MINOR en PASS/FAIL als gewone tekst, geen gekleurde bolletjes of vinkjes).
+GEEN LOS LIGGEND LANG STREEPJE (em-dash — of en-dash –) als zinsscheiding, in GEEN enkel tekstveld (titel, koppen, alinea's, bullets, tabellen): gebruik een komma, dubbele punt, puntkomma, haakjes of een nieuwe zin. Een koppelteken zonder spaties in een samenstelling (SEO-strategie, AI-tools) blijft gewoon Nederlands en mag wel.`;
 
 const ANALYSE_SYSTEM = `Je bent een senior SEO-specialist bij bureau Pingwin en voert een criteria-gestuurde SEO-ANALYSE uit van een BESTAANDE landingspagina.
 Je scoort objectief tegen het criteria-document hieronder (de single source of truth). Geen subjectieve oordelen: alleen een gemeten waarde getoetst aan de norm uit een criterium-ID.
@@ -478,7 +479,7 @@ Lever deze secties, elk kort en in gewone taal:
 2. Waarom dit belangrijk is: betere weergave in Google en betere herkenbaarheid voor AI-zoekmachines (eerlijk: geen garantie, wel een bewezen sterke basis).
 3. Voor de developer: dat de exacte code in het losse .json-bestand in dezelfde Drive-map staat, dat die letterlijk geplakt kan worden (in de head of via de gebruikte SEO-plugin), en dat na plaatsing gecontroleerd wordt met de Rich Results Test (search.google.com/test/rich-results) en validator.schema.org.
 4. Aandachtspunten: alleen als die er zijn (aangeleverd), bijv. bestaande plugin-schema of gegevens die de klant nog moet bevestigen.
-Geen em-dash of en-dash. Geen emoji. ${DOCSPEC_FORMAT}`;
+Geen emoji. ${DOCSPEC_FORMAT}`;
 
 // Kort combi-document (klant + developer) voor de structured data van één pagina.
 export async function schemaDocSpec(slug: string, url: string, advies: string, warnings: string[]): Promise<{ spec: DocSpec; title: string }> {

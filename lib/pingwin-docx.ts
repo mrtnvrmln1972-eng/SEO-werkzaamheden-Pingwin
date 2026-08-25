@@ -5,6 +5,17 @@ import { Kaders, T, sectiekop, copyKop, callout, stapkaart, citaat, kpiblok,
          run, type KpiRegel } from "./huisstijl/blokken";
 import { verwerkVormen } from "./huisstijl/vorm";
 import { omslagPng, OMSLAG_BREEDTE, OMSLAG_HOOGTE } from "./huisstijl/omslag";
+import { zonderLosStreepje } from "./streepjes";
+
+// Elk Pingwin-document (analyse, blauwdruk, copy, en alles daaromheen) komt
+// hier samen vóór het naar .docx wordt gebakken. Dit is dus de plek om de
+// schrijfregel "geen los liggend lang streepje" af te dwingen MET
+// TERUGWERKENDE KRACHT op elk documenttype, ongeacht welke systeemprompt de
+// tekst maakte en of die prompt de regel noemt of vergeet. Dezelfde aanpak als
+// lib/markdown.ts voor de chat/kaarten: een model houdt zich niet met
+// zekerheid aan een stijlregel, deze functie op de weergave-/renderlaag wel.
+// Nooit een tekstveld aan een Word-blok geven zonder hierdoorheen; proeven/
+// streepjes.proef.ts bewaakt dat.
 
 // Bouwt een .docx in de Pingwin-huisstijl uit een gestructureerde inhoud.
 //
@@ -105,7 +116,7 @@ function voetregel(): any {
 function tekstOmslag(spec: DocSpec): any[] {
   const rijen = Object.entries(spec.meta || {}).map(([k, v]) => new TableRow({ children: [
     cel([P(k.toUpperCase(), { bold: true, size: 16, color: T.inkt, spacing: 24, na: 0 })], { fill: T.peachLicht, pt: 120, pb: 120 }),
-    cel([P(String(v), { size: 20, na: 0 })], { pt: 120, pb: 120 }),
+    cel([P(zonderLosStreepje(String(v)), { size: 20, na: 0 })], { pt: 120, pb: 120 }),
   ] }));
   return [
     P("Pingwin rapportage".toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, na: 100 }),
@@ -115,8 +126,8 @@ function tekstOmslag(spec: DocSpec): any[] {
     // ziet er heel groot en omslachtig uit, met een grote regelafstand, dat mag
     // gewoon veel compacter en korter achter elkaar." Nu 18pt op iets meer dan
     // één regel, dus de regels sluiten aan.
-    P(spec.titel, { bold: true, size: 36, color: T.inkt, regel: 250, na: 100 }),
-    ...(spec.ondertitel ? [P(spec.ondertitel, { size: 22, color: "5D564E", regel: 260, na: 180 })] : []),
+    P(zonderLosStreepje(spec.titel), { bold: true, size: 36, color: T.inkt, regel: 250, na: 100 }),
+    ...(spec.ondertitel ? [P(zonderLosStreepje(spec.ondertitel), { size: 22, color: "5D564E", regel: 260, na: 180 })] : []),
     ...(rijen.length ? [tabel(rijen, { cols: [2200, 6800] }), new Paragraph({ spacing: { after: 320 }, children: [] })] : []),
   ];
 }
@@ -150,9 +161,9 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
   const werkdocument = spec.stijl === "werkdocument";
   const png = werkdocument ? null : await omslagPng({
     kicker: spec.rapporttype || "Pingwin rapportage",
-    titel: spec.titel,
-    ondertitel: spec.ondertitel,
-    meta: { Klant: spec.klant, ...(spec.meta || {}) },
+    titel: zonderLosStreepje(spec.titel),
+    ondertitel: spec.ondertitel ? zonderLosStreepje(spec.ondertitel) : spec.ondertitel,
+    meta: Object.fromEntries(Object.entries({ Klant: spec.klant, ...(spec.meta || {}) }).map(([k, v]) => [k, zonderLosStreepje(String(v))])),
   }, sfeerbeeldKandidaten(spec.sfeerbeeldUrl)).catch(() => null);
   omslagGelukt = werkdocument || !!png;
   if (png) {
@@ -167,33 +178,41 @@ export async function buildPingwinDoc(spec: DocSpec): Promise<Buffer> {
   // Alleen de eigen secties van het rapport krijgen een nummer-bolletje. Koppen
   // die uit de copy zelf komen ("H2 — Tuinaanleg in Oss") houden hun niveau als
   // labeltje, want die horen bij de webtekst en niet bij ons rapport.
+  // KOP_NIVEAU matcht op de RUWE tekst (het "H2 — Titel"-label gebruikt zelf een
+  // gedachtestreepje als vaste vorm); pas ná die match wordt het overgebleven
+  // stuk kop- of looptekst opgeschoond, zodat de match nooit breekt.
   let secNr = 0;
   for (const sec of spec.sections || []) {
     if (sec.heading) {
       const m = KOP_NIVEAU.exec(sec.heading);
-      if (m) kids.push(...copyKop(m[1], m[2]));
-      else if (werkdocument) kids.push(...copyKop("", sec.heading));
-      else kids.push(...sectiekop(++secNr, "", sec.heading));
+      if (m) kids.push(...copyKop(m[1], zonderLosStreepje(m[2])));
+      else if (werkdocument) kids.push(...copyKop("", zonderLosStreepje(sec.heading)));
+      else kids.push(...sectiekop(++secNr, "", zonderLosStreepje(sec.heading)));
     }
     for (const b of sec.blocks || []) {
       try {
-        if (b.type === "paragraph" && b.text) kids.push(P(b.text));
+        if (b.type === "paragraph" && b.text) kids.push(P(zonderLosStreepje(b.text)));
         else if (b.type === "subheading" && b.text) {
           const m = KOP_NIVEAU.exec(b.text);
-          if (m) kids.push(...copyKop(m[1], m[2]));
-          else kids.push(subkop(b.text));
+          if (m) kids.push(...copyKop(m[1], zonderLosStreepje(m[2])));
+          else kids.push(subkop(zonderLosStreepje(b.text)));
         }
-        else if (b.type === "bullets" && b.items?.length) kids.push(...b.items.map(bullet));
-        else if (b.type === "highlight" && b.text) kids.push(...callout(kaders, "", b.text));
-        else if (b.type === "step") kids.push(...stapkaart(kaders, b.nr, b.title, b.text));
-        else if (b.type === "kpi" && b.rows?.length) kids.push(...kpiblok(kaders, b.rows));
-        else if (b.type === "table" && b.headers?.length && b.rows?.length) kids.push(...datatabel(b.headers, b.rows, b.cols));
+        else if (b.type === "bullets" && b.items?.length) kids.push(...b.items.map((i) => bullet(zonderLosStreepje(i))));
+        else if (b.type === "highlight" && b.text) kids.push(...callout(kaders, "", zonderLosStreepje(b.text)));
+        else if (b.type === "step") kids.push(...stapkaart(kaders, b.nr, zonderLosStreepje(b.title), zonderLosStreepje(b.text)));
+        else if (b.type === "kpi" && b.rows?.length) kids.push(...kpiblok(kaders, b.rows.map((r) => ({
+          ...r, label: zonderLosStreepje(r.label), waarde: zonderLosStreepje(r.waarde),
+          verschil: r.verschil ? zonderLosStreepje(r.verschil) : r.verschil,
+        }))));
+        else if (b.type === "table" && b.headers?.length && b.rows?.length)
+          kids.push(...datatabel(b.headers.map(zonderLosStreepje), b.rows.map((r) => r.map(zonderLosStreepje)), b.cols));
+        // Code-blokken blijven letterlijk (JSON/markup), daar hoort geen tekstopschoning in.
         else if (b.type === "code" && b.text) kids.push(...codeRegels(b.text));
       } catch { /* sla een fout blok over, breek het document niet */ }
     }
   }
 
-  if (spec.slotcitaat) kids.push(...citaat(kaders, spec.slotcitaat));
+  if (spec.slotcitaat) kids.push(...citaat(kaders, zonderLosStreepje(spec.slotcitaat)));
 
   // Vangnet: geneste arrays platslaan en losse primitieven eruit, zodat er nooit
   // een ongeldig element in de XML kan lekken.
