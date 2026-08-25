@@ -75,15 +75,6 @@ export const BLOKKEN: Uitklapper[] = [
       "verhaal, een developer voert iets uit.\n\n" +
       "Dit draait de keuze van 20 augustus terug. Toen ging er een taak weg zonder de stukken die in de " +
       "aantekeningen stonden, en is besloten om élke link uit dat veld mee te sturen. Dat loste dat ene geval " +
-      "op en maakte alle andere taken rommeliger.\n\n" +
-      "**Twee projecten op één taak? Knip hem doormidden.** Stonden er documenten van twee losse " +
-      "projecten op één kaart, dan liep je vast op iets simpels: er kan maar één versie geldend zijn, dus " +
-      "vinkte je de ene aan, dan leek de andere vervallen. En de developer kreeg twee opdrachten in één " +
-      "taak. Bij de documenten van een taak staat nu \"Splits deze taak\": je geeft de tweede taak een naam, " +
-      "vinkt aan welke documenten meeverhuizen, en er komt een tweede kaart naast in dezelfde week. De " +
-      "documenten verhuizen echt (er wordt niets gekopieerd), de rest blijft staan, en de nieuwe kaart staat " +
-      "niet meteen bij de developer. Daarna kun je per project aanwijzen welke versie geldt en ze los " +
-      "doorzetten. Dit kan alleen bij een kaart zonder eigen pagina: hangen de documenten aan een pagina, " +
-      "dan horen ze bij die pagina en gaat het om één project.",
+      "op en maakte alle andere taken rommeliger.",
   },
 ];

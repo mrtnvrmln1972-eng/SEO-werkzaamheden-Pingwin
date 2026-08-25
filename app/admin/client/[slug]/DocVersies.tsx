@@ -62,7 +62,7 @@ type SteunPlan = {
 };
 const OORDEEL_KLEUR: Record<Toets["oordeel"], string> = { "goed": "wp-toets-goed", "let-op": "wp-toets-letop", "niet-goed": "wp-toets-fout" };
 
-export default function DocVersies({ slug, url, taakId, triggerSlot, open, onStand, driveMap, onKiesMap }: { slug: string; url: string; taakId?: number;
+export default function DocVersies({ slug, url, triggerSlot, open, onStand, driveMap, onKiesMap }: { slug: string; url: string;
   /** DOM-knoop uit de knoppenbalk van de aantekeningen (via een portal), zodat
       het "document toevoegen"-chipje daar fysiek in staat i.p.v. als eigen,
       altijd-open blok. Geen knoop (nog niet gemount) = gewoon hier inline. */
@@ -173,36 +173,6 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
     if (d?.ok) setVersies(d.versions || []);
   }, [slug, url]);
   useEffect(() => { void laad(); }, [laad]);
-
-  // ── Deze taak in tweeën knippen (25-08-2026) ──────────────────────────────
-  // Een kaart met twéé projecten erop loopt vast op iets simpels: er kan maar
-  // één versie "geldend" zijn. Vink je de ene aan, dan lijkt de andere vervallen,
-  // terwijl het gewoon een ander project is. En de developer krijgt zo twee
-  // opdrachten in één taak. Zie lib/taak-splitsen.ts.
-  const [splitsOpen, setSplitsOpen] = useState(false);
-  const [splitsTitel, setSplitsTitel] = useState("");
-  const [splitsMee, setSplitsMee] = useState<Record<number, boolean>>({});
-  const kanSplitsen = !!taakId && url === `taak:${taakId}` && versies.length > 1;
-
-  async function splitsNu() {
-    const versieIds = versies.filter((v) => splitsMee[v.id]).map((v) => v.id);
-    setBusy("splitsen"); setFout("");
-    try {
-      const d = await fetch("/api/admin/weekplan/splits", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, taakId, titel: splitsTitel.trim(), versieIds }),
-      }).then((r) => r.json());
-      if (d?.ok) {
-        // De nieuwe kaart staat in de weekplanning, niet in dit venster. Opnieuw
-        // laden is de eerlijkste manier om te laten zien wat er nu waar staat.
-        window.location.reload();
-        return;
-      }
-      setFout(d?.error || "Splitsen lukte niet; probeer het nog een keer.");
-    } catch { setFout("Splitsen lukte niet; probeer het nog een keer."); }
-    finally { setBusy(""); }
-  }
-
 
   // Spatiebalk = voorvertoning, zoals in Finder. Alleen als er een regel gekozen
   // is en je niet in een invoerveld staat, anders kun je nergens meer spaties typen.
@@ -418,48 +388,6 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
           het leesbare overzicht. Stond dat er niet bij, dan opende je een
           aangeleverd Word-document en keek je naar een advies in de huisstijl,
           terwijl je een JSON-bestand zocht (21-08-2026). */}
-      {/* Twee projecten op één kaart: knip hem doormidden. De documenten die je
-          aanvinkt gaan mee naar de nieuwe taak, de rest blijft staan. Zo kun je
-          per project aanwijzen welke versie geldt, en gaat er per taak één link
-          naar de developer. */}
-      {open && kanSplitsen && (
-        <div className="wp-doc-uitleg">
-          <span className="wp-doc-uitleg-kop">Twee projecten op deze taak?</span>
-          {!splitsOpen ? (
-            <p>
-              Staan hier documenten van twee losse projecten, dan kun je er maar één als geldend aanwijzen
-              en krijgt de developer twee opdrachten in één taak.{" "}
-              <button type="button" className="btn btn-ghost btn-klein" onClick={() => setSplitsOpen(true)}>
-                Splits deze taak
-              </button>
-            </p>
-          ) : (
-            <>
-              <p>Geef de tweede taak een naam en vink aan welke documenten meeverhuizen. De rest blijft op deze taak staan.</p>
-              <input className="wp-docdrop-input" value={splitsTitel} maxLength={120}
-                placeholder="Naam van de tweede taak" onChange={(e) => setSplitsTitel(e.target.value)} />
-              <div className="dev-task-docs">
-                {versies.map((v) => (
-                  <label key={v.id} className="wp-mail-linkchip">
-                    <input type="checkbox" checked={!!splitsMee[v.id]}
-                      onChange={(e) => setSplitsMee({ ...splitsMee, [v.id]: e.target.checked })} />
-                    {v.naam}
-                  </label>
-                ))}
-              </div>
-              <span className="pnl-acties-groep">
-                <button type="button" className="btn btn-primary btn-klein"
-                  disabled={!splitsTitel.trim() || !Object.values(splitsMee).some(Boolean) || !!busy}
-                  onClick={() => void splitsNu()}>
-                  {busy === "splitsen" ? "Bezig…" : "Splitsen"}
-                </button>
-                <button type="button" className="btn btn-ghost btn-klein" onClick={() => setSplitsOpen(false)}>Annuleren</button>
-              </span>
-            </>
-          )}
-        </div>
-      )}
-
       {open && heeftStructured && (
         <div className="wp-doc-uitleg">
           <span className="wp-doc-uitleg-kop">Structured data</span>

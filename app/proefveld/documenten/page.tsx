@@ -107,7 +107,7 @@ export default function ProefDocumenten() {
       </p>
       <div className="wp-card wp-open">
         <div className="wp-overdeze">
-          <DocVersies slug="voorbeeld" url="taak:1" taakId={1} open
+          <DocVersies slug="voorbeeld" url="taak:1" open
             driveMap={{ id: "map1", name: "GardenSwimm", path: "Klanten / GardenSwimm / Content" }}
             onKiesMap={() => { /* de echte kiezer hangt aan de kaart */ }} />
         </div>
@@ -119,7 +119,7 @@ export default function ProefDocumenten() {
       </p>
       <div className="wp-card wp-open">
         <div className="wp-overdeze">
-          <DocVersies slug="voorbeeld" url="taak:2" taakId={2} open
+          <DocVersies slug="voorbeeld" url="taak:2" open
             driveMap={{ id: "map1", name: "Bogard", path: "Klanten / Bogard" }}
             onKiesMap={() => { /* de echte kiezer hangt aan de kaart */ }} />
         </div>
