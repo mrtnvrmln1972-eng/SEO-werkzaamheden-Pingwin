@@ -44,6 +44,7 @@ const ACTIE_VOOR: Partial<Record<string, FundamentActieKind>> = {
 // tabwissel die toch niets doet (we zitten al op "klant").
 const ANKER_VOOR: Partial<Record<string, string>> = {
   bedrijfsgegevens: "#fund-structured-data", concurrenten: "#fund-concurrenten",
+  profiel: "#fund-profiel", tov: "#fund-profiel",
 };
 // Geen koppeling om naartoe te springen, maar een linkje dat hier zelf
 // bewaard wordt (net als het positioneringsadvies altijd al deed).

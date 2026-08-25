@@ -520,7 +520,7 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   // elkaar, en dat is in dit dashboard al vaker misgegaan.
   if (alleenProfiel) {
     return (
-      <div className="cockpit-card acc-teal client-profile-card">
+      <div className="cockpit-card acc-teal client-profile-card" id="fund-profiel">
         {profielBlok}
       </div>
     );
