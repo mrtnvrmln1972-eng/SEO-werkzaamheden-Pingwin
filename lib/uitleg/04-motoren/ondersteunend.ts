@@ -45,11 +45,10 @@ export const BLOKKEN: Uitklapper[] = [
       "**Eén link per landingspagina, niet twee.** Google telt binnen één stuk vooral de eerste link naar een " +
       "adres, dus een tweede voegt niets toe en leest als opgevuld. Een link naar een ándere relevante pagina " +
       "mag er wel bij.\n\n" +
-      "**Titel, kop en meta's staan als feit in één tabel.** Wat er stond en wat er nu staat, naast elkaar, " +
-      "door het dashboard zelf ingevuld. Daarvóór beschreef de tekst dat zelf, en dan sprak het document " +
-      "zichzelf tegen: bovenaan stond dat de titel gewijzigd was, verderop dat de H1 grotendeels ongewijzigd " +
-      "was. Het geschreven stukje \"wat er in de tekst is aangepast\" gaat sindsdien alleen nog over de " +
-      "inhoud.\n\n" +
+      "**Titel, kop en meta's staan als feit, door het dashboard zelf ingevuld.** Daarvóór beschreef de tekst " +
+      "dat zelf, en dan sprak het document zichzelf tegen: bovenaan stond dat de titel gewijzigd was, verderop " +
+      "dat de H1 grotendeels ongewijzigd was. Het geschreven stukje \"wat er in de tekst is aangepast\" gaat " +
+      "sindsdien alleen nog over de inhoud.\n\n" +
       "**Onder \"wat er in de tekst is aangepast\" staat alleen wat er écht is aangepast.** Er stonden vijf " +
       "punten waarvan er vier begonnen met \"ongewijzigd gelaten\", met de reden erbij; dat leest voor een " +
       "klant als vier dingen die niet gebeurd zijn. Wat je niet noemt, heb je niet veranderd, dus hoeft het " +
@@ -70,13 +69,22 @@ export const BLOKKEN: Uitklapper[] = [
       "**Wat er in het document komt, en elk gegeven staat er maar één keer in (25 augustus 2026).** " +
       "Eerst \"Wat dit stuk doet\": twee zinnen, geschreven door het dashboard zelf, over welke pagina dit " +
       "stuk versterkt en op welke term. Dan \"Wat er is aangepast\": alleen de echte aanpassingen. Dan " +
-      "\"Voor de sitebouwer\": één tabel met de titel, de H1, de paginatitel en de omschrijving, met wat " +
-      "er stond en wat er nu staat naast elkaar, plus welke bestaande pagina's naar dit stuk mogen linken. " +
-      "Daaronder de volledige aangepaste tekst.\n\n" +
-      "**De interne link staat in de lopende tekst zelf**, als linktekst met het adres erachter, en niet " +
-      "meer alleen in een tabel eronder. De sitebouwer kopieert die tekst, dus in een tabel eronder kan hij " +
-      "hem vergeten. Zet het model de link toch niet in de tekst, dan krijgt hij alsnog een eigen regel; " +
-      "verdwijnen kan hij niet, want zonder link ondersteunt het stuk niets.\n\n" +
+      "\"Voor de sitebouwer\": geen tabel meer, maar losse waarden. De H1 staat op zijn eigen regel; de " +
+      "paginatitel (meta-title) en de meta-description staan onder elkaar als twee punten in één opsomming, " +
+      "in plaats van in smalle, lange tabelkolommen. De documentnaam zelf (\"titel van het stuk\") staat er " +
+      "niet meer bij: die komt nergens terug op de webpagina, dus daar heeft de sitebouwer niets aan.\n\n" +
+      "**\"Interne links\" staat er altijd, nooit alleen wanneer er iets was in te vullen.** Vroeger stonden " +
+      "hier twee aparte tabelletjes die alleen verschenen als er iets bijzonders was: één als een link niet " +
+      "in de tekst was beland, één als er suggesties waren voor pagina's die naar dit stuk mogen linken. " +
+      "Allebei konden ze dus stilletjes wegvallen, en dat gebeurde ook. Sindsdien staat er onder \"Interne " +
+      "links\" altijd de link vanuit dit stuk naar de landingspagina, mét linktekst, en de link die vanaf " +
+      "andere pagina's náár dit stuk zou moeten wijzen als daar een voorstel voor is. Is er nog geen enkele " +
+      "link vastgesteld, dan zegt die regel dat expliciet in plaats van dat de hele kop verdwijnt.\n\n" +
+      "**De interne link staat óók in de lopende tekst zelf**, als linktekst met het adres erachter. De " +
+      "sitebouwer kopieert die tekst, dus staat de link daar ook echt in. Zet het model de link toch niet in " +
+      "de lopende tekst, dan blijft hij bij \"Interne links\" gewoon zichtbaar en komt er voor jou een melding " +
+      "op het scherm bij het document; verdwijnen kan hij niet meer, want zonder link ondersteunt het stuk " +
+      "niets.\n\n" +
       "**Een betere paginatitel en omschrijving voor de landingspagina zelf staan alleen op het scherm.** " +
       "Die worden nog steeds geschreven (kunnen we het zelf, dan doen we het), maar ze gaan over een ándere " +
       "pagina dan dit stuk, en dit document gaat over dit stuk.\n\n" +

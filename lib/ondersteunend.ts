@@ -132,7 +132,7 @@ DIT DOCUMENT IS EEN OPLEVERING, GEEN LIJST MET HUISWERK (dit is een harde regel)
 - Vind je dat de meta-title of de meta-description van de LANDINGSPAGINA beter kan (te lang, te kort, geen klikprikkel, hoofdterm niet vooraan), schrijf ze dan zelf en zet ze in "landingMetas". Zijn ze al goed, laat "landingMetas" dan leeg; verzin geen werk. Die waarden gaan naar Maarten, niet in dit document.
 - Is een kop in de kern de zoekterm zelf, kies dan een kop met een eigen invalshoek. Lever dat alternatief, in plaats van een opmerking dat het lastig is.
 - In "wijzigingen" staat ALLEEN wat je écht veranderd hebt. Nooit een regel die zegt dat iets ongewijzigd is gebleven, en nooit een verantwoording waarom je iets hebt laten staan. Wat je niet noemt, heb je niet aangepast; dat is de afspraak, en dan hoeft het er dus niet bij. Heb je aan de tekst zelf niets veranderd, geef dan een lege lijst.
-- Schrijf in "wijzigingen" NIETS over de titel, de H1, de meta-title of de meta-description. Die staan feitelijk in een eigen tabel in het document, met de oude en de nieuwe waarde naast elkaar; schrijf je er zelf ook over, dan spreken die twee elkaar tegen. In "wijzigingen" hoort alleen wat er met de INHOUD gebeurd is: welke alinea, welke tussenkop, welke zin met de link erin.
+- Schrijf in "wijzigingen" NIETS over de titel, de H1, de meta-title of de meta-description. Die staan feitelijk als losse waarden onder "Voor de sitebouwer"; schrijf je er zelf ook over, dan spreken die twee elkaar tegen. In "wijzigingen" hoort alleen wat er met de INHOUD gebeurd is: welke alinea, welke tussenkop, welke zin met de link erin.
 - "waarschuwingen" is UITSLUITEND voor Maarten en komt niet in het document. Zet daar alleen wat echt een keuze van hem vraagt (een strategische afweging, iets wat je niet kon controleren). Nooit iets over de interne linkstrategie of over ons eigen werk; dat is geen klantboodschap. Meestal is deze lijst leeg.
 
 HARDE REGELS:
@@ -297,6 +297,15 @@ export function controleerPlan(plan: OndersteunendPlan): string[] {
     if (naarDoel.length > 1) {
       uit.push(`Er staan ${naarDoel.length} links naar ${doel.url}. Eén is genoeg: een tweede link naar dezelfde pagina telt nauwelijks mee en leest als opgevuld. Houd de sterkste over.`);
     }
+  }
+  // Een link die het model wel claimt maar niet echt in de lopende tekst heeft
+  // gezet, staat straks nog wél bij "Interne links" (die lijst komt uit
+  // plan.links, niet uit de tekst), maar de sitebouwer kan hem missen bij
+  // kopiëren en plakken van de tekst zelf. Dat is voor Maarten, niet voor het
+  // document: de tekst hoort van de klant te blijven, dus dit wordt gemeld en
+  // niet automatisch bijgeplakt.
+  for (const l of linksBuitenDeTekst(plan)) {
+    uit.push(`De link naar ${pad(l.naar)} met linktekst "${l.anker}" staat niet letterlijk in de lopende tekst. Hij staat wel bij "Interne links", maar de sitebouwer kan hem missen bij het kopiëren en plakken van de tekst zelf.`);
   }
   return uit;
 }
@@ -465,31 +474,51 @@ export function schoonInline(regel: string): string {
 }
 
 /**
- * De feitelijke tabel "titel, koppen en meta's": wat er stond en wat er nu staat.
+ * Interne links, in en uit, altijd expliciet uitgeschreven (25-08-2026).
  *
- * Waarom dit uit CODE komt en niet uit het taalmodel: het document sprak zichzelf
- * tegen. Bovenaan stond dat de titel gewijzigd was, verderop dat de H1
- * grotendeels ongewijzigd was, en of de hoofdterm er nu wel of niet in zat werd
- * op twee plekken anders beschreven. Maartens woorden (21-08-2026): "dan moet je
- * het ook consistent vermelden met wat er is aangepast of niet". Feiten die het
- * dashboard zelf kan vaststellen, hoort het niet aan een tekstschrijver te
- * vragen. Het model schrijft daarom niets meer over deze vier velden.
+ * Er stonden hier twee APARTE tabellen die allebei alleen verschenen als er iets
+ * in te vullen viel: "Deze link staat nog niet in de tekst" (alleen als het
+ * model een link claimde die niet in de tekst terechtkwam) en "Pagina's die naar
+ * dit stuk mogen linken" (alleen als het model dat zelf aanleverde). Beide
+ * konden dus stilletjes wegvallen, en dat gebeurde ook: bij de 26e versie van
+ * het GardenSwimm-stuk stond er ineens geen link meer in het document terwijl
+ * een eerdere versie hem wel had. Maartens woorden (25-08-2026): "nu valt
+ * ineens de externe link naar dit document weer weg. Ik wil de interne links
+ * van en naar deze pagina op dit document uitgewerkt hebben."
+ *
+ * Dit is de vervanging: één vaste kop "Interne links" die er ALTIJD staat, met
+ * de link vanuit dit stuk (uit `plan.links`, ongeacht of hij ook in de lopende
+ * tekst staat) en de link náár dit stuk (uit `plan.linksNaarBlog`) eronder. Is
+ * er geen van beide, dan zegt de regel dat expliciet in plaats van dat de hele
+ * kop verdwijnt; zo ziet Maarten een gat in plaats van dat hij het moet raden.
  */
-function veldenTabel(plan: OndersteunendPlan, oudeTitel: string, oudeKop: string): string[][] {
-  const nieuweKop = eersteKop(plan.tekst);
-  const regel = (veld: string, was: string, wordt: string): string[] => {
-    const w = (was || "").trim();
-    const n = (wordt || "").trim();
-    if (!n) return [veld, w || "niet bekend", "niet ingevuld"];
-    if (!w) return [veld, "stond er niet", n];
-    return [veld, w, n === w ? "ongewijzigd" : n];
-  };
-  return [
-    regel("Titel van het stuk", oudeTitel, plan.titel),
-    regel("H1 boven het stuk", oudeKop, nieuweKop),
-    regel("Paginatitel (meta-title)", "", plan.metaTitle),
-    regel("Meta-description", "", plan.metaDescription),
-  ];
+/**
+ * De links die het model wel noemt maar niet in de lopende tekst heeft gezet.
+ *
+ * De link hoort in de lopende tekst te staan, zodat de sitebouwer hem meeneemt
+ * bij kopiëren en plakken. `interneLinkRegels` hieronder toont hem sowieso al
+ * (uit `plan.links`, ongeacht de tekst); dit vangnet is voor de melding aan
+ * Maarten in `controleerPlan`, niet voor het document zelf.
+ */
+export function linksBuitenDeTekst(plan: OndersteunendPlan): OndersteunendeLink[] {
+  const tekst = plan.tekst || "";
+  return (plan.links || []).filter((l) => l.naar && !tekst.includes(l.naar));
+}
+
+export function interneLinkRegels(plan: OndersteunendPlan): string[] {
+  const uit: string[] = [];
+  for (const l of plan.links || []) {
+    if (!l.naar) continue;
+    uit.push(`Vanuit dit stuk naar ${pad(l.naar)}, met linktekst "${l.anker}"`);
+  }
+  for (const l of plan.linksNaarBlog || []) {
+    if (!l.van) continue;
+    uit.push(`Naar dit stuk vanaf ${pad(l.van)}, met linktekst "${l.anker}"`);
+  }
+  if (!uit.length) {
+    uit.push("Nog geen interne link vastgesteld; zonder link ondersteunt dit stuk de landingspagina niet.");
+  }
+  return uit;
 }
 
 /**
@@ -575,7 +604,7 @@ async function doelBeeld(domain: string, url: string): Promise<string> {
 }
 
 // ═══════════════════════════════════════════════════════════
-// ÉÉN GEGEVEN STAAT OP ÉÉN PLEK IN HET DOCUMENT (25-08-2026)
+// ÉÉN GEGEVEN STAAT OP ÉÉN PLEK IN HET DOCUMENT (25-08-2026, herzien 25-08-2026)
 // ═══════════════════════════════════════════════════════════
 // Het document bevatte de titel, de H1, de meta-title en de meta-description
 // drie keer: in de tabel "Titel, kop en meta's", nog een keer als tabel onder
@@ -585,35 +614,30 @@ async function doelBeeld(domain: string, url: string): Promise<string> {
 // blokken die er twee keer in staan, dingen met koppen, meta's, titels die er
 // volgens mij drie keer in staan. Niet nodig, gewoon één keer kort en duidelijk."
 //
-// Dit is dezelfde vaste les als overal: dezelfde gegevens op twee plekken lopen
-// uit elkaar zonder dat iemand het merkt. Sindsdien geldt hier:
-//   * "Wat dit stuk doet" is twee zinnen en verder niets.
-//   * "Wat er is aangepast" is de lijst met échte wijzigingen, en niets anders.
-//   * "Voor de sitebouwer" is de ENIGE plek met titel, H1 en meta's, met daarin
-//     meteen wat er stond en wat er nu staat. Geen tweede tabel met dezelfde
-//     waarden zonder de oude erbij.
-//   * De landingspagina staat op de omslag; in de secties staat hij alleen waar
-//     hij iets toevoegt (welke link waarheen).
-// `proeven/ondersteunend.proef.ts` bouwt een echte DocSpec en telt na hoe vaak
-// elke waarde erin voorkomt. Zet er dus nooit een tweede tabel bij "voor de
-// zekerheid": dan wordt de bouw rood.
-/**
- * De links die het model wel noemt maar niet in de tekst heeft gezet.
- *
- * De link hoort in de lopende tekst te staan, zodat de sitebouwer hem meeneemt
- * bij kopiëren en plakken. Staat hij daar, dan hoeft hij nergens anders meer.
- * Staat hij er niet, dan zou hij zonder dit vangnet helemaal uit het document
- * verdwijnen, en dat is precies het ene ding dat niet mag: zonder link
- * ondersteunt dit stuk niets.
- */
-export function linksBuitenDeTekst(plan: OndersteunendPlan): OndersteunendeLink[] {
-  const tekst = plan.tekst || "";
-  return (plan.links || []).filter((l) => l.naar && !tekst.includes(l.naar));
-}
+// Dezelfde dag bleek de eerste oplossing (één "Veld / Stond er / Staat er nu"
+// tabel) zelf ook niet goed: drie kolommen naast elkaar met lopende zinnen erin
+// worden in Word hele smalle, lange kolommen, en "Titel van het stuk" (de
+// bestandsnaam waarmee dit document zelf heet) komt nergens terug op de
+// webpagina, dus die hoort een sitebouwer niet te lezen als iets om over te
+// nemen. Maartens woorden: "de titel van het stuk lijkt me niet heel boeiend,
+// want dat komt nergens terug in het uiteindelijke document. Ik wil de
+// onderdelen die daarin staan, gewoon dus H1, title en metadescription."
+//
+// Vandaar de huidige vorm van "Voor de sitebouwer":
+//   * De H1 staat los, als waarde (die staat ook al als kop boven de tekst
+//     eronder; dat is geen dubbeling maar het verschil tussen zeggen en tonen).
+//   * Paginatitel (meta-title) en meta-description staan onder elkaar, als twee
+//     punten in één opsomming, geen tabel.
+//   * "Titel van het stuk" (de documentnaam) staat hier niet meer; die blijft
+//     wel de omslagtitel en de bestandsnaam van dit Word-document zelf.
+//   * De interne links (in én uit) staan in een eigen, altijd zichtbare lijst;
+//     zie `interneLinkRegels` hierboven voor waarom dat niet meer conditioneel is.
+// `proeven/ondersteunend.proef.ts` bewaakt dat elke waarde nog maar op één plek
+// in het document staat.
 
 export function bouwSpec(
   plan: OndersteunendPlan,
-  opts: { klant: string; doelUrls: string[]; velden: string[][] },
+  opts: { klant: string; doelUrls: string[] },
 ): DocSpec {
   return {
     klant: opts.klant,
@@ -639,34 +663,18 @@ export function bouwSpec(
         heading: "Wat er is aangepast",
         blocks: plan.wijzigingen.length
           ? [{ type: "bullets", items: plan.wijzigingen }]
-          : [{ type: "paragraph", text: "Aan de tekst zelf is niets veranderd. Alleen de titel, de kop en de meta-gegevens zijn aangepast; die staan hieronder, met de oude en de nieuwe waarde naast elkaar." }],
+          : [{ type: "paragraph", text: "Aan de tekst zelf is niets veranderd. Alleen de titel, de kop en de meta-gegevens zijn aangepast; die staan hieronder bij \"Voor de sitebouwer\"." }],
       },
       {
         heading: "Voor de sitebouwer",
         blocks: [
-          // De enige plek in het document met de titel, de H1 en de meta's. Wat
-          // er stond staat er meteen naast, zodat de sitebouwer ziet wat hij
-          // vervangt in plaats van het te moeten opzoeken in een tweede tabel.
-          { type: "table", headers: ["Veld", "Stond er", "Staat er nu"], rows: opts.velden },
-          // "Ook overnemen op de landingspagina" stond hier: een kant-en-klare
-          // betere meta-title en meta-description voor de landingspagina zelf.
-          // Dat gaat over een ándere pagina dan dit stuk, en dit document gaat
-          // over dit stuk. Maarten wil het er niet in (25-08-2026). De waarden
-          // worden nog wél geschreven en staan op het scherm bij het document,
-          // zodat jij ze kunt gebruiken waar ze thuishoren.
-          //
-          // De links stonden hier ook als tabel. Die staan nu letterlijk in de
-          // lopende tekst ("linktekst (adres)"), zodat ze niet te missen zijn bij
-          // kopiëren en plakken. Alleen een link die NIET in de tekst terecht is
-          // gekomen krijgt hier alsnog een regel; anders verdwijnt hij stilletjes.
-          ...(linksBuitenDeTekst(plan).length ? [
-            { type: "subheading" as const, text: "Deze link staat nog niet in de tekst" },
-            { type: "table" as const, headers: ["Naar", "Linktekst", "Waar"], rows: linksBuitenDeTekst(plan).map((l) => [pad(l.naar), l.anker, l.plek]) },
-          ] : []),
-          ...(plan.linksNaarBlog.length ? [
-            { type: "subheading" as const, text: "Pagina's die naar dit stuk mogen linken" },
-            { type: "table" as const, headers: ["Vanaf", "Linktekst"], rows: plan.linksNaarBlog.map((l) => [pad(l.van), l.anker]) },
-          ] : []),
+          { type: "paragraph", text: `H1: ${eersteKop(plan.tekst)}` },
+          { type: "bullets", items: [
+            `Paginatitel (meta-title): ${plan.metaTitle}`,
+            `Meta-description: ${plan.metaDescription}`,
+          ] },
+          { type: "subheading", text: "Interne links" },
+          { type: "bullets", items: interneLinkRegels(plan) },
         ],
       },
       { heading: "De aangepaste tekst", blocks: tekstNaarBlokken(plan.tekst) },
@@ -759,14 +767,7 @@ ${bron.slice(0, 16000)}`;
 
   // Het document: eerst wat er veranderd is en wat de sitebouwer moet doen, dan
   // pas de tekst zelf. Andersom scrolt niemand tot de instructie.
-  // Wat er stond vóór onze ronde: de bestandsnaam is de titel zoals de klant hem
-  // aanleverde, en de eerste kop in de brontekst is de H1. Weten we het niet, dan
-  // zegt de tabel dat eerlijk in plaats van iets te suggereren.
-  const oudeTitel = String(versie.naam || "").replace(/\.[a-z0-9]{2,5}$/i, "").trim();
-  const oudeKop = eersteKop(bron);
-  const velden = veldenTabel(plan, oudeTitel, oudeKop);
-
-  const spec = bouwSpec(plan, { klant: client?.name || slug, doelUrls, velden });
+  const spec = bouwSpec(plan, { klant: client?.name || slug, doelUrls });
 
   let buffer: Buffer;
   try {

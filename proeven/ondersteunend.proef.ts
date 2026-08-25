@@ -22,7 +22,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { botsendeTermen, botstMetHoofdterm, bouwSpec, controleerPlan, isEchteWijziging,
+import { botsendeTermen, botstMetHoofdterm, bouwSpec, controleerPlan, interneLinkRegels, isEchteWijziging,
          linksBuitenDeTekst, schoonInline, tekstNaarBlokken, watDitStukDoet, type OndersteunendPlan } from "../lib/ondersteunend";
 import { groepeer } from "../lib/doc-groepen";
 
@@ -33,6 +33,15 @@ function proef(naam: string, goed: boolean, uitleg = "") {
 }
 
 const DOEL = "https://voorbeeld.nl/natuurzwembad-aanleggen/";
+const DOEL_PAD = "/natuurzwembad-aanleggen/";
+
+/** Alle bullet-regels onder "Voor de sitebouwer" van een gebouwde DocSpec, plat. */
+function spec2Bullets(spec: ReturnType<typeof bouwSpec>): string[] {
+  const sectie = spec.sections.find((s) => s.heading === "Voor de sitebouwer");
+  return (sectie?.blocks || [])
+    .filter((b) => b.type === "bullets")
+    .flatMap((b) => (b as { items: string[] }).items);
+}
 
 /** Een plan dat het goed doet: de blog gaat over het onderhoud, en linkt met de
     hoofdterm naar de pagina die daarover gaat. */
@@ -48,7 +57,7 @@ function goedPlan(): OndersteunendPlan {
     linksNaarBlog: [],
     landingMetas: [],
     waarschuwingen: [],
-    tekst: "## Zo houd je een natuurzwembad helder\n\nEen alinea.",
+    tekst: `## Zo houd je een natuurzwembad helder\n\nZo laat je [een natuurzwembad aanleggen](${DOEL}) op de juiste manier.`,
   };
 }
 
@@ -290,6 +299,13 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
 // koppen, meta's, titels die er volgens mij drie keer in staan. Niet nodig,
 // gewoon één keer kort en duidelijk."
 //
+// Diezelfde dag bleek de eerste oplossing (één tabel "Veld / Stond er / Staat er
+// nu") zelf ook niet goed: drie kolommen met lopende zinnen worden in Word hele
+// lange, smalle kolommen, en "Titel van het stuk" (de documentnaam) komt nergens
+// terug op de webpagina. Maartens woorden: "ik wil de hele tabel voor de
+// sitebouwer niet in een tabel uitgewerkt hebben (...) gewoon dus H1, title en
+// metadescription. De titel van het stuk lijkt me niet heel boeiend."
+//
 // Deze proef bouwt een echte DocSpec en telt na. Zet er dus nooit een tweede
 // tabel bij "voor de zekerheid".
 {
@@ -298,14 +314,8 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
   // De H1 is met opzet géén stukje van de titel: anders telt een substring-check
   // hem twee keer mee en zegt de proef iets anders dan hij denkt te zeggen.
   const h1 = "Helder water zonder chloor, zo doen we dat";
-  plan.tekst = `# ${h1}\n\nEen alinea.`;
-  const velden = [
-    ["Titel van het stuk", "De oude titel", plan.titel],
-    ["H1 boven het stuk", "stond er niet", h1],
-    ["Paginatitel (meta-title)", "stond er niet", plan.metaTitle],
-    ["Meta-description", "stond er niet", plan.metaDescription],
-  ];
-  const spec = bouwSpec(plan, { klant: "Voorbeeld", doelUrls: [DOEL], velden });
+  plan.tekst = `# ${h1}\n\nZo laat je [een natuurzwembad aanleggen](${DOEL}) op de juiste manier.`;
+  const spec = bouwSpec(plan, { klant: "Voorbeeld", doelUrls: [DOEL] });
 
   /** Hoe vaak komt deze waarde voor in de tabellen en tekstblokken van het document? */
   const telt = (waarde: string) => {
@@ -320,12 +330,16 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
     return n;
   };
   for (const [naam, waarde] of [
-    ["de titel", plan.titel],
     ["de meta-title", plan.metaTitle],
     ["de meta-description", plan.metaDescription],
   ] as [string, string][]) {
     proef(`${naam} staat maar op één plek in het document`, telt(waarde) === 1, `komt ${telt(waarde)}x voor`);
   }
+  // De titel staat alleen nog als omslagtitel (spec.titel), niet meer als een
+  // regel in "Voor de sitebouwer": die komt nergens terug op de webpagina, dus
+  // een sitebouwer heeft er niets aan. Hij hoort dus in de secties zelf nergens.
+  proef("de titel staat alleen als omslagtitel, niet nog eens in een sectie",
+    spec.titel === plan.titel && telt(plan.titel) === 0, `komt ${telt(plan.titel)}x voor in de secties`);
   // De H1 mag twee keer: als waarde voor de sitebouwer, en als echte kop boven
   // de tekst. Dat is geen dubbeling maar het verschil tussen zeggen en tonen.
   proef("de H1 staat als waarde én als kop, en verder nergens",
@@ -342,12 +356,19 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
   const zinnen = (doet[0] as { text: string }).text.split(/(?<=\.)\s+/).filter(Boolean);
   proef("'Wat dit stuk doet' is hooguit twee zinnen", zinnen.length <= 2, zinnen.join(" || "));
 
-  // Er is één tabel met de velden, en die heeft de oude waarde erbij.
-  const tabellen = spec.sections.flatMap((s) => s.blocks).filter((b) => b.type === "table") as { headers: string[] }[];
-  const veldTabellen = tabellen.filter((t) => t.headers[0] === "Veld");
-  proef("er is precies één tabel met titel, kop en meta's", veldTabellen.length === 1, JSON.stringify(veldTabellen.map((t) => t.headers)));
-  proef("die tabel toont ook wat er stond",
-    veldTabellen[0]?.headers.join(",") === "Veld,Stond er,Staat er nu", JSON.stringify(veldTabellen[0]?.headers));
+  // "Voor de sitebouwer" is geen tabel meer: H1 los, meta-title en
+  // meta-description onder elkaar in één opsomming van twee punten.
+  const sitebouwer = spec.sections.find((s) => s.heading === "Voor de sitebouwer")!.blocks;
+  proef("er staat geen tabel meer in 'Voor de sitebouwer'", !sitebouwer.some((b) => b.type === "table"), JSON.stringify(sitebouwer));
+  proef("de H1 staat als losse regel", sitebouwer.some((b) => b.type === "paragraph" && (b as { text: string }).text === `H1: ${h1}`), JSON.stringify(sitebouwer));
+  const metaBullets = sitebouwer.find((b) => b.type === "bullets") as { items: string[] } | undefined;
+  proef("paginatitel en meta-description staan onder elkaar in twee punten",
+    metaBullets?.items.length === 2
+      && metaBullets.items[0] === `Paginatitel (meta-title): ${plan.metaTitle}`
+      && metaBullets.items[1] === `Meta-description: ${plan.metaDescription}`,
+    JSON.stringify(metaBullets));
+  proef("'Titel van het stuk' (de documentnaam) staat niet meer in het document",
+    !JSON.stringify(spec).includes("Titel van het stuk"));
 
   // De landingspagina staat op de omslag; in de secties alleen waar hij iets
   // toevoegt. In de omslag-meta stond hij nog een keer, woordelijk gelijk aan de
@@ -372,33 +393,57 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
 }
 
 // ═══════════════════════════════════════════════════════════
-// DE LINK STAAT IN DE TEKST, NIET ALLEEN IN EEN TABEL (25-08-2026)
+// DE INTERNE LINKS STAAN ALTIJD IN HET DOCUMENT, NOOIT CONDITIONEEL (25-08-2026)
 // ═══════════════════════════════════════════════════════════
-// De sitebouwer kopieert de tekst uit dit document. Stond de link alleen in een
-// tabel eronder, dan kan hij hem daarbij vergeten, en dan ondersteunt dit stuk
-// niets meer. Maartens woorden: "de link vanuit dit stuk gewoon letterlijk in de
-// tekst willen zien, zodat de sitebouwer dat ook niet kan vergeten bij het
-// kopiëren en plakken van de tekst."
+// Er stonden hier twee tabellen die allebei alleen verschenen als er iets in te
+// vullen viel. Bij de 26e versie van het GardenSwimm-stuk viel de link daardoor
+// stilletjes weg. Maartens woorden: "nu valt ineens de externe link naar dit
+// document weer weg. Ik wil de interne links van en naar deze pagina op dit
+// document uitgewerkt hebben." Sindsdien staat "Interne links" er ALTIJD, met de
+// link vanuit dit stuk en de link náár dit stuk, ongeacht of die link ook in de
+// lopende tekst is beland. De link blijft daarnaast ook gewoon zichtbaar in de
+// lopende alinea's, voor het kopiëren en plakken.
 {
-  const velden = [["Titel van het stuk", "Oud", "Nieuw"]];
-
-  // Staat de link in de tekst, dan hoeft hij nergens anders meer.
   const wel = goedPlan();
   wel.tekst = `# Een kop\n\nZo laat je een [natuurzwembad aanleggen](${DOEL}) in je tuin.`;
   proef("een link die in de tekst staat, telt als geregeld", linksBuitenDeTekst(wel).length === 0);
-  const specWel = bouwSpec(wel, { klant: "V", doelUrls: [DOEL], velden });
-  proef("dan staat er geen linktabel meer in het document",
-    !JSON.stringify(specWel).includes("nog niet in de tekst"));
+  const specWel = bouwSpec(wel, { klant: "V", doelUrls: [DOEL] });
+  const sitebouwerWel = spec2Bullets(specWel);
+  proef("de link staat bij Interne links, ook als hij al in de tekst staat",
+    sitebouwerWel.some((r) => r.includes(DOEL_PAD) && r.includes("Vanuit dit stuk")), sitebouwerWel.join(" | "));
   const alinea = specWel.sections[3].blocks
     .filter((b) => b.type === "paragraph").map((b) => (b as { text: string }).text).join(" ");
-  proef("het adres staat gewoon in de alinea", alinea.includes(`(${DOEL})`), alinea);
+  proef("het adres staat ook gewoon in de lopende alinea", alinea.includes(`(${DOEL})`), alinea);
 
-  // Staat hij er niet, dan mag hij niet stilletjes verdwijnen.
+  // Staat de link NIET in de tekst, dan moet hij tóch bij Interne links staan:
+  // dit is precies de bug die de link liet verdwijnen.
   const niet = goedPlan();
   niet.tekst = "# Een kop\n\nEen alinea zonder link.";
-  proef("een link die niet in de tekst staat wordt eruit gehaald", linksBuitenDeTekst(niet).length === 1);
-  proef("en krijgt alsnog een regel in het document",
-    JSON.stringify(bouwSpec(niet, { klant: "V", doelUrls: [DOEL], velden })).includes("nog niet in de tekst"));
+  proef("een link die niet in de tekst staat wordt herkend voor de melding aan Maarten",
+    linksBuitenDeTekst(niet).length === 1);
+  const specNiet = bouwSpec(niet, { klant: "V", doelUrls: [DOEL] });
+  const sitebouwerNiet = spec2Bullets(specNiet);
+  proef("de link blijft zichtbaar in het document, ook als hij niet in de tekst is beland",
+    sitebouwerNiet.some((r) => r.includes(DOEL_PAD) && r.includes("Vanuit dit stuk")), sitebouwerNiet.join(" | "));
+  proef("dat gat wordt wél gemeld aan Maarten, niet stilzwijgend opgelost",
+    controleerPlan(niet).some((r) => r.includes("niet letterlijk in de lopende tekst")),
+    controleerPlan(niet).join(" | "));
+
+  // Zonder enige link (in of naar het stuk) mag "Interne links" niet leeg zijn;
+  // dan zegt het document expliciet dat er nog niets vastgesteld is.
+  const zonderAlles = goedPlan();
+  zonderAlles.links = [];
+  zonderAlles.linksNaarBlog = [];
+  proef("zonder enige link zegt 'Interne links' dat expliciet",
+    interneLinkRegels(zonderAlles).some((r) => r.includes("Nog geen interne link")),
+    interneLinkRegels(zonderAlles).join(" | "));
+
+  // Een link náár dit stuk (inkomend) staat er ook altijd bij.
+  const metInkomend = goedPlan();
+  metInkomend.linksNaarBlog = [{ van: "https://voorbeeld.nl/zwembaden/", anker: "bekijk dit natuurzwembad" }];
+  proef("een inkomende link staat ook bij Interne links",
+    interneLinkRegels(metInkomend).some((r) => r.includes("/zwembaden/") && r.includes("Naar dit stuk")),
+    interneLinkRegels(metInkomend).join(" | "));
 }
 
 // ── "Wat dit stuk doet" wordt in code geschreven, niet gevraagd ─────────────
@@ -428,12 +473,15 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
 // ── Titel, kop en meta's staan als feit in het document ─────────────────────
 // Het document sprak zichzelf tegen: bovenaan stond dat de titel gewijzigd was,
 // verderop dat de H1 grotendeels ongewijzigd was. Feiten die het dashboard zelf
-// kan vaststellen, hoort het niet aan een tekstschrijver te vragen.
+// kan vaststellen, hoort het niet aan een tekstschrijver te vragen. De H1, de
+// meta-title en de meta-description komen uit `plan` zelf, niet uit een aparte
+// oud/nieuw-tabel (die is op 25-08-2026 vervangen door losse waarden, zie
+// hierboven); het model schrijft dus nooit zelf over deze velden.
 {
   const b = readFileSync(join(__dirname, "..", "lib", "ondersteunend.ts"), "utf8");
-  proef("er is één feitentabel met wat er stond en wat er nu staat",
-    b.includes("veldenTabel(") && b.includes('"Stond er", "Staat er nu"'),
-    "Zonder die tabel beschrijft het model de titel en de H1 zelf, en dan spreken twee plekken elkaar tegen.");
+  proef("de sitebouwer-waarden komen uit code, niet uit een tekstbeschrijving van het model",
+    !b.includes("veldenTabel(") && b.includes("interneLinkRegels("),
+    "Zonder dat leest de sitebouwer een beschrijving in plaats van de waarde zelf.");
   proef("het model schrijft niet meer zelf over titel, H1 en meta's",
     /Schrijf in "wijzigingen" NIETS over de titel/.test(b),
     "Anders staat hetzelfde twee keer in het document, in twee formuleringen.");
