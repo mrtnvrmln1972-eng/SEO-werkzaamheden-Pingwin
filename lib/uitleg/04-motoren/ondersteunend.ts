@@ -67,11 +67,23 @@ export const BLOKKEN: Uitklapper[] = [
       "landingspagina wordt geschreven en staat kant-en-klaar bij \"Voor de sitebouwer\"; kan de hoofdterm " +
       "niet uit de titel of de kop, dan wordt er een ándere titel voorgesteld in plaats van een opmerking dat " +
       "het lastig is. Wat er daarna nog overblijft, is voor jou en staat alleen op het scherm.\n\n" +
-      "**Wat er in het document komt:** wat dit stuk nu doet, een tabel met de rolverdeling (welke pagina " +
-      "blijft de baas op welke term, en waar mikt dit stuk op), wat er is aangepast, de paginatitel en " +
-      "meta-description, eventueel de betere meta voor de landingspagina zelf, de links die de sitebouwer " +
-      "moet leggen met hun linktekst, welke bestaande pagina's naar dit stuk zouden moeten linken, en " +
-      "daaronder de volledige aangepaste tekst.\n\n" +
+      "**Wat er in het document komt, en elk gegeven staat er maar één keer in (25 augustus 2026).** " +
+      "Eerst \"Wat dit stuk doet\": twee zinnen, geschreven door het dashboard zelf, over welke pagina dit " +
+      "stuk versterkt en op welke term. Dan \"Wat er is aangepast\": alleen de echte aanpassingen. Dan " +
+      "\"Voor de sitebouwer\": één tabel met de titel, de H1, de paginatitel en de omschrijving, met wat " +
+      "er stond en wat er nu staat naast elkaar, eventueel de betere meta voor de landingspagina zelf, de " +
+      "links die gelegd moeten worden met hun linktekst, en welke bestaande pagina's naar dit stuk mogen " +
+      "linken. Daaronder de volledige aangepaste tekst.\n\n" +
+      "Daarvóór stonden de titel, de kop en de meta's er drie keer in (in een tabel met de oude waarde, " +
+      "nog eens als tabel voor de sitebouwer, en de kop daarna nog boven de tekst), stond de landingspagina " +
+      "er vier keer in, en was \"Wat dit stuk doet\" een zin plus een tabel. Er is nu één plek per gegeven; " +
+      "een proef bouwt het document na en telt hoe vaak elke waarde erin voorkomt, dus er kan er niet " +
+      "stilletjes een tweede bijkomen.\n\n" +
+      "**Boven de tekst staat altijd een H1.** Het taalmodel levert de eerste kop vaak als H2 aan, ook al " +
+      "vraag je om een H1, en dan sprak het document zichzelf tegen: de tabel zei H1, de tekst toonde H2. " +
+      "Dat wordt nu rechtgezet in plaats van gevraagd: de eerste kop ís de H1, de rest schuift mee. In " +
+      "diezelfde ronde gaan de markdown-tekens eruit; een link stond letterlijk als \"[linktekst](adres)\" " +
+      "midden in een alinea, en Word kent die opmaak niet.\n\n" +
       "**En het staat in de lijst pal onder het stuk waar het uit komt.** Een ondersteunende versie krijgt " +
       "vaak met opzet een andere titel, en daardoor las hij als een los project: er schoof een document van " +
       "iets heel anders tussen. Het dashboard onthoudt nu waar een document uit voortkomt, dus die twee staan " +

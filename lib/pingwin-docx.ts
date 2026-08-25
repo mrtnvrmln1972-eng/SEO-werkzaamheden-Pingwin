@@ -115,7 +115,11 @@ function tekstOmslag(spec: DocSpec): any[] {
   ];
 }
 
-const KOP_NIVEAU = /^\s*(H[123])\s*[—–-]\s*(.*)$/;
+// "H2 — Tuinaanleg in Oss" en "H2 · Tuinaanleg in Oss" horen allebei bij deze
+// vorm. De middelste punt stond er niet in, waardoor een kop uit een
+// ondersteunend stuk als gewone subkop werd gezet en het H-nummer dus als losse
+// tekst in beeld kwam in plaats van als label (25-08-2026).
+const KOP_NIVEAU = /^\s*(H[123])\s*[—–·-]\s*(.*)$/;
 
 /**
  * De pagina zelf, en als terugval de homepage van dezelfde site. Een copy-doc

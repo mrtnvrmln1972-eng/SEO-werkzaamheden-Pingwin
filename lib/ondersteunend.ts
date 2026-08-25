@@ -87,6 +87,7 @@ export type LandingMeta = {
 };
 
 export type OndersteunendPlan = {
+  /** Twee zinnen: wat dit stuk doet. Wordt in CODE geschreven, zie watDitStukDoet. */
   kop: string;
   doelen: OndersteunendDoel[];
   titel: string;
@@ -141,9 +142,12 @@ HARDE REGELS:
 - Verzin geen feiten, cijfers, plaatsen of diensten die niet in de aangeleverde tekst of de data staan.
 - Geen emoji. Geen losse streepjes als zinsscheiding; gebruik een komma, een puntkomma, haakjes of een nieuwe zin.
 
+DE OPBOUW VAN "tekst" (dit wordt nagerekend):
+- Begin met PRECIES ÉÉN regel met één hekje: dat is de H1 van het stuk. Daarna twee hekjes voor een tussenkop en drie voor een subkop. Nooit twee keer één hekje.
+- Verder geen opmaaktekens in de lopende tekst: geen sterretjes voor vet of cursief, geen streepjeslijn als scheiding, geen accolades of backticks. Alleen een link mag, als [linktekst](url).
+
 Antwoord met UITSLUITEND geldige JSON, niets eromheen:
-{"kop":"één zin: wat dit stuk nu doet voor de landingspagina('s)",
- "doelen":[{"url":"...","hoofdterm":"de term waarop die pagina de baas is","steuntermen":["waar de blog op mikt","..."]}],
+{"doelen":[{"url":"...","hoofdterm":"de term waarop die pagina de baas is","steuntermen":["waar de blog op mikt","..."]}],
  "titel":"de nieuwe titel van de blog",
  "metaTitle":"maximaal 60 tekens",
  "metaDescription":"maximaal 155 tekens",
@@ -152,7 +156,7 @@ Antwoord met UITSLUITEND geldige JSON, niets eromheen:
  "linksNaarBlog":[{"van":"bestaande pagina die naar deze blog zou moeten linken","anker":"voorgestelde ankertekst"}],
  "landingMetas":[{"url":"de landingspagina","metaTitle":"maximaal 60 tekens","metaDescription":"maximaal 155 tekens"}],
  "waarschuwingen":["alleen wat een keuze van Maarten vraagt; niet voor de klant, meestal leeg"],
- "tekst":"de volledige aangepaste tekst, met ## voor koppen en ### voor subkoppen, links als [ankertekst](url)"}`;
+ "tekst":"de volledige aangepaste tekst, met # voor de H1 bovenaan, ## voor tussenkoppen en ### voor subkoppen, links als [ankertekst](url)"}`;
 
 /** Staat een term (los van hoofdletters en meervoud-s) in deze regel tekst? */
 function bevatTerm(tekst: string, term: string): boolean {
@@ -388,29 +392,69 @@ ${plan.tekst.slice(0, 2000)}`;
  * een H3. Dat is precies hoe de motor de tekst ook aanlevert.
  */
 export function tekstNaarBlokken(tekst: string): DocBlock[] {
+  const regels = (tekst || "").split("\n");
+
+  // Het niveau van de EERSTE kop is de maatstaf: die kop is de H1 van dit stuk.
+  // Zonder dit stond er "H2 · ..." boven de tekst terwijl de tabel erboven zei
+  // dat dat de H1 was, en dan is er dus nergens een H1 te zien. Maartens woorden
+  // (25-08-2026): "ik zie nu geen H1". Het model levert vaak ## aan, ook al vraag
+  // je om #; dat is precies waarom dit hier wordt rechtgezet en niet gevraagd.
+  let basis = 0;
+  for (const r of regels) {
+    const m = r.trim().match(/^(#{1,6})\s+\S/);
+    if (m) { basis = m[1].length; break; }
+  }
+
   const blokken: DocBlock[] = [];
   let bullets: string[] = [];
+  let eersteKopGehad = false;
   const legen = () => {
     if (bullets.length) { blokken.push({ type: "bullets", items: bullets }); bullets = []; }
   };
-  for (const ruw of (tekst || "").split("\n")) {
+  for (const ruw of regels) {
     const regel = ruw.trim();
     if (!regel) { legen(); continue; }
+    // Een streepjeslijn is een markdown-scheiding. In Word bestaat die niet, dus
+    // hij kwam als "---" letterlijk in beeld.
+    if (/^([-*_]\s*){3,}$/.test(regel)) { legen(); continue; }
     const kop = regel.match(/^(#{1,6})\s+(.*)$/);
     if (kop) {
       legen();
-      const niveau = kop[1].length;
-      const naam = kop[2].trim().replace(/^H[1-6]\s*[·:.-]?\s*/i, "");
+      let niveau = Math.min(3, Math.max(1, kop[1].length - basis + 1));
+      // Er is er precies één H1: de eerste. Alles daarna is minimaal een H2.
+      if (eersteKopGehad && niveau < 2) niveau = 2;
+      eersteKopGehad = true;
+      const naam = schoonInline(kop[2]).replace(/^H[1-6]\s*[·:.-]?\s*/i, "");
       blokken.push({ type: "subheading", text: `H${niveau} · ${naam}` });
       continue;
     }
     const punt = regel.match(/^[-*]\s+(.*)$/);
-    if (punt) { bullets.push(punt[1].trim()); continue; }
+    if (punt) { bullets.push(schoonInline(punt[1])); continue; }
     legen();
-    blokken.push({ type: "paragraph", text: regel });
+    blokken.push({ type: "paragraph", text: schoonInline(regel) });
   }
   legen();
   return blokken;
+}
+
+/**
+ * Markdown-opmaaktekens uit een regel halen, met behoud van de woorden.
+ *
+ * Een Word-document kent geen markdown, dus alles wat het model als opmaak
+ * meestuurt komt er letterlijk in te staan. In het GardenSwimm-stuk las de klant
+ * daardoor "Benieuwd wat een [natuurlijke zwemvijver](https://gardenswimm.nl/...)
+ * voor jouw tuin kan betekenen?" midden in een alinea. De linktekst blijft staan;
+ * wélke link waar komt, staat als tabel bij "Voor de sitebouwer", dus die
+ * informatie gaat niet verloren en staat maar op één plek.
+ */
+export function schoonInline(regel: string): string {
+  return (regel || "")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")   // afbeelding
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")    // link: de linktekst blijft staan
+    .replace(/(\*\*|__)(.+?)\1/g, "$2")         // vet
+    .replace(/\*([^*\n]+)\*/g, "$1")            // cursief
+    .replace(/`([^`\n]+)`/g, "$1")              // code
+    .trim();
 }
 
 /**
@@ -458,13 +502,41 @@ export function isEchteWijziging(regel: string): boolean {
   return !!(regel || "").trim() && !NIETS_VERANDERD.test(regel);
 }
 
-/** De steuntermen kort houden; een waslijst in een smalle kolom leest niemand. */
-function steunKolom(termen: string[]): string {
-  const schoon = (termen || []).map((t) => t.trim()).filter(Boolean);
-  if (!schoon.length) return "niet bepaald";
-  const eerste = schoon.slice(0, 3);
-  const rest = schoon.length - eerste.length;
-  return eerste.join(", ") + (rest > 0 ? `, en ${rest} andere vragen rond dit onderwerp` : "");
+/** Een opsomming in gewone taal: "a", "a en b", "a, b en c". */
+function opsomming(delen: string[]): string {
+  const d = delen.filter(Boolean);
+  if (d.length <= 1) return d[0] || "";
+  return `${d.slice(0, -1).join(", ")} en ${d[d.length - 1]}`;
+}
+
+/**
+ * "Wat dit stuk doet": twee zinnen, uit CODE, en verder niets.
+ *
+ * Hier stond een tabel met drie kolommen (landingspagina, blijft de baas op, dit
+ * stuk mikt op) plus een zin van het model erboven. Die tabel noemde de
+ * landingspagina voor de derde keer in hetzelfde document (hij staat al op de
+ * omslag en in de ondertitel) en de steuntermen zijn een interne SEO-afweging,
+ * geen boodschap voor een klant of een sitebouwer. Maartens woorden
+ * (25-08-2026): "Wat dit stuk doet, moet gewoon een korte toelichting zijn van
+ * anderhalf tot twee zinnen waarom het stuk is aangepast".
+ *
+ * Waarom uit code en niet uit het model: dit is een feit dat het dashboard zelf
+ * kent (welke pagina, welke term). Vragen we het aan een tekstschrijver, dan
+ * krijgen we elke ronde een andere formulering en soms een verkeerde. De volle
+ * verdeling, met de steuntermen erbij, staat nog wél op het scherm bij het
+ * document; die is voor Maarten.
+ */
+export function watDitStukDoet(plan: OndersteunendPlan): string {
+  const doelen = (plan.doelen || []).filter((d) => (d.url || "").trim());
+  if (!doelen.length) {
+    return "Dit stuk is aangepast zodat het de landingspagina versterkt in plaats van ermee te concurreren. De titel, de kop en de meta-gegevens mikken nu op de vragen eromheen.";
+  }
+  const paden = opsomming(doelen.map((d) => pad(d.url)));
+  const termen = doelen.map((d) => (d.hoofdterm || "").trim()).filter(Boolean);
+  const opTerm = termen.length ? ` op ${opsomming(termen.map((t) => `"${t}"`))}` : "";
+  const die = doelen.length > 1 ? "die pagina's" : "die pagina";
+  return `Dit stuk is aangepast zodat het ${paden} versterkt in plaats van ermee te concurreren${opTerm}. `
+    + `De titel, de kop en de meta-gegevens mikken nu op de vragen eromheen, en één link in de tekst geeft de kracht van dit stuk door aan ${die}.`;
 }
 
 /** Wat we van een doelpagina weten: waar hij nu op gevonden wordt en wat erop staat. */
@@ -493,6 +565,90 @@ async function doelBeeld(domain: string, url: string): Promise<string> {
     regels.push("Nog geen Search Console-cijfers voor deze pagina.");
   }
   return regels.join("\n");
+}
+
+// ═══════════════════════════════════════════════════════════
+// ÉÉN GEGEVEN STAAT OP ÉÉN PLEK IN HET DOCUMENT (25-08-2026)
+// ═══════════════════════════════════════════════════════════
+// Het document bevatte de titel, de H1, de meta-title en de meta-description
+// drie keer: in de tabel "Titel, kop en meta's", nog een keer als tabel onder
+// "Voor de sitebouwer", en de H1 daarna nog als kop boven de tekst. De
+// landingspagina stond er zelfs vier keer in (omslag, ondertitel, de tabel bij
+// "Wat dit stuk doet", en de linktabel). Maartens woorden: "ik zie heel veel
+// blokken die er twee keer in staan, dingen met koppen, meta's, titels die er
+// volgens mij drie keer in staan. Niet nodig, gewoon één keer kort en duidelijk."
+//
+// Dit is dezelfde vaste les als overal: dezelfde gegevens op twee plekken lopen
+// uit elkaar zonder dat iemand het merkt. Sindsdien geldt hier:
+//   * "Wat dit stuk doet" is twee zinnen en verder niets.
+//   * "Wat er is aangepast" is de lijst met échte wijzigingen, en niets anders.
+//   * "Voor de sitebouwer" is de ENIGE plek met titel, H1 en meta's, met daarin
+//     meteen wat er stond en wat er nu staat. Geen tweede tabel met dezelfde
+//     waarden zonder de oude erbij.
+//   * De landingspagina staat op de omslag; in de secties staat hij alleen waar
+//     hij iets toevoegt (welke link waarheen).
+// `proeven/ondersteunend.proef.ts` bouwt een echte DocSpec en telt na hoe vaak
+// elke waarde erin voorkomt. Zet er dus nooit een tweede tabel bij "voor de
+// zekerheid": dan wordt de bouw rood.
+export function bouwSpec(
+  plan: OndersteunendPlan,
+  opts: { klant: string; doelUrls: string[]; velden: string[][] },
+): DocSpec {
+  return {
+    klant: opts.klant,
+    rapporttype: "Ondersteunende publicatie",
+    titel: plan.titel,
+    ondertitel: `Ondersteunend aan ${opts.doelUrls.join(" en ")}`,
+    // Alleen de klant. "Ondersteunt" stond hier ook, en dat is woordelijk de
+    // ondertitel er twee regels boven.
+    meta: { Klant: opts.klant },
+    stijl: "werkdocument",
+    sections: [
+      {
+        heading: "Wat dit stuk doet",
+        blocks: [{ type: "highlight", text: watDitStukDoet(plan) }],
+      },
+      {
+        // Hier stond ook een kopje "Let op" met de waarschuwingen eronder. Dat
+        // document gaat naar de klant en naar de sitebouwer, en dan lees je daar
+        // aanbevelingen die wíj hadden moeten doen, of een interne afweging over
+        // de linkstrategie. Beide roepen dezelfde vraag op: "moet ik hier zelf
+        // nog iets mee?" Wat er overblijft is voor Maarten en staat op het
+        // scherm bij het document. Zet dat kopje hier nooit terug.
+        heading: "Wat er is aangepast",
+        blocks: plan.wijzigingen.length
+          ? [{ type: "bullets", items: plan.wijzigingen }]
+          : [{ type: "paragraph", text: "Aan de tekst zelf is niets veranderd. Alleen de titel, de kop en de meta-gegevens zijn aangepast; die staan hieronder, met de oude en de nieuwe waarde naast elkaar." }],
+      },
+      {
+        heading: "Voor de sitebouwer",
+        blocks: [
+          // De enige plek in het document met de titel, de H1 en de meta's. Wat
+          // er stond staat er meteen naast, zodat de sitebouwer ziet wat hij
+          // vervangt in plaats van het te moeten opzoeken in een tweede tabel.
+          { type: "table", headers: ["Veld", "Stond er", "Staat er nu"], rows: opts.velden },
+          // Kant-en-klaar, geen aanbeveling: staat hier alleen als de huidige
+          // meta van de landingspagina echt beter kan.
+          ...(plan.landingMetas.length ? [
+            { type: "subheading" as const, text: "Ook overnemen op de landingspagina" },
+            { type: "table" as const, headers: ["Pagina", "Veld", "Waarde"], rows: plan.landingMetas.flatMap((m) => [
+              ...(m.metaTitle ? [[pad(m.url), "Paginatitel (meta-title)", m.metaTitle]] : []),
+              ...(m.metaDescription ? [[pad(m.url), "Meta-description", m.metaDescription]] : []),
+            ]) },
+          ] : []),
+          ...(plan.links.length ? [
+            { type: "subheading" as const, text: "Links vanuit dit stuk" },
+            { type: "table" as const, headers: ["Naar", "Linktekst", "Waar"], rows: plan.links.map((l) => [pad(l.naar), l.anker, l.plek]) },
+          ] : []),
+          ...(plan.linksNaarBlog.length ? [
+            { type: "subheading" as const, text: "Pagina's die naar dit stuk mogen linken" },
+            { type: "table" as const, headers: ["Vanaf", "Linktekst"], rows: plan.linksNaarBlog.map((l) => [pad(l.van), l.anker]) },
+          ] : []),
+        ],
+      },
+      { heading: "De aangepaste tekst", blocks: tekstNaarBlokken(plan.tekst) },
+    ],
+  };
 }
 
 export async function maakOndersteunend(opts: {
@@ -532,7 +688,9 @@ ${bron.slice(0, 16000)}`;
     const schoon = raw.replace(/```json/gi, "").replace(/```/g, "").trim();
     const p = JSON.parse(schoon.slice(schoon.indexOf("{"), schoon.lastIndexOf("}") + 1)) as Partial<OndersteunendPlan>;
     plan = {
-      kop: String(p.kop || "").trim() || "Dit stuk is ondersteunend gemaakt.",
+      // Wordt hieronder in code geschreven, zodra de doelen bekend zijn; het
+      // model schrijft deze zin niet meer (zie watDitStukDoet).
+      kop: "",
       doelen: (Array.isArray(p.doelen) ? p.doelen : []).map((d) => ({
         url: String(d?.url || "").trim(),
         hoofdterm: String(d?.hoofdterm || "").trim(),
@@ -572,6 +730,10 @@ ${bron.slice(0, 16000)}`;
 
   plan.waarschuwingen = [...plan.waarschuwingen, ...controleerPlan(plan)];
 
+  // Pas hier, want deze zin noemt de doelpagina en de hoofdterm, en die staan pas
+  // vast na de herstelronde hierboven.
+  plan.kop = watDitStukDoet(plan);
+
   // Het document: eerst wat er veranderd is en wat de sitebouwer moet doen, dan
   // pas de tekst zelf. Andersom scrolt niemand tot de instructie.
   // Wat er stond vóór onze ronde: de bestandsnaam is de titel zoals de klant hem
@@ -581,75 +743,7 @@ ${bron.slice(0, 16000)}`;
   const oudeKop = eersteKop(bron);
   const velden = veldenTabel(plan, oudeTitel, oudeKop);
 
-  const spec: DocSpec = {
-    klant: client?.name || slug,
-    rapporttype: "Ondersteunende publicatie",
-    titel: plan.titel,
-    ondertitel: `Ondersteunend aan ${doelUrls.join(" en ")}`,
-    meta: { Klant: client?.name || slug, Ondersteunt: doelUrls.join(", ") },
-    stijl: "werkdocument",
-    sections: [
-      {
-        heading: "Wat dit stuk doet",
-        blocks: [
-          { type: "highlight", text: plan.kop },
-          // De derde kolom was een komma-lijst van tien tot vijftien termen in een
-          // smalle kolom; die leest niemand. Nu hooguit drie, met een korte zin
-          // als er meer zijn (zie steunKolom).
-          ...(plan.doelen.length ? [{
-            type: "table" as const,
-            headers: ["Landingspagina", "Blijft de baas op", "Dit stuk mikt op"],
-            rows: plan.doelen.map((d) => [pad(d.url), d.hoofdterm || "niet bepaald", steunKolom(d.steuntermen)]),
-          }] : []),
-          // Titel, H1 en de meta's: één tabel met wat er stond en wat er nu staat,
-          // door het dashboard zelf ingevuld. Dit stond eerder verspreid in de
-          // geschreven tekst, en die sprak zichzelf tegen (zie veldenTabel).
-          { type: "subheading" as const, text: "Titel, kop en meta's" },
-          { type: "table" as const, headers: ["Veld", "Stond er", "Staat er nu"], rows: velden },
-          // Hier stond ook een kopje "Let op" met de waarschuwingen eronder. Dat
-          // document gaat naar de klant en naar de sitebouwer, en dan lees je
-          // daar aanbevelingen die wíj hadden moeten doen, of een interne
-          // afweging over de linkstrategie. Beide roepen dezelfde vraag op:
-          // "moet ik hier zelf nog iets mee?" Wat er te doen viel is nu gedaan
-          // en staat hierboven; wat er overblijft is voor Maarten en staat op
-          // het scherm bij het document. Zet dit kopje hier nooit terug.
-          { type: "subheading" as const, text: "Wat er in de tekst is aangepast" },
-          ...(plan.wijzigingen.length
-            ? [{ type: "bullets" as const, items: plan.wijzigingen }]
-            : [{ type: "paragraph" as const, text: "Aan de tekst zelf is niets veranderd. Alleen de titel, de kop en de meta-gegevens zijn aangepast; die staan hierboven, met de oude en de nieuwe waarde naast elkaar." }]),
-        ],
-      },
-      {
-        heading: "Voor de sitebouwer",
-        blocks: [
-          { type: "table", headers: ["Veld", "Waarde"], rows: [
-            ["Titel van het stuk", plan.titel],
-            ["H1 boven het stuk", eersteKop(plan.tekst) || plan.titel],
-            ["Paginatitel (meta-title)", plan.metaTitle || "niet ingevuld"],
-            ["Meta-description", plan.metaDescription || "niet ingevuld"],
-          ] },
-          // Kant-en-klaar, geen aanbeveling: staat hier alleen als de huidige
-          // meta van de landingspagina echt beter kan.
-          ...(plan.landingMetas.length ? [
-            { type: "subheading" as const, text: "Ook overnemen op de landingspagina" },
-            { type: "table" as const, headers: ["Pagina", "Veld", "Waarde"], rows: plan.landingMetas.flatMap((m) => [
-              ...(m.metaTitle ? [[pad(m.url), "Paginatitel (meta-title)", m.metaTitle]] : []),
-              ...(m.metaDescription ? [[pad(m.url), "Meta-description", m.metaDescription]] : []),
-            ]) },
-          ] : []),
-          ...(plan.links.length ? [
-            { type: "subheading" as const, text: "Links vanuit dit stuk" },
-            { type: "table" as const, headers: ["Naar", "Linktekst", "Waar"], rows: plan.links.map((l) => [l.naar, l.anker, l.plek]) },
-          ] : []),
-          ...(plan.linksNaarBlog.length ? [
-            { type: "subheading" as const, text: "Pagina's die naar dit stuk mogen linken" },
-            { type: "table" as const, headers: ["Vanaf", "Linktekst"], rows: plan.linksNaarBlog.map((l) => [l.van, l.anker]) },
-          ] : []),
-        ],
-      },
-      { heading: "De aangepaste tekst", blocks: tekstNaarBlokken(plan.tekst) },
-    ],
-  };
+  const spec = bouwSpec(plan, { klant: client?.name || slug, doelUrls, velden });
 
   let buffer: Buffer;
   try {

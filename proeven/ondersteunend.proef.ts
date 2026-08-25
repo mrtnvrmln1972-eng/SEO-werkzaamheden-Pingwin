@@ -22,7 +22,8 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { botsendeTermen, botstMetHoofdterm, controleerPlan, isEchteWijziging, tekstNaarBlokken } from "../lib/ondersteunend";
+import { botsendeTermen, botstMetHoofdterm, bouwSpec, controleerPlan, isEchteWijziging,
+         schoonInline, tekstNaarBlokken, watDitStukDoet, type OndersteunendPlan } from "../lib/ondersteunend";
 import { groepeer } from "../lib/doc-groepen";
 
 let fouten = 0;
@@ -35,7 +36,7 @@ const DOEL = "https://voorbeeld.nl/natuurzwembad-aanleggen/";
 
 /** Een plan dat het goed doet: de blog gaat over het onderhoud, en linkt met de
     hoofdterm naar de pagina die daarover gaat. */
-function goedPlan() {
+function goedPlan(): OndersteunendPlan {
   return {
     kop: "Dit stuk pakt de onderhoudsvragen en stuurt de aanvragen door.",
     doelen: [{ url: DOEL, hoofdterm: "natuurzwembad aanleggen", steuntermen: ["natuurzwembad onderhouden", "welke planten"] }],
@@ -204,6 +205,9 @@ proef("een schoon plan levert geen botsende term op", botsendeTermen(goedPlan())
 // ── De H-tags staan voor elke kop (21-08-2026) ──────────────────────────────
 // Zonder het nummer ziet de sitebouwer alleen dát iets een kop is, niet wélke,
 // en belandt een tussenkop als H2 waar hij een H3 hoort te zijn.
+const koppenVan = (t: string) => tekstNaarBlokken(t)
+  .filter((b) => b.type === "subheading").map((b) => (b as { text: string }).text);
+
 {
   const blokken = tekstNaarBlokken("# De titel\n\nEen alinea.\n\n## Een tussenkop\n\n### Nog dieper\n\n- een punt");
   const koppen = blokken.filter((b) => b.type === "subheading").map((b) => (b as { text: string }).text);
@@ -211,9 +215,161 @@ proef("een schoon plan levert geen botsende term op", botsendeTermen(goedPlan())
   proef("de rest van de tekst blijft gewoon staan",
     blokken.some((b) => b.type === "paragraph") && blokken.some((b) => b.type === "bullets"));
   // Staat het nummer er al in, dan komt het er niet twee keer voor te staan.
-  const nogmaals = tekstNaarBlokken("## H2 · Een tussenkop");
-  proef("een kop krijgt nooit twee keer een nummer",
-    (nogmaals[0] as { text: string }).text === "H2 · Een tussenkop", JSON.stringify(nogmaals[0]));
+  const nogmaals = koppenVan("# H1 · Een kop");
+  proef("een kop krijgt nooit twee keer een nummer", nogmaals[0] === "H1 · Een kop", nogmaals.join(" | "));
+}
+
+// ═══════════════════════════════════════════════════════════
+// ER STAAT ALTIJD EEN H1 BOVEN DE TEKST (25-08-2026)
+// ═══════════════════════════════════════════════════════════
+// De tabel in het document zei "H1 boven het stuk: Strak natuurzwembad in
+// Zaamslag", en precies die kop stond in de tekst eronder als "H2 · Strak
+// natuurzwembad in Zaamslag". Er was dus nergens een H1 te zien en het document
+// sprak zichzelf tegen. Maartens woorden: "ik zie nu geen H1". Oorzaak: het model
+// levert de eerste kop vaak als ## aan, ook al vraagt de prompt om #. Dat wordt
+// nu in code rechtgezet: de eerste kop IS de H1, wat er ook binnenkomt.
+{
+  const metTwee = koppenVan("## De titel\n\nEen alinea.\n\n### Een tussenkop\n\n### Nog een tussenkop");
+  proef("een tekst die met ## begint krijgt tóch een H1 bovenaan",
+    metTwee[0] === "H1 · De titel", metTwee.join(" | "));
+  proef("de koppen eronder schuiven mee naar H2",
+    metTwee.slice(1).every((k) => k.startsWith("H2 · ")), metTwee.join(" | "));
+
+  const gelijk = koppenVan("## Eerste\n\n## Tweede\n\n## Derde");
+  proef("er is precies één H1, ook als alle koppen even diep zijn",
+    gelijk.filter((k) => k.startsWith("H1 · ")).length === 1, gelijk.join(" | "));
+
+  const diep = koppenVan("### Alleen maar diepe koppen\n\n#### Nog dieper");
+  proef("ook een tekst zonder ondiepe koppen begint met een H1",
+    diep[0] === "H1 · Alleen maar diepe koppen", diep.join(" | "));
+}
+
+// ── Geen markdown-tekens in een Word-document (25-08-2026) ──────────────────
+// In de opgeleverde tekst stond letterlijk "Benieuwd wat een [natuurlijke
+// zwemvijver](https://gardenswimm.nl/...) voor jouw tuin kan betekenen?" en een
+// losse regel "---". Word kent geen markdown, dus dat komt zo in beeld bij de
+// klant. Dit is dezelfde harde opmaakregel als op het scherm: nooit ruwe
+// markdown in beeld.
+{
+  proef("een link wordt gewone tekst, de linktekst blijft staan",
+    schoonInline("Benieuwd wat een [natuurlijke zwemvijver](https://a.nl/b/) kost?")
+      === "Benieuwd wat een natuurlijke zwemvijver kost?");
+  proef("vet en cursief verliezen hun sterretjes",
+    schoonInline("Dit is **belangrijk** en *dit* ook") === "Dit is belangrijk en dit ook");
+  const blokken = tekstNaarBlokken("# Kop\n\n---\n\nEen [link](https://a.nl/) in een alinea.\n\n- een **punt**");
+  const tekstIn = JSON.stringify(blokken);
+  // Alleen naar de tekst zelf kijken; de haakjes van de JSON eromheen tellen niet.
+  const woorden = blokken.flatMap((b) =>
+    b.type === "bullets" ? b.items : ("text" in b && typeof b.text === "string" ? [b.text] : []));
+  proef("er blijft nergens een markdown-teken staan",
+    woorden.every((w) => !/[[\]*`]|--/.test(w)), woorden.join(" | "));
+  proef("de streepjeslijn is weg, de alinea niet",
+    blokken.some((b) => b.type === "paragraph" && /Een link in een alinea/.test((b as { text: string }).text)), tekstIn);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ÉÉN GEGEVEN STAAT OP ÉÉN PLEK IN HET DOCUMENT (25-08-2026)
+// ═══════════════════════════════════════════════════════════
+// De titel, de H1, de meta-title en de meta-description stonden er drie keer in:
+// in de tabel "Titel, kop en meta's", nog een keer onder "Voor de sitebouwer",
+// en de H1 daarna nog als kop boven de tekst. Maartens woorden: "dingen met
+// koppen, meta's, titels die er volgens mij drie keer in staan. Niet nodig,
+// gewoon één keer kort en duidelijk."
+//
+// Deze proef bouwt een echte DocSpec en telt na. Zet er dus nooit een tweede
+// tabel bij "voor de zekerheid".
+{
+  const plan = goedPlan();
+  plan.landingMetas = [{ url: DOEL, metaTitle: "Een betere titel", metaDescription: "Een betere omschrijving." }];
+  // De H1 is met opzet géén stukje van de titel: anders telt een substring-check
+  // hem twee keer mee en zegt de proef iets anders dan hij denkt te zeggen.
+  const h1 = "Helder water zonder chloor, zo doen we dat";
+  plan.tekst = `# ${h1}\n\nEen alinea.`;
+  const velden = [
+    ["Titel van het stuk", "De oude titel", plan.titel],
+    ["H1 boven het stuk", "stond er niet", h1],
+    ["Paginatitel (meta-title)", "stond er niet", plan.metaTitle],
+    ["Meta-description", "stond er niet", plan.metaDescription],
+  ];
+  const spec = bouwSpec(plan, { klant: "Voorbeeld", doelUrls: [DOEL], velden });
+
+  /** Hoe vaak komt deze waarde voor in de tabellen en tekstblokken van het document? */
+  const telt = (waarde: string) => {
+    let n = 0;
+    for (const sec of spec.sections) {
+      for (const b of sec.blocks) {
+        if (b.type === "table") for (const rij of b.rows) for (const cel of rij) { if (cel.includes(waarde)) n++; }
+        else if ("text" in b && typeof b.text === "string" && b.text.includes(waarde)) n++;
+        else if (b.type === "bullets") for (const i of b.items) { if (i.includes(waarde)) n++; }
+      }
+    }
+    return n;
+  };
+  for (const [naam, waarde] of [
+    ["de titel", plan.titel],
+    ["de meta-title", plan.metaTitle],
+    ["de meta-description", plan.metaDescription],
+  ] as [string, string][]) {
+    proef(`${naam} staat maar op één plek in het document`, telt(waarde) === 1, `komt ${telt(waarde)}x voor`);
+  }
+  // De H1 mag twee keer: als waarde voor de sitebouwer, en als echte kop boven
+  // de tekst. Dat is geen dubbeling maar het verschil tussen zeggen en tonen.
+  proef("de H1 staat als waarde én als kop, en verder nergens",
+    telt(h1) === 2, `komt ${telt(h1)}x voor`);
+
+  const secties = spec.sections.map((s) => s.heading);
+  proef("de secties staan in de goede volgorde",
+    JSON.stringify(secties) === JSON.stringify(["Wat dit stuk doet", "Wat er is aangepast", "Voor de sitebouwer", "De aangepaste tekst"]),
+    JSON.stringify(secties));
+
+  // "Wat dit stuk doet" is een korte toelichting, geen hoofdstuk met tabellen.
+  const doet = spec.sections[0].blocks;
+  proef("'Wat dit stuk doet' is één blok, zonder tabel", doet.length === 1 && doet[0].type === "highlight", JSON.stringify(doet));
+  const zinnen = (doet[0] as { text: string }).text.split(/(?<=\.)\s+/).filter(Boolean);
+  proef("'Wat dit stuk doet' is hooguit twee zinnen", zinnen.length <= 2, zinnen.join(" || "));
+
+  // Er is één tabel met de velden, en die heeft de oude waarde erbij.
+  const tabellen = spec.sections.flatMap((s) => s.blocks).filter((b) => b.type === "table") as { headers: string[] }[];
+  const veldTabellen = tabellen.filter((t) => t.headers[0] === "Veld");
+  proef("er is precies één tabel met titel, kop en meta's", veldTabellen.length === 1, JSON.stringify(veldTabellen.map((t) => t.headers)));
+  proef("die tabel toont ook wat er stond",
+    veldTabellen[0]?.headers.join(",") === "Veld,Stond er,Staat er nu", JSON.stringify(veldTabellen[0]?.headers));
+
+  // De landingspagina staat op de omslag; in de secties alleen waar hij iets
+  // toevoegt. In de omslag-meta stond hij nog een keer, woordelijk gelijk aan de
+  // ondertitel er twee regels boven.
+  proef("de omslag noemt de landingspagina niet twee keer",
+    !JSON.stringify(spec.meta || {}).includes(DOEL) && !JSON.stringify(spec.meta || {}).includes("/natuurzwembad-aanleggen/"),
+    JSON.stringify(spec.meta));
+
+  // De tekst zelf begint met een H1.
+  const eerste = spec.sections[3].blocks[0] as { type: string; text?: string };
+  proef("de aangepaste tekst begint met een H1",
+    eerste.type === "subheading" && !!eerste.text?.startsWith("H1 · "), JSON.stringify(eerste));
+}
+
+// ── "Wat dit stuk doet" wordt in code geschreven, niet gevraagd ─────────────
+{
+  const zin = watDitStukDoet(goedPlan());
+  proef("de zin noemt de landingspagina", zin.includes("/natuurzwembad-aanleggen/"), zin);
+  proef("de zin noemt de hoofdterm", zin.includes("natuurzwembad aanleggen"), zin);
+  proef("de zin is hooguit twee zinnen", zin.split(/(?<=\.)\s+/).filter(Boolean).length <= 2, zin);
+
+  const twee = goedPlan();
+  twee.doelen = [...twee.doelen, { url: "https://voorbeeld.nl/zwemvijver-aanleggen/", hoofdterm: "zwemvijver aanleggen", steuntermen: [] }];
+  const zinTwee = watDitStukDoet(twee);
+  proef("bij twee doelpagina's staan ze er allebei in",
+    zinTwee.includes("/natuurzwembad-aanleggen/") && zinTwee.includes("/zwemvijver-aanleggen/"), zinTwee);
+  proef("en dan gaat het over 'die pagina's'", zinTwee.includes("die pagina's"), zinTwee);
+
+  const geen = goedPlan();
+  geen.doelen = [];
+  proef("zonder doelpagina blijft er een leesbare zin staan", watDitStukDoet(geen).length > 40);
+
+  const b = readFileSync(join(__dirname, "..", "lib", "ondersteunend.ts"), "utf8");
+  proef("het model schrijft die zin niet meer zelf",
+    !/"kop":"/.test(b) && b.includes("plan.kop = watDitStukDoet(plan)"),
+    "Dit is een feit dat het dashboard zelf kent; vraag je het aan een tekstschrijver, dan wisselt het per ronde.");
 }
 
 // ── Titel, kop en meta's staan als feit in het document ─────────────────────
@@ -228,9 +384,13 @@ proef("een schoon plan levert geen botsende term op", botsendeTermen(goedPlan())
   proef("het model schrijft niet meer zelf over titel, H1 en meta's",
     /Schrijf in "wijzigingen" NIETS over de titel/.test(b),
     "Anders staat hetzelfde twee keer in het document, in twee formuleringen.");
-  proef("de steuntermen worden ingekort tot een leesbare kolom",
-    b.includes("steunKolom(") && b.includes("andere vragen rond dit onderwerp"),
-    "Een komma-lijst van vijftien termen in een smalle kolom leest niemand.");
+  // De steuntermen stonden als derde kolom in een tabel bij "Wat dit stuk doet".
+  // Dat is een interne SEO-afweging, geen boodschap voor een klant of een
+  // sitebouwer, en het noemde de landingspagina voor de derde keer. Ze staan nu
+  // alleen nog op het scherm, bij het document, voor Maarten (25-08-2026).
+  proef("de steuntermen staan niet meer in het document",
+    !b.includes("steunKolom(") && !b.includes("Dit stuk mikt op"),
+    "Die horen op het scherm, niet in het stuk dat de klant leest.");
 }
 
 
