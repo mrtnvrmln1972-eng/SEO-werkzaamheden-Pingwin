@@ -32,7 +32,7 @@ import { urlKey } from "../../../../lib/url-key";
 import { volgendeFase, FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import { weekVanIso } from "../../../../lib/week-datum";
 import { nieuweVolgorde, nieuweVolgordeInLijst, bewaarVolgorde, bewaarLosseVolgorde } from "../../../../lib/weekplan-slepen";
-import { isKorteTitel } from "../../../../lib/kaart-titel";
+import { isKorteTitel, werkwoordUitKorteTitel } from "../../../../lib/kaart-titel";
 import WeekplanCard, { type WpTask, type WpPageInfo } from "./WeekplanCard";
 import MailUitKaart from "./MailUitKaart";
 import { useMailDatumLinks } from "./useMailDatumLinks";
@@ -565,10 +565,13 @@ export default function Planning({
           ) : (
             <span className="wb-wat">
               {t.url && isKorteTitel(t.taak)
-                ? (p?.live
-                  ? <a className="wb-pad" href={t.url} target="_blank" rel="noreferrer"
-                      onClick={(e) => e.stopPropagation()} title="Open de pagina">{pad(t.url)}</a>
-                  : <span className="wb-pad">{pad(t.url)}</span>)
+                ? (<>
+                    {p?.live
+                      ? <a className="wb-pad" href={t.url} target="_blank" rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()} title="Open de pagina">{pad(t.url)}</a>
+                      : <span className="wb-pad">{pad(t.url)}</span>}
+                    <span className="wb-taak-werkwoord">{werkwoordUitKorteTitel(t.taak)}</span>
+                  </>)
                 : <span className="wb-taak-vol">{zonderHtml(t.taak)}</span>}
               {t.url && !isKorteTitel(t.taak) && (
                 <a className="wb-pad-mini" href={t.url} target="_blank" rel="noreferrer"
