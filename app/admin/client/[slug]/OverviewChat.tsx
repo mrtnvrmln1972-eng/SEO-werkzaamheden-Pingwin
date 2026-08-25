@@ -10,14 +10,15 @@ import { linkifyHtml as linkify } from "../../../../lib/linkify";
 import { vraagHtml } from "../../../../lib/vraag-opmaak";
 import { striptVulzinnen } from "../../../../lib/vulzinnen";
 import { eersteKop } from "../../../../lib/chat-vouw";
-import { gesprekDatum } from "../../../../lib/chat-datum";
+import { gesprekBezig, gesprekDatum } from "../../../../lib/chat-datum";
+import { bezigStand } from "../../../../lib/chat-stand";
 import { bestandMelding } from "../../../../lib/bestand-melding";
 import MailVenster from "./MailVenster";
 import Bronnenstrip, { type Bron } from "./Bronnenstrip";
 import { Beeld, Blad, Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 type Msg = { role: "user" | "assistant"; content: string; actions?: Action[]; soort?: "conclusie" | "oogst"; oogst?: Oogst; bronnen?: Bron[] };
-type Topic = { thread: string; count: number; title: string; summary: string; done: boolean; updatedAt: string };
+type Topic = { thread: string; count: number; title: string; summary: string; done: boolean; updatedAt: string; bezigSinds: string };
 
 
 // ── Diep denken ──
@@ -189,6 +190,8 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   const loadSeq = useRef(0);
   const openRef = useRef<string | null>(null);
   useEffect(() => { openRef.current = open; }, [open]);
+  const busyRef = useRef(false);
+  useEffect(() => { busyRef.current = busy; }, [busy]);
   const backfilled = useRef<Set<string>>(new Set());
 
   // Onderwerpen (threads) laden, alleen de bird's eye-namespace ("overzicht*").
@@ -203,6 +206,35 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
       }).catch(() => {});
     return () => { alive = false; };
   }, [slug]);
+
+  // ── Zolang er ergens een antwoord loopt: zelf kijken of het er al staat ──
+  // Het gesprek draait op de server, dus het komt er ook als dit scherm dicht
+  // gaat. Maar dan moet je zelf herladen om te zien óf het er is, en dat is
+  // precies het gokwerk dat dit merkteken hoort weg te nemen (25-08-2026).
+  // Dit kijkt alleen zolang er echt iets loopt; staat alles stil, dan gebeurt er
+  // niets en kost het ook niets.
+  const erLooptIets = topics.some((t) => bezigStand(t.bezigSinds) === "bezig");
+  useEffect(() => {
+    if (!erLooptIets) return;
+    let alive = true;
+    const kijk = async () => {
+      const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}`).then((r) => r.json()).catch(() => null);
+      if (!alive || !d?.ok) return;
+      setTopics(normalizeTopics(d.threads || []));
+      // Is het open onderwerp intussen klaar, dan de berichten erbij halen. Niet
+      // terwijl dit tabblad zelf aan het versturen is: dan staat het antwoord hier
+      // zo meteen al, en zou dit het even weghalen.
+      const t = openRef.current;
+      if (!t || busyRef.current) return;
+      const nu = (d.threads || []).find((x: { thread: string }) => x.thread === t);
+      if (!nu || bezigStand(nu.bezigSinds) === "bezig") return;
+      const m = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t)}&nothreads=1`)
+        .then((r) => r.json()).catch(() => null);
+      if (alive && m?.ok && openRef.current === t && !busyRef.current) setMessages(m.messages || []);
+    };
+    const id = setInterval(kijk, 20000);
+    return () => { alive = false; clearInterval(id); };
+  }, [erLooptIets, slug]);
 
   // Genereer titel + samenvatting voor één onderwerp (met terugwerkende kracht).
   // Markeert vooraf om dubbele calls te voorkomen; bij mislukken weer vrijgeven
@@ -230,7 +262,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
 
   // Zorg dat het basisonderwerp altijd bestaat, en sorteer: openstaand eerst,
   // "gedaan" onderaan.
-  function normalizeTopics(threads: { thread: string; count?: number; title?: string; summary?: string; done?: boolean; updatedAt?: string }[]): Topic[] {
+  function normalizeTopics(threads: { thread: string; count?: number; title?: string; summary?: string; done?: boolean; updatedAt?: string; bezigSinds?: string }[]): Topic[] {
     // Welke gesprekken hierbij horen: één gedeelde regel, zodat dit blok en het
     // zwevende venster gegarandeerd dezelfde lijst tonen. Dit filterde op
     // "overzicht*", waardoor de gesprekken uit het venster ("algemeen" en de vrij
@@ -239,6 +271,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     const list: Topic[] = mine.map((t) => ({
       thread: t.thread, count: t.count || 0, title: t.title || "",
       summary: t.summary || "", done: !!t.done, updatedAt: t.updatedAt || "",
+      bezigSinds: t.bezigSinds || "",
     }));
     // Hier werd "Algemeen" bijgemaakt als hij ontbrak, want "er moet er altijd
     // één zijn". Dat is niet meer waar sinds je zelf "+ Nieuw onderwerp" kunt
@@ -280,7 +313,7 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
   // samenvatting worden daarna automatisch ingevuld.
   function newTopic() {
     const t = "overzicht:~" + Date.now().toString(36);
-    setTopics((ts) => [{ thread: t, count: 0, title: "", summary: "", done: false, updatedAt: new Date().toISOString() }, ...ts]);
+    setTopics((ts) => [{ thread: t, count: 0, title: "", summary: "", done: false, updatedAt: new Date().toISOString(), bezigSinds: "" }, ...ts]);
     setOpen(t); setMessages([]); setError(""); setInput(""); setTitleDraft("");
   }
 
@@ -370,6 +403,10 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
     setError(""); setInput("");
     const next = [...messages, { role: "user" as const, content: q }];
     setMessages(next); setBusy(true);
+    // Het merkteken meteen zetten, ook in dit tabblad: de server doet hetzelfde
+    // in de database (zie bewaarVraag), dus zo zeggen scherm en database van het
+    // eerste moment af hetzelfde.
+    setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, bezigSinds: new Date().toISOString() } : x));
     try {
       const res = await fetch("/api/admin/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread: t, messages: next }) });
       const data = await res.json();
@@ -377,10 +414,15 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
         setMessages((m) => [...m, { role: "assistant", content: data.answer, ...(Array.isArray(data.actions) && data.actions.length ? { actions: data.actions } : {}), ...(Array.isArray(data.bronnen) && data.bronnen.length ? { bronnen: data.bronnen } : {}) }]);
         const newTitle = typeof data.title === "string" && data.title.trim() ? data.title.trim() : "";
         const newSum = typeof data.summary === "string" && data.summary.trim() ? data.summary.trim() : "";
-        setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, count: next.length + 1, ...(newTitle ? { title: newTitle } : {}), ...(newSum ? { summary: newSum } : {}) } : x));
+        setTopics((ts) => ts.map((x) => x.thread === t ? { ...x, count: next.length + 1, bezigSinds: "", ...(newTitle ? { title: newTitle } : {}), ...(newSum ? { summary: newSum } : {}) } : x));
         if (openRef.current === t && newTitle) setTitleDraft(newTitle);
       } else setError(data.error || "Er ging iets mis.");
-    } catch { setError("De assistent is niet bereikbaar."); } finally { setBusy(false); }
+    } catch {
+      // Niet bereikbaar betekent hier meestal: dit tabblad kreeg het antwoord
+      // niet, niet dat het antwoord er niet komt. Het merkteken blijft dus staan;
+      // de server haalt het weg zodra het antwoord is weggeschreven.
+      setError("De assistent is niet bereikbaar. Je vraag is bewaard; het antwoord wordt op de server gemaakt en verschijnt hier vanzelf.");
+    } finally { setBusy(false); }
   }
 
   if (!configured) {
@@ -443,6 +485,20 @@ export default function OverviewChat({ slug, domain = "", configured, onGoToPage
                     van drie weken terug: precies het verschil dat bepaalt welke
                     versie van een strategie nog geldt (18-08-2026). */}
                 {gesprekDatum(t.updatedAt).label && <span className="gesprek-datum" title={gesprekDatum(t.updatedAt).titel}>{gesprekDatum(t.updatedAt).label}</span>}
+                {/* Er loopt hier een antwoord, of er is er een nooit afgemaakt.
+                    Het gesprek draait op de server, dus dit scherm sluiten breekt
+                    niets af; alleen was dat nergens aan te zien, en dan is een
+                    lopend antwoord niet te onderscheiden van een mislukt antwoord
+                    (25-08-2026). */}
+                {(() => {
+                  const b = gesprekBezig(t.bezigSinds, bezigStand(t.bezigSinds));
+                  if (!b.label) return null;
+                  return (
+                    <span className={"gesprek-bezig" + (b.afgebroken ? " afgebroken" : "")} title={b.titel}>
+                      <span className="stip" aria-hidden="true" />{b.label}
+                    </span>
+                  );
+                })()}
                 {/* Elk onderwerp is te verwijderen, "Algemeen" ook. */}
                 {/* De bevestiging staat in de rij zelf. Het was een browser-popup, en
                     die valt buiten de huisstijl en leest als een systeemmelding. */}

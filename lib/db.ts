@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "kern-25539e26";
+export const KERN_SCHEMA_VERSIE = "kern-07ec4e59";
 
 async function init(): Promise<void> {
   await sql`
@@ -282,6 +282,12 @@ async function init(): Promise<void> {
   await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS summary TEXT`;
   await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT false`;
   await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS title TEXT`;
+  // Wanneer er een vraag is gesteld waar nog geen antwoord op staat. De vraag
+  // wordt meteen bij binnenkomst opgeslagen (daarvóór ging hij samen met het
+  // antwoord de deur uit, dus een gesneuveld antwoord nam de vraag mee), en dit
+  // veld zegt sindsdien: er loopt hier iets. Het wordt leeggemaakt zodra het
+  // antwoord is weggeschreven. Zie lib/chat.ts (bezigSinds) en 25-08-2026.
+  await sql`ALTER TABLE client_chat ADD COLUMN IF NOT EXISTS bezig_sinds TIMESTAMPTZ`;
 
   // Uitvoerstatus van de bird's eye-actie-kaarten, los van de chat-JSON. Elke
   // goedkeuring is een eigen rij (atomair per actie), zodat meerdere

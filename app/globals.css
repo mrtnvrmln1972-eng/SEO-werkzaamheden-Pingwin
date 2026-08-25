@@ -3490,6 +3490,17 @@ button.org-sec-kop:hover { color: var(--kleur-accent-diep); }
    voor een gespreksdatum: zet er nergens een tweede naast, dan lopen de lijsten
    weer uiteen. De tekst komt uit lib/chat-datum.ts. */
 .gesprek-datum { flex: none; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); white-space: nowrap; margin-top: var(--ruimte-krap); }
+/* Er is een vraag gesteld waar nog geen antwoord op staat. Het gesprek draait op
+   de SERVER, dus een gesloten tabblad breekt niets af; zonder dit merkteken was
+   dat alleen nergens aan te zien, en dan is een lopend antwoord niet te
+   onderscheiden van een mislukt antwoord (25-08-2026). Dit is de ENIGE regel
+   hiervoor, net als .gesprek-datum erboven: zet er nergens een tweede naast. De
+   tekst komt uit lib/chat-datum.ts. */
+.gesprek-bezig { flex: none; display: inline-flex; align-items: center; gap: var(--ruimte-krap); font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-accent); white-space: nowrap; }
+.gesprek-bezig .stip { width: var(--ruimte-krap); height: var(--ruimte-krap); border-radius: var(--ronding-pil); background: currentColor; animation: gesprek-pols 1.4s ease-in-out infinite; }
+.gesprek-bezig.afgebroken { color: var(--kleur-tekst-stil); }
+.gesprek-bezig.afgebroken .stip { animation: none; opacity: 0.45; }
+@keyframes gesprek-pols { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
 .ovc-title-inline { border: none; background: transparent; font-family: inherit; font-weight: 800; font-size: var(--type-lopend); line-height: var(--regel-label); color: var(--kleur-accent); padding: 0; width: 100%; }
 .ovc-title-inline:focus { outline: none; border-bottom: 1px solid var(--kleur-accent); }
 .ovc-title-inline::placeholder { color: var(--kleur-tekst-stil); font-weight: 500; }

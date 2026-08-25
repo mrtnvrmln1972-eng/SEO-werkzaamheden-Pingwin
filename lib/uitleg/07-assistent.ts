@@ -191,6 +191,25 @@ export const HOOFDSTUK: Hoofdstuk = {
         "\"Veelgestelde vragen\" onderaan.",
     },
     {
+      titel: "Een gesprek draait op de server, en dat is te zien",
+      kern: "Je vraag wordt meteen bewaard, en je ziet dat er een antwoord onderweg is.",
+      tekst:
+        "Een antwoord wordt op de server gemaakt, niet in je browser. Je kunt het scherm dus gerust " +
+        "sluiten, je computer dichtklappen of naar iets anders gaan: het antwoord komt er, en het staat " +
+        "er zodra je terugkomt. Een zware analyse kan een paar minuten duren.\n\n" +
+        "Sinds 25 augustus 2026 zijn daar twee dingen bij gekomen die dat ook waarmaken.\n" +
+        "- **Je vraag wordt bewaard op het moment dat je hem stelt**, niet pas samen met het antwoord. " +
+        "Gaat er onderweg iets mis, dan blijft je vraag gewoon staan. Dat is het verschil tussen een " +
+        "uitgewerkte instructie waar je een kwartier aan hebt gezeten, en opnieuw beginnen.\n" +
+        "- **Je ziet dat er iets loopt.** Bij een onderwerp waar een antwoord onderweg is staat " +
+        "\"bezig sinds 09:24\", en het scherm kijkt zelf of het al klaar is; je hoeft dus niet te " +
+        "herladen. Is een antwoord er nooit gekomen (bijvoorbeeld doordat er tussendoor een nieuwe " +
+        "versie van het dashboard live ging), dan staat er \"niet afgemaakt\", zodat je weet dat je hem " +
+        "opnieuw moet stellen in plaats van te wachten op iets dat niet komt.\n\n" +
+        "Daarvóór stond er tussen versturen en antwoord niets, en dan is een lopend gesprek niet te " +
+        "onderscheiden van een mislukt gesprek.",
+    },
+    {
       titel: "Grondigheid boven vlotheid",
       kern: "De assistent mag zeggen dat hij het niet weet.",
       tekst:

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
-import { answerChat, clearChatHistory, getChatHistory, getChatUpdatedAt, listChatThreads, replaceChatHistory } from "../../../../lib/chat";
+import { answerChat, clearChatHistory, getBezigSinds, getChatHistory, getChatUpdatedAt, listChatThreads, replaceChatHistory, wisBezig } from "../../../../lib/chat";
 import { applyActionStatuses } from "../../../../lib/overview-actions";
 import { metAfkap, CHAT_AFKAP_MS, CHAT_AFKAP_TEKST } from "../../../../lib/afkap";
 
@@ -31,7 +31,12 @@ export async function GET(req: NextRequest) {
   // daar al in, maar een scherm dat één gesprek opent (nothreads=1) kreeg hem
   // niet, en dan staat er een gesprek in beeld zonder dat je weet van wanneer.
   const updatedAt = thread && messages.length ? await getChatUpdatedAt(slug, thread).catch(() => "") : "";
-  return NextResponse.json({ ok: true, threads, messages, updatedAt });
+  // Loopt er op dit onderwerp een antwoord? Het gesprek draait op de server, dus
+  // een gesloten tabblad breekt niets af, maar zonder dit veld was dat nergens
+  // aan te zien: een heropend onderwerp toonde je vraag zonder antwoord en zonder
+  // uitleg, precies zoals een mislukking eruitziet (25-08-2026).
+  const bezigSinds = thread ? await getBezigSinds(slug, thread).catch(() => "") : "";
+  return NextResponse.json({ ok: true, threads, messages, updatedAt, bezigSinds });
 }
 
 export async function POST(req: NextRequest) {
@@ -55,7 +60,14 @@ export async function POST(req: NextRequest) {
     CHAT_AFKAP_MS,
     { ok: false as const, error: CHAT_AFKAP_TEKST },
   );
-  if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
+  if (!result.ok) {
+    // Een tijdslimiet is géén einde: het werk draait op de server door en het
+    // antwoord kan alsnog landen (zie lib/afkap.ts). Dan blijft "bezig" terecht
+    // staan. Bij elke andere fout komt er niets meer, dus haalt het merkteken
+    // zichzelf weg; de vraag blijft wel gewoon bewaard.
+    if (result.error !== CHAT_AFKAP_TEKST) await wisBezig(slug, thread).catch(() => { /* de leestijd-grens vangt dit alsnog op */ });
+    return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
+  }
   return NextResponse.json({ ok: true, answer: result.answer, actions: result.actions, bronnen: result.bronnen, title: result.title, summary: result.summary });
 }
 

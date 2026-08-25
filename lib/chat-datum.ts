@@ -71,6 +71,50 @@ export function hoeLangGeleden(iso: string | null | undefined): string {
   return `${Math.round(n / 30)} maanden geleden`;
 }
 
+// ── Er loopt een antwoord op dit gesprek (25-08-2026) ──────────────────────
+// Een gesprek draait op de server, dus een gesloten tabblad breekt niets af.
+// Alleen was daar niets van te zien: heropende je het onderwerp, dan stond je
+// vraag er zonder antwoord, en dat is precies hoe een mislukking er ook uitziet.
+// Maartens vraag die ochtend: "draait hij nog in de achtergrond of wat, want ik
+// zie hem niet meer". Het antwoord kwam gewoon binnen, maar dat was nergens aan
+// af te lezen. Dit is de tekst die dat wél zegt, op één plek, net als de datum
+// hierboven.
+
+/** Wat er op het scherm komt terwijl er een antwoord onderweg is. */
+export type GesprekBezig = {
+  /** "bezig sinds 09:24", of "niet afgemaakt". Leeg = er loopt niets. */
+  label: string;
+  /** Eén zin voor de tooltip. */
+  titel: string;
+  /** true als het antwoord er nooit meer komt; dan staat het merkteken stil. */
+  afgebroken: boolean;
+};
+
+export const NIET_BEZIG: GesprekBezig = { label: "", titel: "", afgebroken: false };
+
+/**
+ * `bezigSinds` is het moment waarop de vraag binnenkwam; `stand` komt uit
+ * `bezigStand` in lib/chat.ts, want die grens (hoe lang "bezig" nog geloofwaardig
+ * is) hoort bij de server die het werk doet, niet bij de opmaak.
+ */
+export function gesprekBezig(bezigSinds: string | null | undefined, stand: "nee" | "bezig" | "afgebroken"): GesprekBezig {
+  const d = parse(bezigSinds);
+  if (!d || stand === "nee") return NIET_BEZIG;
+  const klok = d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+  if (stand === "afgebroken") {
+    return {
+      label: "niet afgemaakt",
+      titel: `Je vraag van ${klok} is bewaard, maar er is nooit een antwoord op gekomen. Stel hem opnieuw; de tekst staat er nog.`,
+      afgebroken: true,
+    };
+  }
+  return {
+    label: `bezig sinds ${klok}`,
+    titel: `Het antwoord wordt gemaakt sinds ${klok}. Dat gebeurt op de server, dus je kunt dit scherm gerust sluiten; het antwoord staat er zodra het klaar is.`,
+    afgebroken: false,
+  };
+}
+
 /**
  * De datum van een gesprek, klaar om neer te zetten.
  *

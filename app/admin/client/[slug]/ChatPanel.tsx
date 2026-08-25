@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import TakenVoorstel, { type Oogst } from "./TakenVoorstel";
 import { GESPREK_BASIS, gesprekLabel, isSiteGesprek } from "../../../../lib/gesprekken";
+import { gesprekBezig } from "../../../../lib/chat-datum";
+import { bezigStand } from "../../../../lib/chat-stand";
 import { korteDatum } from "../../../../lib/chat-datum";
 
 // Een "oogst"-bericht is geen tekst maar een voorstel met vinkjes: precies
@@ -74,6 +76,8 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
+  // Sinds wanneer er op dit gesprek een antwoord onderweg is (leeg = niets).
+  const [bezigSinds, setBezigSinds] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
   // Sleepbare positie van het venster (per klant onthouden), zodat het niet vast in
   // de rechteronderhoek zit en je eronder kunt kijken.
@@ -189,7 +193,7 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
     gekozenRef.current = true;
     setThread(t); setMessages([]); setError("");
     const d = await fetch(`/api/admin/chat?slug=${encodeURIComponent(slug)}&thread=${encodeURIComponent(t)}`).then((r) => r.json()).catch(() => null);
-    if (d?.ok) { setMessages(d.messages || []); setThreads(d.threads || []); }
+    if (d?.ok) { setMessages(d.messages || []); setThreads(d.threads || []); setBezigSinds(d.bezigSinds || ""); }
   }
 
   // Van buitenaf te openen op een specifiek gesprek (bijv. de Ads-assistent
@@ -424,6 +428,21 @@ export default function ChatPanel({ slug, configured, initialMessages, domain = 
                   })}
                   {busy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het denken…</div></div>}
                   {oogstBusy && <div className="chat-msg assistant"><div className="chat-bubble muted">Aan het wegen welk werk hier echt uit volgt…</div></div>}
+                  {/* Er loopt hier een antwoord dat in een ander tabblad (of vóór
+                      het sluiten van dit venster) is gestart. Het draait op de
+                      server, dus het komt er; zonder dit was dat nergens aan te
+                      zien (25-08-2026). */}
+                  {!busy && (() => {
+                    const b = gesprekBezig(bezigSinds, bezigStand(bezigSinds));
+                    if (!b.label) return null;
+                    return (
+                      <div className="chat-msg assistant">
+                        <span className={"gesprek-bezig" + (b.afgebroken ? " afgebroken" : "")} title={b.titel}>
+                          <span className="stip" aria-hidden="true" />{b.label}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div ref={endRef} />
                 </div>
 

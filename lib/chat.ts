@@ -543,15 +543,15 @@ export async function getChatUpdatedAt(slug: string, thread = "algemeen"): Promi
 
 // Alle gesprekken (threads) van een klant, nieuwste eerst. Inclusief de
 // onderwerp-samenvatting en de "gedaan"-vlag voor de toggle-weergave.
-export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string; title: string; summary: string; done: boolean }[]> {
+export async function listChatThreads(slug: string): Promise<{ thread: string; count: number; updatedAt: string; title: string; summary: string; done: boolean; bezigSinds: string }[]> {
   await ensureSchema();
   // Tel niet door de hele (soms grote) messages-blob te laden en te parsen; we
   // hoeven alleen te weten óf er berichten zijn (0/1). Scheelt veel laadtijd.
   const { rows } = await sql`
-    SELECT thread, updated_at, title, summary, done,
+    SELECT thread, updated_at, title, summary, done, bezig_sinds,
            CASE WHEN messages IS NULL OR btrim(messages) IN ('', '[]') THEN 0 ELSE 1 END AS cnt
     FROM client_chat WHERE client_slug = ${slug} ORDER BY updated_at DESC`;
-  return rows.map((r) => ({ thread: (r.thread as string) || "algemeen", count: Number(r.cnt) || 0, updatedAt: new Date(r.updated_at as string).toISOString(), title: (r.title as string) || "", summary: (r.summary as string) || "", done: !!r.done }));
+  return rows.map((r) => ({ thread: (r.thread as string) || "algemeen", count: Number(r.cnt) || 0, updatedAt: new Date(r.updated_at as string).toISOString(), title: (r.title as string) || "", summary: (r.summary as string) || "", done: !!r.done, bezigSinds: r.bezig_sinds ? new Date(r.bezig_sinds as string).toISOString() : "" }));
 }
 
 // Werkt de samenvatting en/of "gedaan"-status van één onderwerp (thread) bij.
@@ -600,14 +600,85 @@ export async function generateTopicMetaFor(slug: string, thread: string): Promis
   return autoTopicMeta(slug, thread, msgs);
 }
 
+/** De berichten zoals ze in de database gaan: hooguit 40, en oude beelden eruit. */
+function bewaarbaar(messages: ChatMessage[]): string {
+  const keep = messages.slice(-40);
+  return JSON.stringify(keep.map((m, i) => ((m.image || m.images?.length) && i < keep.length - 6 ? { role: m.role, content: m.content } : m)));
+}
+
 async function saveChatHistory(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
   await ensureSchema();
-  const keep = messages.slice(-40);
-  const content = JSON.stringify(keep.map((m, i) => ((m.image || m.images?.length) && i < keep.length - 6 ? { role: m.role, content: m.content } : m)));
   await sql`
-    INSERT INTO client_chat (client_slug, thread, messages, updated_at)
-    VALUES (${slug}, ${cleanThread(thread)}, ${content}, now())
-    ON CONFLICT (client_slug, thread) DO UPDATE SET messages = EXCLUDED.messages, updated_at = now()`;
+    INSERT INTO client_chat (client_slug, thread, messages, updated_at, bezig_sinds)
+    VALUES (${slug}, ${cleanThread(thread)}, ${bewaarbaar(messages)}, now(), NULL)
+    ON CONFLICT (client_slug, thread) DO UPDATE SET
+      messages = EXCLUDED.messages, updated_at = now(), bezig_sinds = NULL`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DE VRAAG WORDT METEEN BEWAARD, NIET PAS MET HET ANTWOORD (25-08-2026)
+// ═══════════════════════════════════════════════════════════
+// Het gesprek draait op de server, dus een tabblad sluiten maakt niets uit; het
+// antwoord landt gewoon. Maar er werd pas geschreven ná afloop, en dat had twee
+// gevolgen die allebei op 25 augustus opspeelden.
+//
+// Ten eerste: mislukt het antwoord (een tijdslimiet, een deploy die de functie
+// omhakt, een fout onderweg), dan is óók de vraag weg. Maartens woorden: "dat was
+// een hele uitgebreide analyse, daar heb ik net mijn best op gedaan qua
+// instructie". Zo'n instructie is werk, en werk hoort niet aan een geslaagd
+// antwoord te hangen.
+//
+// Ten tweede: tussen versturen en antwoord stond er niets in de database. Sloot
+// je het tabblad en opende je het opnieuw, dan zag je een onderwerp dat niet
+// bestond, of een gesprek zonder je laatste vraag. Niet te onderscheiden van een
+// mislukking, dus je moest afwachten en gokken. Precies wat er die ochtend
+// gebeurde: het antwoord kwam gewoon binnen, maar dat was nergens aan te zien.
+//
+// Vandaar deze twee regels: de vraag gaat er meteen in, mét een merkteken sinds
+// wanneer er iets loopt, en `saveChatHistory` haalt dat merkteken weg zodra het
+// antwoord er staat.
+
+// De grens tussen "bezig" en "nooit afgemaakt" staat in lib/chat-stand.ts, want
+// het scherm heeft hem net zo hard nodig als de server en dit bestand kan niet in
+// een browsercomponent geladen worden.
+
+/**
+ * De vraag vastleggen op het moment dat hij binnenkomt, vóór het antwoord.
+ *
+ * Faalt dit, dan gaat het antwoorden gewoon door: liever een antwoord zonder
+ * merkteken dan een vraag die niet gesteld wordt omdat de database even hikt.
+ */
+export async function bewaarVraag(slug: string, thread: string, messages: ChatMessage[]): Promise<void> {
+  await ensureSchema();
+  await sql`
+    INSERT INTO client_chat (client_slug, thread, messages, updated_at, bezig_sinds)
+    VALUES (${slug}, ${cleanThread(thread)}, ${bewaarbaar(messages)}, now(), now())
+    ON CONFLICT (client_slug, thread) DO UPDATE SET
+      messages = EXCLUDED.messages, updated_at = now(), bezig_sinds = now()`;
+}
+
+/**
+ * Het merkteken weghalen zonder de berichten aan te raken.
+ *
+ * Voor een antwoord dat aantoonbaar NIET meer komt (een fout die meteen
+ * terugkomt). Uitdrukkelijk NIET voor een tijdslimiet: dan krijgt de browser wel
+ * een melding, maar draait het werk op de server gewoon door en kan het antwoord
+ * alsnog landen (zie lib/afkap.ts). Dan blijft "bezig" dus terecht staan.
+ */
+export async function wisBezig(slug: string, thread: string): Promise<void> {
+  await ensureSchema();
+  await sql`
+    UPDATE client_chat SET bezig_sinds = NULL
+    WHERE client_slug = ${slug} AND thread = ${cleanThread(thread)}`;
+}
+
+/** Sinds wanneer er op dit onderwerp een antwoord onderweg is; leeg als er niets loopt. */
+export async function getBezigSinds(slug: string, thread: string): Promise<string> {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT bezig_sinds FROM client_chat WHERE client_slug = ${slug} AND thread = ${cleanThread(thread)} LIMIT 1`;
+  const v = rows[0]?.bezig_sinds;
+  return v ? new Date(v as string).toISOString() : "";
 }
 
 // Wist één gesprek (thread) van een klant; de assistent begint daar weer schoon.
@@ -1171,6 +1242,11 @@ export async function answerChat(slug: string, messages: ChatMessage[], thread =
   if (!key) return { ok: false, error: "Geen ANTHROPIC_API_KEY ingesteld." };
   const client = await getClientBySlug(slug);
   if (!client) return { ok: false, error: "Klant niet gevonden." };
+
+  // De vraag gaat er nú in, vóór het antwoorden begint. Zie bewaarVraag: sneuvelt
+  // het antwoord, dan blijft de vraag staan, en tot die tijd is te zien dát er
+  // iets loopt. Mislukt het opslaan zelf, dan gaat het antwoorden gewoon door.
+  await bewaarVraag(slug, thread, messages).catch(() => { /* liever een antwoord zonder merkteken dan geen antwoord */ });
 
   // Drie soorten gesprek, en dat zijn er sinds 19-08-2026 geen vier meer.
   //
