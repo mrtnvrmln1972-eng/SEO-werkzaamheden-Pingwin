@@ -108,9 +108,15 @@ function tekstOmslag(spec: DocSpec): any[] {
     cel([P(String(v), { size: 20, na: 0 })], { pt: 120, pb: 120 }),
   ] }));
   return [
-    P("Pingwin rapportage".toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, na: 120 }),
-    P(spec.titel, { bold: true, size: 46, color: T.inkt, regel: 480, na: 120 }),
-    ...(spec.ondertitel ? [P(spec.ondertitel, { size: 24, color: "5D564E", na: 200 })] : []),
+    P("Pingwin rapportage".toUpperCase(), { bold: true, size: 16, color: T.oranje, spacing: 28, na: 100 }),
+    // `regel` telt in 240sten van een regel, niet in punten: 480 was dus dubbele
+    // regelafstand. Bij een titel van drie regels stonden die zo ver uit elkaar
+    // dat het halve blad eraan opging. Maartens woorden (25-08-2026): "de titel
+    // ziet er heel groot en omslachtig uit, met een grote regelafstand, dat mag
+    // gewoon veel compacter en korter achter elkaar." Nu 18pt op iets meer dan
+    // één regel, dus de regels sluiten aan.
+    P(spec.titel, { bold: true, size: 36, color: T.inkt, regel: 250, na: 100 }),
+    ...(spec.ondertitel ? [P(spec.ondertitel, { size: 22, color: "5D564E", regel: 260, na: 180 })] : []),
     ...(rijen.length ? [tabel(rijen, { cols: [2200, 6800] }), new Paragraph({ spacing: { after: 320 }, children: [] })] : []),
   ];
 }

@@ -608,7 +608,7 @@ export default function DocVersies({ slug, url, taakId, triggerSlot, open, onSta
                     <div dangerouslySetInnerHTML={{ __html: netteHtml(
                       "**Ook overnemen op de landingspagina:** " + steunUit.plan.landingMetas
                         .map((m) => `${padVan(m.url)} krijgt titel "${m.metaTitle}"${m.metaDescription ? ` en omschrijving "${m.metaDescription}"` : ""}`)
-                        .join("; ") + ". Dit staat kant-en-klaar in het document.",
+                        .join("; ") + ". Deze staan alleen hier, niet in het document: ze gaan over de landingspagina en niet over dit stuk.",
                     ) }} />
                   )}
                   {/* Alleen voor jou. Deze regels stonden eerder ook in het

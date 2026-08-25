@@ -46,8 +46,10 @@ import { registerGeneratedVersion } from "./doc-versions";
 // Sindsdien geldt hier één regel, en die zit zowel in de prompt als in de vorm
 // van het document:
 //   * Kun je het zelf, doe het dan. Een betere meta-title voor de landingspagina
-//     schrijf je, je beveelt hem niet aan; hij staat als kant-en-klare waarde in
-//     "Voor de sitebouwer".
+//     schrijf je, je beveelt hem niet aan; hij staat als kant-en-klare waarde op
+//     het scherm bij het document. (Tot 25-08-2026 stond hij in het document
+//     zelf, onder "Ook overnemen op de landingspagina". Dat gaat over een ándere
+//     pagina dan dit stuk, en dit document gaat over dít stuk.)
 //   * Kan de hoofdterm niet uit de titel of de H1, dan stel je een ándere titel
 //     voor. Er wordt hieronder één herstelronde gedraaid die precies dat doet,
 //     en pas als die ook niet lukt blijft er iets over.
@@ -127,7 +129,7 @@ MINIMAAL INGRIJPEN (net zo belangrijk):
 DIT DOCUMENT IS EEN OPLEVERING, GEEN LIJST MET HUISWERK (dit is een harde regel):
 - Het document gaat naar de klant en naar de sitebouwer. Alles wat erin staat is óf al gedaan door ons, óf een concrete waarde die zij overnemen. Er staat nooit iets in waarvan de klant zich afvraagt of hij zelf nog iets moet uitzoeken.
 - Geef daarom NOOIT een aanbeveling die je zelf kunt uitvoeren. Kun je het zelf, doe het, en zet het in "wijzigingen". Dus niet "het verdient aanbeveling de meta-description aan te scherpen", maar de aangescherpte meta-description zelf.
-- Vind je dat de meta-title of de meta-description van de LANDINGSPAGINA beter kan (te lang, te kort, geen klikprikkel, hoofdterm niet vooraan), schrijf ze dan zelf en zet ze in "landingMetas". Zijn ze al goed, laat "landingMetas" dan leeg; verzin geen werk.
+- Vind je dat de meta-title of de meta-description van de LANDINGSPAGINA beter kan (te lang, te kort, geen klikprikkel, hoofdterm niet vooraan), schrijf ze dan zelf en zet ze in "landingMetas". Zijn ze al goed, laat "landingMetas" dan leeg; verzin geen werk. Die waarden gaan naar Maarten, niet in dit document.
 - Is een kop in de kern de zoekterm zelf, kies dan een kop met een eigen invalshoek. Lever dat alternatief, in plaats van een opmerking dat het lastig is.
 - In "wijzigingen" staat ALLEEN wat je écht veranderd hebt. Nooit een regel die zegt dat iets ongewijzigd is gebleven, en nooit een verantwoording waarom je iets hebt laten staan. Wat je niet noemt, heb je niet aangepast; dat is de afspraak, en dan hoeft het er dus niet bij. Heb je aan de tekst zelf niets veranderd, geef dan een lege lijst.
 - Schrijf in "wijzigingen" NIETS over de titel, de H1, de meta-title of de meta-description. Die staan feitelijk in een eigen tabel in het document, met de oude en de nieuwe waarde naast elkaar; schrijf je er zelf ook over, dan spreken die twee elkaar tegen. In "wijzigingen" hoort alleen wat er met de INHOUD gebeurd is: welke alinea, welke tussenkop, welke zin met de link erin.
@@ -144,6 +146,7 @@ HARDE REGELS:
 
 DE OPBOUW VAN "tekst" (dit wordt nagerekend):
 - Begin met PRECIES ÉÉN regel met één hekje: dat is de H1 van het stuk. Daarna twee hekjes voor een tussenkop en drie voor een subkop. Nooit twee keer één hekje.
+- Elke link die je in "links" noemt, staat ook ECHT in "tekst", als [linktekst](volledige url). Dat is de plek waar hij hoort; de sitebouwer kopieert die tekst, dus een link die alleen in "links" staat wordt vergeten.
 - Verder geen opmaaktekens in de lopende tekst: geen sterretjes voor vet of cursief, geen streepjeslijn als scheiding, geen accolades of backticks. Alleen een link mag, als [linktekst](url).
 
 Antwoord met UITSLUITEND geldige JSON, niets eromheen:
@@ -443,14 +446,18 @@ export function tekstNaarBlokken(tekst: string): DocBlock[] {
  * Een Word-document kent geen markdown, dus alles wat het model als opmaak
  * meestuurt komt er letterlijk in te staan. In het GardenSwimm-stuk las de klant
  * daardoor "Benieuwd wat een [natuurlijke zwemvijver](https://gardenswimm.nl/...)
- * voor jouw tuin kan betekenen?" midden in een alinea. De linktekst blijft staan;
- * wélke link waar komt, staat als tabel bij "Voor de sitebouwer", dus die
- * informatie gaat niet verloren en staat maar op één plek.
+ * voor jouw tuin kan betekenen?" midden in een alinea.
+ *
+ * De link zelf blijft wél zichtbaar, als "linktekst (adres)". Hij stond eerst
+ * alleen in een tabel bij "Voor de sitebouwer", en dan kan iemand die de tekst
+ * kopieert en plakt hem vergeten. Maartens woorden (25-08-2026): "de link vanuit
+ * dit stuk gewoon letterlijk in de tekst willen zien, zodat de sitebouwer dat ook
+ * niet kan vergeten bij het kopiëren en plakken van de tekst."
  */
 export function schoonInline(regel: string): string {
   return (regel || "")
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")   // afbeelding
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")    // link: de linktekst blijft staan
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")   // afbeelding: alleen het bijschrift
+    .replace(/\[([^\]]+)\]\(\s*([^)\s]+)[^)]*\)/g, "$1 ($2)")  // link: tekst plus het adres
     .replace(/(\*\*|__)(.+?)\1/g, "$2")         // vet
     .replace(/\*([^*\n]+)\*/g, "$1")            // cursief
     .replace(/`([^`\n]+)`/g, "$1")              // code
@@ -590,6 +597,20 @@ async function doelBeeld(domain: string, url: string): Promise<string> {
 // `proeven/ondersteunend.proef.ts` bouwt een echte DocSpec en telt na hoe vaak
 // elke waarde erin voorkomt. Zet er dus nooit een tweede tabel bij "voor de
 // zekerheid": dan wordt de bouw rood.
+/**
+ * De links die het model wel noemt maar niet in de tekst heeft gezet.
+ *
+ * De link hoort in de lopende tekst te staan, zodat de sitebouwer hem meeneemt
+ * bij kopiëren en plakken. Staat hij daar, dan hoeft hij nergens anders meer.
+ * Staat hij er niet, dan zou hij zonder dit vangnet helemaal uit het document
+ * verdwijnen, en dat is precies het ene ding dat niet mag: zonder link
+ * ondersteunt dit stuk niets.
+ */
+export function linksBuitenDeTekst(plan: OndersteunendPlan): OndersteunendeLink[] {
+  const tekst = plan.tekst || "";
+  return (plan.links || []).filter((l) => l.naar && !tekst.includes(l.naar));
+}
+
 export function bouwSpec(
   plan: OndersteunendPlan,
   opts: { klant: string; doelUrls: string[]; velden: string[][] },
@@ -627,18 +648,20 @@ export function bouwSpec(
           // er stond staat er meteen naast, zodat de sitebouwer ziet wat hij
           // vervangt in plaats van het te moeten opzoeken in een tweede tabel.
           { type: "table", headers: ["Veld", "Stond er", "Staat er nu"], rows: opts.velden },
-          // Kant-en-klaar, geen aanbeveling: staat hier alleen als de huidige
-          // meta van de landingspagina echt beter kan.
-          ...(plan.landingMetas.length ? [
-            { type: "subheading" as const, text: "Ook overnemen op de landingspagina" },
-            { type: "table" as const, headers: ["Pagina", "Veld", "Waarde"], rows: plan.landingMetas.flatMap((m) => [
-              ...(m.metaTitle ? [[pad(m.url), "Paginatitel (meta-title)", m.metaTitle]] : []),
-              ...(m.metaDescription ? [[pad(m.url), "Meta-description", m.metaDescription]] : []),
-            ]) },
-          ] : []),
-          ...(plan.links.length ? [
-            { type: "subheading" as const, text: "Links vanuit dit stuk" },
-            { type: "table" as const, headers: ["Naar", "Linktekst", "Waar"], rows: plan.links.map((l) => [pad(l.naar), l.anker, l.plek]) },
+          // "Ook overnemen op de landingspagina" stond hier: een kant-en-klare
+          // betere meta-title en meta-description voor de landingspagina zelf.
+          // Dat gaat over een ándere pagina dan dit stuk, en dit document gaat
+          // over dit stuk. Maarten wil het er niet in (25-08-2026). De waarden
+          // worden nog wél geschreven en staan op het scherm bij het document,
+          // zodat jij ze kunt gebruiken waar ze thuishoren.
+          //
+          // De links stonden hier ook als tabel. Die staan nu letterlijk in de
+          // lopende tekst ("linktekst (adres)"), zodat ze niet te missen zijn bij
+          // kopiëren en plakken. Alleen een link die NIET in de tekst terecht is
+          // gekomen krijgt hier alsnog een regel; anders verdwijnt hij stilletjes.
+          ...(linksBuitenDeTekst(plan).length ? [
+            { type: "subheading" as const, text: "Deze link staat nog niet in de tekst" },
+            { type: "table" as const, headers: ["Naar", "Linktekst", "Waar"], rows: linksBuitenDeTekst(plan).map((l) => [pad(l.naar), l.anker, l.plek]) },
           ] : []),
           ...(plan.linksNaarBlog.length ? [
             { type: "subheading" as const, text: "Pagina's die naar dit stuk mogen linken" },

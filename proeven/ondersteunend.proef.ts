@@ -23,7 +23,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { botsendeTermen, botstMetHoofdterm, bouwSpec, controleerPlan, isEchteWijziging,
-         schoonInline, tekstNaarBlokken, watDitStukDoet, type OndersteunendPlan } from "../lib/ondersteunend";
+         linksBuitenDeTekst, schoonInline, tekstNaarBlokken, watDitStukDoet, type OndersteunendPlan } from "../lib/ondersteunend";
 import { groepeer } from "../lib/doc-groepen";
 
 let fouten = 0;
@@ -130,9 +130,18 @@ proef(
   "Zet plan.waarschuwingen nooit als bullets in de DocSpec.",
 );
 proef(
-  "een betere meta voor de landingspagina wordt geleverd, niet aanbevolen",
-  bron.includes("landingMetas") && bron.includes("Ook overnemen op de landingspagina"),
+  "een betere meta voor de landingspagina wordt geschreven, niet aanbevolen",
+  bron.includes("landingMetas") && /zet ze in "landingMetas"/.test(bron),
   "Een aanbeveling die we zelf kunnen uitvoeren hoort een kant-en-klare waarde te zijn.",
+);
+// Maar die waarde gaat naar het scherm, niet het document in: hij gaat over de
+// landingspagina en dit document gaat over dít stuk (25-08-2026). Let op dat je
+// hier niet op de brontekst zoekt naar de oude kop, want die staat nog in de
+// toelichting hierboven; kijk naar de DocSpec zelf (verderop in deze proef).
+proef(
+  "het model weet dat die waarden niet in het document komen",
+  /niet in dit document/.test(bron),
+  "Anders schrijft het er alsnog een zin over.",
 );
 proef(
   "een botsende titel wordt eerst hersteld en pas daarna gemeld",
@@ -251,9 +260,12 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
 // klant. Dit is dezelfde harde opmaakregel als op het scherm: nooit ruwe
 // markdown in beeld.
 {
-  proef("een link wordt gewone tekst, de linktekst blijft staan",
+  // De link blijft zichtbaar in de lopende tekst, want de sitebouwer kopieert
+  // die tekst. Stond hij alleen in een tabel, dan kan hij hem vergeten.
+  proef("een link wordt gewone tekst, mét het adres erbij",
     schoonInline("Benieuwd wat een [natuurlijke zwemvijver](https://a.nl/b/) kost?")
-      === "Benieuwd wat een natuurlijke zwemvijver kost?");
+      === "Benieuwd wat een natuurlijke zwemvijver (https://a.nl/b/) kost?",
+    schoonInline("Benieuwd wat een [natuurlijke zwemvijver](https://a.nl/b/) kost?"));
   proef("vet en cursief verliezen hun sterretjes",
     schoonInline("Dit is **belangrijk** en *dit* ook") === "Dit is belangrijk en dit ook");
   const blokken = tekstNaarBlokken("# Kop\n\n---\n\nEen [link](https://a.nl/) in een alinea.\n\n- een **punt**");
@@ -263,8 +275,10 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
     b.type === "bullets" ? b.items : ("text" in b && typeof b.text === "string" ? [b.text] : []));
   proef("er blijft nergens een markdown-teken staan",
     woorden.every((w) => !/[[\]*`]|--/.test(w)), woorden.join(" | "));
+  proef("het adres van de link staat in de alinea zelf",
+    woorden.some((w) => w.includes("(https://a.nl/)")), woorden.join(" | "));
   proef("de streepjeslijn is weg, de alinea niet",
-    blokken.some((b) => b.type === "paragraph" && /Een link in een alinea/.test((b as { text: string }).text)), tekstIn);
+    blokken.some((b) => b.type === "paragraph" && /^Een link \(.*\) in een alinea\.$/.test((b as { text: string }).text)), tekstIn);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -346,6 +360,45 @@ const koppenVan = (t: string) => tekstNaarBlokken(t)
   const eerste = spec.sections[3].blocks[0] as { type: string; text?: string };
   proef("de aangepaste tekst begint met een H1",
     eerste.type === "subheading" && !!eerste.text?.startsWith("H1 · "), JSON.stringify(eerste));
+
+  // ── De landingspagina-meta's gaan niet mee het document in (25-08-2026) ────
+  // Die gaan over een ándere pagina dan dit stuk, en dit document gaat over dít
+  // stuk. Ze worden nog wel geschreven en staan op het scherm bij het document.
+  const alles = JSON.stringify(spec);
+  proef("'Ook overnemen op de landingspagina' staat niet meer in het document",
+    !alles.includes("Ook overnemen op de landingspagina"));
+  proef("en de waarden ervan dus ook niet",
+    !alles.includes("Een betere titel") && !alles.includes("Een betere omschrijving"));
+}
+
+// ═══════════════════════════════════════════════════════════
+// DE LINK STAAT IN DE TEKST, NIET ALLEEN IN EEN TABEL (25-08-2026)
+// ═══════════════════════════════════════════════════════════
+// De sitebouwer kopieert de tekst uit dit document. Stond de link alleen in een
+// tabel eronder, dan kan hij hem daarbij vergeten, en dan ondersteunt dit stuk
+// niets meer. Maartens woorden: "de link vanuit dit stuk gewoon letterlijk in de
+// tekst willen zien, zodat de sitebouwer dat ook niet kan vergeten bij het
+// kopiëren en plakken van de tekst."
+{
+  const velden = [["Titel van het stuk", "Oud", "Nieuw"]];
+
+  // Staat de link in de tekst, dan hoeft hij nergens anders meer.
+  const wel = goedPlan();
+  wel.tekst = `# Een kop\n\nZo laat je een [natuurzwembad aanleggen](${DOEL}) in je tuin.`;
+  proef("een link die in de tekst staat, telt als geregeld", linksBuitenDeTekst(wel).length === 0);
+  const specWel = bouwSpec(wel, { klant: "V", doelUrls: [DOEL], velden });
+  proef("dan staat er geen linktabel meer in het document",
+    !JSON.stringify(specWel).includes("nog niet in de tekst"));
+  const alinea = specWel.sections[3].blocks
+    .filter((b) => b.type === "paragraph").map((b) => (b as { text: string }).text).join(" ");
+  proef("het adres staat gewoon in de alinea", alinea.includes(`(${DOEL})`), alinea);
+
+  // Staat hij er niet, dan mag hij niet stilletjes verdwijnen.
+  const niet = goedPlan();
+  niet.tekst = "# Een kop\n\nEen alinea zonder link.";
+  proef("een link die niet in de tekst staat wordt eruit gehaald", linksBuitenDeTekst(niet).length === 1);
+  proef("en krijgt alsnog een regel in het document",
+    JSON.stringify(bouwSpec(niet, { klant: "V", doelUrls: [DOEL], velden })).includes("nog niet in de tekst"));
 }
 
 // ── "Wat dit stuk doet" wordt in code geschreven, niet gevraagd ─────────────

@@ -71,9 +71,15 @@ export const BLOKKEN: Uitklapper[] = [
       "Eerst \"Wat dit stuk doet\": twee zinnen, geschreven door het dashboard zelf, over welke pagina dit " +
       "stuk versterkt en op welke term. Dan \"Wat er is aangepast\": alleen de echte aanpassingen. Dan " +
       "\"Voor de sitebouwer\": één tabel met de titel, de H1, de paginatitel en de omschrijving, met wat " +
-      "er stond en wat er nu staat naast elkaar, eventueel de betere meta voor de landingspagina zelf, de " +
-      "links die gelegd moeten worden met hun linktekst, en welke bestaande pagina's naar dit stuk mogen " +
-      "linken. Daaronder de volledige aangepaste tekst.\n\n" +
+      "er stond en wat er nu staat naast elkaar, plus welke bestaande pagina's naar dit stuk mogen linken. " +
+      "Daaronder de volledige aangepaste tekst.\n\n" +
+      "**De interne link staat in de lopende tekst zelf**, als linktekst met het adres erachter, en niet " +
+      "meer alleen in een tabel eronder. De sitebouwer kopieert die tekst, dus in een tabel eronder kan hij " +
+      "hem vergeten. Zet het model de link toch niet in de tekst, dan krijgt hij alsnog een eigen regel; " +
+      "verdwijnen kan hij niet, want zonder link ondersteunt het stuk niets.\n\n" +
+      "**Een betere paginatitel en omschrijving voor de landingspagina zelf staan alleen op het scherm.** " +
+      "Die worden nog steeds geschreven (kunnen we het zelf, dan doen we het), maar ze gaan over een ándere " +
+      "pagina dan dit stuk, en dit document gaat over dit stuk.\n\n" +
       "Daarvóór stonden de titel, de kop en de meta's er drie keer in (in een tabel met de oude waarde, " +
       "nog eens als tabel voor de sitebouwer, en de kop daarna nog boven de tekst), stond de landingspagina " +
       "er vier keer in, en was \"Wat dit stuk doet\" een zin plus een tabel. Er is nu één plek per gegeven; " +
