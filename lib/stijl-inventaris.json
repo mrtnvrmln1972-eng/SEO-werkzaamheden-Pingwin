@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9318,
-    "stijlregels": 4506,
-    "classnamen": 3073
+    "regels": 9301,
+    "stijlregels": 4501,
+    "classnamen": 3071
   },
   "kleuren": {
     "verschillend": 40,
@@ -300,7 +300,7 @@
     },
     {
       "naam": "Kaarten en panelen",
-      "aantal": 74,
+      "aantal": 73,
       "namen": [
         "act-card",
         "ag-datumknop-panel",
@@ -314,7 +314,6 @@
         "dev-client-card",
         "dev-kaart-opm",
         "dev-task-card",
-        "fnd-dropdown-panel",
         "hm-paneel",
         "kb-kaart",
         "kijk-kaart",
@@ -1921,7 +1920,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8679,
+    "gebruik": 8669,
     "schaalGebruik": 1486
   }
 }

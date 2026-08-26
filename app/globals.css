@@ -1304,24 +1304,6 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .fnd-tegel-acties { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-naast); margin-top: auto; }
 .fnd-link-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-naast); }
 .fnd-link-row .compose-input { flex: 1 1 200px; }
-/* De vier fundament-blokken (aansluiten, wie is de klant, meten, aan het werk)
-   stonden als vier volle kaarten onder elkaar; dat duwde de rest van het
-   tabblad ver naar beneden voor iets wat je meestal maar even induikt. Nu is
-   het één samenvattingsregel die bij hover (of toetsenbordfocus) het hele
-   overzicht openklapt, zoals de "?"-uitleghint dat al deed voor tekst. */
-.fnd-dropdown { position: relative; }
-.fnd-dropdown-trigger { padding: var(--ruimte-krap) 0; cursor: default; }
-.fnd-dropdown-panel {
-  position: absolute; top: calc(100% + var(--ruimte-naast)); left: 0; right: 0; z-index: 60;
-  display: flex; flex-direction: column; gap: var(--ruimte-blok);
-  background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop);
-  box-shadow: var(--diepte-venster); padding: var(--ruimte-groep);
-  opacity: 0; visibility: hidden; transition: opacity .12s; pointer-events: none;
-}
-.fnd-dropdown:hover .fnd-dropdown-panel, .fnd-dropdown:focus-within .fnd-dropdown-panel {
-  opacity: 1; visibility: visible; pointer-events: auto;
-}
-.fnd-dropdown-bloktitel { font-weight: 700; font-size: var(--type-bijschrift); color: var(--kleur-accent-diep); }
 /* De koppen waar de fundament-tegels naartoe springen: niet klem onder de
    vaste kopbalk van de cockpit laten landen. */
 #fund-structured-data, #fund-concurrenten { scroll-margin-top: 96px; }
@@ -6706,13 +6688,14 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
    weg erheen. */
 
 .ob-panel { max-width: 980px; }
-/* Onboarding en het fundament-overzicht naast elkaar, elk de halve breedte
-   (25-08-2026): Onboarding stond eerst alleen, over de volle breedte, met
-   het fundament als vier volle kaarten daaronder. Op een smal scherm valt
-   dit terug naar onder elkaar, net als de rest van het dashboard. */
-.klant-boven-rij { display: flex; align-items: flex-start; gap: var(--ruimte-naast); flex-wrap: wrap; }
-.klant-boven-rij > * { flex: 1 1 320px; min-width: 0; }
-.klant-boven-rij .ob-panel { max-width: none; }
+/* Het klanttabblad in twee kolommen (25-08-2026): links wat je bijhoudt en
+   leest (onboarding, profiel, bedrijfsgegevens, concurrenten), rechts het
+   fundament (aansluiten, wie is de klant, meten, aan het werk), altijd
+   volledig uitgeschreven in plaats van achter een hover-klapper of boven de
+   rest van de kolom. Op een smal scherm valt dit terug naar onder elkaar. */
+.klant-twee-kolommen { display: flex; align-items: flex-start; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.klant-kolom-links, .klant-kolom-rechts { flex: 1 1 320px; min-width: 0; }
+.klant-twee-kolommen .ob-panel { max-width: none; }
 
 .ob-inleiding {
   font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht);

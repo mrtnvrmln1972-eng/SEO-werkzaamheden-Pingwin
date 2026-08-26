@@ -914,36 +914,28 @@ export default function ClientCockpit({
 
 
         <Bezocht tab="klant" nu={tab} bezocht={bezocht}>
-          {/* Hoe ver deze klant staat, met de knop die aanvult wat nog ontbreekt.
-              Dit stond op een eigen tabblad Onboarding, met dezelfde cijfers uit
-              dezelfde bron als het fundament eronder. Twee schermen voor dezelfde
-              vraag betekent dat je altijd de verkeerde openhebt. */}
-          {/* Onboarding en het fundament naast elkaar, elk de halve breedte: de
-              voortgang links, en rechts één samenvattingsregel die bij hover
-              het hele fundament-overzicht openklapt in plaats van vier volle
-              kaarten daaronder (25-08-2026). */}
-          <div className="klant-boven-rij">
-            <OnboardingPanel alleenKop slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />
-            <FundamentPanel
-              slug={client.slug}
-              positioneringUrl={client.cockpit.positioneringUrl || ""}
-              huisstijlUrl={client.cockpit.huisstijlUrl || ""}
-              adsAccountUrl={client.cockpit.adsAccountUrl || ""}
-              onGaNaar={(t) => changeTab(validTab(t))}
-            />
+          {/* Twee kolommen (25-08-2026): links wat je bijhoudt en leest, rechts
+              het fundament, altijd volledig uitgeschreven (geen hover-klapper
+              meer, dat werkte niet lekker) in plaats van boven de rest. */}
+          <div className="klant-twee-kolommen">
+            <div className="klant-kolom-links">
+              {/* Hoe ver deze klant staat; zelfde cijfers als het fundament. */}
+              <OnboardingPanel alleenKop slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />
+              {/* Klantprofiel en tone of voice: wie het bedrijf is, niet over pagina's. */}
+              <PagesPanel alleenProfiel slug={client.slug} initialProfile={client.seoProfile || ""} domain={client.domain || ""} />
+              <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
+              <Concurrenten slug={client.slug} />
+            </div>
+            <div className="klant-kolom-rechts">
+              <FundamentPanel
+                slug={client.slug}
+                positioneringUrl={client.cockpit.positioneringUrl || ""}
+                huisstijlUrl={client.cockpit.huisstijlUrl || ""}
+                adsAccountUrl={client.cockpit.adsAccountUrl || ""}
+                onGaNaar={(t) => changeTab(validTab(t))}
+              />
+            </div>
           </div>
-          {/* Het klantprofiel en de tone of voice stonden boven de paginalijst.
-              Ze gaan niet over pagina's maar over wie het bedrijf is, en bijna
-              elke motor leest ze. Zelfde code als daar, dus één bron. */}
-          <PagesPanel alleenProfiel slug={client.slug} initialProfile={client.seoProfile || ""} domain={client.domain || ""} />
-          {/* Hier stond het vrije veld "Zoekwoorden & links". Dat heet nu
-              "Overzicht" en staat weer op Taken, in de rechterkolom onder de
-              mails: je houdt het bij terwijl je werkt, niet terwijl je het
-              dossier naleest. Eén plek, dus hier niet nog een keer. */}
-          <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
-          {/* Wie de concurrentie is, is klantkennis en hoort hier, niet verstopt
-              achter een knopje in een scan-blok. Zelfde component als daar. */}
-          <Concurrenten slug={client.slug} />
         </Bezocht>
 
         {/* Wat de klant ziet is geen dossierkennis maar een oplevering: het is het
