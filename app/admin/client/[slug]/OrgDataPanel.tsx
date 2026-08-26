@@ -559,6 +559,17 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
           // (dus: is het gedeeld?) en het overzicht staat in dit dashboard (dus:
           // moet hij inloggen?). Nu hoeft niemand dat meer te gokken.
           <div className="dev-deel-links">
+            {/* Deze knop doet twee dingen tegelijk: hij zet de taak op het
+                Developer-dashboard (in Werkzaamheden, status "Naar dev") én
+                bereidt deze mail voor. Dat eerste gebeurt al zodra je hier
+                klomt, dus vóórdat je op "Verstuur per mail" drukt; zonder
+                deze regel leek het alsof mailen de enige uitkomst was. */}
+            <div className="dev-deel-rij">
+              <a className="dev-deel-naam" href={`/admin/client/${slug}?tab=developer`} target="_blank" rel="noreferrer" title="Deze taak staat al op het Developer-tabblad van deze klant; deze mail versturen is een aparte keuze.">
+                Staat al op het Developer-dashboard
+              </a>
+              <span className="dev-deel-stand">de mail hieronder is optioneel, de taak staat er sowieso al</span>
+            </div>
             {/* De adressen zelf staan al uitgeschreven in de mail eronder; hier
                 staat wat het is, of hij het kan openen, en een kopieerknop. */}
             <div className="dev-deel-rij">
