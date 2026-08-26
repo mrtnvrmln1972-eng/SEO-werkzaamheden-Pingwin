@@ -31,7 +31,7 @@ function LaatsteStandKnop() {
   }
   const datum = stand ? new Date(stand.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "";
   return (
-    <span className="org-action-hint pnl-acties-info" style={{ marginLeft: "auto" }}>
+    <span className="org-action-hint pnl-acties-info">
       <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpen(true)}>
         Laatste stand structured data{stand?.verouderd ? " (verouderd)" : ""}
       </button>
@@ -481,7 +481,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
       </button>
       {open && (
         <div className="strategy-body">
-          <div className="org-actions">
+          <div className="org-actions org-actions-rechts">
             {/* Alleen actief zolang er iets te halen valt: zonder gaten hoeft er
                 niets opgehaald te worden, en vergrendeld is de klant akkoord. */}
             <button type="button" className={"btn btn-klein " + (volgendeStap === "ophalen" ? "btn-primary" : "btn-ghost")} onClick={autofill}
@@ -532,6 +532,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
           <section className="org-sec org-verzameld">
             <button type="button" className="deelkop" onClick={() => setDataOpen((v) => !v)} aria-expanded={dataOpen}>
               <span>Verzamelde structured data</span>
+              <HelpHint text={"Dit zijn dezelfde velden als het formulier hierboven (algemene gegevens, vestigingen, diensten, enzovoort), nu in één keer opengeklapt om te bewerken.\n\nDe kennisbank hieronder is iets anders: dat is de ruwe aanlevering per document, met een bewijsspoor (welk document, welke datum, wie het aanleverde) per apart gegeven. Verwerk je een document, dan landen de gegevens hierboven; de kennisbank blijft daarna staan als herkomst per feit.\n\nKortom: hierboven bewerk je het eindresultaat, in de kennisbank zie je waar elk gegeven vandaan komt."} />
               {missingCount > 0 && <span className="org-mis-vlag">{missingCount} ontbreken</span>}
             </button>
             {dataOpen && (data ? (
