@@ -1,112 +1,91 @@
 "use client";
 
 // ═══════════════════════════════════════════════════════════
-// WERKPLANNING: ÉÉN OVERZICHT, GEEN VIER LIJSTEN
+// HET WERKPLAN: DRIE MAANDEN, PER WEEK, GECLUSTERD EN ONDERBOUWD
 // ═══════════════════════════════════════════════════════════
-// Deze pagina begon als vier lange lijsten onder elkaar. Elk regeltje klopte,
-// maar samen was het onleesbaar: 38 redirects onder elkaar, zes mails over
-// dezelfde factuur, twaalf stadspagina's die stuk voor stuk hetzelfde verhaal
-// vertelden. Maartens oordeel: "een tyfus lange lijst waar niet over nagedacht
-// is", en over Gesignaleerd: "daar heb ik toch geen klap aan".
+// Deze pagina toonde eerst vier lange lijsten, daarna dezelfde lijsten met 173
+// tussenkopjes erin. Allebei onbruikbaar. Maartens eis, in zijn woorden: in één
+// oogopslag zien wat de bedoeling is, wat er fout gaat en wat we moeten doen,
+// zonder erover na te hoeven denken. En als je de diepte in wil, doe je dat met
+// één of twee toggles.
 //
-// Wat hij ervoor in de plaats wil, in zijn eigen woorden: in één klap zien "dit
-// kan ik doen, ik filter nu daarop, dit is de onderbouwing, hiermee ga ik aan de
-// slag", zonder erover na te hoeven denken. Dat vraagt twee dingen, en die zijn
-// hier het hele ontwerp:
+// DE OPBOUW, EN WAAROM DIE ZO IS
+// ══════════════════════════════
+// Er zijn precies drie niveaus, niet meer:
 //
-//   1. ÉÉN STUURBALK BOVENAAN, die de héle pagina filtert. Niet een filtertje
-//      per blok. Kies "Cannibalisatie" en alles eronder gaat over cannibalisatie:
-//      wat er gebeurd is, wat er gesignaleerd is, wat er gepland staat. Zoeken
-//      werkt hetzelfde: één veld, alle blokken tegelijk.
+//   FASE (kopje, altijd zichtbaar)        Structuur, dan inhoud, dan snel fruit.
+//     └ CLUSTER (kaart, dicht)            Eén onderwerp = één blok werk van een
+//       │                                 paar uur. Dicht laat hij al zien wat
+//       │                                 hij is: nummer, naam, week, tijd, en
+//       │                                 in één zin wat er met welke pagina's
+//       │                                 gebeurt.
+//       └ PAGINA (regel, dicht)           Open je de kaart, dan zie je wat er aan
+//                                         de hand is, nu tegenover straks, en per
+//                                         pagina één regel. Die regel klapt open
+//                                         naar de onderbouwing.
 //
-//   2. GROEPEREN VÓÓR TONEN. Losse regels worden clusters met een titel die zegt
-//      wát er gebeurd is ("38 oude adressen doorgestuurd") en een ondertitel die
-//      zegt waar en wanneer. Die motor staat in `lib/werk-clusters.ts`, wordt door
-//      élk blok gebruikt (zodat ze niet uit elkaar lopen) en is nagerekend door
-//      `proeven/werk-clusters.proef.ts`.
+// Eén klik brengt je bij het werk, twee bij het bewijs. Dieper is er niet.
 //
-// Belangrijk voor de volgorde van bewerkingen: er wordt EERST gefilterd op de
-// losse regels en DAARNA geclusterd. Zoek je op één stad, dan zegt het cluster
-// eerlijk "3 oude adressen doorgestuurd" in plaats van 38 met drie regels erin.
+// WAAROM EEN CLUSTER EN NIET EEN SIGNAAL
+// ══════════════════════════════════════
+// Ga je "Amsterdam" opruimen, dan raak je in één zitting zes pagina's aan en doe
+// je zes verschillende dingen. Dat is één blok werk, geen zes taken verspreid
+// over een lijst. Het rekenwerk daarvoor staat in `lib/werkplan.ts` en wordt
+// nagerekend door `proeven/werkplan.proef.ts`; dit bestand tekent het alleen.
 //
-// Alles staat standaard dicht: vier regels op het scherm, je klapt open wat je
-// nodig hebt. Binnen een blok is elk cluster óók dicht, en ruis (administratie,
-// paginawijzigingen van de klant zelf) zakt naar onderen.
-//
-// Databronnen, ongewijzigd: de opruim-werklijst (cannibalisatie) en de
-// meta/CTR-kansenlijst voor "Gesignaleerd"; de bestaande weekplanning voor
-// "Het plan"; het activiteitenlogboek voor "Wat er is gebeurd". Interne links is
-// met opzet nog niet meegenomen (andere datavorm, eigen vertaalslag nodig), en
-// een samenvatting van wat de developer per taak deed leeft als `dev_punten` op
-// de weekplanning-taak, niet in dit logboek.
+// ÉÉN KNOP PER KAART, NIET ÉÉN PER REGEL
+// ══════════════════════════════════════
+// De vorige versie zette een oranje knop bij elke groep en nog een knopje bij
+// elke pagina. Bij honderd groepen zijn dat honderd oranje knoppen onder elkaar,
+// en dan is geen enkele knop meer de belangrijkste (wet van Hick). Nu: precies
+// één hoofdknop per cluster, onderaan de kaart waar je hem nodig hebt, en op een
+// paginaregel staat geen knop maar alleen een tokkeltje.
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { urlKey } from "../../../../../lib/url-key";
 import { netteHtml } from "../../../../../lib/nette-html";
 import { Chip, Chips } from "../../../../_ui/Uitkomst";
 import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 import { SOORT_LABEL } from "../../../../../lib/activiteit";
 import {
-  clusterActiviteit, clusterSignalen, padVan, titelVanSlug, zoekTreffer,
-  categorieVanBron, categorieVanSoort, categorieVanTaaktype,
+  clusterActiviteit, padVan, zoekTreffer,
   CATEGORIE_LABEL, CATEGORIE_VOLGORDE,
-  type ActCluster, type ActRegel, type Categorie, type SigCluster, type SigRegel,
+  type ActCluster, type ActRegel, type Categorie,
 } from "../../../../../lib/werk-clusters";
-
-type Bron = "opruim" | "meta";
+import {
+  bouwWerkplan, urenTekst, paginaRegel, paginaNaam,
+  FASE_TITEL, FASE_WAAROM, HANDELING_LABEL,
+  type ClusterPagina, type Werkcluster, type Handeling,
+} from "../../../../../lib/werkplan";
 
 type WeekplanTaak = {
-  id: number; thread: string; taak: string; toelichting: string; url: string;
-  taaktype: string; weekYear: number; weekNo: number; status: string; sortOrder: number;
-  estimateMin: number | null; genegeerd: boolean; genegeerdOp: string;
+  id: number; thread: string; taak: string; url: string; taaktype: string;
+  status: string; sortOrder: number; estimateMin: number | null;
+  genegeerd: boolean; genegeerdOp: string;
 };
 
-const DEFAULT_MIN = 30;
-const UITKOMST_LABEL: Record<string, string> = {
-  uitbouwen: "uitbouwen", samenvoegen: "samenvoegen", opruimen: "opruimen", nieuw: "nieuw", blijft: "blijft",
-  meta: "titel/description",
-};
 const PERIODES = [
-  { key: "2w", label: "2 weken", dagen: 14 },
-  { key: "3w", label: "3 weken", dagen: 21 },
-  { key: "mnd", label: "maand", dagen: 31 },
+  { key: "mnd", label: "deze maand", dagen: 31 },
+  { key: "kwartaal", label: "drie maanden", dagen: 92 },
+  { key: "alles", label: "alles", dagen: 3650 },
 ] as const;
 
-function getal(n: number | null | undefined): string {
-  return n == null ? "—" : new Intl.NumberFormat("nl-NL").format(n);
-}
-function kortDatum(d: Date): string {
-  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
-}
-function uren(minuten: number): string {
-  return `${Math.round((minuten / 60) * 10) / 10} uur`;
-}
+const nl = new Intl.NumberFormat("nl-NL");
+const getal = (n: number | null | undefined) => (n == null ? "—" : nl.format(n));
+const kortDatum = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
 
 function WerkChip({ categorie }: { categorie: Categorie }) {
   return <span className={`werk-chip ${categorie}`}>{CATEGORIE_LABEL[categorie]}</span>;
 }
-
-function metaRegelUit(row: any): SigRegel {
-  const missend = [...(row.issues?.title || []), ...(row.issues?.desc || [])];
-  const onderbouwing: string[] = [];
-  if (missend.length) onderbouwing.push(`Wat er nu niet klopt: ${missend.join(", ")}.`);
-  if (row.volume != null) onderbouwing.push(`Zoekterm "${row.keyword}", ${getal(row.volume)} zoekopdrachten per maand, positie ${row.position}.`);
-  if (row.extraClicks) onderbouwing.push(`Geschat ${getal(row.extraClicks)} extra klikken per 90 dagen bij de verwachte CTR voor deze positie.`);
-  if (row.curTitle) onderbouwing.push(`Titel nu: "${row.curTitle}"`);
-  if (row.curDesc) onderbouwing.push(`Description nu: "${row.curDesc}"`);
-  return {
-    pad: row.url, uitkomst: "meta", naar: "",
-    reden: row.reden === "kapot" ? "Titel of description ontbreekt of is kapot" : "Titel en description kunnen meer klikken winnen",
-    onderbouwing, volume: row.volume, positie: row.position,
-    groep: "Meta en CTR, snelle winst", bron: "meta",
-    doorgevoerd: row.proposal?.status === "doorgevoerd",
-  };
+// Dezelfde chip-vorm als hierboven, alleen een andere tint per handeling. Bewust
+// hetzelfde systeem en geen tweede soort label: samenvoegen is oranje net als
+// Cannibalisatie, titel en description groen net als Meta en CTR, uitbouwen paars
+// net als Content. Zo zeggen de twee lagen hetzelfde met dezelfde kleur.
+function HandelingChip({ handeling }: { handeling: Handeling }) {
+  return <span className={`werk-chip h-${handeling}`}>{HANDELING_LABEL[handeling]}</span>;
 }
 
-// Een echte, klikbare link naar de live pagina, in de huisstijl-linkkleur; de
-// weergegeven tekst is het pad, niet het volledige adres.
 function Slug({ url, domein }: { url: string; domein?: string | null }) {
   if (!url) return null;
   const href = /^https?:\/\//i.test(url)
@@ -115,8 +94,8 @@ function Slug({ url, domein }: { url: string; domein?: string | null }) {
   return <a className="uk-pad" href={href} target="_blank" rel="noreferrer">{padVan(url)}</a>;
 }
 
-// Niveau 1: een hoofdblok van de pagina. Staat standaard dicht, zodat het scherm
-// begint als vier regels in plaats van als een rol behang.
+// Niveau 1 voor de blokken die geen werkplan zijn (wat er al gedaan is, wat er al
+// in de planning staat). Staan standaard dicht; het werkplan zelf is het scherm.
 function Sectie({ titel, telling, open, onToggle, uitleg, knoppen, children }: {
   titel: string; telling?: string; open: boolean; onToggle: () => void;
   uitleg?: string; knoppen?: ReactNode; children: ReactNode;
@@ -139,48 +118,9 @@ function Sectie({ titel, telling, open, onToggle, uitleg, knoppen, children }: {
   );
 }
 
-// Niveau 2: één cluster binnen een blok, met de gedeelde inklapkop van de cockpit.
-// Bewust GEEN tweede `strategy-card` in een `strategy-card`: die kleurverloop-balk
-// hoort bij niveau 1, en zes van die balken onder elkaar was precies de fout van
-// 19-08-2026 op het beheerscherm.
-function ClusterKop({ titel, subtitel, categorie, telling, open, onToggle, knop }: {
-  titel: string; subtitel?: string; categorie: Categorie; telling: string;
-  open: boolean; onToggle: () => void; knop?: ReactNode;
-}) {
-  return (
-    <div className="kpi-sub-head wp-clus-kop">
-      <button type="button" className="deelkop" aria-expanded={open} onClick={onToggle}>
-        <WerkChip categorie={categorie} />
-        <span className="wp-clus-tekst">
-          <span>{titel}</span>
-          {subtitel && <span className="wp-clus-sub">{subtitel}</span>}
-        </span>
-        <span className="deelkop-meta">{telling}</span>
-      </button>
-      {knop}
-    </div>
-  );
-}
-
-// Eén logregel binnen een open cluster.
-function ActRegelRij({ regel, domein, toonPad }: { regel: ActRegel; domein?: string | null; toonPad: boolean }) {
-  return (
-    <div className="wp-item wp-row">
-      <span className="wp-datum">{kortDatum(new Date(regel.gebeurdeOp))}</span>
-      <span className="wp-grow">
-        <span className="wp-titel">{SOORT_LABEL[regel.soort] || regel.soort}</span>
-        {regel.intern && <span className="muted"> — {regel.intern}</span>}
-        {toonPad && regel.url && <> · <Slug url={regel.url} domein={domein} /></>}
-      </span>
-      {regel.bewijs && (
-        <a className="btn btn-quiet btn-klein wp-linkstijl" href={regel.bewijs} target="_blank" rel="noreferrer">openen</a>
-      )}
-    </div>
-  );
-}
-
 export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: string; klantNaam?: string; domein?: string | null }) {
-  const [regels, setRegels] = useState<SigRegel[]>([]);
+  const [opruim, setOpruim] = useState<any[]>([]);
+  const [metas, setMetas] = useState<any[]>([]);
   const [taken, setTaken] = useState<WeekplanTaak[]>([]);
   const [activiteit, setActiviteit] = useState<ActRegel[]>([]);
   const [budget, setBudget] = useState(3);
@@ -188,14 +128,14 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   const [periode, setPeriode] = useState<(typeof PERIODES)[number]["key"]>("mnd");
   const [laden, setLaden] = useState(true);
   const [fout, setFout] = useState("");
-  const [openSectie, setOpenSectie] = useState<Record<string, boolean>>({});
-  const [openCluster, setOpenCluster] = useState<Record<string, boolean>>({});
-  const [openSig, setOpenSig] = useState<Record<string, boolean>>({});
-  const [openWpArchief, setOpenWpArchief] = useState(false);
-  const [maakBezig, setMaakBezig] = useState<string | null>(null);
   const [melding, setMelding] = useState("");
 
-  // ── De twee knoppen die de héle pagina sturen ──
+  const [openCluster, setOpenCluster] = useState<Record<string, boolean>>({});
+  const [openPagina, setOpenPagina] = useState<Record<string, boolean>>({});
+  const [openSectie, setOpenSectie] = useState<Record<string, boolean>>({});
+  const [openActCluster, setOpenActCluster] = useState<Record<string, boolean>>({});
+  const [bezig, setBezig] = useState<string | null>(null);
+
   const [filterCategorie, setFilterCategorie] = useState<Categorie | "alle">("alle");
   const [zoek, setZoek] = useState("");
 
@@ -209,18 +149,13 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
         fetch(`/api/admin/meta-ctr?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
         fetch(`/api/admin/activiteit?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
       ]);
-      const opruim: SigRegel[] = wr?.ok
-        ? (wr.regels || []).map((r: any) => ({ ...r, bron: "opruim" as Bron }))
-        : [];
       if (!wr?.ok) setFout(wr?.error || "De opruimlijst kon niet geladen worden.");
-      const meta: SigRegel[] = mc?.ok
-        ? (mc.rows || []).filter((r: any) => r.reden === "klikwinst" || r.reden === "kapot").map(metaRegelUit)
-        : [];
-      setRegels([...opruim, ...meta]);
+      setOpruim(wr?.ok ? wr.regels || [] : []);
+      setMetas(mc?.ok ? (mc.rows || []).filter((r: any) => r.reden === "klikwinst" || r.reden === "kapot") : []);
       if (wp?.ok) setTaken((wp.tasks || []).map((t: any) => ({
-        id: t.id, thread: t.thread || "", taak: t.taak, toelichting: t.toelichting, url: t.url,
-        taaktype: t.taaktype || "", weekYear: t.weekYear, weekNo: t.weekNo, status: t.status, sortOrder: t.sortOrder,
-        estimateMin: t.estimateMin, genegeerd: !!t.genegeerd, genegeerdOp: t.genegeerdOp || "",
+        id: t.id, thread: t.thread || "", taak: t.taak, url: t.url, taaktype: t.taaktype || "",
+        status: t.status, sortOrder: t.sortOrder, estimateMin: t.estimateMin,
+        genegeerd: !!t.genegeerd, genegeerdOp: t.genegeerdOp || "",
       })));
       if (bud?.ok) { setBudget(bud.budget.urenPerWeek); setBudgetIngevuld(bud.budget.ingevuld); }
       if (act?.ok) setActiviteit(act.rijen || []);
@@ -230,259 +165,272 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   }
   useEffect(() => { laadAlles(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
-  // ═══ De stuurbalk: eerst zoeken, dan tellen, dan filteren, dan pas clusteren ═══
-
-  const alTaak = useMemo(() => new Set(taken.filter((t) => t.url).map((t) => urlKey(t.url))), [taken]);
-
-  // Stap 1: wat overleeft de zoekregel. Dit is de basis waarop de tellers per
-  // soort werk staan, zodat een teller nooit iets belooft dat er niet meer is.
-  const actGezocht = useMemo(
-    () => activiteit.filter((a) => zoekTreffer(zoek, a.intern, a.url, SOORT_LABEL[a.soort])),
-    [activiteit, zoek],
-  );
-  const sigGezocht = useMemo(
-    () => regels
-      .filter((r) => r.pad && !alTaak.has(urlKey(r.pad)) && !r.doorgevoerd)
-      .filter((r) => zoekTreffer(zoek, r.pad, r.reden, r.groep, r.naar, r.onderbouwing.join(" "))),
-    [regels, alTaak, zoek],
-  );
-  const taakGezocht = useMemo(
-    () => taken.filter((t) => zoekTreffer(zoek, t.taak, t.url, t.thread, t.toelichting)),
-    [taken, zoek],
+  // ── Het plan ──
+  const plan = useMemo(
+    () => bouwWerkplan(opruim, metas, taken, activiteit.map((a) => ({ url: a.url, gebeurdeOp: a.gebeurdeOp })), budget),
+    [opruim, metas, taken, activiteit, budget],
   );
 
-  // Stap 2: hoeveel zit er achter elke knop van de stuurbalk. Eén teller over de
-  // hele pagina, want de knop filtert ook de hele pagina.
+  // Filteren gebeurt op CLUSTERS, niet binnen een cluster. Een cluster is één blok
+  // werk: de helft ervan wegfilteren maakt het onuitvoerbaar, en juist het bij
+  // elkaar houden was de hele bedoeling.
+  const clustersGetoond = useMemo(() => plan.clusters.filter((c) => {
+    if (filterCategorie !== "alle" && !c.categorieen.includes(filterCategorie)) return false;
+    if (!zoek.trim()) return true;
+    return zoekTreffer(zoek, c.naam, c.samenvatting, c.gedeeld.join(" "),
+      c.paginas.map((p) => `${p.pad} ${p.reden} ${p.term} ${p.onderbouwing.join(" ")}`).join(" "));
+  }), [plan.clusters, filterCategorie, zoek]);
+
   const tellingPerCategorie = useMemo(() => {
     const t = new Map<Categorie | "alle", number>();
-    const tel = (c: Categorie) => t.set(c, (t.get(c) || 0) + 1);
-    for (const a of actGezocht) tel(categorieVanSoort(a.soort));
-    for (const r of sigGezocht) tel(categorieVanBron(r.bron));
-    for (const k of taakGezocht) tel(categorieVanTaaktype(k.taaktype));
-    t.set("alle", actGezocht.length + sigGezocht.length + taakGezocht.length);
+    for (const c of plan.clusters) for (const cat of c.categorieen) t.set(cat, (t.get(cat) || 0) + 1);
+    t.set("alle", plan.clusters.length);
     return t;
-  }, [actGezocht, sigGezocht, taakGezocht]);
+  }, [plan.clusters]);
 
-  // Stap 3: het filter erop, op de losse regels. Daarna clusteren, nooit andersom:
-  // zoek je op één stad, dan hoort het cluster "3 oude adressen doorgestuurd" te
-  // zeggen en niet 38 met drie regels erin.
-  const actGefilterd = useMemo(
-    () => filterCategorie === "alle" ? actGezocht : actGezocht.filter((a) => categorieVanSoort(a.soort) === filterCategorie),
-    [actGezocht, filterCategorie],
-  );
-  const sigGefilterd = useMemo(
-    () => filterCategorie === "alle" ? sigGezocht : sigGezocht.filter((r) => categorieVanBron(r.bron) === filterCategorie),
-    [sigGezocht, filterCategorie],
-  );
-  const taakGefilterd = useMemo(
-    () => filterCategorie === "alle" ? taakGezocht : taakGezocht.filter((t) => categorieVanTaaktype(t.taaktype) === filterCategorie),
-    [taakGezocht, filterCategorie],
-  );
-  const filterAan = filterCategorie !== "alle" || zoek.trim().length > 0;
-
-  // ═══ Wat er is gebeurd ═══
-  const nu = new Date();
-  const maandNaam = nu.toLocaleDateString("nl-NL", { month: "long" });
-  const { dezeMaand, daarvoor } = useMemo(() => {
-    const deze: ActRegel[] = []; const eerder: ActRegel[] = [];
-    for (const a of actGefilterd) {
-      const d = new Date(a.gebeurdeOp);
-      (d.getFullYear() === nu.getFullYear() && d.getMonth() === nu.getMonth() ? deze : eerder).push(a);
-    }
-    return { dezeMaand: deze, daarvoor: eerder };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actGefilterd]);
-  const maandClusters = useMemo(() => clusterActiviteit(dezeMaand), [dezeMaand]);
-  const eerderClusters = useMemo(() => clusterActiviteit(daarvoor), [daarvoor]);
-
-  // ═══ Gesignaleerd ═══
-  const sigClusters = useMemo(() => clusterSignalen(sigGefilterd), [sigGefilterd]);
-
-  // ═══ Activiteitenrapportage ═══
-  const periodeInfo = PERIODES.find((p) => p.key === periode)!;
-  const rapportRegels = useMemo(() => {
-    const grens = Date.now() - periodeInfo.dagen * 24 * 60 * 60 * 1000;
-    return actGefilterd.filter((a) => new Date(a.gebeurdeOp).getTime() >= grens);
-  }, [actGefilterd, periodeInfo]);
-  const rapportClusters = useMemo(() => clusterActiviteit(rapportRegels), [rapportRegels]);
-
-  async function maakTaak(r: SigRegel) {
-    return fetch("/api/admin/weekplan/add", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        slug, week: 1, wie: "SEO", url: r.pad, thread: r.groep,
-        taak: r.reden || `${UITKOMST_LABEL[r.uitkomst] || r.uitkomst}: ${r.pad}`,
-        toelichting: r.onderbouwing.join("\n"),
-        taaktype: r.bron === "opruim" ? "cannibalisatie" : "meta",
-      }),
-    }).then((res) => res.json());
-  }
-
-  // Een cluster is één beslissing, dus ook één klik: alles erin wordt taak. Precies
-  // dat is waar het groeperen voor is; anders klik je alsnog twaalf keer.
-  async function maakTakenVan(c: SigCluster) {
-    setMaakBezig(c.sleutel); setMelding(""); setFout("");
-    let gelukt = 0;
-    try {
-      for (const r of c.items) {
-        const d = await maakTaak(r);
-        if (d?.ok) gelukt++;
-      }
-      setMelding(gelukt === c.items.length
-        ? `${gelukt} ${gelukt === 1 ? "taak staat" : "taken staan"} nu in Het plan: ${c.titel}.`
-        : `${gelukt} van de ${c.items.length} taken gemaakt; de rest lukte niet.`);
-      await laadAlles();
-    } catch { setFout("Taken maken mislukte."); }
-    finally { setMaakBezig(null); }
-  }
-
-  async function maakEenTaak(r: SigRegel) {
-    setMaakBezig(r.pad); setMelding(""); setFout("");
-    try {
-      const d = await maakTaak(r);
-      if (d?.ok) { setMelding(`Taak gemaakt: "${padVan(r.pad)}" staat nu in Het plan.`); await laadAlles(); }
-      else setFout(d?.error || "Taak maken mislukte.");
-    } catch { setFout("Taak maken mislukte."); }
-    finally { setMaakBezig(null); }
-  }
-
-  // ═══ Het plan ═══
-  const perCluster = useMemo(() => {
-    const m = new Map<string, WeekplanTaak[]>();
-    for (const t of taken) {
-      const k = t.thread || "Overig (geen cluster)";
-      if (!m.has(k)) m.set(k, []);
-      m.get(k)!.push(t);
-    }
-    for (const lijst of m.values()) lijst.sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
-    return m;
-  }, [taken]);
-
-  const clusterVolgorde = useMemo(() => {
-    const entries = [...perCluster.entries()].map(([naam, lijst]) => {
-      const open = lijst.filter((t) => t.status !== "klaar" && !t.genegeerd);
-      const rang = open.length ? Math.min(...open.map((t) => t.sortOrder)) : Math.min(...lijst.map((t) => t.sortOrder));
-      return { naam, open, alles: lijst, rang };
-    });
-    entries.sort((a, b) => a.rang - b.rang);
-    return entries;
-  }, [perCluster]);
-
-  // Weekprojectie op het urenbudget; de volgorde binnen een onderwerp draait nooit om.
-  const { weekGroups, maxWeek } = useMemo(() => {
-    const budgetMin = Math.max(1, Math.round(budget * 60));
-    const wachtrijen = clusterVolgorde.map((c) => ({ naam: c.naam, rij: c.open.slice() }));
-    const uit = new Map<number, number>();
-    const groups = new Map<number, WeekplanTaak[]>();
-    const zet = (t: WeekplanTaak, week: number) => {
-      uit.set(t.id, week);
-      if (!groups.has(week)) groups.set(week, []);
-      groups.get(week)!.push(t);
+  const perFaseGetoond = useMemo(() => ([1, 2, 3] as const).map((fase) => {
+    const lijst = clustersGetoond.filter((c) => c.fase === fase);
+    return {
+      fase, clusters: lijst,
+      minuten: lijst.reduce((s, c) => s + c.minuten, 0),
+      paginas: lijst.reduce((s, c) => s + c.paginas.length, 0),
     };
-    let week = 1;
-    while (wachtrijen.some((w) => w.rij.length)) {
-      let over = budgetMin;
-      let vooruitgang = true;
-      while (vooruitgang) {
-        vooruitgang = false;
-        for (const w of wachtrijen) {
-          if (!w.rij.length) continue;
-          const voor = w.rij[0];
-          const duur = voor.estimateMin ?? DEFAULT_MIN;
-          if (duur <= over) { zet(voor, week); over -= duur; w.rij.shift(); vooruitgang = true; }
-        }
-      }
-      if (wachtrijen.some((w) => w.rij.length)) {
-        let kleinste: { w: typeof wachtrijen[number]; duur: number } | null = null;
-        for (const w of wachtrijen) {
-          if (!w.rij.length) continue;
-          const duur = w.rij[0].estimateMin ?? DEFAULT_MIN;
-          if (!kleinste || duur < kleinste.duur) kleinste = { w, duur };
-        }
-        if (kleinste) { zet(kleinste.w.rij[0], week); kleinste.w.rij.shift(); }
-      }
-      week++;
-    }
-    return { weekGroups: groups, maxWeek: Math.max(0, ...[...uit.values()]) };
-  }, [clusterVolgorde, budget]);
+  }).filter((f) => f.clusters.length > 0), [clustersGetoond]);
 
-  const zichtbaarInPlan = useMemo(() => new Set(taakGefilterd.map((t) => t.id)), [taakGefilterd]);
-  const weekGetoond = useMemo<Map<number, WeekplanTaak[]>>(() => {
-    const entries: [number, WeekplanTaak[]][] = [...weekGroups.entries()]
-      .map(([w, lijst]) => [w, lijst.filter((t) => zichtbaarInPlan.has(t.id))] as [number, WeekplanTaak[]])
-      .filter(([, l]) => l.length > 0);
-    return new Map(entries);
-  }, [weekGroups, zichtbaarInPlan]);
-  const weekNummers = useMemo(() => [...weekGetoond.keys()].sort((a, b) => a - b), [weekGetoond]);
+  const filterAan = filterCategorie !== "alle" || zoek.trim().length > 0;
+  const getoondMinuten = clustersGetoond.reduce((s, c) => s + c.minuten, 0);
 
-  const totOpenMin = clusterVolgorde.reduce((s, c) => s + c.open.reduce((s2, t) => s2 + (t.estimateMin ?? DEFAULT_MIN), 0), 0);
-  const totOpenTaken = clusterVolgorde.reduce((s, c) => s + c.open.length, 0);
-  const actieveOnderwerpen = clusterVolgorde.filter((c) => c.open.length > 0).length;
-  const archiefAlles = useMemo(() => taakGefilterd.filter((t) => t.status === "klaar" || t.genegeerd)
-    .sort((a, b) => new Date(b.genegeerdOp || 0).getTime() - new Date(a.genegeerdOp || 0).getTime()), [taakGefilterd]);
-  const klaarTellen = taken.filter((t) => !t.genegeerd);
-  const voortgangPct = klaarTellen.length ? Math.round((klaarTellen.filter((t) => t.status === "klaar").length / klaarTellen.length) * 100) : 0;
-  const planOpenGetoond = [...weekGetoond.values()].flat().length;
+  // ── Wat er al gedaan is ──
+  const periodeInfo = PERIODES.find((p) => p.key === periode)!;
+  const gedaanRegels = useMemo(() => {
+    const grens = Date.now() - periodeInfo.dagen * 24 * 60 * 60 * 1000;
+    return activiteit
+      .filter((a) => new Date(a.gebeurdeOp).getTime() >= grens)
+      .filter((a) => zoekTreffer(zoek, a.intern, a.url, SOORT_LABEL[a.soort]));
+  }, [activiteit, periodeInfo, zoek]);
+  const gedaanClusters = useMemo(() => clusterActiviteit(gedaanRegels), [gedaanRegels]);
 
-  async function zetStatus(t: WeekplanTaak, status: string) {
-    await fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id, status }) });
-    await laadAlles();
-  }
-  async function zetNegeer(t: WeekplanTaak, genegeerd: boolean) {
-    await fetch("/api/admin/weekplan/negeer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id, genegeerd }) });
-    await laadAlles();
-  }
-  async function zetDuur(t: WeekplanTaak, min: number | null) {
-    setTaken((ts) => ts.map((x) => (x.id === t.id ? { ...x, estimateMin: min } : x)));
-    await fetch("/api/admin/weekplan/estimate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id, min }) });
-  }
-  async function boost(thread: string) {
-    await fetch("/api/admin/weekplan/boost", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread }) });
-    await laadAlles();
-  }
+  // ── Taken die al lopen ──
+  const openTaken = useMemo(() => taken.filter((t) => !t.genegeerd && t.status !== "klaar"), [taken]);
+
   async function bewaarBudget(u: number) {
     setBudget(u);
-    const d = await fetch("/api/admin/werkplan-budget", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, urenPerWeek: u }) }).then((r) => r.json());
+    const d = await fetch("/api/admin/werkplan-budget", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, urenPerWeek: u }),
+    }).then((r) => r.json());
     if (d?.ok) setBudgetIngevuld(true);
   }
 
-  // ── Eén cluster met zijn regels, gedeeld door "gebeurd" en "rapportage" ──
-  function ActClusterBlok({ c }: { c: ActCluster }) {
-    const eenling = c.items.length === 1;
-    const open = !!openCluster[c.sleutel];
-    if (eenling) {
-      return (
-        <div className="wp-clus">
-          <div className="wp-row">
-            <WerkChip categorie={c.categorie} />
-            <span className="wp-grow">
-              <span className="wp-titel">{c.titel}</span>
-              {c.subtitel && <span className="wp-clus-sub"> · {c.subtitel}</span>}
-            </span>
-            {c.paginas[0] && <Slug url={c.paginas[0]} domein={domein} />}
+  // De weg terug. Zonder dit is "zet dit blok in de planning" een eenrichtingsknop:
+  // klik je hem per ongeluk, dan staan er twaalf taken die je nergens meer weg
+  // krijgt. Dat mag niet van dezelfde regel die zegt dat elke actie omkeerbaar is.
+  async function haalUitPlanning(t: WeekplanTaak) {
+    setBezig(`taak-${t.id}`);
+    try {
+      await fetch("/api/admin/weekplan/negeer", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, id: t.id, genegeerd: true }),
+      });
+      await laadAlles();
+    } catch { setFout("Uit de planning halen mislukte."); }
+    finally { setBezig(null); }
+  }
+
+  // Eén cluster is één beslissing, dus ook één klik: alle pagina's erin worden
+  // taken, in de volgorde waarin ze gedaan moeten worden.
+  async function zetInPlanning(c: Werkcluster) {
+    setBezig(c.sleutel); setMelding(""); setFout("");
+    let gelukt = 0;
+    try {
+      for (const p of c.paginas) {
+        if (p.doorgevoerd) continue;
+        const d = await fetch("/api/admin/weekplan/add", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            slug, week: c.week, wie: "SEO", url: p.pad, thread: c.naam,
+            taak: `${HANDELING_LABEL[p.handeling]}: ${paginaNaam(p.pad)}`,
+            toelichting: [paginaRegel(p), ...c.gedeeld, ...p.onderbouwing].join("\n"),
+            taaktype: p.handeling === "meta" ? "meta"
+              : p.handeling === "samenvoegen" || p.handeling === "opruimen" ? "cannibalisatie" : "copy",
+          }),
+        }).then((r) => r.json());
+        if (d?.ok) gelukt++;
+      }
+      setMelding(`${gelukt} ${gelukt === 1 ? "taak staat" : "taken staan"} nu in de planning voor "${c.naam}".`);
+      await laadAlles();
+    } catch { setFout("In de planning zetten mislukte."); }
+    finally { setBezig(null); }
+  }
+
+  // ── Eén paginaregel binnen een cluster: één tokkeltje naar de onderbouwing ──
+  function PaginaRij({ p, cluster }: { p: ClusterPagina; cluster: Werkcluster }) {
+    const sleutel = `${cluster.sleutel}|${p.pad}`;
+    const open = !!openPagina[sleutel];
+    const heeftDiepte = p.onderbouwing.length > 0 || !!p.meta || !!p.term || p.positie != null;
+    // Zonder onderbouwing valt er niets open te klappen. Dan is het geen knop maar
+    // een regel: `deelkop-vast` is precies daarvoor, zelfde vorm zonder driehoekje
+    // en zonder muisaanwijzer. Een uitgeschakelde knop die er wél klikbaar uitziet
+    // is de fout die deze bouwsteen juist voorkomt.
+    const inhoud = (
+      <>
+        <HandelingChip handeling={p.handeling} />
+        <span className="wp-clus-tekst">
+          <span className="wp-taak-pad">{padVan(p.pad)}</span>
+          <span className="wp-clus-sub">{paginaRegel(p)}{p.meta && p.handeling !== "meta" ? ", plus een nieuwe titel en description" : ""}</span>
+        </span>
+        <span className="deelkop-meta">{p.doorgevoerd ? "al gedaan" : urenTekst(p.minuten)}</span>
+      </>
+    );
+    return (
+      <div className="wp-taak">
+        {heeftDiepte ? (
+          <button type="button" className="deelkop" aria-expanded={open}
+            onClick={() => setOpenPagina((s) => ({ ...s, [sleutel]: !s[sleutel] }))}>
+            {inhoud}
+          </button>
+        ) : (
+          <div className="deelkop deelkop-vast">{inhoud}</div>
+        )}
+        {open && (
+          <div className="wp-taak-diep">
+            <dl className="wp-kentabel">
+              {p.term && <div><dt>zoekterm</dt><dd>{p.term}</dd></div>}
+              {p.volume != null && <div><dt>per maand</dt><dd>{getal(p.volume)}</dd></div>}
+              {p.positie != null && <div><dt>positie nu</dt><dd>{String(p.positie).replace(".", ",")}</dd></div>}
+              {p.klikken > 0 && <div><dt>klikken</dt><dd>{getal(p.klikken)}</dd></div>}
+              {p.meta?.extraClicks ? <div><dt>te winnen klikken</dt><dd>+{getal(p.meta.extraClicks)} per 90 dagen</dd></div> : null}
+            </dl>
+            <p className="wp-veldnaam">Bekijken</p>
+            <p><Slug url={p.pad} domein={domein} /></p>
+            {p.naar && <p className="muted">Gaat naar <Slug url={p.naar} domein={domein} /></p>}
+            {p.onderbouwing.length > 0 && (
+              <>
+                <p className="wp-veldnaam">Waarom dit besluit</p>
+                <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(p.onderbouwing.join("\n\n"), { basis: domein || undefined }) }} />
+              </>
+            )}
+            {p.meta && (
+              <>
+                <p className="wp-veldnaam">Wat er nu in het zoekresultaat staat</p>
+                <dl className="wp-kentabel">
+                  <div><dt>titel</dt><dd>{p.meta.curTitle || "ontbreekt"}</dd></div>
+                  <div><dt>description</dt><dd>{p.meta.curDesc || "ontbreekt"}</dd></div>
+                </dl>
+              </>
+            )}
           </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Eén clusterkaart ──
+  function ClusterKaart({ c }: { c: Werkcluster }) {
+    const open = !!openCluster[c.sleutel];
+    const teDoen = c.paginas.filter((p) => !p.doorgevoerd);
+    const vervallenRegels = c.paginas.filter((p) => p.vervallen);
+    return (
+      <div className="strategy-card">
+        <button type="button" className="strategy-head wp-kaart-head" onClick={() => setOpenCluster((s) => ({ ...s, [c.sleutel]: !s[c.sleutel] }))}>
+          <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
+          <span className="wp-week-nr">{c.nummer}</span>
+          <span className="wp-clus-tekst">
+            <span className="wp-kaart-titel">{c.naam}</span>
+            <span className="wp-clus-sub">{c.samenvatting}</span>
+          </span>
+          <span className="strategy-meta-right">week {c.week} · {urenTekst(c.minuten)}</span>
+        </button>
+        {open && (
+          <div className="strategy-body">
+            <Chips>
+              {c.categorieen.map((cat) => <WerkChip key={cat} categorie={cat} />)}
+              {c.inPlanning > 0 && <Chip toon="goed">{c.inPlanning} staat al in de planning</Chip>}
+              {c.alGedaan > 0 && <Chip toon="neutraal">{c.alGedaan} eerder gedaan op deze pagina&#8217;s</Chip>}
+            </Chips>
+
+            {c.gedeeld.length > 0 && (
+              <div className="wp-groep-achtergrond">
+                <h4>Wat er aan de hand is</h4>
+                <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(c.gedeeld.join("\n\n"), { basis: domein || undefined }) }} />
+              </div>
+            )}
+
+            <div className="wp-nustraks">
+              <div className="wp-rail-card">
+                <h4>Hoe het nu staat</h4>
+                <dl className="wp-kentabel">
+                  {c.nu.map((k) => <div key={k.label}><dt>{k.label}</dt><dd>{k.waarde}</dd></div>)}
+                </dl>
+              </div>
+              <div className="wp-rail-card wp-doelkaart">
+                <h4>Wat het moet worden</h4>
+                <dl className="wp-kentabel">
+                  {c.straks.map((k) => <div key={k.label}><dt>{k.label}</dt><dd>{k.waarde}</dd></div>)}
+                </dl>
+              </div>
+            </div>
+
+            <p className="wp-veldnaam">De werkzaamheden ({teDoen.length})</p>
+            {c.paginas.map((p) => <PaginaRij key={p.pad} p={p} cluster={c} />)}
+
+            {vervallenRegels.length > 0 && (
+              <div className="wp-vervalt">
+                <h4>{vervallenRegels.length} {vervallenRegels.length === 1 ? "kans vervalt" : "kansen vervallen"} hier</h4>
+                <ul>
+                  {vervallenRegels.map((p) => <li key={p.pad}>{padVan(p.pad)}: {p.vervallen}</li>)}
+                </ul>
+              </div>
+            )}
+
+            <div className="pnl-acties-groep" role="group">
+              <button type="button" className="btn btn-primary" disabled={bezig === c.sleutel || !teDoen.length}
+                onClick={() => zetInPlanning(c)}>
+                {bezig === c.sleutel ? "Bezig…" : `Zet dit blok in de planning (${teDoen.length})`}
+              </button>
+              {c.inPlanning > 0 && (
+                <span className="muted pnl-acties-info">Er lopen al {c.inPlanning} taken voor dit blok.</span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Eén cluster uit het logboek ──
+  function ActClusterBlok({ c }: { c: ActCluster }) {
+    if (c.items.length === 1) {
+      const a = c.items[0];
+      return (
+        <div className="wp-row wp-item">
+          <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
+          <WerkChip categorie={c.categorie} />
+          <span className="wp-grow">{c.titel}</span>
+          {c.paginas[0] && <Slug url={c.paginas[0]} domein={domein} />}
         </div>
       );
     }
+    const open = !!openActCluster[c.sleutel];
     return (
-      <div className="wp-clus">
-        <ClusterKop
-          titel={c.titel} subtitel={c.subtitel} categorie={c.categorie}
-          telling={String(c.items.length)} open={open}
-          onToggle={() => setOpenCluster((s) => ({ ...s, [c.sleutel]: !s[c.sleutel] }))}
-        />
+      <div className="wp-taak">
+        <button type="button" className="deelkop" aria-expanded={open}
+          onClick={() => setOpenActCluster((s) => ({ ...s, [c.sleutel]: !s[c.sleutel] }))}>
+          <WerkChip categorie={c.categorie} />
+          <span className="wp-clus-tekst">
+            <span>{c.titel}</span>
+            {c.subtitel && <span className="wp-clus-sub">{c.subtitel}</span>}
+          </span>
+          <span className="deelkop-meta">{c.items.length}</span>
+        </button>
         {open && (
-          <div className="wp-stack">
-            {c.paginas.length > 1 && (
-              <div className="wp-groep-achtergrond">
-                <h4>De pagina&#8217;s in dit cluster ({c.paginas.length})</h4>
-                <div className="wp-row">
-                  {c.paginas.map((p) => <Slug key={p} url={p} domein={domein} />)}
-                </div>
-              </div>
-            )}
+          <div className="wp-taak-diep">
             {c.items.map((a) => (
-              <ActRegelRij key={a.id} regel={a} domein={domein} toonPad={c.paginas.length <= 1} />
+              <div key={a.id} className="wp-row wp-item">
+                <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
+                <span className="wp-grow">{a.intern}</span>
+                {c.paginas.length <= 1 && a.url && <Slug url={a.url} domein={domein} />}
+              </div>
             ))}
           </div>
         )}
@@ -490,28 +438,8 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
     );
   }
 
-  function ActClusterLijst({ clusters, leeg }: { clusters: ActCluster[]; leeg: string }) {
-    if (!clusters.length) return <p className="muted">{leeg}</p>;
-    const werk = clusters.filter((c) => !c.ruis);
-    const ruis = clusters.filter((c) => c.ruis);
-    return (
-      <div className="wp-stack">
-        {werk.map((c) => <ActClusterBlok key={c.sleutel} c={c} />)}
-        {ruis.length > 0 && (
-          <>
-            <div className="deelkop deelkop-vast wp-ruis-kop">
-              Ruis en achtergrond
-              <span className="deelkop-meta">{ruis.reduce((s, c) => s + c.items.length, 0)} regels</span>
-            </div>
-            {ruis.map((c) => <ActClusterBlok key={c.sleutel} c={c} />)}
-          </>
-        )}
-      </div>
-    );
-  }
-
-  const clusterTelling = (n: number, clusters: number) =>
-    `${n} in ${clusters} ${clusters === 1 ? "groep" : "groepen"}`;
+  const werkClusters = gedaanClusters.filter((c) => !c.ruis);
+  const ruisClusters = gedaanClusters.filter((c) => c.ruis);
 
   return (
     <div className="wp-stack wp-wrap">
@@ -525,35 +453,38 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
         <>
           <header className="wp-mast">
             <div className="wp-eyebrow"><span className="wp-eyebrow-bar" />{klantNaam || slug} × Pingwin · SEO</div>
-            <h1>Werkplanning</h1>
+            <h1>Werkplan</h1>
             <p className="wp-lead">
-              Wat er recent is gebeurd, wat er is gesignaleerd maar nog geen taak is, en de planning voor
-              de komende weken op het huidige urenbudget. Alles staat gegroepeerd per onderwerp; de balk
-              hieronder filtert alles tegelijk.
+              Alles wat de analyses over deze site hebben uitgewezen, gebundeld per onderwerp en op
+              volgorde gezet: eerst uitzoeken welke pagina wint, dan die pagina&#8217;s sterk maken, dan
+              het snelle werk. Elk blok is één zitting werk, met de onderbouwing eronder.
             </p>
             <div className="wp-meta">
-              <span>Bijgewerkt {kortDatum(nu)}</span>
+              <span>Bijgewerkt {kortDatum(new Date())}</span>
               <span>{budget} uur per week</span>
-              <span>{totOpenTaken} open taken</span>
-              <span>{maxWeek} {maxWeek === 1 ? "week" : "weken"} vooruit bij dit budget</span>
+              <span>{plan.clusters.length} blokken werk</span>
+              <span>{plan.weken} {plan.weken === 1 ? "week" : "weken"} bij dit budget</span>
             </div>
             <div className="kpi-grid">
-              <div className="kpi-card"><div className="kpi-value">{totOpenTaken}</div><div className="kpi-label">open taken</div></div>
-              <div className="kpi-card"><div className="kpi-value">{Math.round((totOpenMin / 60) * 10) / 10}</div><div className="kpi-label">uur werk gepland</div></div>
-              <div className="kpi-card"><div className="kpi-value">{maxWeek}</div><div className="kpi-label">weken vooruit</div></div>
-              <div className="kpi-card"><div className="kpi-value">{sigGezocht.length}</div><div className="kpi-label">gesignaleerd, nog geen taak</div></div>
-              <div className="kpi-card"><div className="kpi-value">{dezeMaand.length}</div><div className="kpi-label">gedaan in {maandNaam}</div></div>
-              <div className="kpi-card"><div className="kpi-value">{actieveOnderwerpen}</div><div className="kpi-label">onderwerpen met open werk</div></div>
+              <div className="kpi-card"><div className="kpi-value">{plan.clusters.length}</div><div className="kpi-label">blokken werk</div></div>
+              <div className="kpi-card"><div className="kpi-value">{Math.round(plan.minuten / 60)}</div><div className="kpi-label">uur in totaal</div></div>
+              <div className="kpi-card"><div className="kpi-value">{plan.weken}</div><div className="kpi-label">weken bij {budget} uur</div></div>
+              <div className="kpi-card"><div className="kpi-value">{plan.paginas}</div><div className="kpi-label">pagina&#8217;s betrokken</div></div>
+              <div className="kpi-card"><div className="kpi-value">{getal(plan.volume)}</div><div className="kpi-label">zoekopdrachten per maand</div></div>
+              <div className="kpi-card"><div className="kpi-value">{openTaken.length}</div><div className="kpi-label">taken lopen al</div></div>
             </div>
           </header>
 
-          {/* ── De stuurbalk: één plek waar je kiest waar de hele pagina over gaat ── */}
           <div className="cockpit-card wp-stuur">
             <div className="wp-stuur-rij">
-              <label className="wp-stuur-label" htmlFor="wp-zoek">Zoek in alles</label>
+              <label className="wp-stuur-label" htmlFor="wp-zoek">Zoek</label>
               <input id="wp-zoek" type="search" className="uk-veld wp-zoekveld" value={zoek}
-                placeholder="pagina, stad, onderwerp of mailtitel"
+                placeholder="pagina, stad, onderwerp of zoekterm"
                 onChange={(e) => setZoek(e.target.value)} />
+              <label className="wp-stuur-label" htmlFor="wp-budget">Uren per week</label>
+              <input id="wp-budget" type="number" min={0.5} step={0.5} defaultValue={budget} size={3} className="uk-veld"
+                onBlur={(e) => bewaarBudget(Number(e.target.value) || budget)} />
+              {!budgetIngevuld && <span className="muted">(nog niet opgeslagen)</span>}
             </div>
             <div className="wp-stuur-rij">
               <span className="wp-stuur-label">Soort werk</span>
@@ -562,10 +493,10 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                   onClick={() => setFilterCategorie("alle")}>
                   Alles ({tellingPerCategorie.get("alle") || 0})
                 </button>
-                {CATEGORIE_VOLGORDE.map((c) => (
+                {CATEGORIE_VOLGORDE.filter((c) => tellingPerCategorie.get(c)).map((c) => (
                   <button key={c} type="button" className={"btn btn-klein " + (filterCategorie === c ? "btn-primary" : "btn-ghost")}
-                    onClick={() => setFilterCategorie(c)} disabled={!tellingPerCategorie.get(c)}>
-                    {CATEGORIE_LABEL[c]} ({tellingPerCategorie.get(c) || 0})
+                    onClick={() => setFilterCategorie(c)}>
+                    {CATEGORIE_LABEL[c]} ({tellingPerCategorie.get(c)})
                   </button>
                 ))}
               </div>
@@ -573,9 +504,8 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             {filterAan && (
               <div className="wp-stuur-rij">
                 <span className="muted">
-                  Je kijkt nu naar {filterCategorie === "alle" ? "alle soorten werk" : CATEGORIE_LABEL[filterCategorie]}
-                  {zoek.trim() && <> met &#8220;{zoek.trim()}&#8221; erin</>}: {dezeMaand.length + daarvoor.length} gebeurd,
-                  {" "}{sigGefilterd.length} gesignaleerd, {planOpenGetoond} gepland.
+                  {clustersGetoond.length} van de {plan.clusters.length} blokken, samen {urenTekst(getoondMinuten)}.
+                  Een blok blijft heel: een filter laat blokken weg, hij haalt geen pagina&#8217;s uit een blok.
                 </span>
                 <button type="button" className="btn btn-quiet btn-klein wp-linkstijl pnl-acties-info"
                   onClick={() => { setFilterCategorie("alle"); setZoek(""); }}>
@@ -585,225 +515,83 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             )}
           </div>
 
-          <Sectie
-            titel={`Wat er in ${maandNaam} is gebeurd`}
-            telling={clusterTelling(dezeMaand.length, maandClusters.length)}
-            open={!!openSectie.gebeurd}
-            onToggle={() => setOpenSectie((s) => ({ ...s, gebeurd: !s.gebeurd }))}
-            uitleg="Uit het activiteitenlogboek, gebundeld per onderwerp: één actie die zich herhaalt is één regel, en een mailwisseling is één gesprek. Klap een groep open voor de losse regels."
-          >
-            <ActClusterLijst clusters={maandClusters} leeg="Niets gelogd deze maand bij dit filter." />
+          {plan.vervallen > 0 && (
+            <p className="muted">
+              {plan.vervallen} titel-kansen staan niet in dit plan omdat die pagina&#8217;s worden samengevoegd
+              of opgeruimd. Ze staan per blok vermeld, zodat je ziet dát ze er waren.
+            </p>
+          )}
 
-            {eerderClusters.length > 0 && (
-              <div className="wp-eerder">
-                <h4>Daarvoor al ({daarvoor.length} regels in {eerderClusters.length} groepen)</h4>
-                <ActClusterLijst clusters={eerderClusters} leeg="Niets ouder gevonden." />
+          {perFaseGetoond.map((f) => (
+            <section key={f.fase} className="wp-fase">
+              <div className="wp-fase-kop">
+                <span className="wp-fase-nr">Fase {f.fase}</span>
+                <h2>{FASE_TITEL[f.fase]}</h2>
+                <span className="wp-fase-meta">
+                  {f.clusters.length} {f.clusters.length === 1 ? "blok" : "blokken"} · {urenTekst(f.minuten)} · {f.paginas} pagina&#8217;s
+                </span>
               </div>
-            )}
-          </Sectie>
-
-          <Sectie
-            titel="Gesignaleerd, nog geen taak"
-            telling={clusterTelling(sigGefilterd.length, sigClusters.length)}
-            open={!!openSectie.gesignaleerd}
-            onToggle={() => setOpenSectie((s) => ({ ...s, gesignaleerd: !s.gesignaleerd }))}
-            uitleg="Per groep één opdracht: wat je gaat doen, waar het over gaat en wat het waard is. De onderbouwing die alle pagina's delen staat één keer bovenaan. Niets wordt vanzelf een taak."
-          >
-            {sigClusters.map((c) => {
-              const open = !!openCluster[c.sleutel];
-              const minuten = c.items.length * DEFAULT_MIN;
-              const eigenSub = [c.subtitel, `circa ${uren(minuten)}`].filter(Boolean).join(" · ");
-              return (
-                <div key={c.sleutel} className="wp-clus">
-                  <ClusterKop
-                    titel={c.titel} subtitel={eigenSub} categorie={c.categorie}
-                    telling={`${c.items.length} pagina${c.items.length === 1 ? "" : "'s"}`}
-                    open={open}
-                    onToggle={() => setOpenCluster((s) => ({ ...s, [c.sleutel]: !s[c.sleutel] }))}
-                    knop={
-                      <button type="button" className="btn btn-primary btn-klein"
-                        disabled={maakBezig === c.sleutel}
-                        onClick={() => maakTakenVan(c)}>
-                        {maakBezig === c.sleutel ? "Bezig…" : `Maak ${c.items.length} ${c.items.length === 1 ? "taak" : "taken"}`}
-                      </button>
-                    }
-                  />
-                  {open && (
-                    <div className="wp-stack">
-                      {c.gedeeld.length > 0 && (
-                        <div className="wp-groep-achtergrond">
-                          <h4>Waarom dit cluster bij elkaar hoort</h4>
-                          <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(c.gedeeld.join("\n\n"), { basis: domein || undefined }) }} />
-                        </div>
-                      )}
-                      {c.items.map((r) => {
-                        const eigen = r.onderbouwing.slice(c.gedeeld.length);
-                        const isPagOpen = !!openSig[r.pad];
-                        return (
-                          <div key={r.pad} className="wp-item wp-stack">
-                            <div className="wp-row wp-row-tussen">
-                              <span className="wp-row">
-                                <Slug url={r.pad} domein={domein} />
-                                <Chip toon="neutraal">{UITKOMST_LABEL[r.uitkomst] || r.uitkomst}</Chip>
-                                {r.naar && <span>&#8594; <Slug url={r.naar} domein={domein} /></span>}
-                                {r.volume != null && <span>{getal(r.volume)}/mnd</span>}
-                                {r.positie != null && <span>positie {r.positie}</span>}
-                                {eigen.length > 0 && (
-                                  <button type="button" className="btn btn-quiet btn-klein wp-linkstijl"
-                                    onClick={() => setOpenSig((s) => ({ ...s, [r.pad]: !s[r.pad] }))}>
-                                    {isPagOpen ? "minder" : "onderbouwing"}
-                                  </button>
-                                )}
-                              </span>
-                              <button type="button" className="btn btn-ghost btn-klein" disabled={maakBezig === r.pad} onClick={() => maakEenTaak(r)}>
-                                {maakBezig === r.pad ? "Bezig…" : "Alleen deze"}
-                              </button>
-                            </div>
-                            {isPagOpen && (
-                              <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(eigen.join("\n\n"), { basis: domein || undefined }) }} />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-            {!sigClusters.length && <p className="muted">Niets meer te beoordelen bij dit filter.</p>}
-          </Sectie>
-
-          <Sectie
-            titel="Het plan"
-            telling={`${planOpenGetoond} van ${totOpenTaken} taken · ${uren(totOpenMin)}`}
-            open={!!openSectie.plan}
-            onToggle={() => setOpenSectie((s) => ({ ...s, plan: !s.plan }))}
-            uitleg="Weekprojectie op het ingestelde urenbudget; de volgorde binnen een onderwerp draait nooit om."
-          >
-            <div className="wp-row">
-              Beschikbaar per week:
-              <input type="number" min={0.5} step={0.5} defaultValue={budget} size={3} className="uk-veld"
-                onBlur={(e) => bewaarBudget(Number(e.target.value) || budget)} />
-              uur {!budgetIngevuld && <span className="muted">(nog niet opgeslagen)</span>}
-            </div>
-
-            <div className="wp-plan-grid">
-              <aside className="wp-rail">
-                <div className="wp-rail-card">
-                  <h4>Voortgang</h4>
-                  <div className="wp-voortgang-n">{voortgangPct}%</div>
-                  <div className="wp-voortgang-l">{klaarTellen.filter((t) => t.status === "klaar").length} van {klaarTellen.length} taken klaar</div>
-                </div>
-                {weekNummers.length > 0 && (
-                  <div className="wp-rail-card">
-                    <h4>Weken</h4>
-                    <nav className="wp-week-nav">
-                      {weekNummers.map((w) => (
-                        <a key={w} href={`#wp-week-${w}`}>
-                          <span>Week {w}</span>
-                          <span className="wp-week-nav-n">{weekGetoond.get(w)?.length || 0}</span>
-                        </a>
-                      ))}
-                    </nav>
-                  </div>
-                )}
-              </aside>
-
+              <p className="wp-fase-waarom">{FASE_WAAROM[f.fase]}</p>
               <div className="wp-stack">
-                {weekNummers.map((w) => {
-                  const lijst = weekGetoond.get(w) || [];
-                  const vanaf = new Date(nu.getTime() + (w - 1) * 7 * 24 * 60 * 60 * 1000);
-                  const tot = new Date(vanaf.getTime() + 6 * 24 * 60 * 60 * 1000);
-                  const minutenWeek = lijst.reduce((s, t) => s + (t.estimateMin ?? DEFAULT_MIN), 0);
-                  return (
-                    <div key={w} id={`wp-week-${w}`} className="wp-clus">
-                      <div className="wp-week-kop">
-                        <span className="wp-week-nr">{w}</span>
-                        <span className="wp-grow">
-                          <span className="wp-week-titel">Week {w}</span>
-                          <span className="wp-week-sub">
-                            circa {kortDatum(vanaf)} t/m {kortDatum(tot)} · {lijst.length} taken · {uren(minutenWeek)}
-                          </span>
-                        </span>
-                      </div>
-                      <div className="wp-stack">
-                        {lijst.map((t) => (
-                          <div key={t.id} className="wp-item wp-row wp-row-tussen">
-                            <span className="wp-row wp-grow">
-                              <WerkChip categorie={categorieVanTaaktype(t.taaktype)} />
-                              {t.taak}{t.url && <> · <Slug url={t.url} domein={domein} /></>}
-                            </span>
-                            <span className="wp-row">
-                              <input type="number" min={5} step={5} size={3} className="uk-veld" defaultValue={t.estimateMin ?? DEFAULT_MIN}
-                                onBlur={(e) => zetDuur(t, Number(e.target.value) || null)} />
-                              <span className="muted">min{t.estimateMin == null ? " (schatting)" : ""}</span>
-                              <button type="button" className="btn btn-ghost btn-klein" onClick={() => zetStatus(t, "klaar")}>Klaar</button>
-                              <button type="button" className="btn btn-ghost btn-klein" onClick={() => zetNegeer(t, true)}>Negeer</button>
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-                {!weekNummers.length && (
-                  <p className="muted">
-                    {filterAan
-                      ? "Geen geplande taken bij dit filter."
-                      : "Nog geen taken. Maak er hierboven een paar aan vanuit Gesignaleerd."}
-                  </p>
-                )}
-
-                {(clusterVolgorde.some((c) => c.open.length > 1) || archiefAlles.length > 0) && (
-                  <div className="wp-rail-card">
-                    <div className="pnl-acties-groep" role="group">
-                      {clusterVolgorde.filter((c) => c.open.length > 1).map((c) => (
-                        <button key={c.naam} type="button" className="btn btn-ghost btn-klein" onClick={() => boost(c.naam)}>
-                          Zet &#8220;{c.naam}&#8221; vooraan
-                        </button>
-                      ))}
-                    </div>
-                    {archiefAlles.length > 0 && (
-                      <>
-                        <button type="button" className="deelkop" aria-expanded={openWpArchief} onClick={() => setOpenWpArchief((v) => !v)}>
-                          Afgerond of genegeerd<span className="deelkop-meta">{archiefAlles.length}</span>
-                        </button>
-                        {openWpArchief && (
-                          <div className="wp-stack">
-                            {archiefAlles.map((t) => (
-                              <div key={t.id} className="wp-item wp-row wp-row-tussen">
-                                <span className="wp-grow wp-doorgehaald">{t.taak}</span>
-                                <span className="muted">{t.status === "klaar" ? "klaar" : "genegeerd"} · {t.genegeerdOp ? kortDatum(new Date(t.genegeerdOp)) : "—"}</span>
-                                <button type="button" className="btn btn-ghost btn-klein" onClick={() => (t.status === "klaar" ? zetStatus(t, "gepland") : zetNegeer(t, false))}>terugzetten</button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
+                {f.clusters.map((c) => <ClusterKaart key={c.sleutel} c={c} />)}
               </div>
-            </div>
+            </section>
+          ))}
+
+          {!perFaseGetoond.length && (
+            <p className="muted">
+              {filterAan
+                ? "Geen blokken bij dit filter."
+                : "Er is nog niets te plannen. Draai eerst de opruim-motor en de meta/CTR-motor voor deze klant."}
+            </p>
+          )}
+
+          <Sectie
+            titel="Taken die al in de planning staan"
+            telling={`${openTaken.length} open`}
+            open={!!openSectie.taken}
+            onToggle={() => setOpenSectie((s) => ({ ...s, taken: !s.taken }))}
+            uitleg="Wat er al als losse taak klaarstaat. Een blok hierboven dat al taken heeft, zegt dat op de kaart zelf."
+          >
+            {openTaken.length ? openTaken.map((t) => (
+              <div key={t.id} className="wp-item wp-row">
+                <span className="wp-grow">{t.taak}{t.url && <> · <Slug url={t.url} domein={domein} /></>}</span>
+                <span className="muted">{t.thread || "geen blok"}</span>
+                <button type="button" className="btn btn-ghost btn-klein" disabled={bezig === `taak-${t.id}`}
+                  onClick={() => haalUitPlanning(t)}>
+                  {bezig === `taak-${t.id}` ? "Bezig…" : "haal weg"}
+                </button>
+              </div>
+            )) : <p className="muted">Nog geen taken. Zet hierboven een blok in de planning.</p>}
           </Sectie>
 
           <Sectie
-            titel="Activiteitenrapportage"
-            telling={clusterTelling(rapportRegels.length, rapportClusters.length)}
-            open={!!openSectie.rapportage}
-            onToggle={() => setOpenSectie((s) => ({ ...s, rapportage: !s.rapportage }))}
-            uitleg="Dezelfde geschiedenis als hierboven, maar over een zelf te kiezen periode, op dezelfde manier gegroepeerd."
+            titel="Wat er al gedaan is"
+            telling={`${gedaanRegels.length} regels in ${gedaanClusters.length} groepen`}
+            open={!!openSectie.gedaan}
+            onToggle={() => setOpenSectie((s) => ({ ...s, gedaan: !s.gedaan }))}
+            uitleg="Uit het activiteitenlogboek, gebundeld per onderwerp: één actie die zich herhaalt is één regel, en een mailwisseling is één gesprek."
             knoppen={
               <div className="pnl-acties-groep" role="group">
                 {PERIODES.map((p) => (
-                  <button key={p.key} type="button" className={"btn btn-klein " + (periode === p.key ? "btn-primary" : "btn-ghost")} onClick={() => setPeriode(p.key)}>
-                    {p.label}
-                  </button>
+                  <button key={p.key} type="button"
+                    className={"btn btn-klein " + (periode === p.key ? "btn-primary" : "btn-ghost")}
+                    onClick={() => setPeriode(p.key)}>{p.label}</button>
                 ))}
               </div>
             }
           >
-            <ActClusterLijst clusters={rapportClusters} leeg="Niets gelogd in deze periode bij dit filter." />
+            {werkClusters.map((c) => <ActClusterBlok key={c.sleutel} c={c} />)}
+            {ruisClusters.length > 0 && (
+              <>
+                <div className="deelkop deelkop-vast wp-ruis-kop">
+                  Ruis en achtergrond
+                  <span className="deelkop-meta">{ruisClusters.reduce((s, c) => s + c.items.length, 0)} regels</span>
+                </div>
+                {ruisClusters.map((c) => <ActClusterBlok key={c.sleutel} c={c} />)}
+              </>
+            )}
+            {!gedaanClusters.length && <p className="muted">Niets gelogd in deze periode.</p>}
           </Sectie>
         </>
       )}

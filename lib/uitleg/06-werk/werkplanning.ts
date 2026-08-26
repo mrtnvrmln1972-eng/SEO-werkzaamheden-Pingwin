@@ -2,69 +2,65 @@ import type { Uitklapper } from "../types";
 
 export const BLOKKEN: Uitklapper[] = [
   {
-    titel: "De werkplanning groepeert, hij somt niet op",
-    kern: "Eén stuurbalk filtert de hele pagina, en losse regels worden groepen met een titel die zegt wat er gebeurd is.",
+    titel: "Het werkplan: drie maanden werk, per week, geclusterd",
+    kern: "Fases, genummerde blokken werk, en per blok wat er aan de hand is, wat je doet en wat het moet opleveren.",
     tekst:
-      "De werkplanning van een klant laat drie dingen naast elkaar zien: wat er recent gebeurd is, wat er " +
-      "gesignaleerd is maar nog geen taak is, en wat er de komende weken gepland staat op het urenbudget. " +
-      "Alle drie kwamen uit het dashboard zelf, en alle drie waren het lange lijsten. Elk regeltje klopte, " +
-      "maar samen was het onleesbaar: 38 doorstuuradressen onder elkaar, zes mails over dezelfde factuur, " +
-      "twaalf stadspagina's die stuk voor stuk hetzelfde verhaal vertelden.\n\n" +
-      "**Er is nu één stuurbalk bovenaan, en die filtert de héle pagina.** Niet een filtertje per blok. Kies " +
-      "**Cannibalisatie** en alles eronder gaat over cannibalisatie: wat er gebeurd is, wat er gesignaleerd " +
-      "is, wat er gepland staat. Op elke knop staat hoeveel erachter zit, en een knop zonder werk erachter " +
-      "is uitgeschakeld. Het zoekveld ernaast werkt hetzelfde: één veld, alle blokken tegelijk, alle woorden " +
-      "moeten voorkomen. Zoek op een stad en je ziet in één keer alles wat er met die stad te maken heeft.\n\n" +
-      "**Er wordt eerst gefilterd en daarna pas gegroepeerd.** Dat klinkt als een detail maar is het niet: " +
-      "zoek je op één stad, dan zegt de groep eerlijk \"3 oude adressen doorgestuurd\" in plaats van 38 met " +
-      "drie regels erin.\n\n" +
-      "**Elke groep krijgt een titel die zegt wat er gebeurd is**, met daaronder waar het over ging en " +
-      "wanneer. Dus \"38 oude adressen doorgestuurd\" met daaronder \"SOA-test-pagina's, 12 pagina's, " +
-      "3 t/m 5 augustus\", in plaats van 38 keer het woord redirect. Alles staat standaard dicht, ook de " +
-      "groepen zelf, zodat het scherm begint als vier regels en je openklapt wat je nodig hebt.",
+      "Op een site met duizenden pagina's levert de analyse honderden losse signalen op. Als je die " +
+      "als lijst toont, hoe netjes ook gesorteerd, kun je er geen plan uit trekken. Dat is twee keer " +
+      "geprobeerd en twee keer mislukt: eerst als vier lange lijsten, daarna als 372 signalen in 173 " +
+      "groepen, wat dezelfde lijst is met tussenkopjes erin.\n\n" +
+      "**Wat er nu staat is een plan.** Bovenaan drie fases, daaronder genummerde blokken werk, en " +
+      "elk blok is één zitting van een paar uur met een weeknummer en een tijd erop. Een blok dat " +
+      "dicht staat vertelt al wat het is: nummer, naam, week, tijd, en in één zin wat er met welke " +
+      "pagina's gebeurt.\n\n" +
+      "**Er zijn precies drie niveaus, en je bereikt alles met hooguit twee klikken.** De fase is een " +
+      "kopje dat altijd zichtbaar is. Eén klik opent een blok: wat er aan de hand is, hoe het nu staat " +
+      "tegenover wat het moet worden, en per pagina één regel. Nog een klik opent die regel: de " +
+      "onderbouwing, de zoekterm, de positie, en wat er nu in het zoekresultaat staat. Dieper is er niet.",
   },
   {
-    titel: "Hoe het dashboard bepaalt wat bij elkaar hoort",
-    kern: "Op gesprek, op pagina-familie of op de pagina zelf; administratie zakt naar onderen als ruis.",
+    titel: "Waarom een blok werk en niet een los signaal",
+    kern: "Ga je Amsterdam opruimen, dan raak je zes pagina's aan en doe je zes verschillende dingen. Dat is één blok.",
     tekst:
-      "Het samenvoegen gebeurt op drie manieren, in deze volgorde. Er komt geen AI aan te pas, dus het is " +
-      "elke keer hetzelfde en het kost niets.\n\n" +
-      "**1. Mail, op gesprek.** Een mailwisseling is één gesprek, ook als er zes keer \"Re:\" of \"Fwd:\" " +
-      "voor staat. Die aanhef wordt eraf gehaald, net als een tag als [EXTERN] die een mailserver ervoor " +
-      "plakt, en wat overblijft is het onderwerp. De groep heet dan \"Mailwisseling: (onderwerp)\" en zegt " +
-      "eronder hoeveel er verstuurd en hoeveel er ontvangen is.\n\n" +
-      "**2. Pagina-familie, op de gedeelde start van het adres.** `/soa-test-amsterdam/` en " +
-      "`/soa-test-utrecht/` zijn dezelfde soort pagina, dus één handeling die daar twaalf keer overheen ging " +
-      "is één regel. `/soa-test/amsterdam/` met een schuine streep telt als dezelfde familie, want voor een " +
-      "lezer is dat hetzelfde. Een gedeeld begin moet wel wat voorstellen: minstens vijf letters. Daardoor " +
-      "worden `/over-ons/` en `/over-onze-werkwijze/` niet samengevoegd op het woord \"over\", want dat zegt " +
-      "niets over waar een pagina over gaat.\n\n" +
-      "**3. Losse pagina, op de pagina zelf.** Een pagina die geanalyseerd, herschreven en live gezet is, is " +
-      "één verhaal over die pagina, en staat er dus als één regel met de paginanaam. Blijven er daarna nog " +
-      "veel losse pagina's over met precies één handeling van dezelfde soort, dan worden die vanaf drie " +
-      "stuks alsnog één regel, anders staat het overzicht er weer vol mee.\n\n" +
-      "**Ruis zakt naar onderen.** Twee dingen horen wel in het logboek maar niet tussen het werk waarop je " +
-      "je planning baseert: mail over facturatie, afspraken en inloggegevens, en paginawijzigingen die het " +
-      "dashboard zelf op de site zag gebeuren (die komen vaak van de klant). Die staan onder een kopje " +
-      "**Ruis en achtergrond** onderaan, dicht. Factuurmails worden bovendien op thema samengevoegd en niet " +
-      "op onderwerpregel, want \"Factuur augustus\" en \"Betalingsherinnering\" is hetzelfde gedoe.",
+      "Werk hoort op een site bij elkaar per **onderwerp**, niet per handeling. Ga je \"Amsterdam\" " +
+      "opruimen, dan raak je in één zitting zes pagina's aan: één blijft en wordt de hoofdpagina, drie " +
+      "gaan daarin op, één wordt weggegooid, één krijgt een nieuwe titel. Dat is één blok werk, geen " +
+      "zes taken verspreid over een lijst.\n\n" +
+      "Dat blok hoefde niet verzonnen te worden, het stond al in de data: de opruim-motor geeft per " +
+      "regel een groep mee, en dat is precies een plaats of een onderwerp. Daar komen drie dingen " +
+      "bovenop.\n\n" +
+      "**Alles hangt aan elkaar.** Een titel-kans op `/soa-test-amsterdam/` hoort bij het blok " +
+      "Amsterdam, niet in een aparte lijst van 236 losse meta-regels. Kansen op pagina's die nergens " +
+      "in een blok zitten worden alsnog gebundeld op pagina-familie, zodat het er nooit weer honderden " +
+      "losse regels worden.\n\n" +
+      "**Werk dat geen werk is, verdwijnt zichtbaar.** Een titel verbeteren op een pagina die volgende " +
+      "week wordt samengevoegd of weggegooid is weggegooid werk. Zulke kansen vervallen, met de reden " +
+      "erbij onderaan het blok, in plaats van dat ze als taak in je planning belanden.\n\n" +
+      "**En er zit een volgorde in.** Fase 1 is de structuur: uitzoeken welke pagina van een onderwerp " +
+      "wint en de rest daarheen omleiden. Fase 2 is de inhoud: die winnaars sterk maken en de gaten " +
+      "vullen. Fase 3 is het laaghangend fruit: titels en descriptions. Die volgorde is geen smaak. " +
+      "Andersom optimaliseer je pagina's die je een week later doorstuurt.",
   },
   {
-    titel: "Van een groep signalen naar taken, in één klik",
-    kern: "Elke groep is een opdracht met een aantal, een geschatte tijd en één knop die er taken van maakt.",
+    titel: "Filteren, zoeken en er taken van maken",
+    kern: "Eén stuurbalk voor de hele pagina, en één knop per blok in plaats van een knop per regel.",
     tekst:
-      "Bij **Gesignaleerd, nog geen taak** stond eerst een lijst pagina's met een label ernaast. Daar kun je " +
-      "niets mee: een label is geen opdracht, en pagina voor pagina op \"maak taak\" klikken is geen werken.\n\n" +
-      "Elke groep is nu een opdracht met een aantal erin: **\"12 pagina's samenvoegen\"**, met daaronder waar " +
-      "het over gaat, waar ze naartoe gaan en hoeveel zoekopdrachten per maand er samen achter zitten. Daar " +
-      "staat ook de **geschatte tijd** bij, zodat je meteen ziet of het in het budget van deze week past.\n\n" +
-      "**De onderbouwing die alle pagina's in een groep delen staat één keer bovenaan**, onder het kopje " +
-      "\"Waarom dit cluster bij elkaar hoort\", in plaats van twaalf keer herhaald. Wat alleen voor één " +
-      "pagina geldt, blijft achter het linkje **onderbouwing** bij die pagina staan.\n\n" +
-      "**En er is één knop die van de hele groep taken maakt.** Dat is waar het groeperen voor is: één " +
-      "beslissing, één klik. Wil je er toch maar één, dan staat naast elke pagina nog **Alleen deze**. " +
-      "Taken die je zo maakt komen in Het plan terecht en verdwijnen vanzelf uit Gesignaleerd, want dat " +
-      "toont alleen wat nog geen taak is.\n\n" +
-      "De groepen staan op volgorde van wat ze waard zijn: het meeste zoekvolume bovenaan.",
+      "**Bovenaan staat één stuurbalk die de hele pagina filtert.** Een zoekveld, een knop per soort " +
+      "werk met het aantal erop, en het urenbudget. Zet je het budget van 3 op 6 uur, dan herverdeelt " +
+      "het hele plan zich meteen over minder weken.\n\n" +
+      "**Een filter laat blokken weg, hij haalt geen pagina's uit een blok.** Dat is met opzet: een " +
+      "blok is één zitting werk, en de helft ervan wegfilteren maakt het onuitvoerbaar. De stuurbalk " +
+      "zegt dat er ook bij, zodat je nooit denkt dat je alles ziet terwijl er wat weg is.\n\n" +
+      "**Eén knop per blok, geen knop per regel.** De vorige versie zette een oranje knop bij elke " +
+      "groep en nog een knopje bij elke pagina. Bij honderd groepen zijn dat honderd oranje knoppen " +
+      "onder elkaar, en dan is geen enkele knop meer de belangrijkste. Nu staat er precies één " +
+      "hoofdknop onderaan een blok: \"Zet dit blok in de planning\". Die maakt van alle pagina's in " +
+      "het blok in één keer taken, in de volgorde waarin ze gedaan moeten worden.\n\n" +
+      "**En je kunt terug.** Onder \"Taken die al in de planning staan\" haal je een taak met één klik " +
+      "weer weg. Een blok dat al taken heeft lopen, zegt dat op de kaart zelf, zodat je er niet per " +
+      "ongeluk een tweede set van maakt.\n\n" +
+      "De tijd per handeling verschilt: een omleiding zetten kost een kwartier, een pagina uitbouwen " +
+      "twee uur, een nieuwe pagina drie. Eerst stond alles op een vaste dertig minuten, en daarmee " +
+      "klopte geen enkele weekplanning.",
   },
 ];
