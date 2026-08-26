@@ -33,10 +33,11 @@
 // een losse proefpagina om op de echte data te beoordelen.
 
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { urlKey } from "../../../../../lib/url-key";
 import { netteHtml } from "../../../../../lib/nette-html";
-import { Paneel, Chip, Chips } from "../../../../_ui/Uitkomst";
+import { Chip, Chips } from "../../../../_ui/Uitkomst";
 import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 import { SOORT_LABEL, type ActiviteitSoort } from "../../../../../lib/activiteit";
 
@@ -165,6 +166,32 @@ function Slug({ url, domein }: { url: string; domein?: string | null }) {
   return <a className="uk-pad" href={href} target="_blank" rel="noreferrer">{pad(url)}</a>;
 }
 
+// Elke hoofdkaart (Wat is gebeurd, Gesignaleerd, Het plan, Activiteitenrapportage)
+// staat standaard dicht: de pagina begon als één lange lijst, en dit is de
+// eerste, snelste manier om dat terug te brengen tot vier regels die je zelf
+// openklapt. Vervangt de vaste, altijd-open Paneel bovenaan het scherm.
+function Sectie({ titel, telling, open, onToggle, uitleg, knoppen, children }: {
+  titel: string; telling?: string; open: boolean; onToggle: () => void;
+  uitleg?: string; knoppen?: ReactNode; children: ReactNode;
+}) {
+  return (
+    <div className="strategy-card">
+      <button type="button" className="strategy-head" onClick={onToggle}>
+        <span className="strategy-caret">{open ? <Omlaag /> : <Uitklap />}</span>
+        <span className="strategy-title">{titel}</span>
+        {telling && <span className="strategy-meta-right">{telling}</span>}
+      </button>
+      {open && (
+        <div className="strategy-body">
+          {uitleg && <p className="muted">{uitleg}</p>}
+          {knoppen}
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Activiteitsregels die bij dezelfde pagina horen, gebundeld; een regel zonder
 // pagina krijgt zijn eigen, ongegroepeerde plek.
 type ActGroep = { sleutel: string; url: string | null; items: Activiteit[] };
@@ -189,6 +216,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   const [periode, setPeriode] = useState<(typeof PERIODES)[number]["key"]>("mnd");
   const [laden, setLaden] = useState(true);
   const [fout, setFout] = useState("");
+  const [openSectie, setOpenSectie] = useState<Record<string, boolean>>({});
   const [filterBron, setFilterBron] = useState<Bron | "alles">("alles");
   const [filterCategorie, setFilterCategorie] = useState<Categorie | "alle">("alle");
   const [openGroep, setOpenGroep] = useState<Record<string, boolean>>({});
@@ -429,8 +457,11 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             </div>
           </header>
 
-          <Paneel
+          <Sectie
             titel={`Wat er in ${maandNaam} is gebeurd`}
+            telling={`${activiteitDezeMaand.length + activiteitDaarvoor.length} regels`}
+            open={!!openSectie.gebeurd}
+            onToggle={() => setOpenSectie((s) => ({ ...s, gebeurd: !s.gebeurd }))}
             uitleg="Uit het bestaande activiteitenlogboek, gebundeld per pagina; klap een tokkeltje open voor alle losse regels."
           >
             {maandGroepen.length > 0 ? (
@@ -497,10 +528,13 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                 )}
               </div>
             )}
-          </Paneel>
+          </Sectie>
 
-          <Paneel
+          <Sectie
             titel="Gesignaleerd, nog geen taak"
+            telling={`${gesignaleerdAlles.length} pagina's`}
+            open={!!openSectie.gesignaleerd}
+            onToggle={() => setOpenSectie((s) => ({ ...s, gesignaleerd: !s.gesignaleerd }))}
             uitleg="Elk cluster staat dicht; open het voor de gedeelde achtergrond en de losse pagina's erin. Niets wordt vanzelf een taak."
             knoppen={
               <Chips>
@@ -568,10 +602,13 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               );
             })}
             {!perGroep.size && <p className="muted">Niets meer te beoordelen voor dit filter.</p>}
-          </Paneel>
+          </Sectie>
 
-          <Paneel
+          <Sectie
             titel="Het plan"
+            telling={`${totOpenTaken} taken`}
+            open={!!openSectie.plan}
+            onToggle={() => setOpenSectie((s) => ({ ...s, plan: !s.plan }))}
             uitleg="Weekprojectie op het ingestelde urenbudget; de volgorde binnen een onderwerp draait nooit om."
           >
             <div className="wp-row">
@@ -693,10 +730,13 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                 )}
               </div>
             </div>
-          </Paneel>
+          </Sectie>
 
-          <Paneel
+          <Sectie
             titel="Activiteitenrapportage"
+            telling={`${activiteitPeriode.length} regels`}
+            open={!!openSectie.rapportage}
+            onToggle={() => setOpenSectie((s) => ({ ...s, rapportage: !s.rapportage }))}
             uitleg="Dezelfde geschiedenis als hierboven, maar over een zelf te kiezen periode, ook gebundeld per pagina."
             knoppen={
               <Chips>
@@ -744,7 +784,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               })}
               {!activiteitPeriode.length && <p className="muted">Niets gelogd in deze periode.</p>}
             </div>
-          </Paneel>
+          </Sectie>
         </>
       )}
     </div>
