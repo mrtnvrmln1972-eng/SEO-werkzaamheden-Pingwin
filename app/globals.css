@@ -2505,8 +2505,8 @@ button.ck-collapse-head {
    De maten staan óók in LinkPreview.tsx (PREVIEW_BREED/PREVIEW_HOOG), want het
    venster moet weten hoe groot hij is om hem binnen beeld te houden. Verander je
    ze hier, verander ze daar mee; proeven/link-preview.proef.ts rekent het na. */
-.link-preview { position: fixed; z-index: 1000; width: min(600px, 92vw); background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); box-shadow: var(--diepte-zwevend); overflow: hidden; }
-.link-preview iframe { width: 100%; height: min(70vh, 460px); border: 0; display: block; background: var(--kleur-pagina); }
+.link-preview { position: fixed; z-index: 1000; width: min(700px, 92vw); background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-knop); box-shadow: var(--diepte-zwevend); overflow: hidden; }
+.link-preview iframe { width: 100%; height: min(70vh, 540px); border: 0; display: block; background: var(--kleur-pagina); }
 .link-preview-card { padding: var(--ruimte-regel) var(--ruimte-groep); }
 .link-preview-card .lp-host { font-weight: 600; font-size: var(--type-bijschrift); color: var(--dark); }
 .link-preview-card .lp-url { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); word-break: break-all; margin: var(--ruimte-krap) 0 var(--ruimte-naast); }

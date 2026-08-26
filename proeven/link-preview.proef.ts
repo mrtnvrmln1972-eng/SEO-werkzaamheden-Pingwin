@@ -40,6 +40,9 @@ check("de hoogte staat aan beide kanten gelijk", cssHoog > 0 && cssHoog === tsxH
 check("hij is groot genoeg om een tabel in te lezen", cssBreed >= 560 && cssHoog >= 420,
   `Nu ${cssBreed} bij ${cssHoog}. Kleiner dan dit en je ziet van een spreadsheet twee kolommen.`);
 
+check("hij is minstens zo groot als Maarten op 26-08-2026 vroeg", cssBreed >= 680 && cssHoog >= 520,
+  `Nu ${cssBreed} bij ${cssHoog}. "Zou het previewveld ietsjes groter kunnen": deze ondergrens houdt dat vast.`);
+
 check("hij past ook op een smal scherm", /width: min\(\d+px, 9\dvw\)/.test(css),
   "Een vaste breedte loopt op een laptop of tablet gewoon van het scherm af.");
 
@@ -67,6 +70,16 @@ check("boven de link blijft hij ook binnen het venster",
 check("onder de link blijft hij ook binnen het venster",
   /: Math\.max\(8, Math\.min\(state\.onder \+ 6, h - hoog - 8\)\);/.test(tsx),
   "Zonder deze grens schuift de voorvertoning onder de rand uit.");
+
+// Je moet in de voorvertoning kunnen gaan staan en erin kunnen scrollen zonder
+// dat hij vanzelf dichtklapt. De sluit-timer op het hele document reageerde
+// vroeger op élk mouseout op de pagina, ook op het overgaan van de rand van de
+// voorvertoning naar de iframe erin, en sloot dan 250ms later terwijl de muis
+// er nog gewoon in stond. Gemeld door Maarten op 26-08-2026, direct na de
+// knipper-fix hierboven.
+check("de sluit-timer reageert alleen op het weggaan van de bewaakte link zelf",
+  /if \(!doel\.current \|\| bron !== doel\.current\) return;/.test(tsx),
+  "Zonder deze wacht sluit de voorvertoning zodra de muis van de rand naar de iframe erin gaat, ook al blijft de muis er gewoon in staan.");
 
 console.log(fouten === 0 ? "\nDe voorvertoning is groot genoeg en blijft in beeld." : `\n${fouten} fout(en).`);
 if (fouten > 0) process.exit(1);

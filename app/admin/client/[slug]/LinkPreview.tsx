@@ -8,8 +8,8 @@ import { PijlSchuin } from "../../../_ui/Pijl";
 // De maat van de voorvertoning, gelijk aan .link-preview in app/globals.css.
 // Verander je er één, verander ze allebei; proeven/link-preview.proef.ts rekent na
 // of ze nog gelijk staan, want anders valt het venster half buiten het scherm.
-export const PREVIEW_BREED = 600;
-export const PREVIEW_HOOG = 460;
+export const PREVIEW_BREED = 700;
+export const PREVIEW_HOOG = 540;
 
 function googlePreview(url: string): string | null {
   let m = url.match(/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([A-Za-z0-9_-]+)/);
@@ -58,8 +58,18 @@ export default function LinkPreview() {
       }, vertraging);
     }
     function onOut(e: MouseEvent) {
+      // Alleen reageren op het weggaan van de link die we zelf volgen. Dit was
+      // een kale mouseout-listener op het hele document, dus élk mouseout
+      // overal op de pagina liet de voorvertoning na 250ms sluiten zodra
+      // doel.current al leeg was. Dat gebeurde al bij de eerste stap ín de
+      // voorvertoning: die stap gaat via de iframe (een eigen element in de
+      // pagina), en zodra de muis daar overheen ging, sloot de voorvertoning
+      // vanzelf terwijl je er nog in stond te lezen of te scrollen.
+      const el = e.target as HTMLElement | null;
+      const bron = el?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!doel.current || bron !== doel.current) return;
       const naar = e.relatedTarget as Node | null;
-      if (doel.current && naar && doel.current.contains(naar)) return; // nog binnen dezelfde link
+      if (naar && doel.current.contains(naar)) return; // nog binnen dezelfde link
       doel.current = null;
       if (toonTimer.current) clearTimeout(toonTimer.current);
       if (hideTimer.current) clearTimeout(hideTimer.current);
