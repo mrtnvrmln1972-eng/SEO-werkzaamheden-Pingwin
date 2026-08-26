@@ -32,7 +32,7 @@ function hostOf(url: string): string {
 // geflikker: bij een Google-document werd er meteen een iframe geladen van elke
 // link waar je toevallig langs bewoog.
 export default function LinkPreview() {
-  const [state, setState] = useState<{ url: string; x: number; y: number } | null>(null);
+  const [state, setState] = useState<{ url: string; x: number; boven: number; onder: number } | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const toonTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const doel = useRef<HTMLAnchorElement | null>(null);
@@ -54,7 +54,7 @@ export default function LinkPreview() {
       toonTimer.current = setTimeout(() => {
         if (doel.current !== a || !a.isConnected) return;
         const r = a.getBoundingClientRect();
-        setState({ url: href, x: r.left, y: r.bottom });
+        setState({ url: href, x: r.left, boven: r.top, onder: r.bottom });
       }, vertraging);
     }
     function onOut(e: MouseEvent) {
@@ -85,7 +85,16 @@ export default function LinkPreview() {
   const breed = Math.min(PREVIEW_BREED, w * 0.92);
   const hoog = gp ? Math.min(PREVIEW_HOOG, h * 0.7) + 20 : 130;
   const left = Math.max(8, Math.min(state.x, w - breed - 8));
-  const top = Math.max(8, Math.min(state.y + 6, h - hoog));
+  // Staat de link zo laag dat de voorvertoning er onder niet meer past, dan komt
+  // hij boven de link te hangen in plaats van dat we hem omhoog proppen tot hij
+  // over de link heen valt. Dat laatste gaf een voorvertoning die precies op de
+  // link landde: de muis stond dan ineens boven de voorvertoning in plaats van
+  // de link, de link verdween, de voorvertoning verdween erachteraan, de link
+  // kwam terug, en dat bleef zich herhalen. Vandaar het knipperende witte vlak.
+  const boven = state.onder + 6 + hoog > h && state.boven - 6 - hoog >= 8;
+  const top = boven
+    ? Math.max(8, state.boven - 6 - hoog)
+    : Math.max(8, Math.min(state.onder + 6, h - hoog - 8));
 
   return (
     <div

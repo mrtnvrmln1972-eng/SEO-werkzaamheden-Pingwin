@@ -46,13 +46,27 @@ check("hij past ook op een smal scherm", /width: min\(\d+px, 9\dvw\)/.test(css),
 check("de hoogte past ook op een laag venster", /height: min\(\d+vh, \d+px\)/.test(css),
   "Op een klein scherm moet hij meekrimpen in plaats van eronderuit te steken.");
 
-check("hij wordt binnen het venster gehouden, ook aan de bovenkant",
-  /const top = Math\.max\(8, Math\.min\(state\.y \+ 6, h - hoog\)\)/.test(tsx),
-  "Zonder die ondergrens schuift hij bij een link onderaan het scherm boven de rand uit.");
-
 check("de breedte telt mee bij het uitlijnen",
   /Math\.min\(state\.x, w - breed - 8\)/.test(tsx),
   "Anders steekt hij rechts buiten beeld bij een link aan de rechterkant.");
+
+// Staat de link zo laag dat de voorvertoning er onder niet meer past, dan moet
+// hij boven de link komen te hangen, nooit erover heen. Landt hij op de link
+// zelf, dan wisselt de muis voortdurend tussen "op de link" en "op de
+// voorvertoning": de link verdwijnt, de voorvertoning verdwijnt erachteraan, de
+// link komt terug, en dat blijft zich herhalen. Precies het knipperende witte
+// vlak dat Maarten meldde op 26-08-2026 (One Day Clinic, "Instructie developer").
+check("hij klapt om naar boven de link als hij er onder niet meer past",
+  /const boven = state\.onder \+ 6 \+ hoog > h && state\.boven - 6 - hoog >= 8;/.test(tsx),
+  "Zonder deze omklap-regel valt de voorvertoning bij een link onderaan het scherm over de link zelf heen, en dat geeft het geflikker.");
+
+check("boven de link blijft hij ook binnen het venster",
+  /\? Math\.max\(8, state\.boven - 6 - hoog\)/.test(tsx),
+  "Zonder deze ondergrens schuift de omgeklapte voorvertoning boven de rand uit.");
+
+check("onder de link blijft hij ook binnen het venster",
+  /: Math\.max\(8, Math\.min\(state\.onder \+ 6, h - hoog - 8\)\);/.test(tsx),
+  "Zonder deze grens schuift de voorvertoning onder de rand uit.");
 
 console.log(fouten === 0 ? "\nDe voorvertoning is groot genoeg en blijft in beeld." : `\n${fouten} fout(en).`);
 if (fouten > 0) process.exit(1);
