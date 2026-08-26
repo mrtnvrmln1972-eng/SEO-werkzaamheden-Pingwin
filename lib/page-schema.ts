@@ -11,6 +11,7 @@ import { schemaDocSpec } from "./page-doc";
 import { buildPingwinDoc } from "./pingwin-docx";
 import { uploadDocx, uploadPlainFile } from "./drive";
 import { getTasks, deleteTasksByIds, appendTasks } from "./tasks";
+import { RICH_RESULTS_TEST } from "./structured-taak";
 
 // ═══════════════════════════════════════════════════════════
 // STAP 7: STRUCTURED DATA PER PAGINA
@@ -321,10 +322,21 @@ export async function applyPageSchema(slug: string, url: string): Promise<{ ok: 
   const existing = await getTasks(slug).catch(() => []);
   const dupes = existing.filter((t) => t.stepKind === "structured_data" && (t.pageUrl || "") === url && typeof t.id === "number").map((t) => t.id as number);
   if (dupes.length) await deleteTasksByIds(slug, dupes).catch(() => { /* dedupe is hulp */ });
+  // Markdown met benoemde links, net als de site-brede taak (lib/structured-taak.ts):
+  // een kaal webadres in de lopende tekst plakt in het rijke tekstveld aan de
+  // vorige zin vast en wordt een lap tekst in plaats van een leesbare opdracht.
+  const toelichtingRegels = [
+    `**Wat er moet gebeuren:** zet het bijgevoegde JSON-LD-blok in de \`<head>\` van deze pagina, als los \`<script type="application/ld+json">\`-blok naast wat er al staat.`,
+    "",
+    `- [De code als JSON-bestand](${json.link}) (Drive, iedereen met de link kan hem openen)`,
+    `- [Uitleg en toelichting](${doc.link})`,
+  ];
+  if (state.warnings.length) toelichtingRegels.push("", `**Let op:** ${state.warnings.join("; ")}`);
+  toelichtingRegels.push("", `**Daarna controleren:** haal de pagina door [de rich results-test van Google](${RICH_RESULTS_TEST}).`);
   const ids = await appendTasks(slug, [{
     categorie: "Structured data",
     taak: `Structured data doorvoeren op ${pagePath(url)}`,
-    toelichting: `JSON-LD (copy-paste): ${json.link}\nUitleg-document: ${doc.link}${state.warnings.length ? `\nLet op: ${state.warnings.join(" | ")}` : ""}`,
+    toelichting: toelichtingRegels.join("\n"),
     klantToelichting: "We voegen onzichtbare, gestructureerde bedrijfs- en paginainformatie toe waarmee Google en AI-zoekmachines de pagina beter begrijpen en tonen.",
     status: "Gepland",
     wie: "Dev",

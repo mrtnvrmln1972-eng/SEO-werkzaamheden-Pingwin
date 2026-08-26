@@ -61,6 +61,20 @@ export function omgevingStand(): OmgevingStand {
 }
 
 /**
+ * Het eigen basisadres, voor een absolute link die buiten een route-handler
+ * wordt gebouwd (dus zonder `req.nextUrl.origin` bij de hand), bijvoorbeeld in
+ * een generator die zowel via een API-route als via de developer-overview kan
+ * lopen. Productie kent zijn eigen adres via `VERCEL_PROJECT_PRODUCTION_URL`;
+ * zonder dat (lokaal, of een preview-deploy) valt dit terug op het vaste
+ * productieadres uit CLAUDE.md.
+ */
+export function siteOrigin(): string {
+  return process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "https://pingwin-seo-dashboard.vercel.app";
+}
+
+/**
  * Mag deze server een ander adres aanroepen? Alleen een Pingwin-omgeving.
  *
  * Staat hier en niet in de route die hem als eerste nodig had, want inmiddels
