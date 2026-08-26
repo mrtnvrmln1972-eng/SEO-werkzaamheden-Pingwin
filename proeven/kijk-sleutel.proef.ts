@@ -54,6 +54,41 @@ proef(
   "Zonder bovengrens groeit de lijst geldige sleutels eindeloos.",
 );
 
+// ── 1b. De knop keurt zichzelf, en maar op één plek ──
+// Op 26-08-2026 stond er een sleutel op het scherm mét de melding dat de ingang
+// hem niet accepteerde. Dat kwam doordat het scherm ná het aanmaken zelf nog een
+// tweede verzoek deed om het te controleren. Twee plekken die hetzelfde
+// nakijken geven vroeg of laat twee antwoorden, en dan weet je niets meer. De
+// server keurt nu in hetzelfde verzoek waarin hij de sleutel maakt.
+const knop = lees("app", "admin", "KijkSleutel.tsx");
+proef(
+  "het scherm doet geen eigen tweede controle meer",
+  !/\/api\/kijk\?test=1/.test(knop),
+  "Het aanmaken controleert de sleutel al op de server. Vraag het antwoord daar op\n" +
+    "     | (`getest` in het antwoord van POST /api/admin/kijk-sleutel) in plaats van er\n" +
+    "     | een tweede verzoek naast te zetten dat iets anders kan zeggen.",
+);
+proef(
+  "en leest het oordeel uit het antwoord van het aanmaken",
+  /getest/.test(knop) && /getest:\s*true/.test(lees("app", "api", "admin", "kijk-sleutel", "route.ts")),
+);
+proef(
+  "createViewKey deelt geen sleutel uit die hij niet zelf heeft gekeurd",
+  /testViewKey\(/.test(maken) && /throw new Error/.test(maken),
+  "Zonder deze keuring komt er een sleutel uit die pas stukloopt als Maarten hem plakt.",
+);
+
+// ── 1c. De opzoeking mag nooit een oud antwoord kunnen teruggeven ──
+// Een vraag die élke keer woordelijk gelijk is en geen enkele waarde bevat, kan
+// onderweg blijven hangen; dan krijg je de sleutels van een minuut geleden en
+// ontbreekt precies de sleutel die net gemaakt is.
+proef(
+  "de sleutel-opzoeking bevat een waarde die per keer verandert",
+  /\$\{nu\}/.test(functie("getActiveKeys")),
+  "Zet er een waarde in die elke aanroep anders is (zoals het tijdstip van nu),\n" +
+    "     | zodat geen twee vragen gelijk zijn en er nooit een bewaard antwoord terugkomt.",
+);
+
 // ── 2. Élke geldige sleutel opent de deur ──
 for (const naam of ["checkViewKey", "testViewKey"]) {
   const f = functie(naam);

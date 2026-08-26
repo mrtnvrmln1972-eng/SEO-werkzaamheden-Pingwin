@@ -156,9 +156,18 @@ export async function getActiveKey(): Promise<ActiveKeyRow | null> {
 export async function getActiveKeys(): Promise<ActiveKeyRow[]> {
   await ensureSchema();
   await ensureTable();
+  // `nu` staat er niet voor de sier. Deze opzoeking gaat elk verzoek met exact
+  // dezelfde tekst en zonder enige waarde de deur uit, en dan kan er onderweg
+  // (in de laag die de vraag verstuurt) een eerder antwoord bewaard blijven.
+  // Dan krijg je de sleutels van een minuut geleden terug en ontbreekt precies
+  // de sleutel die net is aangemaakt. Met een waarde die elke keer verandert is
+  // geen enkele vraag nog gelijk aan de vorige, dus kan er nooit een oud
+  // antwoord terugkomen. De voorwaarde zelf verandert niets: een sleutel kan
+  // niet in de toekomst zijn aangemaakt.
+  const nu = new Date().toISOString();
   const { rows } = await sql`
     SELECT id, key_hash, created_at, last_used FROM claude_view_key
-    WHERE revoked_at IS NULL
+    WHERE revoked_at IS NULL AND created_at <= ${nu}
     ORDER BY COALESCE(last_used, created_at) DESC, id DESC LIMIT 40`;
   return rows.map((r) => ({
     id: Number(r.id),
@@ -272,15 +281,29 @@ export async function createViewKey(): Promise<string> {
   // sleutel die niet werkt mag deze functie dus niet verlaten. Eerst zelf langs
   // dezelfde deur; lukt dat niet, dan één keer rechtzetten en opnieuw; lukt het
   // dan nog niet, dan een eerlijke fout in plaats van een dode sleutel.
-  if (!(await testViewKey(plat)).ok) {
+  //
+  // De controle gaat twee keer, en dat is met opzet. Eerst de eigen rij op id
+  // opzoeken: dat is de enige opzoeking die aantoonbaar altijd verse gegevens
+  // teruggaf. Daarna dezelfde deur als Claude, want dat is wat er straks echt
+  // gebeurt. Wijken die twee van elkaar af, dan zit het probleem niet in de
+  // sleutel maar in de opzoeking, en dan wil je dat hier weten en niet pas als
+  // Maarten het plakt.
+  if (!(await eigenRijKlopt(nieuwId, plat))) {
     await sql`UPDATE claude_view_key SET revoked_at = NULL WHERE id = ${nieuwId}`;
-    const tweede = await testViewKey(plat);
-    if (!tweede.ok) {
-      throw new Error(
-        `De sleutel is wel aangemaakt (rij ${nieuwId}) maar komt niet door de controle (${tweede.reden}). ` +
-          "Er is dus iets mis met de sleuteltabel zelf, niet met je knop.",
-      );
-    }
+  }
+  if (!(await eigenRijKlopt(nieuwId, plat))) {
+    throw new Error(
+      `De sleutel is wel aangemaakt (rij ${nieuwId}) maar staat niet als geldige sleutel in de tabel. ` +
+        "Er is dus iets mis met de sleuteltabel zelf, niet met je knop.",
+    );
+  }
+  const langsDeDeur = await testViewKey(plat);
+  if (!langsDeDeur.ok) {
+    throw new Error(
+      `Rij ${nieuwId} is een geldige sleutel, maar de controle die Claude gebruikt ziet hem niet ` +
+        `(${langsDeDeur.reden}, ${langsDeDeur.gezien ?? 0} sleutels gezien). Dat verschil zit in de opzoeking, ` +
+        "niet in de sleutel.",
+    );
   }
 
   const { rows } = await sql`SELECT id, last_used FROM claude_view_key WHERE revoked_at IS NULL`;
@@ -298,6 +321,21 @@ export async function createViewKey(): Promise<string> {
       WHERE id = ANY(string_to_array(${weg.join(",")}, ',')::int[])`;
   }
   return plat;
+}
+
+/**
+ * Staat deze sleutel er als geldige rij, gezien vanuit zijn eigen id?
+ *
+ * Bewust op id en niet via de lijst: een opzoeking met een eigen waarde erin
+ * kan niet verward worden met een eerdere vraag, dus dit antwoord is altijd
+ * van nu. Zie createViewKey.
+ */
+async function eigenRijKlopt(id: number, plat: string): Promise<boolean> {
+  const { rows } = await sql`
+    SELECT key_hash, revoked_at FROM claude_view_key WHERE id = ${id}`;
+  const r = rows[0];
+  if (!r || r.revoked_at) return false;
+  return verifyPassword(plat, String(r.key_hash ?? ""));
 }
 
 /** Trekt de huidige sleutel in. Daarna komt Claude er niet meer bij. */

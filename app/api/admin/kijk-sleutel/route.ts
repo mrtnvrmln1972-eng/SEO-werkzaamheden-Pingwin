@@ -23,8 +23,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const g = await guardOwner(req); if (!g.ok) return g.res;
   try {
+    // createViewKey heeft de sleutel hier al door dezelfde deur gehaald die
+    // Claude gebruikt; komt hij daar niet doorheen, dan gooit hij. `getest`
+    // hoort dus bij dít antwoord. Eerder deed het scherm daarna zelf nog een
+    // tweede verzoek om het te controleren, en juist dat tweede verzoek zei
+    // "de ingang accepteert hem nog niet" terwijl de sleutel gewoon goed was.
     const sleutel = await createViewKey();
-    return NextResponse.json({ ok: true, sleutel });
+    return NextResponse.json({ ok: true, sleutel, getest: true });
   } catch (e) {
     // createViewKey deelt sinds 26-08-2026 alleen een sleutel uit die hij zelf
     // door de controle heeft gehaald. Lukt dat niet, dan hoort de reden op het

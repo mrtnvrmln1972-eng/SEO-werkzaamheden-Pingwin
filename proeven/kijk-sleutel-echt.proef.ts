@@ -93,6 +93,15 @@ function nepSql(strings: TemplateStringsArray, ...waarden: unknown[]) {
   }
 
   if (k.startsWith("select")) {
+    // Eén rij op zijn eigen id: die opzoeking kijkt bewust ook naar
+    // ingetrokken rijen, want juist dat wil createViewKey weten.
+    if (k.includes("where id =")) {
+      const rij = tabel.find((r) => r.id === Number(waarden[0]));
+      return Promise.resolve({
+        rows: rij ? [rij as unknown as Record<string, unknown>] : [],
+        rowCount: rij ? 1 : 0,
+      });
+    }
     let rijen = tabel.filter((r) => r.revoked_at === null);
     if (k.includes("order by coalesce(last_used, created_at)")) {
       rijen = [...rijen].sort(

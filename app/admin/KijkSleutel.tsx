@@ -49,14 +49,17 @@ export default function KijkSleutel() {
       if (!d?.ok) { setFout(d?.error || "De sleutel kon niet aangemaakt worden. Probeer het nog een keer."); return; }
       setSleutel(d.sleutel);
       await laad();
-      // Zelftest: probeer de verse sleutel meteen uit op de ingang die Claude
-      // straks gebruikt. Alleen uitproberen, dus zonder je eigen adminsessie te
-      // raken. Pas als die deur echt opengaat mag hier "gelukt" staan; eerder gaf
-      // deze knop een sleutel terug die nergens werkte, en dat bleef onzichtbaar.
-      const t = await fetch(`/api/kijk?test=1&sleutel=${encodeURIComponent(d.sleutel)}`)
-        .then((r) => r.json()).catch(() => null);
-      setGetest(t?.ok === true);
-      if (!t?.ok) setFout("De sleutel is aangemaakt, maar de ingang accepteert hem nog niet. Druk nog een keer op de knop.");
+      // De sleutel is al getest, in hetzelfde verzoek waarin hij gemaakt werd:
+      // de server haalt hem door dezelfde deur als Claude en geeft alleen een
+      // sleutel terug als die opengaat. Hier stond een tweede verzoek dat dat
+      // nog eens overdeed, en dát verzoek meldde "de ingang accepteert hem nog
+      // niet" terwijl er niets mis was met de sleutel. Twee plekken die
+      // hetzelfde controleren en verschillende antwoorden geven: nooit meer.
+      setGetest(d.getest === true);
+      // De waarschuwing hierboven gaat over een eerdere mislukte poging. Die is
+      // met een verse sleutel in de hand oud nieuws en hoort nu niet meer af te
+      // leiden van wat je moet doen.
+      setStatus((s) => (s ? { ...s, laatstMislukt: null, mislukteReden: null } : s));
     } catch {
       setFout("Het dashboard antwoordde niet. Controleer je verbinding en probeer het nog een keer.");
     } finally { setBezig(false); }
