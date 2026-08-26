@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardOwner } from "../../../../lib/admin-scope";
 import { sql, ensureSchema } from "../../../../lib/db";
 import { hashPassword, verifyPassword, generatePassword } from "../../../../lib/password";
-import { MAX_ACTIEF } from "../../../../lib/claude-view-key";
+import { MAX_ACTIEF, getActiveKeys } from "../../../../lib/claude-view-key";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +32,9 @@ export async function GET(req: NextRequest) {
   if (!g.ok) return g.res;
 
   await ensureSchema();
+  // Langs de gewone weg, zodat de tabel gegarandeerd bestaat en we meteen zien
+  // hoeveel sleutels de controle zélf te zien krijgt.
+  const gezienDoorDeControle = (await getActiveKeys()).length;
 
   // ── Meting 1: overleeft een hash de reis naar de database en terug? ──
   const proefsleutel = `pw-proef-${generatePassword(40)}`;
@@ -81,6 +84,7 @@ export async function GET(req: NextRequest) {
 
   const meting2 = {
     geldigeSleutels: actief,
+    gezienDoorDeControle,
     daarvanMetStempel: metStempel,
     hoogsteGeldigeId: s?.hoogste_actieve_id ?? null,
     maxActief: MAX_ACTIEF,
