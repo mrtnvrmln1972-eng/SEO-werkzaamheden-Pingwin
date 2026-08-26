@@ -278,6 +278,7 @@ export async function docsVoorPagina(slug: string, url: string, extra: { categor
     }
   } catch { /* zonder pijplijn-documenten verder */ }
 
+  let heeftStructured = false;
   try {
     const { rows } = await sql`
       SELECT naam, drive_link, status, source, kind, goedgekeurd,
@@ -291,6 +292,14 @@ export async function docsVoorPagina(slug: string, url: string, extra: { categor
     // exact dezelfde naam, en dan lijkt het alsof er twee versies zijn.
     const perNaam = new Set<string>();
     for (const r of rows) {
+      const kind = String(r.kind || "");
+      // Structured data gaat NOOIT als los Word-document mee: wat hierin staat
+      // is per gegeven verwerkt in de kennisbank, en dáár staat wat geldt (zie
+      // DocVersies.tsx). Zonder deze uitzondering kreeg een developer het
+      // opgemaakte archiefdocument als "Geldende versie", terwijl hij aan de
+      // deelbare kennisbank-pagina (hieronder, één link) alles heeft wat hij
+      // nodig heeft: de bedrijfsgegevens plus de kant-en-klare JSON-LD.
+      if (kind === "structured") { heeftStructured = true; continue; }
       const naam = String(r.naam || "Document");
       const sleutel = naam.trim().toLowerCase();
       if (perNaam.has(sleutel)) continue;
@@ -298,12 +307,26 @@ export async function docsVoorPagina(slug: string, url: string, extra: { categor
       const klant = String(r.source || "") === "klant" || String(r.status || "") === "voorstel";
       voegToe(
         kortLabel(naam, klant), String(r.drive_link),
-        soortUitKind(String(r.kind || "")),
+        soortUitKind(kind),
         r.goedgekeurd ? RANG.goedgekeurd : RANG.archief,
         r.datum ? new Date(r.datum as string).toISOString() : "",
       );
     }
   } catch { /* zonder klantversies verder */ }
+
+  if (heeftStructured) {
+    try {
+      const { getOrgData } = await import("./org-data");
+      const { siteOrigin } = await import("./omgeving");
+      const rec = await getOrgData(slug);
+      if (rec.devShareToken) {
+        voegToe(
+          "Structured data (bedrijfsgegevens + code)", `${siteOrigin()}/share/org-dev/${rec.devShareToken}`,
+          "structured", RANG.goedgekeurd,
+        );
+      }
+    } catch { /* dan ontbreekt de link; de rest van de lijst werkt gewoon */ }
+  }
 
   // Van elke soort geldt er één versie; de rest krijgt een vlaggetje en staat in
   // de schermen dichtgeklapt onder "oudere versies". Het maximum telt daarom
