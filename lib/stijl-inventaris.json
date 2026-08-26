@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9297,
-    "stijlregels": 4499,
-    "classnamen": 3070
+    "regels": 9301,
+    "stijlregels": 4501,
+    "classnamen": 3071
   },
   "kleuren": {
     "verschillend": 40,
@@ -597,7 +597,7 @@
     }
   ],
   "inline": {
-    "totaal": 614,
+    "totaal": 615,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1542,7 +1542,7 @@
     }
   ],
   "icoontekens": {
-    "totaal": 205,
+    "totaal": 206,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
