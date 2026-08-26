@@ -122,7 +122,7 @@ checkWaar("een afgeronde taak is terug te zetten", /function zetTerug\(/.test(pl
 const css = lees("app/globals.css");
 const raster = css.match(/\.wb-rij\s*\{[\s\S]*?grid-template-columns:\s*([^;]+);/);
 const kolommen = raster ? raster[1].trim().split(/\s+(?![^(]*\))/).length : 0;
-check("de regel heeft zes kolommen (handvat, taak, fases, stand, datum, kruisje)", kolommen, 6);
+check("de regel heeft zeven kolommen (handvat, taak, fases, stand, datum, effect, kruisje)", kolommen, 7);
 checkWaar("de keuzelijst heeft opmaak", /\.wb-stand-kies\s*\{/.test(css),
   "Planning.tsx zet de klasse wb-stand-kies, maar er is geen stijlregel. Dan staat er een kale browserlijst in de regel.");
 checkWaar("het oude vinkje is echt weg", !/wb-vink/.test(planning) && !/\.wb-vink\s*\{/.test(css),

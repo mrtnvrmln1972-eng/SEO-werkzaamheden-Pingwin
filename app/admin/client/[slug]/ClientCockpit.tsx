@@ -320,14 +320,9 @@ export default function ClientCockpit({
     changeTab(t);
   }
 
-  // Vanuit een afgeronde taak (Wat we doen, Planning) het effect ervan bekijken:
-  // wissel naar Wijzigingen en geef de pagina (of null, voor een taak zonder eigen
-  // pagina) en de taakdatum door. De teller laat hetzelfde doel opnieuw openen.
+  // Naar het effect van een afgeronde taak (Wat we doen, Planning): Wijzigingen-tab.
   const [wijzigingenTarget, setWijzigingenTarget] = useState<{ url: string | null; datum: string; n: number } | null>(null);
-  function gaNaarEffect(url: string | null, datum: string) {
-    setWijzigingenTarget((t) => ({ url, datum, n: (t?.n || 0) + 1 }));
-    changeTab("wijzigingen");
-  }
+  function gaNaarEffect(url: string | null, datum: string) { setWijzigingenTarget((t) => ({ url, datum, n: (t?.n || 0) + 1 })); changeTab("wijzigingen"); }
 
   // Vanuit de KPI's een pagina openen in het Pagina's-tabje: wissel van tab en geef
   // de doel-URL door (met oplopende teller zodat herhaald klikken op dezelfde pagina
