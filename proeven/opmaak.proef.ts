@@ -104,6 +104,71 @@ for (const m of mappen) {
 }
 checkWaar("het klantenoverzicht staat er ook in", paden.includes("/admin"), "");
 
+// ── 3b. Een losse route onder een klant heeft een scope-check én een weg terug ──
+// Aanvulling van 26-08-2026. `client` staat expres in GEEN_KOP_NODIG hierboven,
+// want alles onder client/[slug]/ werd verondersteld een tabblad ín ClientCockpit
+// te zijn (die heeft al zijn eigen kop). Dat klopte niet meer: er hangen al vijf
+// LOSSE page.tsx-routes rechtstreeks onder client/[slug]/ (sitemap, werklijst,
+// document, navigatie, weekbord), en die vijf lossen twee dingen zelf al op, met
+// de hand, zonder dat iets dat ooit navertelde:
+//   - een echte toegangscheck (getScopeFromCookie + canAccessSlug + redirect),
+//     dezelfde als de cockpit zelf gebruikt;
+//   - een weg terug: óf de volle kopbalk (weekbord), óf een "terug naar de
+//     cockpit"-linkje (sitemap/werklijst/document/navigatie).
+// Op 26-08-2026 kwam er een zesde route bij (werkplanning-proef) zonder allebei,
+// en niets zei daar iets van: de hele map stond immers op de vrijstellingslijst.
+// Deze proef checkt daarom voortaan élke losse route apart, in plaats van de hele
+// map over te slaan.
+const SCOPE_CHECK = /getScopeFromCookie/;
+const WEG_TERUG = /className="header"|<AdminKop|naar de cockpit|className="[a-z][\w-]*-terug"/i;
+// Ratel-erfenislijst, zelfde patroon als overal in dit bestand: een route die
+// hier al niet aan voldeed vóór deze proef bestond, mag blijven staan zolang hij
+// op deze lijst staat (anders breekt de bouw meteen op iemands lopende werk),
+// maar een NIEUWE route staat er per definitie niet op. De lijst mag alleen
+// korter worden: is een route eenmaal wél voorzien van scope-check en weg terug,
+// haal 'm er dan af (deze proef meldt zelf als dat nog moet).
+const KLANT_ROUTE_ERFENIS = new Set<string>([
+  "app/admin/client/[slug]/werkplanning-proef/page.tsx",
+]);
+// Zelfde reden als bij de kopbalk-check hierboven: de scope-check zit in
+// page.tsx zelf, maar de "terug naar de cockpit"-link zit meestal in het
+// client-component dat page.tsx aanroept (bijv. SitemapCheck.tsx, niet
+// sitemap/page.tsx). Daarom ALLE .tsx-bestanden in de route-map samen lezen,
+// niet alleen page.tsx.
+const klantRouteMap = path.join(WORTEL, "app/admin/client/[slug]");
+const klantRouteNamen = fs.readdirSync(klantRouteMap)
+  .filter((n) => fs.statSync(path.join(klantRouteMap, n)).isDirectory())
+  .filter((n) => fs.existsSync(path.join(klantRouteMap, n, "page.tsx")));
+const klantRouteErfenisGezien = new Set<string>();
+for (const naam of klantRouteNamen) {
+  const routeMap = path.join(klantRouteMap, naam);
+  const rel = `app/admin/client/[slug]/${naam}/page.tsx`;
+  const inhoud = fs.readdirSync(routeMap)
+    .filter((b) => b.endsWith(".tsx"))
+    .map((b) => fs.readFileSync(path.join(routeMap, b), "utf8"))
+    .join("\n");
+  const goed = SCOPE_CHECK.test(inhoud) && WEG_TERUG.test(inhoud);
+  if (KLANT_ROUTE_ERFENIS.has(rel)) { klantRouteErfenisGezien.add(rel); continue; }
+  checkWaar(`${rel} heeft een scope-check en een weg terug naar de cockpit`, goed,
+    "Losse routes onder client/[slug]/ hebben geen automatische kopbalk of toegangscheck; "
+    + "bouw ze zelf na, zoals sitemap/ (scope-check + \"terug naar de cockpit\"-link) "
+    + "of weekbord/ (volle kopbalk). Zonder scope-check ziet iedereen met een geldige "
+    + "sessie deze pagina, ongeacht welke klant hij mag zien.");
+}
+const klantRouteErfenisVerdwenen = [...KLANT_ROUTE_ERFENIS].filter((rel) => {
+  const naam = rel.split("/").slice(-2)[0];
+  const routeMap = path.join(klantRouteMap, naam);
+  if (!fs.existsSync(routeMap)) return true;
+  const inhoud = fs.readdirSync(routeMap)
+    .filter((b) => b.endsWith(".tsx"))
+    .map((b) => fs.readFileSync(path.join(routeMap, b), "utf8"))
+    .join("\n");
+  return SCOPE_CHECK.test(inhoud) && WEG_TERUG.test(inhoud);
+});
+checkWaar("de klant-route-erfenislijst bevat geen schone of verdwenen routes meer",
+  klantRouteErfenisVerdwenen.length === 0,
+  `Haal deze eruit, ze voldoen al of bestaan niet meer: ${klantRouteErfenisVerdwenen.join(", ")}`);
+
 // ── 4. De nieuwe opmaak gebruikt de vaste schaal ──
 // Losse waarden in plaats van de tokens is precies hoe een ontwerp uit elkaar
 // gaat lopen. Alleen de blokken die vandaag zijn toegevoegd worden gecontroleerd;
@@ -164,14 +229,45 @@ checkWaar("afbreken midden in een woord staat alleen op tekst, niet op een heel 
 //   - een NIEUW scherm staat er per definitie niet in en moet dus meteen goed;
 //   - een verbouwd scherm haal je eraf, en dan kan het nooit meer terugvallen.
 // De lijst mag dus alleen korter worden.
-const ERFENIS = new Set<string>([]);
+// 26-08-2026: SCHAAL_EIGENSCHAPPEN hierboven kreeg width/maxWidth/minWidth/
+// height/maxHeight/minHeight/top/left/right/bottom erbij (die ontbraken, dus
+// een letterlijke `width: 56` was voor deze proef onzichtbaar). Dat maakte in
+// één klap 20 bestaande bestanden rood die dat al deden vóórdat deze uitbreiding
+// bestond. Dezelfde ratel dus: op de lijst is genoeg om te blijven werken, een
+// NIEUW bestand met een vaste breedte/hoogte staat er per definitie niet op.
+const ERFENIS = new Set<string>([
+  "app/admin/agenda/page.tsx",
+  "app/admin/bronnen-gezondheid/BronnenGezondheidClient.tsx",
+  "app/admin/client/[slug]/CannibalPanel.tsx",
+  "app/admin/client/[slug]/ClientCockpit.tsx",
+  "app/admin/client/[slug]/InvoiceAlert.tsx",
+  "app/admin/client/[slug]/MetaCtrPanel.tsx",
+  "app/admin/client/[slug]/MetaPixelMeter.tsx",
+  "app/admin/client/[slug]/OrgDataPanel.tsx",
+  "app/admin/client/[slug]/PagesPanel.tsx",
+  "app/admin/client/[slug]/WijzigingenPanel.tsx",
+  "app/admin/client/[slug]/pagina-chat/AfwijsVenster.tsx",
+  "app/admin/client/[slug]/werkplanning-proef/WerkplanningProef.tsx",
+  "app/admin/developer/DeveloperOverview.tsx",
+  "app/admin/financien/FinancienClient.tsx",
+  "app/admin/financien/page.tsx",
+  "app/admin/fundament/FundamentClient.tsx",
+  "app/admin/fundament/page.tsx",
+  "app/admin/schermafbeeldingen/SchermafbeeldingenClient.tsx",
+  "app/admin/usage/page.tsx",
+  "app/dashboard/Dashboard.tsx",
+]);
 
 // Eigen opmaak = een VASTE waarde voor iets waar een schaal voor bestaat. Een
 // scherm dat `var(--s-4)` gebruikt doet het juist goed; alleen losse pixels,
 // kale getallen en eigen kleurcodes zijn fout. Dat onderscheid is niet
 // theoretisch: de eerste versie van deze controle keek alleen naar de naam van
 // de eigenschap en meldde meteen twee schermen die keurig de tokens gebruikten.
-const SCHAAL_EIGENSCHAPPEN = "fontSize|lineHeight|padding|paddingTop|paddingBottom|paddingLeft|paddingRight|margin|marginTop|marginBottom|marginLeft|marginRight|gap|borderRadius|boxShadow|color|background|backgroundColor";
+// 26-08-2026: width/maxWidth/minWidth/height/maxHeight/top/left/right/bottom
+// erbij. Zonder deze vier bleef een letterlijke `width: 56` of `maxWidth: 980`
+// in een scherm-eigen style-attribuut onzichtbaar voor élke proef in dit
+// bestand: geen enkele eigenschap in de oude lijst ving zo'n vaste afmeting op.
+const SCHAAL_EIGENSCHAPPEN = "fontSize|lineHeight|padding|paddingTop|paddingBottom|paddingLeft|paddingRight|margin|marginTop|marginBottom|marginLeft|marginRight|gap|borderRadius|boxShadow|color|background|backgroundColor|width|maxWidth|minWidth|height|maxHeight|minHeight|top|left|right|bottom";
 
 function vasteWaarden(styleInhoud: string): string[] {
   const uit: string[] = [];
