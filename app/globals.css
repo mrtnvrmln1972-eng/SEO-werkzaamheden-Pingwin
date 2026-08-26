@@ -1281,7 +1281,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .url-redir { background: var(--kleur-let-op-vlak); color: var(--kleur-let-op); }
 .url-bad { background: var(--kleur-fout-vlak); color: var(--bad); }
 .url-unknown { background: var(--kleur-rustig); color: var(--kleur-tekst-stil); }
-.plan-chip { display: inline-block; font-size: var(--type-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--spatie-label); padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-knop); background: var(--kleur-rustig); color: var(--kleur-tekst-stil); }
+.plan-chip { display: inline-flex; align-items: center; gap: var(--ruimte-krap); font-size: var(--type-label); font-weight: 700; text-transform: uppercase; letter-spacing: var(--spatie-label); padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-knop); background: var(--kleur-rustig); color: var(--kleur-tekst-stil); }
 .plan-chip.has { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); }
 .plan-chip.half { background: var(--brand-orange-soft); color: var(--kleur-accent-diep); }
 
@@ -1376,8 +1376,12 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .page-tasks-cleanup { margin-top: var(--ruimte-naast); font-size: var(--type-bijschrift); color: var(--kleur-let-op); background: var(--kleur-let-op-vlak); border: 1px solid var(--kleur-let-op-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); }
 /* Klantprofiel (context voor de chat) */
 .client-profile { margin: var(--ruimte-krap) 0 var(--ruimte-regel); }
-.client-profile-toggle { background: none; border: none; padding: 0; cursor: pointer; font-size: var(--type-bijschrift); font-weight: 700; color: var(--dark); display: inline-flex; align-items: center; gap: var(--ruimte-krap); }
+.client-profile-toggle { background: none; border: none; padding: 0; cursor: pointer; font-size: var(--type-bijschrift); font-weight: 700; color: var(--dark); display: flex; align-items: center; justify-content: space-between; gap: var(--ruimte-naast); flex: 1 1 auto; min-width: 0; }
 .client-profile-toggle:hover { color: var(--kleur-accent); }
+/* Titel (links) en stand-chips/opgeslagen (rechts), altijd tegen de randen
+   van de knop in plaats van los achter de tekst aan (26-08-2026). */
+.cpt-titel { display: inline-flex; align-items: center; gap: var(--ruimte-krap); }
+.cpt-rechts { display: inline-flex; align-items: center; gap: var(--ruimte-naast); flex-shrink: 0; }
 .client-profile-area { width: 100%; min-height: 110px; margin-top: var(--ruimte-naast); font-family: var(--letter); font-size: var(--type-bijschrift); color: var(--dark); line-height: 1.5; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); outline: none; resize: vertical; }
 .client-profile-area:focus { border-color: var(--kleur-rand-accent); }
 .profile-note { margin-top: var(--ruimte-naast); padding: var(--ruimte-naast) var(--ruimte-regel); border-radius: var(--ronding-klein); background: var(--kleur-fout-vlak); border: 1px solid var(--kleur-fout); color: var(--kleur-fout); font-weight: 700; font-size: var(--type-bijschrift); }
@@ -3117,6 +3121,13 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
 
 /* Bedrijfsgegevens-formulier (structured data-bron): net grid, ook op de deelpagina. */
 .org-actions { display: flex; flex-wrap: wrap; gap: var(--ruimte-naast); align-items: center; }
+/* De hoofd-knoppenrij van Bedrijfsgegevens: op verzoek (26-08-2026) rechts
+   uitgelijnd in plaats van links, zodat een wrappende rij netjes onder elkaar
+   tegen de rechterkant blijft staan in plaats van dat één knop (de vorige
+   marginLeft:auto-truc) alleen zelf naar rechts vliegt. Scoped op deze ene
+   rij, niet op .org-actions zelf: dat wordt elders (MetaCtrPanel) juist
+   links-lopend gebruikt voor filter-/goedkeurknoppen. */
+.org-actions-rechts { justify-content: flex-end; }
 .org-form { display: flex; flex-direction: column; gap: var(--ruimte-regel); margin-top: var(--ruimte-regel); }
 /* ── Bedrijfsgegevens: één vaste vorm per blok ──────────────────────────
    Elk onderdeel (algemeen, vestigingen, bereikbaarheid, artsen, diensten,
@@ -3907,7 +3918,7 @@ a.cb-naam { color: var(--pingwin); text-decoration: underline; }
 .kb-weg:hover { border-color: var(--kleur-fout); color: var(--kleur-fout); }
 /* Het kennisbank-overzicht: per soort inklapbaar, per regel een net kaartje met
    labels en waarden onder elkaar. Vervangt de oude muur van "veld: waarde"-tekst. */
-.org-bewaar { margin-left: auto; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); white-space: nowrap; }
+.org-bewaar { font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); white-space: nowrap; }
 .org-bewaar-fout { color: var(--kleur-fout); font-weight: 700; }
 .org-geen-vest {
   font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-fout);
