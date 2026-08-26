@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "kern-07ec4e59";
+export const KERN_SCHEMA_VERSIE = "kern-921bea1a";
 
 async function init(): Promise<void> {
   await sql`
@@ -373,6 +373,15 @@ async function init(): Promise<void> {
   // schreef. Geen enkele automatische stap raakt dit veld aan: wat hij hier typt
   // blijft van hem.
   await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS notitie TEXT`;
+
+  // Werkplanning-proef (zie lib/werkplan-zone.ts): een geschatte duur per taak,
+  // en negeren als eigen stand naast "klaar". Bewust GEEN vierde waarde in de
+  // status-kolom (lib/taak-stand.ts regelt die vertaling al en waarschuwt
+  // expliciet om dat nergens opnieuw uit te schrijven); genegeerd staat daarom
+  // los, net zoals naar_dev dat ook al doet.
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS estimate_min INTEGER`;
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS genegeerd BOOLEAN NOT NULL DEFAULT false`;
+  await sql`ALTER TABLE client_weekplan ADD COLUMN IF NOT EXISTS genegeerd_op TIMESTAMPTZ`;
 
   // Handmatige fase-vinkjes per pagina voor de projectkaart in de weekplanning.
   // Een rij hier wint van de afgeleide stand (beide kanten op: afvinken en terugzetten).

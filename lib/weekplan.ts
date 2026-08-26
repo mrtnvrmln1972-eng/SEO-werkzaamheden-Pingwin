@@ -23,6 +23,12 @@ export type WeekplanTask = {
   /** Kant-en-klare inhoud (bijv. een contentagenda): toelichting toont ongewijzigd
       als markdown, niet via de Achtergrond/Aanpak-per-fase-indeling. */
   ruw?: boolean;
+  /** Geschatte duur in minuten (werkplanning-proef), null als niet ingeschat. */
+  estimateMin: number | null;
+  /** Bewust laten staan zonder te doen: eigen stand naast "klaar" (taak-stand.ts). */
+  genegeerd: boolean;
+  /** Datum waarop genegeerd is gezet, "2026-08-06" of "" als niet van toepassing. */
+  genegeerdOp: string;
 };
 
 // ISO-8601-weeknummer (maandag als eerste dag). Server en client berekenen dit
@@ -43,7 +49,8 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
   const { rows } = await sql`
     SELECT id, thread, taak, toelichting, notitie, wie, url, taaktype, copy_url, bron_mail, week_year, week_no, status, sort_order, naar_dev,
            taak_handmatig, ruw, COALESCE(jsonb_array_length(archief), 0) AS archief_aantal,
-           to_char(datum, 'YYYY-MM-DD') AS datum
+           to_char(datum, 'YYYY-MM-DD') AS datum,
+           estimate_min, genegeerd, to_char(genegeerd_op, 'YYYY-MM-DD') AS genegeerd_op
     FROM client_weekplan WHERE client_slug = ${slug}
     ORDER BY week_year, week_no, sort_order, id`;
   return rows.map((r) => ({
@@ -59,6 +66,9 @@ export async function getWeekplan(slug: string): Promise<WeekplanTask[]> {
     taakHandmatig: r.taak_handmatig === true,
     archiefAantal: Number(r.archief_aantal || 0),
     ruw: r.ruw === true,
+    estimateMin: r.estimate_min == null ? null : Number(r.estimate_min),
+    genegeerd: r.genegeerd === true,
+    genegeerdOp: (r.genegeerd_op as string) || "",
   }));
 }
 
@@ -84,7 +94,8 @@ export async function getWeekplanAlleKlanten(
     SELECT w.id, w.client_slug, c.name AS klant, c.email AS klant_mail, w.thread, w.taak, w.toelichting, w.notitie, w.wie, w.url, w.taaktype,
            w.copy_url, w.bron_mail, w.week_year, w.week_no, w.status, w.sort_order, w.naar_dev,
            w.taak_handmatig, w.ruw, COALESCE(jsonb_array_length(w.archief), 0) AS archief_aantal,
-           to_char(w.datum, 'YYYY-MM-DD') AS datum
+           to_char(w.datum, 'YYYY-MM-DD') AS datum,
+           w.estimate_min, w.genegeerd, to_char(w.genegeerd_op, 'YYYY-MM-DD') AS genegeerd_op
     FROM client_weekplan w LEFT JOIN clients c ON c.slug = w.client_slug
     ORDER BY w.datum NULLS LAST, w.week_year, w.week_no, w.sort_order, w.id`;
   return rows.filter((r) => !mag || mag.has(String(r.client_slug || "").toLowerCase())).map((r) => ({
@@ -104,6 +115,9 @@ export async function getWeekplanAlleKlanten(
     taakHandmatig: r.taak_handmatig === true,
     archiefAantal: Number(r.archief_aantal || 0),
     ruw: r.ruw === true,
+    estimateMin: r.estimate_min == null ? null : Number(r.estimate_min),
+    genegeerd: r.genegeerd === true,
+    genegeerdOp: (r.genegeerd_op as string) || "",
   }));
 }
 
@@ -445,4 +459,41 @@ export async function setWeekplanNotitie(slug: string, id: number, notitie: stri
   await ensureSchema();
   await sql`UPDATE client_weekplan SET notitie = ${(notitie || "").slice(0, 20000)}, updated_at = now()
             WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// WERKPLANNING-PROEF: tijdsinschatting, negeren, cluster vooraan zetten
+// ═══════════════════════════════════════════════════════════
+// Drie kleine, losstaande uitbreidingen op de bestaande weekplanning. Geen van
+// drieën raakt de status-vertaling in taak-stand.ts: "genegeerd" is een eigen
+// vlag naast status/naar_dev, net zoals naar_dev dat zelf ook is.
+
+/** Geschatte duur in minuten opslaan, of leegmaken met null. */
+export async function setWeekplanEstimate(slug: string, id: number, min: number | null): Promise<void> {
+  await ensureSchema();
+  const waarde = min == null || !Number.isFinite(min) ? null : Math.max(0, Math.round(min));
+  await sql`UPDATE client_weekplan SET estimate_min = ${waarde}, updated_at = now()
+            WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
+/** Een taak negeren (blijft bestaan, doorgestreept) of terugzetten. */
+export async function setWeekplanGenegeerd(slug: string, id: number, genegeerd: boolean): Promise<void> {
+  await ensureSchema();
+  await sql`UPDATE client_weekplan SET genegeerd = ${genegeerd}, genegeerd_op = ${genegeerd ? new Date().toISOString() : null},
+            updated_at = now() WHERE client_slug = ${slug} AND id = ${id}`;
+}
+
+/**
+ * Alle taken van één cluster (thread) vooraan zetten, zelfde truc als
+ * zetPrioriteit in lib/tweaks.ts: onder de laagste bestaande sort_order gaan
+ * staan, zodat de kaart bovenaan sorteert zonder alle andere kaarten te
+ * hoeven verschuiven.
+ */
+export async function boostThread(slug: string, thread: string): Promise<void> {
+  await ensureSchema();
+  const { rows } = await sql`SELECT COALESCE(MIN(sort_order), 10) - 10 AS nieuw FROM client_weekplan WHERE client_slug = ${slug}`;
+  const basis = Number(rows[0]?.nieuw ?? 0);
+  await sql`
+    UPDATE client_weekplan SET sort_order = ${basis} + (id - (SELECT MIN(id) FROM client_weekplan WHERE client_slug = ${slug} AND thread = ${thread})), updated_at = now()
+    WHERE client_slug = ${slug} AND thread = ${thread} AND status <> 'klaar' AND genegeerd = false`;
 }

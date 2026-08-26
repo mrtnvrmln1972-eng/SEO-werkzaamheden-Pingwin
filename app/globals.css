@@ -9348,3 +9348,9 @@ td .dev-doc-link { max-width: 100%; white-space: normal; overflow: visible; text
   .pl-naast { grid-template-columns: minmax(0, 1fr); }
   .pl-fotos { position: static; }
 }
+
+/* ── Werkplanning-proef: koppen en kale lijsten op de schaal ── */
+.wpp-h1 { font-size: var(--type-paginakop); line-height: var(--regel-paginakop); margin: 0; }
+.wpp-h2 { font-size: var(--type-sectiekop); line-height: var(--regel-sectiekop); margin: 0; }
+.wpp-lijst { list-style: none; margin: 0; padding: 0; }
+.wpp-lijst-mt { list-style: none; margin: var(--ruimte-regel) 0 0; padding: 0; }
