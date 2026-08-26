@@ -6696,6 +6696,13 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
 .klant-twee-kolommen { display: flex; align-items: flex-start; gap: var(--ruimte-naast); flex-wrap: wrap; }
 .klant-kolom-links, .klant-kolom-rechts { flex: 1 1 320px; min-width: 0; }
 .klant-twee-kolommen .ob-panel { max-width: none; }
+/* Onboarding is de enige kaart in `.ob-panel`, dus `.cockpit-card:last-child`
+   (elders in dit bestand) zet zijn margin-bottom op 0, alsof er niets meer
+   onder komt. Dat klopte zolang er in de kolom niets ná Onboarding stond;
+   sinds klantprofiel en bedrijfsgegevens in dezelfde linkerkolom staan (zie
+   ClientCockpit.tsx), plakte de klantprofielkaart daardoor tegen Onboarding
+   aan (25-08-2026). De marge hoort op `.ob-panel` zelf, niet op zijn kind. */
+.klant-kolom-links .ob-panel { margin-bottom: var(--ruimte-blok); }
 
 .ob-inleiding {
   font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht);
@@ -6730,6 +6737,12 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
 .ob-log-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-naast); }
 .ob-log-lijst li { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
 .ob-log-lijst strong { color: var(--dark); }
+
+/* Wat staat er nog open: dezelfde toggle-vorm als het logboek erboven. */
+.ob-open-toggle { margin-top: var(--ruimte-regel); }
+.ob-open-lijst { list-style: none; margin: var(--ruimte-regel) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-naast); }
+.ob-open-lijst li { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-naast); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
+.ob-open-lijst strong { color: var(--dark); }
 
 /* De stappen zelf */
 .ob-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }

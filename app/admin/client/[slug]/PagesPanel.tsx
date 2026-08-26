@@ -447,13 +447,28 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
   // regel: elk blok staat bij de vraag die het beantwoordt.
   const profielBlok = (
     <>
+      {/* Dichtgeklapt is de vraag niet "wat betekent dit veld" (dat vraagteken
+          legt iets uit dat je nog niet ziet) maar "staat het er al": twee
+          losse vinkjes voor klantprofiel en tone of voice. Opengeklapt is de
+          vraag juist "wat betekent dit", dus dan komt het vraagteken terug.
+          Stond hier voorheen twee keer identiek naast elkaar (24-08-2026). */}
       <div className="profile-search-row">
         <button type="button" className="client-profile-toggle" onClick={() => setProfileOpen((v) => !v)}>
-        {profileOpen ? <Omlaag /> : <Uitklap />} Klantprofiel {(profile || "").trim() ? <span className="plan-chip has">ingevuld</span> : <span className="plan-chip">leeg</span>}
+        {profileOpen ? <Omlaag /> : <Uitklap />} Klantprofiel
+        {/* Geen vinkje-teken in de knoptekst: de huisstijl staat geen emoji of
+            losse tekens toe in een knop met tekst (proeven/huisstijl.proef.ts).
+            De gevulde/lege chipkleur (".has") is hier hetzelfde signaal. */}
+        {!profileOpen && (
+          <>
+            <span className={parts.profileMd ? "plan-chip has" : "plan-chip"}>Klantprofiel</span>
+            <span className={parts.tovMd ? "plan-chip has" : "plan-chip"}>Tone of voice</span>
+          </>
+        )}
         {profileSaved && <span className="focus-save-status" style={{ marginLeft: "var(--s-2)" }}>opgeslagen</span>}
         </button>
-        <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
-        <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
+        {profileOpen && (
+          <span onClick={(e) => e.stopPropagation()}><HelpHint xl title="Wat is het klantprofiel en waar wordt het gebruikt?" text={"Het klantprofiel is de vaste briefing over deze klant: wie het bedrijf is, wat het aanbiedt, voor wie (doelgroep en hun twijfels), het werkgebied (lokaal, regionaal of landelijk), de positionering (prijs, kwaliteit, exclusief, duurzaam) en de tone of voice. Het is het geheugen dat de AI bij ELKE actie voor deze klant meekrijgt.\nHet profiel wordt automatisch gebruikt door:\n- De strategie-chat per pagina (stap 1): het advies houdt rekening met positionering en werkgebied; is het profiel leeg, dan gaat de chat er eerst naar vragen.\n- De documenten (analyse, blauwdruk en copy): de teksten klinken naar dit bedrijf in plaats van als generieke AI-tekst.\n- Strategie- en clusterbepaling: welke zoekwoorden en pagina's passen bij wat dit bedrijf wil zijn.\nHoe beter dit profiel, hoe scherper alle adviezen en teksten. Vul het één keer goed in (of laat het opstellen met de knoppen hieronder) en werk het bij wanneer de klant zijn koers wijzigt. Het profiel bestaat uit drie delen: het klantprofiel en de tone-of-voice kun je automatisch laten genereren; het derde deel is jullie eigen kennis over de klant (afspraken, voorkeuren, no-go's), die vul je zelf aan."} /></span>
+        )}
       </div>
       {profileOpen && (
       <div className="client-profile-body">
