@@ -45,7 +45,6 @@ import KoersBlok from "./KoersBlok";
 import ShareLinkBar from "./ShareLinkBar";
 import HelpHint from "./HelpHint";
 import MailAllowlist from "./MailAllowlist";
-import LinkPreview from "./LinkPreview";
 import { mdToHtml } from "../../../../lib/markdown";
 import FloatVenster from "./FloatVenster";
 import InvoiceAlert from "./InvoiceAlert";
@@ -985,7 +984,6 @@ export default function ClientCockpit({
       <div className="footer">Pingwin Online Marketing &middot; Beheer</div>
 
       <ChatPanel slug={client.slug} configured={chatConfigured} domain={client.domain || ""} onWeekplanChanged={() => setWeekplanReload((n) => n + 1)} />
-      <LinkPreview />
     </>
   );
 }

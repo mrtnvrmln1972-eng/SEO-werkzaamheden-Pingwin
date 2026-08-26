@@ -81,5 +81,28 @@ check("de sluit-timer reageert alleen op het weggaan van de bewaakte link zelf",
   /if \(!doel\.current \|\| bron !== doel\.current\) return;/.test(tsx),
   "Zonder deze wacht sluit de voorvertoning zodra de muis van de rand naar de iframe erin gaat, ook al blijft de muis er gewoon in staan.");
 
+// ═══════════════════════════════════════════════════════════
+// DE VOORVERTONING WERKT OP ALLE TABELLEN MET DOCUMENT- EN PAGINALINKS
+// ═══════════════════════════════════════════════════════════
+// Stond eerst alleen op de werktabel en op vrije tekstvelden. Maarten vroeg op
+// 26-08-2026 of het ook werkt "bij alle links, naar documenten maar ook naar
+// pagina's et cetera, in het dashboard": de Pagina's-tabel, KPI,
+// cannibalisatie, importanalyse en de navigatie-roadmap draaien allemaal op
+// dezelfde `.res-table`, en die stond niet in de lijst.
+check("de resultatentabellen (Pagina's, KPI, cannibalisatie, ...) doen ook mee",
+  /a\.closest\("\.task-table, \.task-table-wrap, \.focus-rich, \.res-table, \.res-table-wrap"\)/.test(tsx),
+  "Zonder .res-table in deze lijst blijft de voorvertoning stil weg op elk scherm dat op die tabel draait.");
+
+// Eén overlay voor het hele beheer, niet los per scherm: anders vergeet een
+// nieuw scherm hem, of monteert een scherm er per ongeluk een tweede naast
+// (dan botsen twee sluit-timers met elkaar). Sinds 26-08-2026 hangt hij in de
+// gedeelde adminschil; alleen het klant-dashboard (buiten /admin) heeft nog
+// zijn eigen exemplaar, want dat draait niet onder die schil.
+const adminLayout = lees("app/admin/layout.tsx");
+const cockpit = lees("app/admin/client/[slug]/ClientCockpit.tsx");
+check("de voorvertoning hangt in de gedeelde adminschil, niet meer los in de klant-cockpit",
+  /<LinkPreview \/>/.test(adminLayout) && !/<LinkPreview \/>/.test(cockpit),
+  "Eén overlay voor alle beheerschermen; twee exemplaren tegelijk laten hun sluit-timers elkaar in de weg zitten.");
+
 console.log(fouten === 0 ? "\nDe voorvertoning is groot genoeg en blijft in beeld." : `\n${fouten} fout(en).`);
 if (fouten > 0) process.exit(1);

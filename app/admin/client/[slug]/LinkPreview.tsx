@@ -44,7 +44,12 @@ export default function LinkPreview() {
       const el = e.target as HTMLElement | null;
       const a = el?.closest?.("a[href]") as HTMLAnchorElement | null;
       if (!a) return;
-      if (!a.closest(".task-table") && !a.closest(".focus-rich") && !a.closest(".task-table-wrap")) return;
+      // .task-table/.task-table-wrap is de werktabel, .focus-rich elk vrij
+      // tekstveld, .res-table/.res-table-wrap de resultatentabellen (Pagina's,
+      // KPI, cannibalisatie, importanalyse, navigatie-roadmap). Komt er een
+      // vierde soort tabel bij met links naar documenten of pagina's, hoort
+      // zijn klasse hier ook bij, anders werkt de voorvertoning daar stil niet.
+      if (!a.closest(".task-table, .task-table-wrap, .focus-rich, .res-table, .res-table-wrap")) return;
       const href = a.getAttribute("href") || "";
       if (!/^https?:/i.test(href)) return;
       if (hideTimer.current) clearTimeout(hideTimer.current);

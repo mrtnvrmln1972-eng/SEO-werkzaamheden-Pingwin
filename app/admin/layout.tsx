@@ -7,6 +7,7 @@ import ReadOnlyGuard from "./ReadOnlyGuard";
 import ViewAsBanner from "./ViewAsBanner";
 import TweakKnop from "./TweakKnop";
 import ProefStijl from "./ProefStijl";
+import LinkPreview from "./client/[slug]/LinkPreview";
 
 // Gedeelde schil voor alle adminpagina's. Voor gasten zonder wijzig-recht wordt
 // de alleen-lezen onderschepper gemonteerd: knoppen blijven zichtbaar, maar een
@@ -33,6 +34,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         />
       )}
       {children}
+      {/* Eén keer hier, in plaats van los in elk scherm met een werktabel:
+          zo krijgt élke beheerpagina de hover-voorvertoning op documenten en
+          paginalinks, niet alleen de klant-cockpit waar hij ooit begon. */}
+      <LinkPreview />
       {scope && (scope.isOwner || scope.canDev) && (
         <Suspense fallback={null}><TweakKnop /></Suspense>
       )}
