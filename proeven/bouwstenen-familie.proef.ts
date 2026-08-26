@@ -50,7 +50,6 @@ const ERFENIS = new Set<string>([
   "app/admin/client/[slug]/LeadMail.tsx",
   "app/admin/client/[slug]/Planning.tsx",
   "app/admin/client/[slug]/WerkplanPanel.tsx",
-  "app/admin/client/[slug]/werkplanning-proef/WerkplanningProef.tsx",
 ]);
 
 function alleTsx(map: string): string[] {

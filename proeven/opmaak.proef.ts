@@ -127,9 +127,7 @@ const WEG_TERUG = /className="header"|<AdminKop|naar de cockpit|className="[a-z]
 // maar een NIEUWE route staat er per definitie niet op. De lijst mag alleen
 // korter worden: is een route eenmaal wél voorzien van scope-check en weg terug,
 // haal 'm er dan af (deze proef meldt zelf als dat nog moet).
-const KLANT_ROUTE_ERFENIS = new Set<string>([
-  "app/admin/client/[slug]/werkplanning-proef/page.tsx",
-]);
+const KLANT_ROUTE_ERFENIS = new Set<string>([]);
 // Zelfde reden als bij de kopbalk-check hierboven: de scope-check zit in
 // page.tsx zelf, maar de "terug naar de cockpit"-link zit meestal in het
 // client-component dat page.tsx aanroept (bijv. SitemapCheck.tsx, niet
@@ -247,7 +245,6 @@ const ERFENIS = new Set<string>([
   "app/admin/client/[slug]/PagesPanel.tsx",
   "app/admin/client/[slug]/WijzigingenPanel.tsx",
   "app/admin/client/[slug]/pagina-chat/AfwijsVenster.tsx",
-  "app/admin/client/[slug]/werkplanning-proef/WerkplanningProef.tsx",
   "app/admin/developer/DeveloperOverview.tsx",
   "app/admin/financien/FinancienClient.tsx",
   "app/admin/financien/page.tsx",

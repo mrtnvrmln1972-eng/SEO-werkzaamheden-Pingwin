@@ -2325,6 +2325,70 @@ button.ck-collapse-head {
 .kpi-compare-labels strong { color: var(--dark); }
 .kpi-spark-wrap { position: relative; width: 100%; margin-top: var(--ruimte-naast); }
 .kpi-spark { display: block; width: 100%; height: 34px; }
+
+/* ── Werkplanning: masthead, soort-werk-chips, weekplan-rail (26-08-2026) ──
+   Nieuwe combinaties van bestaande tokens en de cockpit-familie (.strategy-card
+   voor de weekkaarten); geen nieuwe kleuren, geen losse pixelwaarden. */
+.wp-terug { display: inline-flex; align-items: center; gap: var(--ruimte-krap); font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); text-decoration: none; margin-bottom: var(--ruimte-groep); }
+.wp-terug:hover { color: var(--kleur-accent-diep); }
+
+.wp-mast { padding-bottom: var(--ruimte-blok); border-bottom: 1px solid var(--kleur-rand); margin-bottom: var(--ruimte-blok); }
+.wp-eyebrow { display: flex; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-label); letter-spacing: var(--spatie-label); text-transform: uppercase; font-weight: 700; color: var(--kleur-tekst-stil); }
+.wp-eyebrow-bar { width: 22px; height: 3px; background: var(--kleur-accent); border-radius: var(--ronding-klein); }
+.wp-mast h1 { margin: var(--ruimte-naast) 0 0; font-size: var(--type-hero); line-height: var(--regel-hero); font-weight: 800; color: var(--kleur-kop); }
+.wp-lead { margin-top: var(--ruimte-naast); max-width: 68ch; font-size: var(--type-lopend); color: var(--kleur-tekst-zacht); }
+.wp-meta { margin-top: var(--ruimte-groep); display: flex; flex-wrap: wrap; gap: var(--ruimte-krap) var(--ruimte-blok); font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); }
+
+/* Soort-werk-chip: gedeeld tussen Gesignaleerd, Wat is gebeurd en Het plan */
+.werk-chip { display: inline-flex; align-items: center; font-size: var(--type-label); font-weight: 700; letter-spacing: var(--spatie-label); text-transform: uppercase; padding: 2px var(--ruimte-naast); border-radius: var(--ronding-pil); white-space: nowrap; }
+.werk-chip.can { color: var(--kleur-accent-diep); background: var(--brand-orange-soft); }
+.werk-chip.link { color: var(--brand-blue); background: var(--brand-blue-light); }
+.werk-chip.meta { color: var(--kleur-goed); background: var(--kleur-goed-vlak); }
+.werk-chip.cont { color: var(--purple); background: color-mix(in srgb, var(--purple) 14%, white); }
+.werk-chip.tech { color: var(--kleur-tekst-stil); background: var(--kleur-rustig); }
+.werk-chip.meet { color: var(--brand-teal); background: var(--brand-teal-light); }
+.werk-chip.overig { color: var(--kleur-tekst-zacht); background: var(--kleur-rustig); }
+
+/* Het plan: sticky zijbalk naast de weekkaarten */
+.wp-plan-grid { display: grid; grid-template-columns: 240px 1fr; gap: var(--ruimte-blok); align-items: start; margin-top: var(--ruimte-groep); }
+.wp-rail { position: sticky; top: var(--ruimte-groep); display: flex; flex-direction: column; gap: var(--ruimte-regel); }
+.wp-rail-card { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-kaart); padding: var(--ruimte-regel); }
+.wp-rail-card h4 { margin: 0 0 var(--ruimte-naast); font-size: var(--type-label); letter-spacing: var(--spatie-label); text-transform: uppercase; color: var(--kleur-tekst-stil); }
+.wp-week-nav { display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+.wp-week-nav a { display: flex; justify-content: space-between; gap: var(--ruimte-naast); padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-klein); font-size: var(--type-bijschrift); color: var(--kleur-tekst); text-decoration: none; }
+.wp-week-nav a:hover { background: var(--kleur-rustig); }
+.wp-week-nav-n { color: var(--kleur-tekst-stil); }
+.wp-filt { display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+.wp-filt-btn { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-naast); cursor: pointer; font: inherit; color: inherit; }
+.wp-filt-btn:hover { background: var(--kleur-rustig); }
+.wp-filt-btn.aan { background: var(--brand-orange-soft); border-color: var(--kleur-rand-accent); }
+
+.wp-week-kop { display: flex; align-items: baseline; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.wp-week-nr { flex: none; width: 30px; height: 30px; border-radius: var(--ronding-klein); background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); display: grid; place-items: center; font-weight: 800; font-size: var(--type-bijschrift); }
+.wp-week-nr.af { background: var(--kleur-goed); }
+
+/* Kleine, generieke lay-outhulpjes: bewust NIET "row"/"section"/"card"/"chip"
+   genoemd (die namen zijn van de oudere bouwsteen-familie, en dit scherm
+   gebruikt verder de cockpit-familie plus app/_ui/Uitkomst.tsx). */
+.wp-row { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.wp-row-tussen { justify-content: space-between; }
+.wp-stack { display: flex; flex-direction: column; gap: var(--ruimte-regel); }
+.wp-item { padding: var(--ruimte-regel) 0; border-top: 1px solid var(--kleur-rand-zacht); }
+.wp-item:first-child { border-top: none; padding-top: 0; }
+.wp-eerder { margin-top: var(--ruimte-regel); padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-accent); background: var(--brand-orange-faint); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; }
+.wp-eerder h4 { margin: 0 0 var(--ruimte-krap); font-size: var(--type-label); text-transform: uppercase; letter-spacing: var(--spatie-label); color: var(--kleur-tekst-stil); }
+.wp-eerder ul { margin: 0; padding-left: var(--ruimte-blok); color: var(--kleur-tekst-zacht); font-size: var(--type-bijschrift); line-height: 1.6; }
+.wp-datum { font-family: ui-monospace, monospace; font-size: var(--type-label); color: var(--kleur-tekst-stil); white-space: nowrap; }
+.wp-grow { flex: 1 1 auto; min-width: 0; }
+.wp-titel { font-weight: 600; font-size: var(--type-bijschrift); }
+.wp-wrap { max-width: 1220px; margin: 0 auto; padding: var(--ruimte-scherm); }
+.wp-week-kop { display: flex; align-items: baseline; gap: var(--ruimte-naast); flex-wrap: wrap; padding: var(--ruimte-regel) var(--ruimte-groep) var(--ruimte-naast); }
+.wp-week-titel { font-weight: 700; font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-kop); display: block; }
+.wp-week-sub { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); display: block; margin-top: 2px; }
+.wp-voortgang-n { font-size: var(--type-hero); font-weight: 800; color: var(--kleur-accent-diep); line-height: 1.15; }
+.wp-voortgang-l { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); margin-top: var(--ruimte-krap); }
+
+@media (max-width: 900px) { .wp-plan-grid { grid-template-columns: 1fr; } .wp-rail { position: static; } }
 .kpi-spark rect { cursor: crosshair; }
 .kpi-spark-hline { stroke: #c4c4c4; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .kpi-spark-tip { position: absolute; top: -7px; transform: translateX(-50%); background: var(--kleur-kop); color: var(--kleur-tekst-op-vlak); font-size: var(--type-label); font-weight: 700; padding: var(--ruimte-krap) var(--ruimte-krap); border-radius: var(--ronding-klein); white-space: nowrap; pointer-events: none; z-index: 5; box-shadow: var(--diepte-druk); }

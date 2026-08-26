@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9368,
-    "stijlregels": 4518,
-    "classnamen": 3083
+    "regels": 9432,
+    "stijlregels": 4569,
+    "classnamen": 3117
   },
   "kleuren": {
     "verschillend": 40,
@@ -228,7 +228,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 66,
+      "aantal": 67,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -293,6 +293,7 @@
         "wp-btns",
         "wp-check-btn",
         "wp-fase-btn",
+        "wp-filt-btn",
         "wp-info-lijstbtn",
         "wp-link-btn",
         "zp-kop-knoppen"
@@ -300,7 +301,7 @@
     },
     {
       "naam": "Kaarten en panelen",
-      "aantal": 73,
+      "aantal": 74,
       "namen": [
         "act-card",
         "ag-datumknop-panel",
@@ -372,6 +373,7 @@
         "wp-info-kaarthead",
         "wp-kaart-doel",
         "wp-panel",
+        "wp-rail-card",
         "wp-vouwpaneel",
         "wz-detail-card",
         "zp-paneel"
@@ -416,7 +418,7 @@
     },
     {
       "naam": "Labels en badges",
-      "aantal": 111,
+      "aantal": 112,
       "namen": [
         "act-edit-label",
         "ag-hour-label",
@@ -510,6 +512,7 @@
         "ut-chip-intern",
         "ut-hero-label",
         "vg-label",
+        "werk-chip",
         "wie-badge",
         "wl-huidig-label",
         "wl-rij-label",
@@ -597,7 +600,7 @@
     }
   ],
   "inline": {
-    "totaal": 633,
+    "totaal": 615,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1542,7 +1545,7 @@
     }
   ],
   "icoontekens": {
-    "totaal": 208,
+    "totaal": 211,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
@@ -1556,11 +1559,11 @@
       },
       {
         "teken": "▾",
-        "aantal": 16
+        "aantal": 17
       },
       {
         "teken": "▸",
-        "aantal": 14
+        "aantal": 15
       },
       {
         "teken": "⠿",
@@ -1920,7 +1923,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8689,
-    "schaalGebruik": 1487
+    "gebruik": 8790,
+    "schaalGebruik": 1500
   }
 }
