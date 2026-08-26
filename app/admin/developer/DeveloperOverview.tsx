@@ -93,10 +93,15 @@ export default function DeveloperOverview({ initialTasks, embedded, slug, client
   const weeksScrollRef = useRef<HTMLDivElement | null>(null);
   const huidigeWeekRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (view !== "week") return;
+    // Zonder `initialTasks` (ingebed in één klant, zie onderaan) staan de taken
+    // bij het opengaan van dit blok nog niet in de DOM: dit effect draaide dan
+    // op het lege scherm van vóórdat de weken zelfs maar getekend waren, en
+    // "deze week" verscheen nooit. Nu draait hij pas opnieuw zodra het laden
+    // klaar is en de weekrijen er echt staan.
+    if (view !== "week" || loading) return;
     const t = setTimeout(() => huidigeWeekRef.current?.scrollIntoView({ block: "start" }), 0);
     return () => clearTimeout(t);
-  }, [view]);
+  }, [view, loading]);
   // Terugkoppeling-popup bij het afvinken van een taak als klaar.
   const [feedbackFor, setFeedbackFor] = useState<number | null>(null);
   const [feedbackNote, setFeedbackNote] = useState("");

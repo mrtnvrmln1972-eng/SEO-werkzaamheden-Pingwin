@@ -915,18 +915,20 @@ export default function ClientCockpit({
               Dit stond op een eigen tabblad Onboarding, met dezelfde cijfers uit
               dezelfde bron als het fundament eronder. Twee schermen voor dezelfde
               vraag betekent dat je altijd de verkeerde openhebt. */}
-          <OnboardingPanel alleenKop slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />
-          {/* Wie is deze klant: eerst de stand van het fundament, dan de vaste
-              briefing (profiel en tone of voice), dan de afgesproken strategie,
-              dan de harde gegevens en de concurrenten. Van "wie is dit bedrijf"
-              naar "wat spraken we af" naar "tegen wie nemen we het op". */}
-          <FundamentPanel
-            slug={client.slug}
-            positioneringUrl={client.cockpit.positioneringUrl || ""}
-            huisstijlUrl={client.cockpit.huisstijlUrl || ""}
-            adsAccountUrl={client.cockpit.adsAccountUrl || ""}
-            onGaNaar={(t) => changeTab(validTab(t))}
-          />
+          {/* Onboarding en het fundament naast elkaar, elk de halve breedte: de
+              voortgang links, en rechts één samenvattingsregel die bij hover
+              het hele fundament-overzicht openklapt in plaats van vier volle
+              kaarten daaronder (25-08-2026). */}
+          <div className="klant-boven-rij">
+            <OnboardingPanel alleenKop slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />
+            <FundamentPanel
+              slug={client.slug}
+              positioneringUrl={client.cockpit.positioneringUrl || ""}
+              huisstijlUrl={client.cockpit.huisstijlUrl || ""}
+              adsAccountUrl={client.cockpit.adsAccountUrl || ""}
+              onGaNaar={(t) => changeTab(validTab(t))}
+            />
+          </div>
           {/* Het klantprofiel en de tone of voice stonden boven de paginalijst.
               Ze gaan niet over pagina's maar over wie het bedrijf is, en bijna
               elke motor leest ze. Zelfde code als daar, dus één bron. */}

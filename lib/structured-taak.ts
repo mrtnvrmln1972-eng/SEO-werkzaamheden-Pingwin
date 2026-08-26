@@ -108,23 +108,26 @@ export function sitewideToelichting(links: DeelLinks, stand: PlaatsingsStand): s
  */
 export function sitewideMailHtml(naam: string, links: DeelLinks): string {
   const wie = naam ? ` ${naam}` : " deze klant";
-  // De volledige adressen staan er met opzet uitgeschreven: "Kopieer mailtekst"
-  // haalt de opmaak eruit, en dan blijft van een link met een mooie naam alleen
-  // die naam over en is het adres weg. Kort gehouden zodat de mail toch in één
-  // scherm past: één zin uitleg boven de twee adressen in plaats van bij elk
-  // adres een eigen regel.
+  // Een benoemde link ("De code (JSON-bestand)"), niet het kale, twee regels
+  // lange webadres als zichtbare tekst: dat las als "een onmogelijke link".
+  // "Kopieer mailtekst" haalt de opmaak eruit, dus het adres zelf gaat niet
+  // verloren, alleen de zichtbare vorm ervan verandert. De titel geeft de
+  // ontvanger (die dit soort code kent) er nog een losse hint bij, in de
+  // eigen tooltip van zijn mailprogramma.
   const punten = [
-    `<li>De code (JSON): <a href="${links.jsonLink}">${links.jsonLink}</a></li>`,
+    `<li><a href="${links.jsonLink}" title="Opent het JSON-bestand in Google Drive">De code (JSON-bestand)</a></li>`,
     links.devUrl
-      ? `<li>Alle bedrijfsgegevens plus deze code, alleen-lezen: <a href="${links.devUrl}">${links.devUrl}</a></li>`
+      ? `<li><a href="${links.devUrl}" title="Alle bedrijfsgegevens plus deze code, alleen-lezen, geen inlog nodig">Alle bedrijfsgegevens plus deze code</a></li>`
       : "",
   ].filter(Boolean).join("");
-  const test = RICH_RESULTS_TEST.replace(/^https?:\/\//, "");
+  // Geen uitleg meer over wát structured data doet ("vertelt wie dit bedrijf
+  // is en wat het doet"): een developer weet dat, en anders staat het op de
+  // deelbare pagina hierboven. Alleen nog de opdracht: waar het naartoe moet.
   return [
     "<p>Hoi,</p>",
-    `<p>Voor${wie} staat de structured data klaar: onzichtbare code (schema.org) die Google en AI-zoekmachines vertelt wie dit bedrijf is en wat het doet. Plakken in de &lt;head&gt; van elke pagina, als los blok naast wat er al staat; niets aan bestaande plugin-code wijzigen.</p>`,
+    `<p>Voor${wie} staat de structured data klaar. Plakken in de &lt;head&gt; van elke pagina, als los blok naast wat er al staat; niets aan bestaande plugin-code wijzigen.</p>`,
     `<ul>${punten}</ul>`,
-    `<p>Na plaatsing kun je het controleren met <a href="${RICH_RESULTS_TEST}">${test}</a>.</p>`,
+    `<p>Na plaatsing controleren met <a href="${RICH_RESULTS_TEST}" title="De rich results-test van Google">de rich results-test</a>.</p>`,
     "<p>Alvast bedankt!</p>",
     "<p>Groet,<br>Maarten</p>",
   ].join("");
