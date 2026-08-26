@@ -122,7 +122,8 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
                 {stand.stappen.filter((s) => !s.optioneel && (s.staat === "open" || s.staat === "verouderd")).map((s) => (
                   <li key={s.key}>
                     <span className="ob-cel"><span className={`ob-chip ob-${s.staat}`}>{STAAT_TEKST[s.staat]}</span></span>
-                    <span className="ob-cel"><strong>{s.label}</strong> {s.detail}</span>
+                    <span className="ob-cel"><strong>{s.label}</strong></span>
+                    <span className="ob-cel">{s.detail}</span>
                     <span className="ob-cel">
                       {s.tab && (
                         <button type="button" className="btn btn-ghost btn-klein" onClick={() => onGaNaar(s.tab!)}>

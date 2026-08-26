@@ -6776,7 +6776,13 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
 .ob-rooster li .ob-cel:last-child { padding-right: var(--ruimte-regel); }
 .ob-rooster strong { color: var(--dark); }
 
-.ob-rooster-open { grid-template-columns: auto 1fr auto; }
+/* Chip | vetgedrukt label | toelichting | knop: elk zijn eigen kolom, precies
+   zoals "De vorige rit" eronder. Stond het label en de toelichting eerst
+   samen in één kolom, dan liep de een op sommige rijen (korte toelichting)
+   direct door in de ander, terwijl ze op andere rijen (lange toelichting)
+   over twee regels uit elkaar vielen: geen raster, twee verschillende
+   uitlijningen door elkaar (Maartens woorden, 26-08-2026). */
+.ob-rooster-open { grid-template-columns: auto minmax(160px, max-content) 1fr auto; }
 .ob-rooster-open .ob-cel:last-child { justify-content: flex-end; }
 
 .ob-rooster-log { grid-template-columns: auto minmax(140px, max-content) 1fr; }
