@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import HelpHint from "./HelpHint";
 import MetaPixelMeter from "./MetaPixelMeter";
 import type { MetaKind } from "@/lib/meta-rules";
@@ -23,6 +23,13 @@ type ContentDiff = {
   schema_types?: ArrayDiff;
 };
 type ChangeEvent = { id: number; url: string; detectedAt: string; summary: string; diff: ContentDiff; isManual?: boolean };
+// Een taak zonder eigen pagina heeft geen ChangeEvent (die is altijd aan één URL
+// gebonden); daarvoor is dit het lichte alternatief: alleen de datum waarop de
+// taak is afgerond. GSC bewaart de geschiedenis zelf, dus er hoeft niets voor
+// vastgelegd te worden zoals bij een pagina wél gebeurt (het meetmoment).
+type SiteMoment = { site: true; sinds: string };
+type OpenItem = ChangeEvent | SiteMoment;
+function isSiteMoment(o: OpenItem): o is SiteMoment { return (o as SiteMoment).site === true; }
 
 function shortUrl(url: string): string {
   try { const u = new URL(url); return (u.pathname + u.search) || "/"; } catch { return url; }
@@ -304,13 +311,140 @@ function DiffView({ diff }: { diff: ContentDiff }) {
   );
 }
 
-export default function WijzigingenPanel({ slug }: { slug: string }) {
+// Het KPI-blok van de detailweergave: exact hetzelfde voor een pagina-wijziging
+// en voor het sitebrede effect van een taak zonder pagina. `pageLabel` is het
+// enige verschil (de padnaam, of "de hele site"); de rest (grafieken,
+// keyword-tabel, GA4) is identiek, dus dit stond niet twee keer uitgeschreven.
+function KpiImpactCard({
+  kpi, kpiLoading, kpiDays, setKpiDays, markers, hoverMoment, setHoverMoment,
+  pageLabel, kwSort, setKwSort, kwFilter, setKwFilter, kwFocus, toggleKwFocus,
+}: {
+  kpi: Kpi | null; kpiLoading: boolean; kpiDays: number; setKpiDays: (d: number) => void;
+  markers: { key: string; date: string }[]; hoverMoment: string | null; setHoverMoment: (k: string | null) => void;
+  pageLabel: string; kwSort: KwSort; setKwSort: (s: KwSort) => void; kwFilter: string; setKwFilter: (s: string) => void;
+  kwFocus: Record<string, "prio" | "secundair">; toggleKwFocus: (keyword: string) => void;
+}) {
+  return (
+    <div className="wz-detail-card acc-teal">
+      <div className="wz-detail-card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--s-3)" }}>
+        <span>KPI-impact</span>
+        <select className="kpi-period-select" value={kpiDays} onChange={(e) => setKpiDays(Number(e.target.value))} title="Hoeveel dagen vóór én ná het moment je wilt zien en vergelijken">
+          <option value={14}>14 dagen vóór/ná</option>
+          <option value={28}>28 dagen vóór/ná</option>
+          <option value={60}>60 dagen vóór/ná</option>
+          <option value={90}>90 dagen vóór/ná</option>
+        </select>
+      </div>
+      <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-1) 0 var(--s-3)" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat de waarde óp dat moment → de waarde nu (of tot het volgende moment) (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten. Met de keuze rechtsboven stel je in hoeveel dagen vóór en ná je toont en vergelijkt.</p>
+      {kpiLoading && <div className="muted" style={{ padding: "var(--s-3)" }}>KPI's laden…</div>}
+      {!kpiLoading && kpi && (
+        <div className="wz-kpi">
+          <KpiBlock label="Kliks per dag" sub={pageLabel}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="clicks" /></KpiBlock>
+          <KpiBlock label="Vertoningen per dag" sub={pageLabel}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="impressions" /></KpiBlock>
+          <KpiBlock label="Gem. positie" sub={`${pageLabel} · lager = beter`}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="position" invert /></KpiBlock>
+          <KpiBlock label="CTR" sub={pageLabel}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="ctr" /></KpiBlock>
+          {kpi.compare && (
+            <div className="wz-compare-note">
+              Eerlijk vergeleken op gelijke periodes{kpi.compare.weekAligned ? " (hele weken, ma t/m zo)" : ""}: <strong>{kpi.compare.days} dagen vóór</strong> ({dShort(kpi.compare.beforeStart)} t/m {dShort(kpi.compare.beforeEnd)}) vs <strong>{kpi.compare.days} dagen ná</strong> ({dShort(kpi.compare.afterStart)} t/m {dShort(kpi.compare.afterEnd)}). De laatste ~3 dagen zijn afgeknipt wegens de vertraging van Search Console.
+            </div>
+          )}
+          {kpi.keywords.length > 0 && (
+            <div className="wz-kw">
+              <div className="wz-kpi-label" style={{ display: "flex", alignItems: "center", gap: "var(--s-3)", flexWrap: "wrap" }}>
+                <span>Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></span>
+                <input className="pages-search" style={{ marginLeft: "auto", width: 200 }} placeholder="Filter op zoekwoord…" value={kwFilter} onChange={(e) => setKwFilter(e.target.value)} />
+              </div>
+              <table className="wz-kw-table">
+                <thead><tr>
+                  <th></th>
+                  <WzSortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
+                  <WzSortTh label="Volume" k="volume" sort={kwSort} setSort={setKwSort} />
+                  <WzSortTh label="Positie voor" k="posBefore" sort={kwSort} setSort={setKwSort} />
+                  <WzSortTh label="Positie na" k="posAfter" sort={kwSort} setSort={setKwSort} />
+                  <WzSortTh label="Stijging/daling" k="delta" sort={kwSort} setSort={setKwSort} />
+                  <WzSortTh label="Kliks (v→n)" k="clicks" sort={kwSort} setSort={setKwSort} />
+                  <WzSortTh label="Impressies (v→n)" k="impressions" sort={kwSort} setSort={setKwSort} />
+                  <WzSortTh label="CTR (v→n)" k="ctr" sort={kwSort} setSort={setKwSort} />
+                </tr></thead>
+                <tbody>
+                  {(() => {
+                    const f = kwFilter.trim().toLowerCase();
+                    const base = kpi.keywords.filter((k) => !f || k.keyword.toLowerCase().includes(f));
+                    const g = kwSort && KW_GETTERS[kwSort.key] ? KW_GETTERS[kwSort.key] : null;
+                    const dir = kwSort?.dir === "asc" ? 1 : -1;
+                    return [...base].sort((a, b) => {
+                      // Aangevinkte (prio) zoekwoorden altijd bovenaan.
+                      const pa = kwFocus[a.keyword] === "prio" ? 1 : 0, pb = kwFocus[b.keyword] === "prio" ? 1 : 0;
+                      if (pa !== pb) return pb - pa;
+                      // Daarbinnen de actieve kolomsortering, of standaard op naam.
+                      if (g) { const av = g(a), bv = g(b); return (typeof av === "string" || typeof bv === "string") ? String(av).localeCompare(String(bv)) * dir : (av - bv) * dir; }
+                      return a.keyword.localeCompare(b.keyword);
+                    });
+                  })().map((k) => {
+                    const improved = k.positionBefore != null && k.positionAfter != null && k.positionAfter < k.positionBefore;
+                    const worse = k.positionBefore != null && k.positionAfter != null && k.positionAfter > k.positionBefore;
+                    // Positie: lager = beter. Delta = voor - na (positief = gestegen).
+                    const delta = k.positionBefore != null && k.positionAfter != null ? k.positionBefore - k.positionAfter : null;
+                    const isPrio = kwFocus[k.keyword] === "prio";
+                    // AI-Overviews-signaal: impressies stabiel/omhoog maar CTR duidelijk omlaag = de klik lekt naar een AI-antwoord bovenaan.
+                    const imprStable = (k.impressionsBefore || 0) > 0 && (k.impressionsAfter || 0) >= (k.impressionsBefore || 0) * 0.85;
+                    const ctrDropped = k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter < k.ctrBefore * 0.7;
+                    const aiSignal = imprStable && ctrDropped;
+                    return (
+                      <tr key={k.keyword} className={isPrio ? "wz-kw-prio" : ""}>
+                        <td className="wz-kw-check"><input type="checkbox" checked={isPrio} onChange={() => toggleKwFocus(k.keyword)} title="Aanvinken als belangrijk zoekwoord (komt bovenaan)" /></td>
+                        <td>{k.keyword}{aiSignal && <span className="wz-aio" title="Impressies stabiel maar CTR fors omlaag: waarschijnlijk een AI Overview / zero-click die de klik pakt">AIO?</span>}</td>
+                        <td>{k.volume != null ? k.volume.toLocaleString("nl-NL") : "—"}</td>
+                        <td>{k.positionBefore ?? "—"}</td>
+                        <td className={improved ? "wz-pos" : worse ? "wz-neg" : ""}>{k.positionAfter ?? "—"}</td>
+                        <td className={"wz-verschil " + (delta != null && delta > 0 ? "up" : delta != null && delta < 0 ? "down" : "")}>
+                          {delta == null || delta === 0 ? "—" : `${delta > 0 ? "▲ +" : "▼ "}${Math.abs(Math.round(delta * 10) / 10)}`}
+                        </td>
+                        <td className="wz-kw-ba">{k.clicksBefore} <span className="wz-arrow">→</span> <span className={k.clicksAfter > k.clicksBefore ? "wz-pos" : k.clicksAfter < k.clicksBefore ? "wz-neg" : ""}>{k.clicksAfter}</span></td>
+                        <td className="wz-kw-ba">{(k.impressionsBefore ?? 0)} <span className="wz-arrow">→</span> {(k.impressionsAfter ?? 0)}</td>
+                        <td className="wz-kw-ba">{k.ctrBefore != null ? `${k.ctrBefore}%` : "—"} <span className="wz-arrow">→</span> <span className={k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter > k.ctrBefore ? "wz-pos" : k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter < k.ctrBefore ? "wz-neg" : ""}>{k.ctrAfter != null ? `${k.ctrAfter}%` : "—"}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {kpi.ga4 && kpi.ga4.available && (
+            <div className="wz-kw">
+              <div className="wz-kpi-label">Gedragssignalen (GA4, voor → na)</div>
+              <table className="wz-kw-table">
+                <thead><tr><th>Signaal</th><th>Voor</th><th>Na</th></tr></thead>
+                <tbody>
+                  {ga4Rows(kpi.ga4).map((r) => (
+                    <tr key={r.label}>
+                      <td>{r.label}</td>
+                      <td>{r.b}</td>
+                      <td className={r.better === true ? "wz-pos" : r.better === false ? "wz-neg" : ""}>{r.a}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {kpi.gscConnected === false ? (
+            <div className="phase2-note">De Google-koppeling is verlopen; daarom tonen de grafieken geen data. <a href="/api/google/auth/start">Koppel Google opnieuw</a>, dan laden ze direct weer.</div>
+          ) : kpi.daily.length < 2 && kpi.keywords.length === 0 && !(kpi.ga4 && kpi.ga4.available) && (
+            <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog geen GSC-data voor deze periode (Search Console loopt 1-3 dagen achter, en na een verse wijziging is er nog weinig data ná het moment).</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function WijzigingenPanel({ slug, openTarget }: { slug: string; openTarget?: { url: string | null; datum: string; n: number } | null }) {
   const [events, setEvents] = useState<ChangeEvent[]>([]);
   const [loading, setLoading] = useState(true);
   // De wijzigingen-scan is een achtergrondklus: starten en de stand volgen.
   const klus = useKlus(slug, "wijzigingen-scan", () => { void load(); });
   const [msg, setMsg] = useState("");
-  const [open, setOpen] = useState<ChangeEvent | null>(null);
+  const [open, setOpen] = useState<OpenItem | null>(null);
   const [kpi, setKpi] = useState<Kpi | null>(null);
   const [kpiLoading, setKpiLoading] = useState(false);
   const [kpiDays, setKpiDays] = useState(28);
@@ -381,11 +515,28 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     if (!open) { setKpi(null); return; }
     let alive = true;
     setKpiLoading(true); setKpi(null);
-    fetch(`/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}&days=${kpiDays}`)
+    const bron = isSiteMoment(open)
+      ? `/api/admin/changes/site-kpi?slug=${encodeURIComponent(slug)}&sinds=${open.sinds}&days=${kpiDays}`
+      : `/api/admin/changes/kpi?slug=${encodeURIComponent(slug)}&id=${open.id}&days=${kpiDays}`;
+    fetch(bron)
       .then((r) => r.json()).then((d) => { if (alive && d.ok) setKpi({ changeDate: d.changeDate, daily: d.daily || [], keywords: d.keywords || [], ga4: d.ga4 || null, moments: d.moments || [], compare: d.compare || null, gscConnected: d.gscConnected }); })
       .catch(() => { /* stil */ }).finally(() => { if (alive) setKpiLoading(false); });
     return () => { alive = false; };
   }, [open, slug, kpiDays]);
+
+  // Vanuit een taak elders in de cockpit (Wat we doen, Planning): direct het
+  // effect openen. Met een pagina: hetzelfde pad als "effect volgen" hieronder
+  // (meetmoment zoeken of vastleggen). Zonder pagina: geen meetmoment nodig, want
+  // GSC bewaart de geschiedenis zelf, dus dan opent dit meteen het sitebrede
+  // effect vanaf de taakdatum. De teller (n) laat hetzelfde doel opnieuw openen.
+  const vorigeTarget = useRef(0);
+  useEffect(() => {
+    if (!openTarget || openTarget.n === vorigeTarget.current) return;
+    vorigeTarget.current = openTarget.n;
+    if (!openTarget.url) { setOpen({ site: true, sinds: openTarget.datum }); return; }
+    void volgEffectVoor(openTarget.url, openTarget.datum, "Effect opgevraagd vanuit een taak");
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [openTarget]);
 
   async function load() {
     setLoading(true);
@@ -410,28 +561,34 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     } catch { setMsg("Scan mislukt."); }
   }
 
-  // Maakt (of opent) het meetmoment van een pagina waar we optimalisaties op
-  // hebben doorgevoerd. Bestaat er al een moment voor die pagina, dan openen we
-  // dat; anders leggen we er één vast op de datum van de laatste optimalisatie.
-  async function volgEffect(o: OptPagina) {
-    const bestaand = events.find((e) => prioKey(e.url) === prioKey(o.url));
+  // Maakt (of opent) het meetmoment van een pagina. Bestaat er al een moment voor
+  // die pagina, dan openen we dat; anders leggen we er één vast op de opgegeven
+  // datum. Gebruikt door "effect volgen" hieronder én door een taak elders in de
+  // cockpit die naar het effect van zijn eigen pagina springt.
+  async function volgEffectVoor(url: string, datum: string, note: string) {
+    const bestaand = events.find((e) => prioKey(e.url) === prioKey(url));
     if (bestaand) { setOpen(bestaand); return; }
     if (optBusy) return;
-    setOptBusy(o.url); setMsg("");
+    setOptBusy(url); setMsg("");
     try {
-      const wat = o.tellers.map((t) => `${t.n}× ${OPT_LABEL[t.soort] || t.soort}`).join(", ");
       const r = await fetch("/api/admin/changes", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug, url: o.url, date: o.laatste.slice(0, 10), note: `Doorgevoerd vanuit het dashboard: ${wat}` }),
+        body: JSON.stringify({ slug, url, date: datum, note }),
       });
       const d = await r.json();
       if (!d.ok) { setMsg(d.error || "Meetmoment vastleggen mislukt."); return; }
       const lijst = await fetch(`/api/admin/changes?slug=${encodeURIComponent(slug)}`).then((x) => x.json());
       const nieuw: ChangeEvent[] = lijst?.ok ? (lijst.events || []) : [];
       setEvents(nieuw);
-      const ev = nieuw.find((e) => prioKey(e.url) === prioKey(o.url));
+      const ev = nieuw.find((e) => prioKey(e.url) === prioKey(url));
       if (ev) setOpen(ev);
     } catch { setMsg("Meetmoment vastleggen mislukt."); } finally { setOptBusy(""); }
+  }
+
+  // Doorgevoerde optimalisaties waar we zelf op de site aan hebben gewerkt.
+  async function volgEffect(o: OptPagina) {
+    const wat = o.tellers.map((t) => `${t.n}× ${OPT_LABEL[t.soort] || t.soort}`).join(", ");
+    await volgEffectVoor(o.url, o.laatste.slice(0, 10), `Doorgevoerd vanuit het dashboard: ${wat}`);
   }
 
   const [wpBusy, setWpBusy] = useState(false);
@@ -448,7 +605,24 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
     } catch { setMsg("Ophalen uit WordPress mislukt."); } finally { setWpBusy(false); }
   }
 
-  if (open) {
+  if (open && isSiteMoment(open)) {
+    const markers = [{ key: "site", date: open.sinds }];
+    return (
+      <div className="cockpit-card">
+        <button type="button" className="btn btn-klein" onClick={() => setOpen(null)}>← Alle wijzigingen</button>
+        <h2 className="wz-title">Effect op de hele site</h2>
+        <div className="muted" style={{ marginBottom: "var(--s-4)" }}>Deze taak hangt niet aan één pagina; hier het effect sinds {dLong(open.sinds)}.</div>
+        <KpiImpactCard
+          kpi={kpi} kpiLoading={kpiLoading} kpiDays={kpiDays} setKpiDays={setKpiDays}
+          markers={markers} hoverMoment={hoverMoment} setHoverMoment={setHoverMoment}
+          pageLabel="de hele site" kwSort={kwSort} setKwSort={setKwSort} kwFilter={kwFilter} setKwFilter={setKwFilter}
+          kwFocus={kwFocus} toggleKwFocus={toggleKwFocus}
+        />
+      </div>
+    );
+  }
+
+  if (open && !isSiteMoment(open)) {
     // Verandermomenten (nieuwste eerst) uit de KPI-respons; markers voor de grafieken.
     const momentsAsc: Moment[] = kpi?.moments && kpi.moments.length > 0 ? kpi.moments : [{ id: open.id, date: open.detectedAt.slice(0, 10) }];
     const momentsDesc = [...momentsAsc].reverse();
@@ -475,116 +649,12 @@ export default function WijzigingenPanel({ slug }: { slug: string }) {
               );
             })}
           </div>
-          <div className="wz-detail-card acc-teal">
-            <div className="wz-detail-card-title" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--s-3)" }}>
-              <span>KPI-impact</span>
-              <select className="kpi-period-select" value={kpiDays} onChange={(e) => setKpiDays(Number(e.target.value))} title="Hoeveel dagen vóór én ná het moment je wilt zien en vergelijken">
-                <option value={14}>14 dagen vóór/ná</option>
-                <option value={28}>28 dagen vóór/ná</option>
-                <option value={60}>60 dagen vóór/ná</option>
-                <option value={90}>90 dagen vóór/ná</option>
-              </select>
-            </div>
-            <p className="muted" style={{ fontSize: "var(--fs-sm)", margin: "var(--s-1) 0 var(--s-3)" }}>Elke gedateerde stippellijn is een verandermoment. Eronder staat de waarde óp dat moment → de waarde nu (of tot het volgende moment) (groen = beter, rood = slechter). Beweeg over een stippellijn (of een sectie links) om dat moment op te lichten. Met de keuze rechtsboven stel je in hoeveel dagen vóór en ná je toont en vergelijkt.</p>
-            {kpiLoading && <div className="muted" style={{ padding: "var(--s-3)" }}>KPI's laden…</div>}
-            {!kpiLoading && kpi && (
-              <div className="wz-kpi">
-                <KpiBlock label="Kliks per dag" sub={shortUrl(open.url)}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="clicks" /></KpiBlock>
-                <KpiBlock label="Vertoningen per dag" sub={shortUrl(open.url)}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="impressions" /></KpiBlock>
-                <KpiBlock label="Gem. positie" sub={`${shortUrl(open.url)} · lager = beter`}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="position" invert /></KpiBlock>
-                <KpiBlock label="CTR" sub={shortUrl(open.url)}><Spark data={kpi.daily} markers={markers} hoverKey={hoverMoment} onHover={setHoverMoment} metric="ctr" /></KpiBlock>
-                {kpi.compare && (
-                  <div className="wz-compare-note">
-                    Eerlijk vergeleken op gelijke periodes{kpi.compare.weekAligned ? " (hele weken, ma t/m zo)" : ""}: <strong>{kpi.compare.days} dagen vóór</strong> ({dShort(kpi.compare.beforeStart)} t/m {dShort(kpi.compare.beforeEnd)}) vs <strong>{kpi.compare.days} dagen ná</strong> ({dShort(kpi.compare.afterStart)} t/m {dShort(kpi.compare.afterEnd)}). De laatste ~3 dagen zijn afgeknipt wegens de vertraging van Search Console.
-                  </div>
-                )}
-                {kpi.keywords.length > 0 && (
-                  <div className="wz-kw">
-                    <div className="wz-kpi-label" style={{ display: "flex", alignItems: "center", gap: "var(--s-3)", flexWrap: "wrap" }}>
-                      <span>Keyword-rankings (voor → na) <span className="sov-sub">vink de belangrijkste aan, die komen bovenaan (gedeeld met de KPI-tab)</span></span>
-                      <input className="pages-search" style={{ marginLeft: "auto", width: 200 }} placeholder="Filter op zoekwoord…" value={kwFilter} onChange={(e) => setKwFilter(e.target.value)} />
-                    </div>
-                    <table className="wz-kw-table">
-                      <thead><tr>
-                        <th></th>
-                        <WzSortTh label="Zoekwoord" k="keyword" sort={kwSort} setSort={setKwSort} />
-                        <WzSortTh label="Volume" k="volume" sort={kwSort} setSort={setKwSort} />
-                        <WzSortTh label="Positie voor" k="posBefore" sort={kwSort} setSort={setKwSort} />
-                        <WzSortTh label="Positie na" k="posAfter" sort={kwSort} setSort={setKwSort} />
-                        <WzSortTh label="Stijging/daling" k="delta" sort={kwSort} setSort={setKwSort} />
-                        <WzSortTh label="Kliks (v→n)" k="clicks" sort={kwSort} setSort={setKwSort} />
-                        <WzSortTh label="Impressies (v→n)" k="impressions" sort={kwSort} setSort={setKwSort} />
-                        <WzSortTh label="CTR (v→n)" k="ctr" sort={kwSort} setSort={setKwSort} />
-                      </tr></thead>
-                      <tbody>
-                        {(() => {
-                          const f = kwFilter.trim().toLowerCase();
-                          const base = kpi.keywords.filter((k) => !f || k.keyword.toLowerCase().includes(f));
-                          const g = kwSort && KW_GETTERS[kwSort.key] ? KW_GETTERS[kwSort.key] : null;
-                          const dir = kwSort?.dir === "asc" ? 1 : -1;
-                          return [...base].sort((a, b) => {
-                            // Aangevinkte (prio) zoekwoorden altijd bovenaan.
-                            const pa = kwFocus[a.keyword] === "prio" ? 1 : 0, pb = kwFocus[b.keyword] === "prio" ? 1 : 0;
-                            if (pa !== pb) return pb - pa;
-                            // Daarbinnen de actieve kolomsortering, of standaard op naam.
-                            if (g) { const av = g(a), bv = g(b); return (typeof av === "string" || typeof bv === "string") ? String(av).localeCompare(String(bv)) * dir : (av - bv) * dir; }
-                            return a.keyword.localeCompare(b.keyword);
-                          });
-                        })().map((k) => {
-                          const improved = k.positionBefore != null && k.positionAfter != null && k.positionAfter < k.positionBefore;
-                          const worse = k.positionBefore != null && k.positionAfter != null && k.positionAfter > k.positionBefore;
-                          // Positie: lager = beter. Delta = voor - na (positief = gestegen).
-                          const delta = k.positionBefore != null && k.positionAfter != null ? k.positionBefore - k.positionAfter : null;
-                          const isPrio = kwFocus[k.keyword] === "prio";
-                          // AI-Overviews-signaal: impressies stabiel/omhoog maar CTR duidelijk omlaag = de klik lekt naar een AI-antwoord bovenaan.
-                          const imprStable = (k.impressionsBefore || 0) > 0 && (k.impressionsAfter || 0) >= (k.impressionsBefore || 0) * 0.85;
-                          const ctrDropped = k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter < k.ctrBefore * 0.7;
-                          const aiSignal = imprStable && ctrDropped;
-                          return (
-                            <tr key={k.keyword} className={isPrio ? "wz-kw-prio" : ""}>
-                              <td className="wz-kw-check"><input type="checkbox" checked={isPrio} onChange={() => toggleKwFocus(k.keyword)} title="Aanvinken als belangrijk zoekwoord (komt bovenaan)" /></td>
-                              <td>{k.keyword}{aiSignal && <span className="wz-aio" title="Impressies stabiel maar CTR fors omlaag: waarschijnlijk een AI Overview / zero-click die de klik pakt">AIO?</span>}</td>
-                              <td>{k.volume != null ? k.volume.toLocaleString("nl-NL") : "—"}</td>
-                              <td>{k.positionBefore ?? "—"}</td>
-                              <td className={improved ? "wz-pos" : worse ? "wz-neg" : ""}>{k.positionAfter ?? "—"}</td>
-                              <td className={"wz-verschil " + (delta != null && delta > 0 ? "up" : delta != null && delta < 0 ? "down" : "")}>
-                                {delta == null || delta === 0 ? "—" : `${delta > 0 ? "▲ +" : "▼ "}${Math.abs(Math.round(delta * 10) / 10)}`}
-                              </td>
-                              <td className="wz-kw-ba">{k.clicksBefore} <span className="wz-arrow">→</span> <span className={k.clicksAfter > k.clicksBefore ? "wz-pos" : k.clicksAfter < k.clicksBefore ? "wz-neg" : ""}>{k.clicksAfter}</span></td>
-                              <td className="wz-kw-ba">{(k.impressionsBefore ?? 0)} <span className="wz-arrow">→</span> {(k.impressionsAfter ?? 0)}</td>
-                              <td className="wz-kw-ba">{k.ctrBefore != null ? `${k.ctrBefore}%` : "—"} <span className="wz-arrow">→</span> <span className={k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter > k.ctrBefore ? "wz-pos" : k.ctrBefore != null && k.ctrAfter != null && k.ctrAfter < k.ctrBefore ? "wz-neg" : ""}>{k.ctrAfter != null ? `${k.ctrAfter}%` : "—"}</span></td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {kpi.ga4 && kpi.ga4.available && (
-                  <div className="wz-kw">
-                    <div className="wz-kpi-label">Gedragssignalen (GA4, voor → na)</div>
-                    <table className="wz-kw-table">
-                      <thead><tr><th>Signaal</th><th>Voor</th><th>Na</th></tr></thead>
-                      <tbody>
-                        {ga4Rows(kpi.ga4).map((r) => (
-                          <tr key={r.label}>
-                            <td>{r.label}</td>
-                            <td>{r.b}</td>
-                            <td className={r.better === true ? "wz-pos" : r.better === false ? "wz-neg" : ""}>{r.a}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {kpi.gscConnected === false ? (
-                  <div className="phase2-note">De Google-koppeling is verlopen; daarom tonen de grafieken geen data. <a href="/api/google/auth/start">Koppel Google opnieuw</a>, dan laden ze direct weer.</div>
-                ) : kpi.daily.length < 2 && kpi.keywords.length === 0 && !(kpi.ga4 && kpi.ga4.available) && (
-                  <div className="muted" style={{ fontSize: "var(--fs-sm)" }}>Nog geen GSC-data voor deze periode (Search Console loopt 1-3 dagen achter, en na een verse wijziging is er nog weinig data ná het moment).</div>
-                )}
-              </div>
-            )}
-          </div>
+          <KpiImpactCard
+            kpi={kpi} kpiLoading={kpiLoading} kpiDays={kpiDays} setKpiDays={setKpiDays}
+            markers={markers} hoverMoment={hoverMoment} setHoverMoment={setHoverMoment}
+            pageLabel={shortUrl(open.url)} kwSort={kwSort} setKwSort={setKwSort} kwFilter={kwFilter} setKwFilter={setKwFilter}
+            kwFocus={kwFocus} toggleKwFocus={toggleKwFocus}
+          />
         </div>
       </div>
     );

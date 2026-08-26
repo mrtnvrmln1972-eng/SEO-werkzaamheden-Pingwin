@@ -320,6 +320,15 @@ export default function ClientCockpit({
     changeTab(t);
   }
 
+  // Vanuit een afgeronde taak (Wat we doen, Planning) het effect ervan bekijken:
+  // wissel naar Wijzigingen en geef de pagina (of null, voor een taak zonder eigen
+  // pagina) en de taakdatum door. De teller laat hetzelfde doel opnieuw openen.
+  const [wijzigingenTarget, setWijzigingenTarget] = useState<{ url: string | null; datum: string; n: number } | null>(null);
+  function gaNaarEffect(url: string | null, datum: string) {
+    setWijzigingenTarget((t) => ({ url, datum, n: (t?.n || 0) + 1 }));
+    changeTab("wijzigingen");
+  }
+
   // Vanuit de KPI's een pagina openen in het Pagina's-tabje: wissel van tab en geef
   // de doel-URL door (met oplopende teller zodat herhaald klikken op dezelfde pagina
   // opnieuw opent en scrollt).
@@ -642,7 +651,7 @@ export default function ClientCockpit({
                 </button>
                 {ovOpen.week && (
                   <div className="strategy-body">
-                    <Planning kaal slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
+                    <Planning kaal slug={client.slug} onGoToPage={goToPage} onGoToTab={(t) => changeTab(validTab(t))} onOpenMailDate={openMailByDate} onEffect={gaNaarEffect} clientName={client.name} clientEmail={client.email || ""} reloadSignal={weekplanReload} />
                   </div>
                 )}
               </div>
@@ -961,8 +970,8 @@ export default function ClientCockpit({
         </Bezocht>
 
         <Bezocht tab="documenten" nu={tab} bezocht={bezocht}><DocumentenPanel slug={client.slug} onGoToPage={goToPage} /></Bezocht>
-        <Bezocht tab="activiteit" nu={tab} bezocht={bezocht}><ActiviteitPanel slug={client.slug} /></Bezocht>
-        <Bezocht tab="wijzigingen" nu={tab} bezocht={bezocht}><WijzigingenPanel slug={client.slug} /></Bezocht>
+        <Bezocht tab="activiteit" nu={tab} bezocht={bezocht}><ActiviteitPanel slug={client.slug} onEffect={gaNaarEffect} /></Bezocht>
+        <Bezocht tab="wijzigingen" nu={tab} bezocht={bezocht}><WijzigingenPanel slug={client.slug} openTarget={wijzigingenTarget} /></Bezocht>
 
         <Bezocht tab="meta" nu={tab} bezocht={bezocht}><MetaCtrPanel slug={client.slug} domain={client.domain || ""} backendUrl={client.backendUrl} onOpenPage={goToPage} openTarget={metaTarget} /></Bezocht>
 

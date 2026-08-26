@@ -547,6 +547,52 @@ export async function getGscKeywordsBeforeAfter(domain: string, pageUrl: string,
     .slice(0, 20);
 }
 
+// Daglijnen voor de HELE site (geen paginafilter) over een datumbereik. Voor het
+// effect van taken die niet aan één pagina hangen (bijv. "startdata toevoegen"):
+// dezelfde grafiek als bij één pagina, maar dan sitebreed.
+export async function getGscDailyForSite(domain: string, startDate: string, endDate: string): Promise<GscDay[]> {
+  const token = await accessTokenFor("google");
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const rows = await gscQuery(token, site, { startDate, endDate, dimensions: ["date"], rowLimit: 500 });
+  return rows
+    .map((x) => ({ date: x.keys?.[0] || "", clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), ctr: x.ctr, position: Math.round(x.position * 10) / 10 }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+// Zoekwoorden voor en na een moment, sitebreed (geen paginafilter): voor een taak
+// zonder eigen pagina wil je toch zien welke zoekwoorden zijn opgeschoven.
+export async function getGscKeywordsBeforeAfterSite(domain: string, changeDate: string, days = 60): Promise<GscKeywordBA[]> {
+  const token = await accessTokenFor("google");
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const r = equalBeforeAfter(changeDate, days);
+  const q = (s: string, e: string) => gscQuery(token, site, { startDate: s, endDate: e, dimensions: ["query"], rowLimit: 50 });
+  const [before, after] = await Promise.all([q(r.beforeStart, r.beforeEnd), q(r.afterStart, r.afterEnd)]);
+  const bm = new Map(before.map((r) => [r.keys?.[0] || "", r]));
+  const am = new Map(after.map((r) => [r.keys?.[0] || "", r]));
+  const keys = new Set([...bm.keys(), ...am.keys()].filter(Boolean));
+  return [...keys]
+    .map((k) => {
+      const b = bm.get(k), a = am.get(k);
+      return {
+        keyword: k,
+        positionBefore: b ? Math.round(b.position * 10) / 10 : null,
+        positionAfter: a ? Math.round(a.position * 10) / 10 : null,
+        clicksBefore: b ? Math.round(b.clicks) : 0,
+        clicksAfter: a ? Math.round(a.clicks) : 0,
+        impressionsBefore: b ? Math.round(b.impressions) : 0,
+        impressionsAfter: a ? Math.round(a.impressions) : 0,
+        ctrBefore: b ? Math.round((b.ctr || 0) * 1000) / 10 : null,
+        ctrAfter: a ? Math.round((a.ctr || 0) * 1000) / 10 : null,
+      };
+    })
+    .sort((x, y) => (y.clicksAfter + y.clicksBefore) - (x.clicksAfter + x.clicksBefore))
+    .slice(0, 20);
+}
+
 // Kans-data per pagina: vertoningen, kliks, CTR, gemiddelde positie en het beste
 // zoekwoord (meeste vertoningen) met zijn positie. Voor het spotten van laaghangend
 // fruit in het pagina-overzicht (veel vraag + net buiten de top 10).

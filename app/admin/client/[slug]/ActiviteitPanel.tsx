@@ -45,7 +45,7 @@ function padVan(u: string | null): string {
   try { const x = new URL(u); return x.pathname + x.search; } catch { return u; }
 }
 
-export default function ActiviteitPanel({ slug }: { slug: string }) {
+export default function ActiviteitPanel({ slug, onEffect }: { slug: string; onEffect?: (url: string | null, datum: string) => void }) {
   const [rijen, setRijen] = useState<Rij[] | null>(null);
   const [laden, setLaden] = useState(true);
   const [bezig, setBezig] = useState(false);
@@ -106,6 +106,12 @@ export default function ActiviteitPanel({ slug }: { slug: string }) {
         {r.bewijs && <a className="act-pad" href={r.bewijs} target="_blank" rel="noreferrer">{r.soort === "mail" ? "mailthread" : "document"}</a>}
         {r.wie !== "Pingwin" && <span className="wp-chip wp-chip-plan">{r.wie}</span>}
         <span className="act-spacer" />
+        {onEffect && (
+          <button type="button" className="btn btn-quiet btn-klein" title="Bekijk het effect op klikken en posities sinds dit gebeurde"
+            onClick={() => onEffect(r.url, r.gebeurdeOp.slice(0, 10))}>
+            effect?
+          </button>
+        )}
         <button type="button" className={"act-deel" + (r.zichtbaar ? " aan" : "")}
           title={r.zichtbaar ? "Staat klaar om met de klant te delen" : "Blijft intern"}
           onClick={() => void wisselDelen(r)}>

@@ -6179,16 +6179,18 @@ tbody td.lead-acties, .lead-acties { text-align: right; white-space: nowrap; }
    per regel uit de pas, want de ene taaknaam is nu eenmaal langer dan de andere. */
 .wb-rij {
   display: grid;
-  /* Zes kolommen voor zes dingen: handvat, taak, fase-letters, de stand,
-     datumknop, kruisje. Tel de kolommen na als je er een element bij zet of
-     weghaalt: staat het aantal niet gelijk, dan schuift alles één kolom op (dat
-     is eerder gebeurd toen de badge SEO/DEV wegging: de datumknop puilde uit
-     een kolom van 22 pixels en het kruisje kwam als brede knop in beeld).
+  /* Zeven kolommen voor zeven dingen: handvat, taak, fase-letters, de stand,
+     datumknop, effect-knop, kruisje. Tel de kolommen na als je er een element bij
+     zet of weghaalt: staat het aantal niet gelijk, dan schuift alles één kolom op
+     (dat is eerder gebeurd toen de badge SEO/DEV wegging: de datumknop puilde uit
+     een kolom van 22 pixels en het kruisje kwam als brede knop in beeld). Daarom
+     staat de effect-kolom er bij ELKE regel, ook leeg voor een taak die nog niet
+     af is: een weggelaten grid-item schuift de rest mee op.
      Er stond hier een tijdje ook een los vinkje om af te vinken; dat is per
      18-08-2026 opgegaan in de keuzelijst met de stand, want "afgerond" is daar
      een van de vier keuzes en twee knoppen voor dezelfde handeling in dezelfde
      regel is er één te veel. */
-  grid-template-columns: 20px minmax(0, 1fr) auto 92px 72px 22px;
+  grid-template-columns: 20px minmax(0, 1fr) auto 92px 72px 78px 22px;
   align-items: center; gap: var(--ruimte-regel);
   padding: var(--ruimte-naast); border-bottom: 1px solid var(--kleur-rand-zacht); cursor: pointer;
 }
@@ -6209,6 +6211,8 @@ tbody td.lead-acties, .lead-acties { text-align: right; white-space: nowrap; }
    zegt waar het ligt: rustig als het bij ons ligt, accent zodra het ergens
    anders ligt, groen als het af is. */
 .wb-stand { justify-self: stretch; min-width: 0; }
+.wb-effect { display: flex; justify-content: center; min-width: 0; }
+.wb-effect .btn { width: 100%; justify-content: center; }
 .wb-stand-kies {
   width: 100%; cursor: pointer; font-family: var(--letter);
   font-size: var(--type-label); font-weight: 700; line-height: var(--regel-label);

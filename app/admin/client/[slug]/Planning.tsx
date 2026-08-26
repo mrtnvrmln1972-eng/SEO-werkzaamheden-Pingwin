@@ -55,7 +55,7 @@ const pad = (u?: string | null) => { if (!u) return ""; try { return new URL(u).
 const zonderHtml = (s: string) => (s || "").replace(/<[^>]*>/g, "").trim();
 
 export default function Planning({
-  slug, clientName, clientEmail, alleKlanten, kaal, onGoToPage, onGoToTab, onOpenMailDate, reloadSignal,
+  slug, clientName, clientEmail, alleKlanten, kaal, onGoToPage, onGoToTab, onOpenMailDate, onEffect, reloadSignal,
 }: {
   /** De klant waar dit scherm bij hoort. Ook in de alle-klanten-modus bekend, want
       dat is de klant wiens cockpit je open hebt. */
@@ -69,6 +69,9 @@ export default function Planning({
   onGoToPage?: (url: string) => void;
   onGoToTab?: (tab: string) => void;
   onOpenMailDate?: (datum: string) => void;
+  /** Naar het effect van een afgeronde taak springen (Wijzigingen-tab): de pagina
+      (of null zonder eigen pagina) en de datum die aan de taak hangt. */
+  onEffect?: (url: string | null, datum: string) => void;
   reloadSignal?: number;
 }) {
   const [taken, setTaken] = useState<Taak[]>([]);
@@ -622,6 +625,17 @@ export default function Planning({
               onzichtbare wekker erbij maakt van de takenlijst een tweede
               lijst om af te werken. Weg, bij alle taken. */}
           <DatumKiezer waarde={t.datum} onKies={(iso) => void zetDatum(t, iso)} />
+          {/* Vast onderdeel van het kolomraster van .wb-rij (zie de toelichting bij
+              die klasse in globals.css): dit element blijft altijd staan, ook leeg
+              voor een taak die nog niet af is, anders schuiven de kolommen erna op. */}
+          <span className="wb-effect">
+            {t.status === "klaar" && onEffect && (
+              <button type="button" className="btn btn-quiet btn-klein" title="Bekijk het effect van deze taak op klikken en posities"
+                onClick={(e) => { e.stopPropagation(); onEffect(t.url, t.datum || vandaagIso()); }}>
+                effect?
+              </button>
+            )}
+          </span>
           <button type="button" className="wp-icon wp-del" title="Verwijderen"
             onClick={(e) => { e.stopPropagation(); void verwijder(t); }}>×</button>
         </div>

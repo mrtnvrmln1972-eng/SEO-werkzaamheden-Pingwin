@@ -22,4 +22,21 @@ export const BLOKKEN: Uitklapper[] = [
       "nergens stond nog dat hij gebeurd was. Taken die eerder al op klaar stonden zijn met terugwerkende " +
       "kracht toegevoegd.",
   },
+  {
+    titel: "Elke afgeronde taak heeft een knop \"effect?\"",
+    kern: "Direct van een taak naar wat hij heeft opgeleverd, ook zonder eigen pagina.",
+    tekst:
+      "Bij elke taak die op klaar staat, hier en in de planning, staat sinds 26 augustus 2026 een klein " +
+      "knopje **effect?**. Een klik springt naar de Wijzigingen-tab en opent meteen de klikken, vertoningen " +
+      "en posities van vóór en ná die taak, dezelfde vergelijking die daar al voor pagina-wijzigingen " +
+      "bestond.\n\n" +
+      "Hangt de taak aan een pagina, dan is dat het vertrouwde meetmoment van die pagina: bestaat het al " +
+      "(bijvoorbeeld omdat de taak al eerder als optimalisatie is gevolgd), dan opent dat; bestaat het nog " +
+      "niet, dan wordt het op de taakdatum vastgelegd.\n\n" +
+      "**Nieuw is dat het ook werkt voor een taak zonder eigen pagina**, zoals \"startdata toevoegen\" of " +
+      "een technische klus die de hele site raakt. Daar is geen pagina om een meetmoment aan te hangen, dus " +
+      "toont de knop het effect op de hele site sinds de datum van de taak: dezelfde grafieken en dezelfde " +
+      "zoekwoordentabel, maar dan sitebreed. Search Console bewaart de geschiedenis zelf, dus daarvoor hoeft " +
+      "niets apart te worden opgeslagen; het scherm rekent het live uit vanaf de taakdatum.",
+  },
 ];
