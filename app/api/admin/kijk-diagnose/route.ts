@@ -105,12 +105,22 @@ export async function GET(req: NextRequest) {
   // vangen: dan zie je meteen of de verse rij wel terugkomt in de controle.
   const voor = await sql`SELECT COALESCE(MAX(id), 0)::int AS grens FROM claude_view_key`;
   const grens = Number(voor.rows[0]?.grens ?? 0);
-  const versePlat = await createViewKey();
+  // createViewKey haalt de sleutel sinds vandaag zelf door de controle en gooit
+  // als dat niet lukt. Hier vangen we dat op: de meting moet juist dán nog een
+  // antwoord geven, want dat is het geval dat we willen zien.
+  let versePlat = "";
+  let aanmaakFout: string | null = null;
+  try {
+    versePlat = await createViewKey();
+  } catch (e) {
+    aanmaakFout = e instanceof Error ? e.message : String(e);
+  }
   const rijen = await getActiveKeys();
-  const uitkomst = await testViewKey(versePlat);
-  const passend = rijen.filter((r) => r.key_hash && verifyPassword(versePlat, r.key_hash));
+  const uitkomst = versePlat ? await testViewKey(versePlat) : null;
+  const passend = versePlat ? rijen.filter((r) => r.key_hash && verifyPassword(versePlat, r.key_hash)) : [];
 
   const meting3 = {
+    aanmaakFout,
     testViewKey: uitkomst,
     rijenInDeControle: rijen.length,
     rijenDiePassen: passend.length,
@@ -121,11 +131,38 @@ export async function GET(req: NextRequest) {
     vormenInDeControle: rijen.map((r) => `${r.id}: ${r.key_hash ? vorm(r.key_hash) : "geen hash"}`),
   };
 
+  // ── Meting 4: hoe komt een nieuwe rij binnen, en wat bepaalt dat? ──
+  // Meting 3 liet zien dat de verse rij niet in de controle terugkomt terwijl
+  // schrijven en teruglezen wél werkt. Dan is de vraag niet meer "waar blijft
+  // hij", maar "met welke waarden komt hij binnen". Dit toont de ruwe rijen
+  // zonder enig filter, plus wat de tabel zelf invult als de code niets zegt,
+  // plus of er iets meekijkt bij het invoegen.
+  const ruw = await sql`
+    SELECT id, (key_hash IS NOT NULL) AS heeft_hash, created_at, revoked_at, last_used
+    FROM claude_view_key ORDER BY id DESC LIMIT 6`;
+  const kolommen = await sql`
+    SELECT column_name, is_nullable, column_default
+    FROM information_schema.columns WHERE table_name = 'claude_view_key' ORDER BY ordinal_position`;
+  const triggers = await sql`
+    SELECT tgname FROM pg_trigger WHERE tgrelid = 'claude_view_key'::regclass AND NOT tgisinternal`;
+  const waar = await sql`SELECT current_database() AS db, current_schema() AS schema`;
+
+  const meting4 = {
+    plaats: waar.rows[0] ?? null,
+    kolommen: kolommen.rows.map(
+      (c) => `${c.column_name}: ${c.is_nullable === "YES" ? "mag leeg" : "verplicht"}${c.column_default ? `, standaard ${c.column_default}` : ""}`,
+    ),
+    triggers: triggers.rows.map((t) => String(t.tgname)),
+    laatsteRijen: ruw.rows.map(
+      (r) => `${r.id}: hash ${r.heeft_hash ? "ja" : "nee"}, ingetrokken ${r.revoked_at ? String(r.revoked_at) : "nee"}, gebruikt ${r.last_used ? "ja" : "nee"}`,
+    ),
+  };
+
   // De proefsleutel is een echte, werkende sleutel; die laten we niet staan.
   // Op id, niet op "welke rij paste": juist als er niets past moet hij weg.
   await sql`UPDATE claude_view_key SET revoked_at = now() WHERE id > ${grens}`;
 
-  return NextResponse.json({ ok: true, meting1, meting2, meting3 });
+  return NextResponse.json({ ok: true, meting1, meting2, meting3, meting4 });
 }
 
 function vorm(h: string): string {

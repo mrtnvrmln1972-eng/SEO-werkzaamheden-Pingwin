@@ -22,8 +22,18 @@ export async function GET(req: NextRequest) {
 // nergens meer bewaard; in de database staat alleen de hash.
 export async function POST(req: NextRequest) {
   const g = await guardOwner(req); if (!g.ok) return g.res;
-  const sleutel = await createViewKey();
-  return NextResponse.json({ ok: true, sleutel });
+  try {
+    const sleutel = await createViewKey();
+    return NextResponse.json({ ok: true, sleutel });
+  } catch (e) {
+    // createViewKey deelt sinds 26-08-2026 alleen een sleutel uit die hij zelf
+    // door de controle heeft gehaald. Lukt dat niet, dan hoort de reden op het
+    // scherm te staan in plaats van een sleutel die nergens werkt.
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "De sleutel kon niet aangemaakt worden." },
+      { status: 500 },
+    );
+  }
 }
 
 export async function DELETE(req: NextRequest) {

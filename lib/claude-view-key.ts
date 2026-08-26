@@ -40,7 +40,7 @@ import { hashPassword, verifyPassword, generatePassword } from "./password";
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "claude-view-key-f923242d";
+const SCHEMA_VERSIE = "claude-view-key-cbab193d";
 
 function ensureTable(): Promise<void> {
   return eenmalig("claude-view-key", SCHEMA_VERSIE, doEnsure);
@@ -54,6 +54,15 @@ async function doEnsure(): Promise<void> {
       revoked_at TIMESTAMPTZ,
       last_used  TIMESTAMPTZ
     )`;
+  // Een nieuwe rij MOET als geldige sleutel binnenkomen, dus zonder tijdstip in
+  // revoked_at. Stond daar ooit een standaardwaarde op (die kan uit een oudere
+  // opzet komen of met de hand gezet zijn), dan is elke nieuwe sleutel al
+  // ingetrokken op het moment dat hij wordt uitgedeeld: de knop geeft een
+  // sleutel, de controle ziet hem nooit, en je krijgt "andere-sleutel" zonder
+  // dat er iets aan het hashen mankeert. Is er geen standaardwaarde, dan doet
+  // deze regel niets. Zie 26-08-2026 en createViewKey.
+  await sql`ALTER TABLE claude_view_key ALTER COLUMN revoked_at DROP DEFAULT`;
+  await sql`ALTER TABLE claude_view_key ALTER COLUMN last_used DROP DEFAULT`;
   // Mislukte pogingen worden apart bijgehouden, los van de sleutelrijen: ook
   // als er helemaal geen sleutel klaarstaat wil de cockpit kunnen laten zien
   // dat Claude het geprobeerd heeft. Eén rij, altijd id = 1.
@@ -248,9 +257,32 @@ export async function createViewKey(): Promise<string> {
   // 40 tekens uit de alfabet-generator: ruim te lang om te raden, en zonder
   // tekens die in een URL of een .env-regel voor verwarring zorgen.
   const plat = `pw-kijk-${generatePassword(40)}`;
+  // revoked_at en last_used gaan er UITDRUKKELIJK als leeg in. Wat je niet
+  // noemt, vult de database zelf in, en dan bepaalt de tabel of jouw sleutel
+  // geldig is in plaats van deze code. Zie doEnsure hierboven.
   const gemaakt = await sql`
-    INSERT INTO claude_view_key (key_hash) VALUES (${hashPassword(plat)}) RETURNING id`;
+    INSERT INTO claude_view_key (key_hash, revoked_at, last_used)
+    VALUES (${hashPassword(plat)}, NULL, NULL) RETURNING id`;
   const nieuwId = Number(gemaakt.rows[0]?.id);
+
+  // ── De knop bewijst zichzelf voordat hij iets uitdeelt ──
+  // Op 26-08-2026 kwam er een sleutel uit deze functie die de controle daarna
+  // nooit zag: de rij stond er wel, maar niet als geldige sleutel. Maarten
+  // plakte hem, kreeg "andere-sleutel", maakte er nog een, en zo verder. Een
+  // sleutel die niet werkt mag deze functie dus niet verlaten. Eerst zelf langs
+  // dezelfde deur; lukt dat niet, dan één keer rechtzetten en opnieuw; lukt het
+  // dan nog niet, dan een eerlijke fout in plaats van een dode sleutel.
+  if (!(await testViewKey(plat)).ok) {
+    await sql`UPDATE claude_view_key SET revoked_at = NULL WHERE id = ${nieuwId}`;
+    const tweede = await testViewKey(plat);
+    if (!tweede.ok) {
+      throw new Error(
+        `De sleutel is wel aangemaakt (rij ${nieuwId}) maar komt niet door de controle (${tweede.reden}). ` +
+          "Er is dus iets mis met de sleuteltabel zelf, niet met je knop.",
+      );
+    }
+  }
+
   const { rows } = await sql`SELECT id, last_used FROM claude_view_key WHERE revoked_at IS NULL`;
   const weg = vervallenSleutels(
     rows.map((r) => ({ id: Number(r.id), last_used: (r.last_used as string) ?? null })),

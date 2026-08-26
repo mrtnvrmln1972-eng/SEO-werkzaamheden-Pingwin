@@ -34,6 +34,9 @@ function proef(naam: string, goed: boolean, uitleg = "") {
 type Rij = { id: number; key_hash: string; created_at: Date; revoked_at: Date | null; last_used: Date | null };
 const tabel: Rij[] = [];
 let volgendId = 1;
+// Staat er een standaardwaarde op revoked_at, dan komt elke nieuwe rij binnen
+// als ingetrokken. Zie proef 8 onderaan.
+let standaardIngetrokken = false;
 
 function tijd(d: Date | null): number {
   return d ? d.getTime() : 0;
@@ -51,7 +54,10 @@ function nepSql(strings: TemplateStringsArray, ...waarden: unknown[]) {
       id: volgendId++,
       key_hash: String(waarden[0]),
       created_at: new Date(),
-      revoked_at: null,
+      // Een tabel kán een standaardwaarde op revoked_at hebben staan; dan komt
+      // elke nieuwe sleutel binnen als al ingetrokken. Precies dat gebeurde op
+      // 26-08-2026. Met deze schakelaar spelen we die database na.
+      revoked_at: standaardIngetrokken ? new Date() : null,
       last_used: null,
     };
     tabel.push(rij);
@@ -65,8 +71,13 @@ function nepSql(strings: TemplateStringsArray, ...waarden: unknown[]) {
       return Promise.resolve({ ...leeg, rowCount: rij ? 1 : 0 });
     }
     if (k.includes("set revoked_at = null")) {
-      // de eenmalige herstelactie van 15-08; raakt deze proef niet
-      return Promise.resolve(leeg);
+      // Twee opdrachten zetten revoked_at leeg: het rechtzetten van één rij
+      // (createViewKey, op id) en de eenmalige herstelactie van 15-08 (op
+      // datum). Alleen de eerste doet in deze proef iets.
+      if (!k.includes("where id =")) return Promise.resolve(leeg);
+      const rij = tabel.find((r) => r.id === Number(waarden[0]));
+      if (rij) rij.revoked_at = null;
+      return Promise.resolve({ ...leeg, rowCount: rij ? 1 : 0 });
     }
     const ids = k.includes("string_to_array")
       ? String(waarden[0]).split(",").map(Number)
@@ -180,6 +191,31 @@ async function draai() {
     weg.includes(1) && weg.includes(9) && !weg.includes(20),
     `viel af: ${weg.join(", ")}`,
   );
+
+  // ── 8. De knop deelt nooit een sleutel uit die niet werkt ──
+  // Dit is de echte fout van 26-08-2026: de rij kwam binnen als al ingetrokken,
+  // dus de controle zag hem nooit. Het aanmaken lukte, de sleutel was dood, en
+  // op het scherm was daar niets van te zien. createViewKey haalt zijn eigen
+  // sleutel nu eerst door dezelfde deur en zet hem recht; lukt dat niet, dan
+  // gooit hij. Wat er níét meer mag gebeuren is dat er een sleutel uitkomt die
+  // de controle weigert.
+  standaardIngetrokken = true;
+  let uitkomst = "";
+  try {
+    const s = await kv.createViewKey();
+    uitkomst = (await kv.checkViewKey(s)).ok ? "werkende sleutel" : "DODE SLEUTEL";
+  } catch {
+    uitkomst = "eerlijke fout";
+  }
+  standaardIngetrokken = false;
+  proef(
+    "een rij die als ingetrokken binnenkomt levert nooit een dode sleutel op",
+    uitkomst !== "DODE SLEUTEL",
+    "createViewKey gaf een sleutel terug die de controle daarna weigert. Dat is\n" +
+      "     | precies wat Maarten op 26-08-2026 in handen kreeg: plakken, 'andere-sleutel',\n" +
+      "     | nog een maken, en zo door.",
+  );
+  proef("en hij zet hem het liefst gewoon recht", uitkomst === "werkende sleutel", `kreeg: ${uitkomst}`);
 
   console.log(fouten === 0 ? "\nAlles goed.\n" : `\n${fouten} fout(en).\n`);
   if (fouten) process.exit(1);
