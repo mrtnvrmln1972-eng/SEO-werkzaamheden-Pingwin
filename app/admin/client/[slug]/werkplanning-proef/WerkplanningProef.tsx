@@ -3,21 +3,25 @@
 // ═══════════════════════════════════════════════════════════
 // WERKPLANNING, PROEF: SIGNALEREN EN BEOORDELEN, PAS DAN PLANNEN
 // ═══════════════════════════════════════════════════════════
-// Zone 1 "Gesignaleerd" leest de opruim-werklijst (dezelfde motor als het
-// Cannibalisatie-tabblad, via /api/admin/opruim-werklijst) en toont per
-// onderwerp/cluster de pagina's die nog geen taak zijn. Klap open voor de
-// volledige onderbouwing; "Maak taak" zet 'm met één klik op de echte
-// weekplanning (dezelfde route als de bestaande "Naar planning"-knop), nu
-// wél met het cluster als thread meegestuurd.
+// Zone 1 "Gesignaleerd" leest twee bronnen: de opruim-werklijst (cannibalisatie,
+// via /api/admin/opruim-werklijst) en de meta/CTR-kansenlijst
+// (/api/admin/meta-ctr), en toont per cluster/onderwerp de pagina's die nog
+// geen taak zijn. Filterknoppen bovenaan schakelen per bron. Klap een regel
+// open voor de volledige onderbouwing; "Maak taak" zet 'm met één klik op de
+// echte weekplanning (dezelfde route als de bestaande "Naar planning"-knop in
+// Opruimen), nu met het cluster als thread meegestuurd.
+//
+// Interne links is bewust nog NIET meegenomen: die databron heeft een andere
+// vorm (doelpagina's met voorgestelde bronpagina's, geen losse "pagina heeft
+// een probleem"-regel) en verdient een eigen vertaalslag in een volgende ronde.
 //
 // Zone 2 "De planning" leest de bestaande weekplanning
 // (/api/admin/weekplan), gegroepeerd per cluster (thread). Een geschatte duur
-// per taak (nieuw veld) plus een instelbaar urenbudget per week bepalen de
-// weekprojectie: taken binnen één cluster houden hun eigen volgorde, taken uit
-// een ander, lager geprioriteerd cluster mogen een gaatje in de week vullen.
-// Afvinken (bestaande status "klaar") en negeren (nieuw, blijft bestaan maar
-// telt niet mee) verhuizen naar een archief met datum; is een heel cluster
-// klaar of genegeerd, dan verhuist de hele kaart naar het archief onderaan.
+// per taak plus een instelbaar urenbudget per week bepalen de weekprojectie.
+//
+// Zone 3 "Wat we de afgelopen tijd gedaan hebben" leest het bestaande
+// activiteitenlogboek (/api/admin/activiteit) en toont het over een instelbare
+// periode, zodat er altijd een rapportage klaarstaat.
 //
 // Nog geen onderdeel van het klantmenu of de echte Taken-tab: dit is bewust
 // een losse proefpagina om op de echte data te beoordelen.
@@ -25,13 +29,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { urlKey } from "../../../../../lib/url-key";
 import { netteHtml } from "../../../../../lib/nette-html";
+import { Paneel, Chip, Chips } from "../../../../_ui/Uitkomst";
 import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
+import { SOORT_LABEL, type ActiviteitSoort } from "../../../../../lib/activiteit";
+
+type Bron = "opruim" | "meta";
 
 type WerkRegel = {
-  pad: string; uitkomst: string; naar: string; herkomst: string[]; reden: string;
-  onderbouwing: string[]; term: string; volume: number | null; klikken: number;
-  vertoningen: number; positie: number | null; groep: string;
-  doorgevoerd?: boolean; contentOver?: boolean;
+  pad: string; uitkomst: string; naar: string; reden: string;
+  onderbouwing: string[]; volume: number | null; positie: number | null;
+  groep: string; bron: Bron; doorgevoerd?: boolean;
 };
 
 type WeekplanTaak = {
@@ -40,10 +47,20 @@ type WeekplanTaak = {
   estimateMin: number | null; genegeerd: boolean; genegeerdOp: string;
 };
 
+type Activiteit = { id: number; gebeurdeOp: string; soort: ActiviteitSoort; url: string | null; intern: string; wie: string };
+
 const DEFAULT_MIN = 30;
 const UITKOMST_LABEL: Record<string, string> = {
   uitbouwen: "uitbouwen", samenvoegen: "samenvoegen", opruimen: "opruimen", nieuw: "nieuw", blijft: "blijft",
+  meta: "titel/description",
 };
+const BRON_LABEL: Record<Bron, string> = { opruim: "Cannibalisatie", meta: "Meta en CTR" };
+const BRON_TOON: Record<Bron, "accent" | "goed"> = { opruim: "accent", meta: "goed" };
+const PERIODES = [
+  { key: "2w", label: "2 weken", dagen: 14 },
+  { key: "3w", label: "3 weken", dagen: 21 },
+  { key: "mnd", label: "maand", dagen: 31 },
+] as const;
 
 function pad(u: string): string {
   if (!u) return "";
@@ -52,14 +69,33 @@ function pad(u: string): string {
 function getal(n: number | null | undefined): string {
   return n == null ? "—" : new Intl.NumberFormat("nl-NL").format(n);
 }
+function metaRegelUit(row: any): WerkRegel {
+  const missend = [...(row.issues?.title || []), ...(row.issues?.desc || [])];
+  const onderbouwing: string[] = [];
+  if (missend.length) onderbouwing.push(`Wat er nu niet klopt: ${missend.join(", ")}.`);
+  if (row.volume != null) onderbouwing.push(`Zoekterm "${row.keyword}", ${getal(row.volume)} zoekopdrachten per maand, positie ${row.position}.`);
+  if (row.extraClicks) onderbouwing.push(`Geschat ${getal(row.extraClicks)} extra klikken per 90 dagen bij de verwachte CTR voor deze positie.`);
+  if (row.curTitle) onderbouwing.push(`Titel nu: "${row.curTitle}"`);
+  if (row.curDesc) onderbouwing.push(`Description nu: "${row.curDesc}"`);
+  return {
+    pad: row.url, uitkomst: "meta", naar: "",
+    reden: row.reden === "kapot" ? "Titel of description ontbreekt of is kapot" : "Titel en description kunnen meer klikken winnen",
+    onderbouwing, volume: row.volume, positie: row.position,
+    groep: "Meta en CTR, snelle winst", bron: "meta",
+    doorgevoerd: row.proposal?.status === "doorgevoerd",
+  };
+}
 
 export default function WerkplanningProef({ slug }: { slug: string }) {
   const [regels, setRegels] = useState<WerkRegel[]>([]);
   const [taken, setTaken] = useState<WeekplanTaak[]>([]);
+  const [activiteit, setActiviteit] = useState<Activiteit[]>([]);
   const [budget, setBudget] = useState(3);
   const [budgetIngevuld, setBudgetIngevuld] = useState(false);
+  const [periode, setPeriode] = useState<(typeof PERIODES)[number]["key"]>("mnd");
   const [laden, setLaden] = useState(true);
   const [fout, setFout] = useState("");
+  const [filterBron, setFilterBron] = useState<Bron | "alles">("alles");
   const [openSig, setOpenSig] = useState<Record<string, boolean>>({});
   const [openCluster, setOpenCluster] = useState<Record<string, boolean>>({});
   const [openArchief, setOpenArchief] = useState<Record<string, boolean>>({});
@@ -69,32 +105,47 @@ export default function WerkplanningProef({ slug }: { slug: string }) {
   async function laadAlles() {
     setLaden(true); setFout("");
     try {
-      const [wr, wp, bud] = await Promise.all([
+      const [wr, wp, bud, mc, act] = await Promise.all([
         fetch(`/api/admin/opruim-werklijst?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
         fetch(`/api/admin/weekplan?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
         fetch(`/api/admin/werkplan-budget?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
+        fetch(`/api/admin/meta-ctr?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
+        fetch(`/api/admin/activiteit?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
       ]);
-      if (wr?.ok) setRegels(wr.regels || []); else setFout(wr?.error || "De opruimlijst kon niet geladen worden.");
+      const opruim: WerkRegel[] = wr?.ok
+        ? (wr.regels || []).map((r: any) => ({ ...r, bron: "opruim" as Bron }))
+        : [];
+      if (!wr?.ok) setFout(wr?.error || "De opruimlijst kon niet geladen worden.");
+      const meta: WerkRegel[] = mc?.ok
+        ? (mc.rows || []).filter((r: any) => r.reden === "klikwinst" || r.reden === "kapot").map(metaRegelUit)
+        : [];
+      setRegels([...opruim, ...meta]);
       if (wp?.ok) setTaken((wp.tasks || []).map((t: any) => ({
         id: t.id, thread: t.thread || "", taak: t.taak, toelichting: t.toelichting, url: t.url,
         weekYear: t.weekYear, weekNo: t.weekNo, status: t.status, sortOrder: t.sortOrder,
         estimateMin: t.estimateMin, genegeerd: !!t.genegeerd, genegeerdOp: t.genegeerdOp || "",
       })));
       if (bud?.ok) { setBudget(bud.budget.urenPerWeek); setBudgetIngevuld(bud.budget.ingevuld); }
+      if (act?.ok) setActiviteit(act.rijen || []);
     } catch {
       setFout("Laden mislukte. Probeer de pagina opnieuw te openen.");
     } finally { setLaden(false); }
   }
   useEffect(() => { laadAlles(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [slug]);
 
-  // Al een taak: elke url in de weekplanning telt, ongeacht status. Zo komt
-  // een regel die al eens gemaakt (en eventueel weer genegeerd) is niet nog
-  // eens als "nog geen taak" naar boven.
   const alTaak = useMemo(() => new Set(taken.filter((t) => t.url).map((t) => urlKey(t.url))), [taken]);
-
-  const gesignaleerd = useMemo(
+  const gesignaleerdAlles = useMemo(
     () => regels.filter((r) => r.pad && !alTaak.has(urlKey(r.pad)) && !r.doorgevoerd),
     [regels, alTaak],
+  );
+  const tellingPerBron = useMemo(() => {
+    const t: Record<string, number> = { alles: gesignaleerdAlles.length };
+    for (const r of gesignaleerdAlles) t[r.bron] = (t[r.bron] || 0) + 1;
+    return t;
+  }, [gesignaleerdAlles]);
+  const gesignaleerd = useMemo(
+    () => filterBron === "alles" ? gesignaleerdAlles : gesignaleerdAlles.filter((r) => r.bron === filterBron),
+    [gesignaleerdAlles, filterBron],
   );
   const perGroep = useMemo(() => {
     const m = new Map<string, WerkRegel[]>();
@@ -117,13 +168,12 @@ export default function WerkplanningProef({ slug }: { slug: string }) {
           toelichting: r.onderbouwing.join("\n"),
         }),
       }).then((res) => res.json());
-      if (d?.ok) { setMelding(`Taak gemaakt: "${r.pad}" staat nu in De planning.`); await laadAlles(); }
+      if (d?.ok) { setMelding(`Taak gemaakt: "${pad(r.pad)}" staat nu in De planning.`); await laadAlles(); }
       else setFout(d?.error || "Taak maken mislukte.");
     } catch { setFout("Taak maken mislukte."); }
     finally { setMaakBezig(null); }
   }
 
-  // ── De planning: groeperen per cluster, week toewijzen ──
   const perCluster = useMemo(() => {
     const m = new Map<string, WeekplanTaak[]>();
     for (const t of taken) {
@@ -145,8 +195,6 @@ export default function WerkplanningProef({ slug }: { slug: string }) {
     return entries;
   }, [perCluster]);
 
-  // Bin-packing: per cluster een eigen wachtrij (volgorde blijft staan), elke
-  // week wordt gevuld door de eerste taak van elke wachtrij die nog past.
   const weekVan = useMemo(() => {
     const budgetMin = Math.max(1, Math.round(budget * 60));
     const wachtrijen = clusterVolgorde.map((c) => ({ naam: c.naam, rij: c.open.slice() }));
@@ -183,136 +231,118 @@ export default function WerkplanningProef({ slug }: { slug: string }) {
   const maxWeek = Math.max(0, ...[...weekVan.values()]);
 
   async function zetStatus(t: WeekplanTaak, status: string) {
-    await fetch("/api/admin/weekplan", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, id: t.id, status }),
-    });
+    await fetch("/api/admin/weekplan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id, status }) });
     await laadAlles();
   }
   async function zetNegeer(t: WeekplanTaak, genegeerd: boolean) {
-    await fetch("/api/admin/weekplan/negeer", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, id: t.id, genegeerd }),
-    });
+    await fetch("/api/admin/weekplan/negeer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id, genegeerd }) });
     await laadAlles();
   }
   async function zetDuur(t: WeekplanTaak, min: number | null) {
     setTaken((ts) => ts.map((x) => (x.id === t.id ? { ...x, estimateMin: min } : x)));
-    await fetch("/api/admin/weekplan/estimate", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, id: t.id, min }),
-    });
+    await fetch("/api/admin/weekplan/estimate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, id: t.id, min }) });
   }
   async function boost(thread: string) {
-    await fetch("/api/admin/weekplan/boost", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, thread }),
-    });
+    await fetch("/api/admin/weekplan/boost", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, thread }) });
     await laadAlles();
   }
   async function bewaarBudget(uren: number) {
     setBudget(uren);
-    const d = await fetch("/api/admin/werkplan-budget", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, urenPerWeek: uren }),
-    }).then((r) => r.json());
+    const d = await fetch("/api/admin/werkplan-budget", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug, urenPerWeek: uren }) }).then((r) => r.json());
     if (d?.ok) setBudgetIngevuld(true);
   }
 
+  const periodeInfo = PERIODES.find((p) => p.key === periode)!;
+  const activiteitPeriode = useMemo(() => {
+    const grens = Date.now() - periodeInfo.dagen * 24 * 60 * 60 * 1000;
+    return activiteit
+      .filter((a) => new Date(a.gebeurdeOp).getTime() >= grens)
+      .sort((a, b) => new Date(b.gebeurdeOp).getTime() - new Date(a.gebeurdeOp).getTime());
+  }, [activiteit, periodeInfo]);
+
   return (
-    <div style={{ maxWidth: 980, margin: "0 auto", padding: "var(--ruimte-scherm)" }}>
-      <div className="section">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <h1 className="wpp-h1">
-            Werkplanning, proef
-          </h1>
-          <span className="chip">{slug}</span>
-        </div>
-        <p style={{ color: "var(--kleur-tekst-zacht)", marginTop: "var(--ruimte-naast)", maxWidth: "68ch" }}>
-          Twee zones. Gesignaleerd komt rechtstreeks uit Opruimen; niets wordt vanzelf een taak. De planning
-          bevat alleen wat je hier hebt overgenomen, gegroepeerd per cluster.
-        </p>
-        {fout && <p className="section" style={{ color: "var(--kleur-fout)" }}>{fout}</p>}
-        {melding && <p className="section" style={{ color: "var(--kleur-goed)" }}>{melding}</p>}
-        {laden && <p style={{ color: "var(--kleur-tekst-stil)" }}>Bezig met laden&#8230;</p>}
-      </div>
+    <div className="section" style={{ maxWidth: 980, marginLeft: "auto", marginRight: "auto", padding: "var(--ruimte-scherm)" }}>
+      <Chips>
+        <Chip toon="neutraal">{slug}</Chip>
+        {fout && <Chip toon="let-op">{fout}</Chip>}
+        {melding && <Chip toon="goed">{melding}</Chip>}
+        {laden && <Chip toon="neutraal">Bezig met laden…</Chip>}
+      </Chips>
 
       {!laden && (
         <>
-          <div className="section">
-            <div className="row" style={{ justifyContent: "space-between", marginBottom: "var(--ruimte-naast)" }}>
-              <h2 className="wpp-h2">Gesignaleerd, nog geen taak</h2>
-              <span className="chip">{gesignaleerd.length} regels</span>
-            </div>
+          <Paneel
+            titel="Gesignaleerd, nog geen taak"
+            uitleg="Klik een filter om op bron te schakelen; klap een regel open voor de volledige onderbouwing. Niets wordt vanzelf een taak."
+            knoppen={
+              <Chips>
+                {(["alles", "opruim", "meta"] as const).map((b) => (
+                  <button key={b} type="button"
+                    className={"btn btn-klein " + (filterBron === b ? "btn-primary" : "btn-ghost")}
+                    onClick={() => setFilterBron(b)}>
+                    {b === "alles" ? "Alles" : BRON_LABEL[b]} ({tellingPerBron[b] || 0})
+                  </button>
+                ))}
+              </Chips>
+            }
+          >
             {[...perGroep.entries()].map(([groep, lijst]) => (
               <div key={groep} className="card section" style={{ padding: "var(--ruimte-groep)" }}>
                 <div className="row" style={{ justifyContent: "space-between" }}>
                   <strong style={{ color: "var(--kleur-kop)" }}>{groep}</strong>
-                  <span className="chip">{lijst.length} pagina&#8217;s</span>
+                  <Chip toon="neutraal">{lijst.length} pagina&#8217;s</Chip>
                 </div>
-                <ul className="wpp-lijst-mt">
+                <div className="section">
                   {lijst.map((r) => {
                     const isOpen = !!openSig[r.pad];
                     return (
-                      <li key={r.pad} style={{ borderTop: "1px solid var(--kleur-rand)", padding: "var(--ruimte-regel) 0" }}>
-                        <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <div style={{ flex: 1 }}>
-                            <span className="row" style={{ gap: "var(--ruimte-krap)" }}>
-                              <span style={{ fontFamily: "monospace", fontSize: "var(--type-bijschrift)" }}>{pad(r.pad)}</span>
-                              <span className="chip">{UITKOMST_LABEL[r.uitkomst] || r.uitkomst}</span>
-                            </span>
-                            <div style={{ fontSize: "var(--type-bijschrift)", color: "var(--kleur-tekst-stil)", marginTop: "var(--ruimte-krap)" }}>
-                              {r.naar && <>naar <span style={{ fontFamily: "monospace" }}>{pad(r.naar)}</span> &middot; </>}
-                              {r.volume != null && <>{getal(r.volume)}/mnd &middot; </>}
-                              {r.positie != null && <>positie {r.positie}</>}
-                            </div>
+                      <div key={r.pad} style={{ borderTop: "1px solid var(--kleur-rand)" }} className="section">
+                        <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+                          <span className="row" style={{ gap: "var(--ruimte-krap)", flexWrap: "wrap" }}>
+                            <Chip toon={BRON_TOON[r.bron]}>{BRON_LABEL[r.bron]}</Chip>
+                            <code>{pad(r.pad)}</code>
+                            <Chip toon="neutraal">{UITKOMST_LABEL[r.uitkomst] || r.uitkomst}</Chip>
+                            {r.naar && <span>&#8594; <code>{pad(r.naar)}</code></span>}
+                            {r.volume != null && <span>{getal(r.volume)}/mnd</span>}
+                            {r.positie != null && <span>positie {r.positie}</span>}
                             {r.onderbouwing.length > 0 && (
-                              <button type="button" className="btn btn-quiet btn-klein" style={{ marginTop: "var(--ruimte-krap)" }}
+                              <button type="button" className="btn btn-quiet btn-klein"
                                 onClick={() => setOpenSig((s) => ({ ...s, [r.pad]: !s[r.pad] }))}>
-                                {isOpen ? "▾ minder" : "▸ volledige onderbouwing"}
+                                {isOpen ? "▾ minder" : "▸ onderbouwing"}
                               </button>
                             )}
-                          </div>
-                          <button
-                            type="button" className="btn btn-primary btn-klein"
-                            disabled={maakBezig === r.pad}
-                            onClick={() => maakTaak(r)}
-                          >
+                          </span>
+                          <button type="button" className="btn btn-primary btn-klein" disabled={maakBezig === r.pad} onClick={() => maakTaak(r)}>
                             {maakBezig === r.pad ? "Bezig…" : "+ Maak taak"}
                           </button>
                         </div>
                         {isOpen && (
-                          <div
-                            className="md"
-                            style={{ marginTop: "var(--ruimte-naast)", marginLeft: "var(--ruimte-groep)", fontSize: "var(--type-bijschrift)" }}
-                            dangerouslySetInnerHTML={{ __html: netteHtml(r.onderbouwing.join("\n\n")) }}
-                          />
+                          <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(r.onderbouwing.join("\n\n")) }} />
                         )}
-                      </li>
+                      </div>
                     );
                   })}
-                </ul>
+                </div>
               </div>
             ))}
-            {!perGroep.size && <p style={{ color: "var(--kleur-tekst-stil)" }}>Niets meer te beoordelen.</p>}
-          </div>
+            {!perGroep.size && <p style={{ color: "var(--kleur-tekst-stil)" }}>Niets meer te beoordelen voor dit filter.</p>}
+          </Paneel>
 
-          <div className="section">
-            <div className="row" style={{ justifyContent: "space-between", marginBottom: "var(--ruimte-naast)" }}>
-              <h2 className="wpp-h2">De planning</h2>
-              <span className="row" style={{ gap: "var(--ruimte-naast)" }}>
-                <span className="chip">{clusterVolgorde.reduce((s, c) => s + c.open.length, 0)} open taken</span>
-                <span className="chip">{Math.round((totOpenMin / 60) * 10) / 10}u werk</span>
-                <span className="chip">{maxWeek} weken</span>
-              </span>
-            </div>
-            <div className="row" style={{ marginBottom: "var(--ruimte-groep)", fontSize: "var(--type-bijschrift)", color: "var(--kleur-tekst-zacht)" }}>
+          <Paneel
+            titel="De planning"
+            knoppen={
+              <Chips>
+                <Chip toon="neutraal">{clusterVolgorde.reduce((s, c) => s + c.open.length, 0)} open taken</Chip>
+                <Chip toon="neutraal">{Math.round((totOpenMin / 60) * 10) / 10}u werk</Chip>
+                <Chip toon="neutraal">{maxWeek} weken</Chip>
+              </Chips>
+            }
+          >
+            <div className="row section">
               Beschikbaar per week:
-              <input
-                type="number" min={0.5} step={0.5} defaultValue={budget}
-                onBlur={(e) => bewaarBudget(Number(e.target.value) || budget)}
-                style={{ width: 56, textAlign: "center", border: "1px solid var(--kleur-rand)", borderRadius: "var(--ronding-knop)", padding: "var(--ruimte-krap)" }}
-              /> uur {!budgetIngevuld && <span>(nog niet opgeslagen, staat op de standaard)</span>}
+              <input type="number" min={0.5} step={0.5} defaultValue={budget} size={3}
+                onBlur={(e) => bewaarBudget(Number(e.target.value) || budget)} />
+              uur {!budgetIngevuld && <span style={{ color: "var(--kleur-tekst-stil)" }}>(nog niet opgeslagen)</span>}
             </div>
 
             {clusterVolgorde.map(({ naam, open, alles }) => {
@@ -334,51 +364,31 @@ export default function WerkplanningProef({ slug }: { slug: string }) {
                       <div className="pnl-acties-groep" role="group">
                         <button type="button" className="btn btn-ghost btn-klein" onClick={() => boost(naam)}>Zet vooraan</button>
                       </div>
-                      <ul className="wpp-lijst">
-                        {open.map((t) => (
-                          <li key={t.id} style={{ borderTop: "1px solid var(--kleur-rand)", padding: "var(--ruimte-regel) 0" }}>
-                            <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start", gap: "var(--ruimte-naast)" }}>
-                              <button type="button" className="btn btn-ghost btn-klein" onClick={() => zetStatus(t, "klaar")} title="Markeer als klaar">Klaar</button>
-                              <button type="button" className="btn btn-ghost btn-klein" onClick={() => zetNegeer(t, true)} title="Negeren">Negeer</button>
-                              <span style={{ flex: 1 }}>
-                                <div>{t.taak}</div>
-                                {t.url && <div style={{ fontSize: "var(--type-label)", color: "var(--kleur-tekst-stil)", fontFamily: "monospace" }}>{pad(t.url)}</div>}
-                              </span>
-                              <span className="chip">week {weekVan.get(t.id) ?? "—"}</span>
-                              <input
-                                type="number" min={5} step={5}
-                                defaultValue={t.estimateMin ?? DEFAULT_MIN}
-                                onBlur={(e) => zetDuur(t, Number(e.target.value) || null)}
-                                style={{ width: 52, textAlign: "right", border: "1px solid var(--kleur-rand)", borderRadius: "var(--ronding-knop)", padding: "var(--ruimte-krap)" }}
-                              />
-                              <span style={{ fontSize: "var(--type-label)", color: "var(--kleur-tekst-stil)" }}>min{t.estimateMin == null ? " (schatting)" : ""}</span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
+                      {open.map((t) => (
+                        <div key={t.id} className="section" style={{ borderTop: "1px solid var(--kleur-rand)" }}>
+                          <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+                            <button type="button" className="btn btn-ghost btn-klein" onClick={() => zetStatus(t, "klaar")}>Klaar</button>
+                            <button type="button" className="btn btn-ghost btn-klein" onClick={() => zetNegeer(t, true)}>Negeer</button>
+                            <span style={{ flex: 1 }}>{t.taak}{t.url && <> &middot; <code>{pad(t.url)}</code></>}</span>
+                            <Chip toon="neutraal">week {weekVan.get(t.id) ?? "—"}</Chip>
+                            <input type="number" min={5} step={5} size={3} defaultValue={t.estimateMin ?? DEFAULT_MIN}
+                              onBlur={(e) => zetDuur(t, Number(e.target.value) || null)} />
+                            <span style={{ color: "var(--kleur-tekst-stil)" }}>min{t.estimateMin == null ? " (schatting)" : ""}</span>
+                          </div>
+                        </div>
+                      ))}
                       {archief.length > 0 && (
                         <>
-                          <button type="button" className="deelkop" aria-expanded={archOpen}
-                            onClick={() => setOpenArchief((s) => ({ ...s, [naam]: !s[naam] }))}>
-                            Afgerond of genegeerd binnen deze kaart
-                            <span className="deelkop-meta">{archief.length}</span>
+                          <button type="button" className="deelkop" aria-expanded={archOpen} onClick={() => setOpenArchief((s) => ({ ...s, [naam]: !s[naam] }))}>
+                            Afgerond of genegeerd binnen deze kaart<span className="deelkop-meta">{archief.length}</span>
                           </button>
-                          {archOpen && (
-                            <ul className="wpp-lijst">
-                              {archief.map((t) => (
-                                <li key={t.id} className="row" style={{ justifyContent: "space-between", padding: "var(--ruimte-krap) 0" }}>
-                                  <span style={{ textDecoration: "line-through", color: "var(--kleur-tekst-stil)" }}>{t.taak}</span>
-                                  <span style={{ fontSize: "var(--type-label)", color: "var(--kleur-tekst-stil)" }}>
-                                    {t.status === "klaar" ? "klaar" : "genegeerd"} &middot; {t.genegeerdOp || "—"}
-                                  </span>
-                                  <button type="button" className="btn btn-ghost btn-klein"
-                                    onClick={() => (t.status === "klaar" ? zetStatus(t, "gepland") : zetNegeer(t, false))}>
-                                    terugzetten
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                          {archOpen && archief.map((t) => (
+                            <div key={t.id} className="row" style={{ justifyContent: "space-between" }}>
+                              <span style={{ textDecoration: "line-through", color: "var(--kleur-tekst-stil)" }}>{t.taak}</span>
+                              <span style={{ color: "var(--kleur-tekst-stil)" }}>{t.status === "klaar" ? "klaar" : "genegeerd"} &middot; {t.genegeerdOp || "—"}</span>
+                              <button type="button" className="btn btn-ghost btn-klein" onClick={() => (t.status === "klaar" ? zetStatus(t, "gepland") : zetNegeer(t, false))}>terugzetten</button>
+                            </div>
+                          ))}
                         </>
                       )}
                     </div>
@@ -389,7 +399,33 @@ export default function WerkplanningProef({ slug }: { slug: string }) {
             {!clusterVolgorde.some((c) => c.open.length || c.alles.some((t) => t.status === "klaar" || t.genegeerd)) && (
               <p style={{ color: "var(--kleur-tekst-stil)" }}>Nog geen taken. Maak er hierboven een paar aan vanuit Gesignaleerd.</p>
             )}
-          </div>
+          </Paneel>
+
+          <Paneel
+            titel="Wat we de afgelopen tijd gedaan hebben"
+            uitleg="Uit het bestaande activiteitenlogboek: alles wat er aan pagina's, taken en mail is afgehandeld, in één rapportage."
+            knoppen={
+              <Chips>
+                {PERIODES.map((p) => (
+                  <button key={p.key} type="button" className={"btn btn-klein " + (periode === p.key ? "btn-primary" : "btn-ghost")} onClick={() => setPeriode(p.key)}>
+                    {p.label}
+                  </button>
+                ))}
+              </Chips>
+            }
+          >
+            {activiteitPeriode.map((a) => (
+              <div key={a.id} className="row section" style={{ borderTop: "1px solid var(--kleur-rand)", flexWrap: "wrap" }}>
+                <span style={{ color: "var(--kleur-tekst-stil)", fontFamily: "monospace" }}>
+                  {new Date(a.gebeurdeOp).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                </span>
+                <Chip toon="neutraal">{SOORT_LABEL[a.soort] || a.soort}</Chip>
+                <span>{a.intern}</span>
+                {a.url && <code>{pad(a.url)}</code>}
+              </div>
+            ))}
+            {!activiteitPeriode.length && <p style={{ color: "var(--kleur-tekst-stil)" }}>Niets gelogd in deze periode.</p>}
+          </Paneel>
         </>
       )}
     </div>
