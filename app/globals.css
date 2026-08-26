@@ -2378,7 +2378,14 @@ button.ck-collapse-head {
 .wp-eerder { margin-top: var(--ruimte-regel); padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-accent); background: var(--brand-orange-faint); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; }
 .wp-eerder h4 { margin: 0 0 var(--ruimte-krap); font-size: var(--type-label); text-transform: uppercase; letter-spacing: var(--spatie-label); color: var(--kleur-tekst-stil); }
 .wp-eerder ul { margin: 0; padding-left: var(--ruimte-blok); color: var(--kleur-tekst-zacht); font-size: var(--type-bijschrift); line-height: 1.6; }
-.wp-datum { font-family: ui-monospace, monospace; font-size: var(--type-label); color: var(--kleur-tekst-stil); white-space: nowrap; }
+.wp-datum { font-family: var(--letter-code); font-size: var(--type-label); color: var(--kleur-tekst-stil); white-space: nowrap; }
+/* Variant op .btn-quiet: een schakelaar die eruitziet als een linkje (oranje,
+   onderstreept) in plaats van een knopje. Blijft op het knopsysteem staan
+   (.btn + .btn-quiet + .btn-klein doen de vorm), dit voegt alleen de kleur toe. */
+.btn-quiet.wp-linkstijl, .btn-quiet.wp-linkstijl:hover:not(:disabled) { color: var(--kleur-accent-diep); text-decoration: underline; text-underline-offset: 2px; }
+.btn-quiet.wp-linkstijl:hover:not(:disabled) { color: var(--kleur-accent); background: transparent; border-color: transparent; }
+.wp-groep-achtergrond { margin: 0 0 var(--ruimte-regel); padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-accent); background: var(--brand-orange-faint); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; }
+.wp-groep-achtergrond h4 { margin: 0 0 var(--ruimte-krap); font-size: var(--type-label); text-transform: uppercase; letter-spacing: var(--spatie-label); color: var(--kleur-tekst-stil); }
 .wp-grow { flex: 1 1 auto; min-width: 0; }
 .wp-titel { font-weight: 600; font-size: var(--type-bijschrift); }
 .wp-wrap { max-width: 1220px; margin: 0 auto; padding: var(--ruimte-scherm); }

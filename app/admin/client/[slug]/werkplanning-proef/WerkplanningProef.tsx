@@ -15,6 +15,20 @@
 // "Het plan"; het activiteitenlogboek voor "Wat er is gebeurd". Interne links
 // is met opzet nog niet meegenomen (andere datavorm, eigen vertaalslag nodig).
 //
+// Na Maartens eerste blik (26-08-2026): clusters staan nu dicht bij het openen
+// (default-toe), met de achtergrond die alle pagina's in dat cluster delen (de
+// langste gemeenschappelijke start van hun onderbouwing) één keer bovenaan het
+// cluster, in plaats van herhaald per pagina. Elke slug is een echte link (geen
+// kaal <code>-blokje meer, dat viel buiten de huisstijl-lettertypes), en de
+// "onderbouwing"-schakelaars zijn nu oranje onderstreepte linkjes. "Wat er in
+// [maand] is gebeurd" groepeert regels die bij dezelfde pagina horen onder één
+// dicht-standaard tokkeltje. Twee dingen uit zijn feedback staan hier bewust
+// nog niet in: een samenvatting van wat de developer per taak deed (dat leeft
+// als `dev_punten`/`dev_docs` op de weekplanning-taak, niet in dit logboek, en
+// moet er nog bij verbonden worden) en het groeperen van losse mails over
+// hetzelfde onderwerp (de activiteitenregels dragen geen onderwerp/thread-veld
+// om dat op te baseren; dat vraagt een keuze, geen gok).
+//
 // Nog geen onderdeel van het klantmenu of de echte Taken-tab: dit is bewust
 // een losse proefpagina om op de echte data te beoordelen.
 
@@ -22,7 +36,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { urlKey } from "../../../../../lib/url-key";
 import { netteHtml } from "../../../../../lib/nette-html";
-import { Paneel, Chip, Chips, Tekst } from "../../../../_ui/Uitkomst";
+import { Paneel, Chip, Chips } from "../../../../_ui/Uitkomst";
 import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 import { SOORT_LABEL, type ActiviteitSoort } from "../../../../../lib/activiteit";
 
@@ -98,6 +112,31 @@ function getal(n: number | null | undefined): string {
 function kortDatum(d: Date): string {
   return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
 }
+// Een titel voor een groep activiteit die bij één pagina hoort: het laatste
+// padstuk, streepjes naar spaties, eerste letter een hoofdletter. Puur een
+// leesbaarder weergave van de bestaande slug, geen verzonnen tekst.
+function titelVanSlug(u: string): string {
+  const p = pad(u).replace(/^\/+|\/+$/g, "");
+  const laatste = (p.split("/").pop() || p).trim();
+  if (!laatste) return pad(u) || u;
+  const woorden = laatste.split("-").filter(Boolean);
+  if (!woorden.length) return pad(u);
+  return woorden.map((w, i) => (i === 0 ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(" ");
+}
+// De langste gemeenschappelijke start van meerdere onderbouwingen: wat elke
+// pagina in een cluster deelt (dezelfde bestemming, hetzelfde onderwerp),
+// zodat dat één keer op het cluster kan staan in plaats van per pagina herhaald.
+function gemeenschappelijkeRegels(lijsten: string[][]): string[] {
+  if (lijsten.length < 2) return [];
+  const kortste = Math.min(...lijsten.map((l) => l.length));
+  const gedeeld: string[] = [];
+  for (let i = 0; i < kortste; i++) {
+    const regel = lijsten[0][i];
+    if (lijsten.every((l) => l[i] === regel)) gedeeld.push(regel);
+    else break;
+  }
+  return gedeeld;
+}
 function metaRegelUit(row: any): WerkRegel {
   const missend = [...(row.issues?.title || []), ...(row.issues?.desc || [])];
   const onderbouwing: string[] = [];
@@ -115,6 +154,32 @@ function metaRegelUit(row: any): WerkRegel {
   };
 }
 
+// Een echte, klikbare link naar de live pagina, in de huisstijl-linkkleur; de
+// weergegeven tekst is het pad, niet het volledige adres. Vervangt een kaal
+// <code>-blokje, dat buiten het lettertype-systeem viel en niet klikbaar was.
+function Slug({ url, domein }: { url: string; domein?: string | null }) {
+  if (!url) return null;
+  const href = /^https?:\/\//i.test(url)
+    ? url
+    : domein ? `https://${domein.replace(/^www\./i, "")}${url}` : url;
+  return <a className="uk-pad" href={href} target="_blank" rel="noreferrer">{pad(url)}</a>;
+}
+
+// Activiteitsregels die bij dezelfde pagina horen, gebundeld; een regel zonder
+// pagina krijgt zijn eigen, ongegroepeerde plek.
+type ActGroep = { sleutel: string; url: string | null; items: Activiteit[] };
+function groepeerOpUrl(items: Activiteit[]): ActGroep[] {
+  const groepen: ActGroep[] = [];
+  const idx = new Map<string, number>();
+  for (const a of items) {
+    const key = a.url ? urlKey(a.url) : `los-${a.id}`;
+    const bestaand = idx.get(key);
+    if (bestaand != null) groepen[bestaand].items.push(a);
+    else { idx.set(key, groepen.length); groepen.push({ sleutel: key, url: a.url, items: [a] }); }
+  }
+  return groepen;
+}
+
 export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: string; klantNaam?: string; domein?: string | null }) {
   const [regels, setRegels] = useState<WerkRegel[]>([]);
   const [taken, setTaken] = useState<WeekplanTaak[]>([]);
@@ -126,8 +191,11 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   const [fout, setFout] = useState("");
   const [filterBron, setFilterBron] = useState<Bron | "alles">("alles");
   const [filterCategorie, setFilterCategorie] = useState<Categorie | "alle">("alle");
+  const [openGroep, setOpenGroep] = useState<Record<string, boolean>>({});
   const [openSig, setOpenSig] = useState<Record<string, boolean>>({});
   const [openDaarvoor, setOpenDaarvoor] = useState(false);
+  const [openMaandGroep, setOpenMaandGroep] = useState<Record<string, boolean>>({});
+  const [openRapportGroep, setOpenRapportGroep] = useState<Record<string, boolean>>({});
   const [openWpArchief, setOpenWpArchief] = useState(false);
   const [maakBezig, setMaakBezig] = useState<string | null>(null);
   const [melding, setMelding] = useState("");
@@ -312,6 +380,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
       .filter((a) => new Date(a.gebeurdeOp).getTime() >= grens)
       .sort((a, b) => new Date(b.gebeurdeOp).getTime() - new Date(a.gebeurdeOp).getTime());
   }, [activiteit, periodeInfo]);
+  const rapportGroepen = useMemo(() => groepeerOpUrl(activiteitPeriode), [activiteitPeriode]);
 
   const nu = new Date();
   const { activiteitDezeMaand, activiteitDaarvoor, maandNaam } = useMemo(() => {
@@ -324,6 +393,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
     return { activiteitDezeMaand: deze, activiteitDaarvoor: eerder, maandNaam: nu.toLocaleDateString("nl-NL", { month: "long" }) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activiteit]);
+  const maandGroepen = useMemo(() => groepeerOpUrl(activiteitDezeMaand), [activiteitDezeMaand]);
   const daarvoorGetoond = openDaarvoor ? activiteitDaarvoor : activiteitDaarvoor.slice(0, 6);
 
   return (
@@ -361,21 +431,50 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
 
           <Paneel
             titel={`Wat er in ${maandNaam} is gebeurd`}
-            uitleg="Uit het bestaande activiteitenlogboek: alles wat er aan pagina's, taken en mail is afgehandeld."
+            uitleg="Uit het bestaande activiteitenlogboek, gebundeld per pagina; klap een tokkeltje open voor alle losse regels."
           >
-            {activiteitDezeMaand.length > 0 ? (
+            {maandGroepen.length > 0 ? (
               <div className="wp-stack">
-                {activiteitDezeMaand.map((a) => (
-                  <div key={a.id} className="wp-item wp-row">
-                    <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
-                    <WerkChip categorie={categorieVanSoort(a.soort)} />
-                    <span className="wp-grow">
-                      <span className="wp-titel">{SOORT_LABEL[a.soort] || a.soort}</span>
-                      {a.intern && <span className="muted"> — {a.intern}</span>}
-                      {a.url && <> · <code>{pad(a.url)}</code></>}
-                    </span>
-                  </div>
-                ))}
+                {maandGroepen.map((g) => {
+                  if (g.items.length === 1) {
+                    const a = g.items[0];
+                    return (
+                      <div key={g.sleutel} className="wp-item wp-row">
+                        <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
+                        <WerkChip categorie={categorieVanSoort(a.soort)} />
+                        <span className="wp-grow">
+                          <span className="wp-titel">{SOORT_LABEL[a.soort] || a.soort}</span>
+                          {a.intern && <span className="muted"> — {a.intern}</span>}
+                          {a.url && <> · <Slug url={a.url} domein={domein} /></>}
+                        </span>
+                      </div>
+                    );
+                  }
+                  const isOpen = !!openMaandGroep[g.sleutel];
+                  return (
+                    <div key={g.sleutel} className="wp-item wp-stack">
+                      <button type="button" className="deelkop" aria-expanded={isOpen}
+                        onClick={() => setOpenMaandGroep((s) => ({ ...s, [g.sleutel]: !s[g.sleutel] }))}>
+                        {g.url ? titelVanSlug(g.url) : "Overig"}<span className="deelkop-meta">{g.items.length}</span>
+                      </button>
+                      {isOpen && (
+                        <div className="wp-stack">
+                          {g.url && <div className="wp-row"><Slug url={g.url} domein={domein} /></div>}
+                          {g.items.map((a) => (
+                            <div key={a.id} className="wp-item wp-row">
+                              <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
+                              <WerkChip categorie={categorieVanSoort(a.soort)} />
+                              <span className="wp-grow">
+                                <span className="wp-titel">{SOORT_LABEL[a.soort] || a.soort}</span>
+                                {a.intern && <span className="muted"> — {a.intern}</span>}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : <p className="muted">Nog niets gelogd deze maand.</p>}
 
@@ -386,13 +485,14 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                   {daarvoorGetoond.map((a) => (
                     <li key={a.id}>
                       <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>{" "}
-                      {SOORT_LABEL[a.soort] || a.soort}{a.intern ? ` — ${a.intern}` : ""}{a.url ? ` · ${pad(a.url)}` : ""}
+                      {SOORT_LABEL[a.soort] || a.soort}{a.intern ? ` — ${a.intern}` : ""}
+                      {a.url && <> · <Slug url={a.url} domein={domein} /></>}
                     </li>
                   ))}
                 </ul>
                 {activiteitDaarvoor.length > 6 && (
-                  <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpenDaarvoor((v) => !v)}>
-                    {openDaarvoor ? "▾ minder tonen" : `▸ nog ${activiteitDaarvoor.length - 6} tonen`}
+                  <button type="button" className="btn btn-quiet btn-klein wp-linkstijl" onClick={() => setOpenDaarvoor((v) => !v)}>
+                    {openDaarvoor ? "minder tonen" : `nog ${activiteitDaarvoor.length - 6} tonen`}
                   </button>
                 )}
               </div>
@@ -401,7 +501,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
 
           <Paneel
             titel="Gesignaleerd, nog geen taak"
-            uitleg="Klik een filter om op bron te schakelen; klap een regel open voor de volledige onderbouwing. Niets wordt vanzelf een taak."
+            uitleg="Elk cluster staat dicht; open het voor de gedeelde achtergrond en de losse pagina's erin. Niets wordt vanzelf een taak."
             knoppen={
               <Chips>
                 {(["alles", "opruim", "meta"] as const).map((b) => (
@@ -414,45 +514,59 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               </Chips>
             }
           >
-            {[...perGroep.entries()].map(([groep, lijst]) => (
-              <div key={groep} className="wp-rail-card wp-stack">
-                <div className="wp-row wp-row-tussen">
-                  <strong style={{ color: "var(--kleur-kop)" }}>{groep}</strong>
-                  <Chip toon="neutraal">{lijst.length} pagina&#8217;s</Chip>
-                </div>
-                <div className="wp-stack">
-                  {lijst.map((r) => {
-                    const isOpen = !!openSig[r.pad];
-                    return (
-                      <div key={r.pad} className="wp-item wp-stack">
-                        <div className="wp-row wp-row-tussen">
-                          <span className="wp-row">
-                            <WerkChip categorie={categorieVanBron(r.bron)} />
-                            <code>{pad(r.pad)}</code>
-                            <Chip toon="neutraal">{UITKOMST_LABEL[r.uitkomst] || r.uitkomst}</Chip>
-                            {r.naar && <span>&#8594; <code>{pad(r.naar)}</code></span>}
-                            {r.volume != null && <span>{getal(r.volume)}/mnd</span>}
-                            {r.positie != null && <span>positie {r.positie}</span>}
-                            {r.onderbouwing.length > 0 && (
-                              <button type="button" className="btn btn-quiet btn-klein"
-                                onClick={() => setOpenSig((s) => ({ ...s, [r.pad]: !s[r.pad] }))}>
-                                {isOpen ? "▾ minder" : "▸ onderbouwing"}
-                              </button>
-                            )}
-                          </span>
-                          <button type="button" className="btn btn-primary btn-klein" disabled={maakBezig === r.pad} onClick={() => maakTaak(r)}>
-                            {maakBezig === r.pad ? "Bezig…" : "+ Maak taak"}
-                          </button>
+            {[...perGroep.entries()].map(([groep, lijst]) => {
+              const isOpen = !!openGroep[groep];
+              const gedeeld = lijst.length > 1 ? gemeenschappelijkeRegels(lijst.map((r) => r.onderbouwing)) : [];
+              return (
+                <div key={groep} className="strategy-card">
+                  <button type="button" className="strategy-head" onClick={() => setOpenGroep((s) => ({ ...s, [groep]: !s[groep] }))}>
+                    <span className="strategy-caret">{isOpen ? <Omlaag /> : <Uitklap />}</span>
+                    <span className="strategy-title">{groep}</span>
+                    <span className="strategy-meta-right">{lijst.length} pagina{lijst.length === 1 ? "" : "'s"}</span>
+                  </button>
+                  {isOpen && (
+                    <div className="strategy-body">
+                      {gedeeld.length > 0 && (
+                        <div className="wp-groep-achtergrond">
+                          <h4>Achtergrond van dit cluster</h4>
+                          <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(gedeeld.join("\n\n"), { basis: domein || undefined }) }} />
                         </div>
-                        {isOpen && (
-                          <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(r.onderbouwing.join("\n\n")) }} />
-                        )}
-                      </div>
-                    );
-                  })}
+                      )}
+                      {lijst.map((r) => {
+                        const eigenOnderbouwing = r.onderbouwing.slice(gedeeld.length);
+                        const isPagOpen = !!openSig[r.pad];
+                        return (
+                          <div key={r.pad} className="wp-item wp-stack">
+                            <div className="wp-row wp-row-tussen">
+                              <span className="wp-row">
+                                <WerkChip categorie={categorieVanBron(r.bron)} />
+                                <Slug url={r.pad} domein={domein} />
+                                <Chip toon="neutraal">{UITKOMST_LABEL[r.uitkomst] || r.uitkomst}</Chip>
+                                {r.naar && <span>&#8594; <Slug url={r.naar} domein={domein} /></span>}
+                                {r.volume != null && <span>{getal(r.volume)}/mnd</span>}
+                                {r.positie != null && <span>positie {r.positie}</span>}
+                                {eigenOnderbouwing.length > 0 && (
+                                  <button type="button" className="btn btn-quiet btn-klein wp-linkstijl"
+                                    onClick={() => setOpenSig((s) => ({ ...s, [r.pad]: !s[r.pad] }))}>
+                                    {isPagOpen ? "minder" : "onderbouwing"}
+                                  </button>
+                                )}
+                              </span>
+                              <button type="button" className="btn btn-primary btn-klein" disabled={maakBezig === r.pad} onClick={() => maakTaak(r)}>
+                                {maakBezig === r.pad ? "Bezig…" : "+ Maak taak"}
+                              </button>
+                            </div>
+                            {isPagOpen && (
+                              <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(eigenOnderbouwing.join("\n\n"), { basis: domein || undefined }) }} />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {!perGroep.size && <p className="muted">Niets meer te beoordelen voor dit filter.</p>}
           </Paneel>
 
@@ -524,7 +638,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                             <div className="wp-row wp-row-tussen">
                               <span className="wp-row">
                                 <WerkChip categorie={categorieVanTaaktype(t.taaktype)} />
-                                {t.taak}{t.url && <> · <code>{pad(t.url)}</code></>}
+                                {t.taak}{t.url && <> · <Slug url={t.url} domein={domein} /></>}
                               </span>
                               <span className="wp-row">
                                 <input type="number" min={5} step={5} size={3} className="uk-veld" defaultValue={t.estimateMin ?? DEFAULT_MIN}
@@ -583,7 +697,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
 
           <Paneel
             titel="Activiteitenrapportage"
-            uitleg="Dezelfde geschiedenis als hierboven, maar over een zelf te kiezen periode."
+            uitleg="Dezelfde geschiedenis als hierboven, maar over een zelf te kiezen periode, ook gebundeld per pagina."
             knoppen={
               <Chips>
                 {PERIODES.map((p) => (
@@ -595,13 +709,39 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             }
           >
             <div className="wp-stack">
-              {activiteitPeriode.map((a) => (
-                <div key={a.id} className="wp-item wp-row">
-                  <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
-                  <WerkChip categorie={categorieVanSoort(a.soort)} />
-                  <span className="wp-grow">{a.intern}{a.url && <> · <code>{pad(a.url)}</code></>}</span>
-                </div>
-              ))}
+              {rapportGroepen.map((g) => {
+                if (g.items.length === 1) {
+                  const a = g.items[0];
+                  return (
+                    <div key={g.sleutel} className="wp-item wp-row">
+                      <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
+                      <WerkChip categorie={categorieVanSoort(a.soort)} />
+                      <span className="wp-grow">{a.intern}{a.url && <> · <Slug url={a.url} domein={domein} /></>}</span>
+                    </div>
+                  );
+                }
+                const isOpen = !!openRapportGroep[g.sleutel];
+                return (
+                  <div key={g.sleutel} className="wp-item wp-stack">
+                    <button type="button" className="deelkop" aria-expanded={isOpen}
+                      onClick={() => setOpenRapportGroep((s) => ({ ...s, [g.sleutel]: !s[g.sleutel] }))}>
+                      {g.url ? titelVanSlug(g.url) : "Overig"}<span className="deelkop-meta">{g.items.length}</span>
+                    </button>
+                    {isOpen && (
+                      <div className="wp-stack">
+                        {g.url && <div className="wp-row"><Slug url={g.url} domein={domein} /></div>}
+                        {g.items.map((a) => (
+                          <div key={a.id} className="wp-item wp-row">
+                            <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
+                            <WerkChip categorie={categorieVanSoort(a.soort)} />
+                            <span className="wp-grow">{a.intern}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {!activiteitPeriode.length && <p className="muted">Niets gelogd in deze periode.</p>}
             </div>
           </Paneel>

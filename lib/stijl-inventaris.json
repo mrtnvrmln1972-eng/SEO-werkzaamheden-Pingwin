@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9432,
-    "stijlregels": 4569,
-    "classnamen": 3117
+    "regels": 9439,
+    "stijlregels": 4573,
+    "classnamen": 3119
   },
   "kleuren": {
     "verschillend": 40,
@@ -600,7 +600,7 @@
     }
   ],
   "inline": {
-    "totaal": 615,
+    "totaal": 614,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1545,7 +1545,7 @@
     }
   ],
   "icoontekens": {
-    "totaal": 211,
+    "totaal": 207,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
@@ -1559,11 +1559,11 @@
       },
       {
         "teken": "▾",
-        "aantal": 17
+        "aantal": 15
       },
       {
         "teken": "▸",
-        "aantal": 15
+        "aantal": 13
       },
       {
         "teken": "⠿",
@@ -1923,7 +1923,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8790,
-    "schaalGebruik": 1500
+    "gebruik": 8801,
+    "schaalGebruik": 1503
   }
 }
