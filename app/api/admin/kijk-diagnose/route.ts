@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { guardOwner } from "../../../../lib/admin-scope";
 import { sql, ensureSchema } from "../../../../lib/db";
 import { hashPassword, verifyPassword, generatePassword } from "../../../../lib/password";
-import { MAX_ACTIEF, getActiveKeys } from "../../../../lib/claude-view-key";
+import { MAX_ACTIEF, getActiveKeys, createViewKey, testViewKey } from "../../../../lib/claude-view-key";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -92,7 +92,40 @@ export async function GET(req: NextRequest) {
     verseSleutelValtBuitenDeTwaalf: metStempel >= MAX_ACTIEF,
   };
 
-  return NextResponse.json({ ok: true, meting1, meting2 });
+  // ── Meting 3: het echte pad, op de server, van knop tot deur ──
+  // De eerste meting bewees dat een hash de database ongeschonden overleeft, en
+  // de tweede dat de bovengrens niets intrekt. Blijft over: doet het echte pad
+  // het wél als het hier, in één verzoek, achter elkaar gebeurt? Dit is exact
+  // wat de knop in de cockpit doet (aanmaken, dan langs /api/kijk?test=1), maar
+  // dan zonder browser, zonder omgevingsvariabele en zonder tweede verzoek.
+  //
+  // Komt hier "ok" uit, dan werkt het aanmaken en controleren op de server en
+  // zit het verschil in wat de browser of de Claude-omgeving daarna verstuurt.
+  // Komt hier een afwijzing uit, dan is de fout eindelijk in één plaatje te
+  // vangen: dan zie je meteen of de verse rij wel terugkomt in de controle.
+  const voor = await sql`SELECT COALESCE(MAX(id), 0)::int AS grens FROM claude_view_key`;
+  const grens = Number(voor.rows[0]?.grens ?? 0);
+  const versePlat = await createViewKey();
+  const rijen = await getActiveKeys();
+  const uitkomst = await testViewKey(versePlat);
+  const passend = rijen.filter((r) => r.key_hash && verifyPassword(versePlat, r.key_hash));
+
+  const meting3 = {
+    testViewKey: uitkomst,
+    rijenInDeControle: rijen.length,
+    rijenDiePassen: passend.length,
+    idVanDePassendeRij: passend[0]?.id ?? null,
+    hoogsteIdInDeControle: rijen.length ? Math.max(...rijen.map((r) => r.id)) : null,
+    // Per geldige rij alleen de vorm, nooit de inhoud: een rij met een andere
+    // lengte is een sleutel uit een oudere opzet en kan nooit passen.
+    vormenInDeControle: rijen.map((r) => `${r.id}: ${r.key_hash ? vorm(r.key_hash) : "geen hash"}`),
+  };
+
+  // De proefsleutel is een echte, werkende sleutel; die laten we niet staan.
+  // Op id, niet op "welke rij paste": juist als er niets past moet hij weg.
+  await sql`UPDATE claude_view_key SET revoked_at = now() WHERE id > ${grens}`;
+
+  return NextResponse.json({ ok: true, meting1, meting2, meting3 });
 }
 
 function vorm(h: string): string {
