@@ -136,6 +136,13 @@ export async function getActiveKey(): Promise<ActiveKeyRow | null> {
  * De volgorde is niet willekeurig: een sleutel controleren kost met opzet
  * rekentijd (scrypt), dus je wilt de sleutel die echt in gebruik is als eerste
  * tegenkomen in plaats van als laatste.
+ *
+ * ER STOND `last_used DESC NULLS LAST`, EN DAT ZETTE EEN VERSE SLEUTEL ACHTERAAN.
+ * Een sleutel die net gemaakt is heeft nog geen stempel, dus hij kwam ná elke
+ * sleutel die ooit gebruikt is. Zolang de bovengrens klopt maakt dat niets uit,
+ * maar zodra er meer geldige sleutels zijn dan deze grens valt precies de nieuwe
+ * eruit: de enige die op dat moment telt. `COALESCE(last_used, created_at)` zegt
+ * wat we eigenlijk bedoelen: recent gebruikt óf recent gemaakt staat vooraan.
  */
 export async function getActiveKeys(): Promise<ActiveKeyRow[]> {
   await ensureSchema();
@@ -143,7 +150,7 @@ export async function getActiveKeys(): Promise<ActiveKeyRow[]> {
   const { rows } = await sql`
     SELECT id, key_hash, created_at, last_used FROM claude_view_key
     WHERE revoked_at IS NULL
-    ORDER BY last_used DESC NULLS LAST, id DESC LIMIT 40`;
+    ORDER BY COALESCE(last_used, created_at) DESC, id DESC LIMIT 40`;
   return rows.map((r) => ({
     id: Number(r.id),
     key_hash: (r.key_hash as string) ?? null,
@@ -176,6 +183,50 @@ export async function getViewKeyStatus(): Promise<ViewKeyStatus> {
 export const MAX_ACTIEF = 12;
 
 /**
+ * Welke sleutels vallen af als er een nieuwe bij komt?
+ *
+ * DIT IS DE REPARATIE VAN 26-08-2026 EN HET IS EEN VERVOLG OP DIE VAN 15-08.
+ * De bovengrens werd hiervóór in de database zelf uitgerekend, zo:
+ *
+ *     ... WHERE revoked_at IS NULL AND id NOT IN (
+ *           SELECT id FROM claude_view_key WHERE revoked_at IS NULL
+ *           ORDER BY last_used DESC NULLS LAST, id DESC LIMIT 12)
+ *
+ * Lees die volgorde nog eens: eerst de sleutels mét een gebruiksstempel, en pas
+ * daarna de sleutels zonder. Een sleutel die één seconde oud is heeft nog geen
+ * stempel en staat dus achteraan. Waren er al twaalf geldige sleutels mét
+ * stempel, dan viel de nieuwe buiten de twaalf en trok deze opdracht hem in het
+ * moment nadat hij was aangemaakt. Maarten kreeg een sleutel te zien die op dat
+ * moment al niet meer bestond, en de zelftest van de knop zei terecht "andere
+ * sleutel". De hash klopte altijd; de rij was alleen al ingetrokken.
+ *
+ * En dat was een val waar je niet vanzelf uitkomt: die twaalf gestempelde
+ * sleutels bleven staan, dus élke volgende poging ging precies zo.
+ *
+ * Nu staat de regel in gewone code in plaats van in een sorteervolgorde, met
+ * één harde afspraak: DE NIEUWE SLEUTEL BLIJFT ALTIJD. Wat afvalt zijn de
+ * sleutels die het langst niet gebruikt zijn, nooit degene die net is uitgedeeld.
+ * `proeven/kijk-sleutel-echt.proef.ts` maakt een sleutel aan en controleert hem
+ * meteen, ook met twaalf gestempelde sleutels ernaast, zodat dit niet nog een
+ * keer stil kan gebeuren.
+ */
+export function vervallenSleutels(
+  actief: { id: number; last_used: string | Date | null }[],
+  nieuwId: number,
+  max = MAX_ACTIEF,
+): number[] {
+  const tijd = (d: string | Date | null) => (d ? new Date(d).getTime() : 0);
+  const anderen = actief
+    .filter((r) => r.id !== nieuwId)
+    // Meest recent gebruikt eerst; nooit gebruikt achteraan, met de nieuwste id
+    // van die groep vooraan. Dat is precies de oude bedoeling, maar nu alleen
+    // over de ánderen: de verse sleutel doet niet mee aan deze wedstrijd.
+    .sort((a, b) => tijd(b.last_used) - tijd(a.last_used) || b.id - a.id);
+  // Eén plek is al vergeven aan de nieuwe sleutel, dus er blijven er max-1 over.
+  return anderen.slice(Math.max(0, max - 1)).map((r) => r.id);
+}
+
+/**
  * Maakt een nieuwe sleutel ERBIJ. De platte waarde komt hier één keer uit;
  * daarna bestaat alleen de hash nog.
  *
@@ -187,7 +238,9 @@ export const MAX_ACTIEF = 12;
  * twaalf vallen de sleutels af die het langst niet gebruikt zijn. Twaalf is
  * ruim meer dan het aantal omgevingen dat Maarten heeft, dus in de praktijk
  * raakt dit niets; het is er alleen om te voorkomen dat er over een jaar
- * honderd geldige sleutels rondslingeren.
+ * honderd geldige sleutels rondslingeren. Die grens raakt de zojuist gemaakte
+ * sleutel NOOIT; zie vervallenSleutels hierboven voor wat er misging toen de
+ * database die keuze maakte in plaats van deze code.
  */
 export async function createViewKey(): Promise<string> {
   await ensureSchema();
@@ -195,13 +248,23 @@ export async function createViewKey(): Promise<string> {
   // 40 tekens uit de alfabet-generator: ruim te lang om te raden, en zonder
   // tekens die in een URL of een .env-regel voor verwarring zorgen.
   const plat = `pw-kijk-${generatePassword(40)}`;
-  await sql`INSERT INTO claude_view_key (key_hash) VALUES (${hashPassword(plat)})`;
-  await sql`
-    UPDATE claude_view_key SET revoked_at = now()
-    WHERE revoked_at IS NULL AND id NOT IN (
-      SELECT id FROM claude_view_key WHERE revoked_at IS NULL
-      ORDER BY last_used DESC NULLS LAST, id DESC LIMIT ${MAX_ACTIEF}
-    )`;
+  const gemaakt = await sql`
+    INSERT INTO claude_view_key (key_hash) VALUES (${hashPassword(plat)}) RETURNING id`;
+  const nieuwId = Number(gemaakt.rows[0]?.id);
+  const { rows } = await sql`SELECT id, last_used FROM claude_view_key WHERE revoked_at IS NULL`;
+  const weg = vervallenSleutels(
+    rows.map((r) => ({ id: Number(r.id), last_used: (r.last_used as string) ?? null })),
+    nieuwId,
+    MAX_ACTIEF,
+  );
+  if (weg.length) {
+    // Als lijstje tekst doorgegeven en in de database weer uit elkaar gehaald:
+    // een echte array past niet in de typen van deze sql-tag, en de ids zelf in
+    // de opdracht plakken doen we niet, ook niet met getallen.
+    await sql`
+      UPDATE claude_view_key SET revoked_at = now()
+      WHERE id = ANY(string_to_array(${weg.join(",")}, ',')::int[])`;
+  }
   return plat;
 }
 
