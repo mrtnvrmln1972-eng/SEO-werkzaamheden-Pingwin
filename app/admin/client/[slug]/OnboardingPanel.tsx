@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { BLOK_LABEL, BLOK_UITLEG, type Blok, type Stand, type StapStand } from "../../../../lib/onboarding-stappen";
 import type { RunStand, Regel } from "../../../../lib/onboarding-run";
 import Voortgang from "./Voortgang";
-import { PijlRechts } from "../../../_ui/Pijl";
+import { PijlRechts, Omlaag, Uitklap } from "../../../_ui/Pijl";
 
 // ═══════════════════════════════════════════════════════════
 // ONBOARDING: ÉÉN SCHERM MET DE VASTE VOLGORDE
@@ -42,6 +42,13 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
   const [fout, setFout] = useState("");
   const [bezig, setBezig] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // "13 van 18 af" zegt niets over wát er nog moet; "de vorige rit" is juist
+  // vaak al bekend (je hebt hem net zien lopen) en stond toch altijd open.
+  // Twee toggles, allebei standaard dicht op wat je net gedraaid hebt. Zie
+  // Maartens woorden (25-08-2026): "13 van 18 is leuk, maar wat is er dan
+  // nog niet gedaan?"
+  const [openLijstOpen, setOpenLijstOpen] = useState(false);
+  const [ritOpen, setRitOpen] = useState(false);
 
   const haal = useCallback(async () => {
     try {
@@ -98,9 +105,35 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
         <div className="ob-voortgang">
           <div className="ob-balk"><span style={{ width: `${pct}%` }} /></div>
           <strong>{stand.af} van {stand.totaal} af</strong>
-          {stand.mist.length > 0 && <span className="muted">Nog open: {stand.mist.slice(0, 3).join(", ")}{stand.mist.length > 3 ? ` en ${stand.mist.length - 3} meer` : ""}.</span>}
           {stand.klaar && <span className="ob-chip ob-af">Alles staat</span>}
         </div>
+
+        {/* Niet meer "Nog open: X, Y en 3 meer": een afgekapte lijst dwong je
+            om toch naar Fundament te gaan om te zien wát er nog moest. Nu de
+            volledige lijst, dicht bij de balk waar hij bij hoort, standaard
+            ingeklapt. */}
+        {stand.mist.length > 0 && (
+          <div className="ob-open-toggle">
+            <button type="button" className="btn btn-quiet btn-klein" onClick={() => setOpenLijstOpen((v) => !v)}>
+              {openLijstOpen ? <Omlaag /> : <Uitklap />} Wat staat er nog open? ({stand.mist.length})
+            </button>
+            {openLijstOpen && (
+              <ul className="ob-open-lijst">
+                {stand.stappen.filter((s) => !s.optioneel && (s.staat === "open" || s.staat === "verouderd")).map((s) => (
+                  <li key={s.key}>
+                    <span className={`ob-chip ob-${s.staat}`}>{STAAT_TEKST[s.staat]}</span>
+                    <strong>{s.label}</strong> <span className="muted">{s.detail}</span>
+                    {s.tab && (
+                      <button type="button" className="btn btn-ghost btn-klein" onClick={() => onGaNaar(s.tab!)}>
+                        Openen <PijlRechts />
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         <div className="ob-acties">
           <button type="button" className="btn btn-primary" onClick={start} disabled={bezig || draait}>
@@ -128,21 +161,29 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
 
         {run && run.status !== "idle" && (
           <div className="ob-log">
-            <div className="ob-log-kop">
+            {/* Standaard dicht: staat een rit nog te lopen, dan zet dat vanzelf
+                open, want dan wil je live meekijken. Is hij klaar, dan is dit
+                geschiedenis die je meestal niet meer hoeft te zien (25-08-2026). */}
+            <button type="button" className="btn btn-quiet btn-klein ob-log-kop" onClick={() => setRitOpen((v) => !v)}>
+              {(ritOpen || run.status === "running") ? <Omlaag /> : <Uitklap />}{" "}
               {run.status === "running" ? "Wat er tot nu toe gedaan is" : run.status === "error" ? "De vorige rit liep vast" : "De vorige rit"}
-            </div>
-            {run.error && <p className="ob-fout">{run.error}</p>}
-            <ul className="ob-log-lijst">
-              {run.regels.map((r: Regel, i: number) => (
-                <li key={`${r.key}-${i}`}>
-                  <span className={`ob-chip ob-${r.uitkomst}`}>{
-                    r.uitkomst === "gedaan" ? "gedaan" : r.uitkomst === "stond-al" ? "stond al" :
-                    r.uitkomst === "gestart" ? "gestart" : r.uitkomst === "mislukt" ? "mislukt" : "aan jou"
-                  }</span>
-                  <strong>{r.label}</strong> <span className="muted">{r.toelichting}</span>
-                </li>
-              ))}
-            </ul>
+            </button>
+            {(ritOpen || run.status === "running") && (
+              <>
+                {run.error && <p className="ob-fout">{run.error}</p>}
+                <ul className="ob-log-lijst">
+                  {run.regels.map((r: Regel, i: number) => (
+                    <li key={`${r.key}-${i}`}>
+                      <span className={`ob-chip ob-${r.uitkomst}`}>{
+                        r.uitkomst === "gedaan" ? "gedaan" : r.uitkomst === "stond-al" ? "stond al" :
+                        r.uitkomst === "gestart" ? "gestart" : r.uitkomst === "mislukt" ? "mislukt" : "aan jou"
+                      }</span>
+                      <strong>{r.label}</strong> <span className="muted">{r.toelichting}</span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         )}
       </div>
