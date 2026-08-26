@@ -6756,17 +6756,28 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
    26-08-2026: "dan komt die onder gedaan"). Met CSS grid (via display:contents
    op elke <li>, zodat de kinderen in de gedeelde kolommen van de <ul> vallen)
    blijft een omslaande regel binnen zijn eigen kolom, en staan chip, label,
-   tekst en knop over alle rijen heen strak op hetzelfde raster. */
-.ob-rooster { list-style: none; margin: var(--ruimte-regel) 0 0; padding: 0; display: grid; column-gap: var(--ruimte-regel); row-gap: 0; border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); overflow: hidden; }
+   tekst en knop over alle rijen heen strak op hetzelfde raster.
+   LET OP (26-08-2026, gevonden na Maartens melding): de rij-opmaak (padding,
+   randlijn, lettergrootte) staat op een EIGEN `.ob-cel`-omhulsel, nooit direct
+   op `li > *`. Stond het rechtstreeks op `li > *`, dan raakte het óók de
+   `.ob-chip` erin (die is zelf ook een direct kind), en een class-selector
+   met een element ervoor (`.ob-rooster li > *`) is specifieker dan de kale
+   `.ob-chip`-regel; de rij-padding versloeg dan zonder waarschuwing de eigen
+   pil-padding van het chipje, en er ontstond een lompe, opgerekte rechthoek
+   in plaats van het subtiele pilletje dat overal elders staat. Precies de
+   fout die de bouwstenen-regel (19-08-2026, zie CLAUDE.md) verbiedt: een
+   gedeelde bouwsteen mag positie/ruimte krijgen, nooit zijn eigen uiterlijk
+   kwijtraken aan een regel eromheen. */
+.ob-rooster { list-style: none; margin: var(--ruimte-regel) 0 0; padding: 0; display: grid; align-items: start; column-gap: var(--ruimte-regel); row-gap: 0; border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); overflow: hidden; }
 .ob-rooster li { display: contents; }
-.ob-rooster li > * { padding: var(--ruimte-naast) 0; border-top: 1px solid var(--kleur-rand-zacht); align-self: start; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
-.ob-rooster li:first-child > * { border-top: none; }
-.ob-rooster li > *:first-child { padding-left: var(--ruimte-regel); }
-.ob-rooster li > *:last-child { padding-right: var(--ruimte-regel); }
+.ob-cel { display: flex; align-items: center; padding: var(--ruimte-naast) 0; border-top: 1px solid var(--kleur-rand-zacht); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
+.ob-rooster li:first-child .ob-cel { border-top: none; }
+.ob-rooster li .ob-cel:first-child { padding-left: var(--ruimte-regel); }
+.ob-rooster li .ob-cel:last-child { padding-right: var(--ruimte-regel); }
 .ob-rooster strong { color: var(--dark); }
 
 .ob-rooster-open { grid-template-columns: auto 1fr auto; }
-.ob-rooster-open .ob-open-knop-cel { display: flex; justify-content: flex-end; }
+.ob-rooster-open .ob-cel:last-child { justify-content: flex-end; }
 
 .ob-rooster-log { grid-template-columns: auto minmax(140px, max-content) 1fr; }
 

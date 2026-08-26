@@ -1,6 +1,6 @@
 {
   "css": {
-    "regels": 9340,
+    "regels": 9351,
     "stijlregels": 4514,
     "classnamen": 3079
   },
@@ -228,7 +228,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 67,
+      "aantal": 66,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -260,7 +260,6 @@
         "md-knop",
         "mini-btn",
         "month-btn",
-        "ob-open-knop-cel",
         "om-knop",
         "opr-btn",
         "opr-knoppen",
