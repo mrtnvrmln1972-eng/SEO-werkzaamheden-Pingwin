@@ -2358,10 +2358,14 @@ button.ck-collapse-head {
 .wp-week-nav a { display: flex; justify-content: space-between; gap: var(--ruimte-naast); padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-klein); font-size: var(--type-bijschrift); color: var(--kleur-tekst); text-decoration: none; }
 .wp-week-nav a:hover { background: var(--kleur-rustig); }
 .wp-week-nav-n { color: var(--kleur-tekst-stil); }
-.wp-filt { display: flex; flex-direction: column; gap: var(--ruimte-krap); }
-.wp-filt-btn { display: block; width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: var(--ronding-klein); padding: var(--ruimte-krap) var(--ruimte-naast); cursor: pointer; font: inherit; color: inherit; }
-.wp-filt-btn:hover { background: var(--kleur-rustig); }
-.wp-filt-btn.aan { background: var(--brand-orange-soft); border-color: var(--kleur-rand-accent); }
+/* De stuurbalk: één plek waar je kiest waar de héle pagina over gaat, en hij
+   blijft in beeld terwijl je scrollt. De filterknoppen zelf zijn gewone knoppen
+   uit het knopsysteem (.btn + .btn-primary/.btn-ghost); er stond hier eerst een
+   eigen soort filterknop naast, en dat waren twee filterstijlen op één scherm. */
+.wp-stuur { position: sticky; top: 0; z-index: 5; display: flex; flex-direction: column; gap: var(--ruimte-naast); }
+.wp-stuur-rij { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.wp-stuur-label { flex: 0 0 auto; font-size: var(--type-label); line-height: var(--regel-label); letter-spacing: var(--spatie-label); text-transform: uppercase; font-weight: 700; color: var(--kleur-tekst-stil); }
+.wp-zoekveld { flex: 1 1 260px; min-width: 0; }
 
 .wp-week-kop { display: flex; align-items: baseline; gap: var(--ruimte-naast); flex-wrap: wrap; }
 .wp-week-nr { flex: none; width: 30px; height: 30px; border-radius: var(--ronding-klein); background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); display: grid; place-items: center; font-weight: 800; font-size: var(--type-bijschrift); }
@@ -2389,9 +2393,23 @@ button.ck-collapse-head {
 .wp-grow { flex: 1 1 auto; min-width: 0; }
 .wp-titel { font-weight: 600; font-size: var(--type-bijschrift); }
 .wp-wrap { max-width: 1220px; margin: 0 auto; padding: var(--ruimte-scherm); }
-.wp-week-kop { display: flex; align-items: baseline; gap: var(--ruimte-naast); flex-wrap: wrap; padding: var(--ruimte-regel) var(--ruimte-groep) var(--ruimte-naast); }
+.wp-week-kop { display: flex; align-items: baseline; gap: var(--ruimte-naast); flex-wrap: wrap; padding: 0 0 var(--ruimte-naast); }
 .wp-week-titel { font-weight: 700; font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-kop); display: block; }
-.wp-week-sub { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); display: block; margin-top: 2px; }
+.wp-week-sub { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); display: block; margin-top: var(--ruimte-krap); }
+
+/* Eén cluster binnen een blok: de gedeelde inklapkop van de cockpit (.deelkop,
+   niveau 2), met de titel en de ondertitel onder elkaar. Bewust GEEN tweede
+   .strategy-card binnen een .strategy-card: die kleurverloop-balk hoort bij
+   niveau 1, en zes van die balken onder elkaar was precies de fout die op
+   19-08-2026 op het beheerscherm gemaakt werd. */
+.wp-clus { display: flex; flex-direction: column; gap: var(--ruimte-naast); }
+.wp-clus-kop { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.wp-clus-tekst { display: flex; flex-direction: column; gap: var(--ruimte-krap); flex: 1 1 auto; min-width: 0; }
+.wp-clus-sub { font-weight: 400; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
+/* Administratie en door de klant zelf gemaakte paginawijzigingen: wel in het
+   logboek, niet tussen het werk waar je je planning op baseert. */
+.wp-ruis-kop { margin-top: var(--ruimte-regel); }
+.wp-doorgehaald { text-decoration: line-through; }
 .wp-voortgang-n { font-size: var(--type-hero); font-weight: 800; color: var(--kleur-accent-diep); line-height: 1.15; }
 .wp-voortgang-l { font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); margin-top: var(--ruimte-krap); }
 

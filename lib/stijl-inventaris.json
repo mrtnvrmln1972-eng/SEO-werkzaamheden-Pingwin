@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9439,
-    "stijlregels": 4573,
-    "classnamen": 3119
+    "regels": 9457,
+    "stijlregels": 4579,
+    "classnamen": 3127
   },
   "kleuren": {
     "verschillend": 40,
@@ -228,7 +228,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 67,
+      "aantal": 66,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -293,7 +293,6 @@
         "wp-btns",
         "wp-check-btn",
         "wp-fase-btn",
-        "wp-filt-btn",
         "wp-info-lijstbtn",
         "wp-link-btn",
         "zp-kop-knoppen"
@@ -418,7 +417,7 @@
     },
     {
       "naam": "Labels en badges",
-      "aantal": 112,
+      "aantal": 113,
       "namen": [
         "act-edit-label",
         "ag-hour-label",
@@ -529,6 +528,7 @@
         "wp-mail-linkchip",
         "wp-mail-onderwerp-label",
         "wp-sectie-label",
+        "wp-stuur-label",
         "wz-kpi-label",
         "wz-line-label",
         "wz-marker-label"
@@ -536,7 +536,7 @@
     },
     {
       "naam": "Invoervelden",
-      "aantal": 58,
+      "aantal": 59,
       "namen": [
         "add-month-select",
         "ag-checkbox-field",
@@ -595,12 +595,13 @@
         "wp-koppel-veld",
         "wp-mail-toveld",
         "wp-notitie-veld",
-        "wp-steun-veld"
+        "wp-steun-veld",
+        "wp-zoekveld"
       ]
     }
   ],
   "inline": {
-    "totaal": 614,
+    "totaal": 613,
     "metVasteWaarde": 0,
     "perBestand": []
   },
@@ -1923,7 +1924,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8801,
+    "gebruik": 8806,
     "schaalGebruik": 1503
   }
 }

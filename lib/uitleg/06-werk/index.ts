@@ -2,6 +2,7 @@ import { BLOKKEN as koers } from "./koers";
 import { BLOKKEN as notificaties } from "./notificaties";
 import { BLOKKEN as fases } from "./fases";
 import { BLOKKEN as planning } from "./planning";
+import { BLOKKEN as werkplanning } from "./werkplanning";
 import { BLOKKEN as paginalijst } from "./paginalijst";
 import { BLOKKEN as sitebouwer } from "./sitebouwer";
 import { BLOKKEN as doorvoeren } from "./doorvoeren";
@@ -23,6 +24,7 @@ export const HOOFDSTUK: Hoofdstuk = {
     ...notificaties,
     ...fases,
     ...planning,
+    ...werkplanning,
     ...paginalijst,
     ...sitebouwer,
     ...doorvoeren,
