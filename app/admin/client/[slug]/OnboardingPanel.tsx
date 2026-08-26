@@ -121,9 +121,9 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
               <ul className="ob-rooster ob-rooster-open">
                 {stand.stappen.filter((s) => !s.optioneel && (s.staat === "open" || s.staat === "verouderd")).map((s) => (
                   <li key={s.key}>
-                    <span className={`ob-chip ob-${s.staat}`}>{STAAT_TEKST[s.staat]}</span>
-                    <span><strong>{s.label}</strong> {s.detail}</span>
-                    <span className="ob-open-knop-cel">
+                    <span className="ob-cel"><span className={`ob-chip ob-${s.staat}`}>{STAAT_TEKST[s.staat]}</span></span>
+                    <span className="ob-cel"><strong>{s.label}</strong> {s.detail}</span>
+                    <span className="ob-cel">
                       {s.tab && (
                         <button type="button" className="btn btn-ghost btn-klein" onClick={() => onGaNaar(s.tab!)}>
                           Openen <PijlRechts />
@@ -176,12 +176,12 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
                 <ul className="ob-rooster ob-rooster-log">
                   {run.regels.map((r: Regel, i: number) => (
                     <li key={`${r.key}-${i}`}>
-                      <span className={`ob-chip ob-${r.uitkomst}`}>{
+                      <span className="ob-cel"><span className={`ob-chip ob-${r.uitkomst}`}>{
                         r.uitkomst === "gedaan" ? "gedaan" : r.uitkomst === "stond-al" ? "stond al" :
                         r.uitkomst === "gestart" ? "gestart" : r.uitkomst === "mislukt" ? "mislukt" : "aan jou"
-                      }</span>
-                      <strong>{r.label}</strong>
-                      <span>{r.toelichting}</span>
+                      }</span></span>
+                      <span className="ob-cel"><strong>{r.label}</strong></span>
+                      <span className="ob-cel">{r.toelichting}</span>
                     </li>
                   ))}
                 </ul>
