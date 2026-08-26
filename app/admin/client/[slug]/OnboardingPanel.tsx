@@ -118,16 +118,18 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
               {openLijstOpen ? <Omlaag /> : <Uitklap />} Wat staat er nog open? ({stand.mist.length})
             </button>
             {openLijstOpen && (
-              <ul className="ob-open-lijst">
+              <ul className="ob-rooster ob-rooster-open">
                 {stand.stappen.filter((s) => !s.optioneel && (s.staat === "open" || s.staat === "verouderd")).map((s) => (
                   <li key={s.key}>
                     <span className={`ob-chip ob-${s.staat}`}>{STAAT_TEKST[s.staat]}</span>
-                    <strong>{s.label}</strong> <span className="muted">{s.detail}</span>
-                    {s.tab && (
-                      <button type="button" className="btn btn-ghost btn-klein" onClick={() => onGaNaar(s.tab!)}>
-                        Openen <PijlRechts />
-                      </button>
-                    )}
+                    <span><strong>{s.label}</strong> {s.detail}</span>
+                    <span className="ob-open-knop-cel">
+                      {s.tab && (
+                        <button type="button" className="btn btn-ghost btn-klein" onClick={() => onGaNaar(s.tab!)}>
+                          Openen <PijlRechts />
+                        </button>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -171,14 +173,15 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
             {(ritOpen || run.status === "running") && (
               <>
                 {run.error && <p className="ob-fout">{run.error}</p>}
-                <ul className="ob-log-lijst">
+                <ul className="ob-rooster ob-rooster-log">
                   {run.regels.map((r: Regel, i: number) => (
                     <li key={`${r.key}-${i}`}>
                       <span className={`ob-chip ob-${r.uitkomst}`}>{
                         r.uitkomst === "gedaan" ? "gedaan" : r.uitkomst === "stond-al" ? "stond al" :
                         r.uitkomst === "gestart" ? "gestart" : r.uitkomst === "mislukt" ? "mislukt" : "aan jou"
                       }</span>
-                      <strong>{r.label}</strong> <span className="muted">{r.toelichting}</span>
+                      <strong>{r.label}</strong>
+                      <span>{r.toelichting}</span>
                     </li>
                   ))}
                 </ul>

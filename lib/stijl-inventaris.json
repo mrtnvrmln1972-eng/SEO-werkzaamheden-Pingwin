@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9325,
-    "stijlregels": 4509,
-    "classnamen": 3076
+    "regels": 9340,
+    "stijlregels": 4514,
+    "classnamen": 3079
   },
   "kleuren": {
     "verschillend": 40,
@@ -228,7 +228,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 66,
+      "aantal": 67,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -260,6 +260,7 @@
         "md-knop",
         "mini-btn",
         "month-btn",
+        "ob-open-knop-cel",
         "om-knop",
         "opr-btn",
         "opr-knoppen",
@@ -1920,7 +1921,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8680,
-    "schaalGebruik": 1487
+    "gebruik": 8684,
+    "schaalGebruik": 1486
   }
 }

@@ -16,7 +16,7 @@ import { FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import { PROFILE_HEADER, TOV_HEADER } from "../../../../lib/constants";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
-import { Omlaag, Uitklap, Vink, Kruis } from "../../../_ui/Pijl";
+import { Omlaag, Uitklap } from "../../../_ui/Pijl";
 import { gesprekDatum } from "../../../../lib/chat-datum";
 
 function shortUrl(url: string): string {
@@ -455,15 +455,16 @@ export default function PagesPanel({ slug, initialProfile, clientEmail, clientNa
       <div className="profile-search-row">
         <button type="button" className="client-profile-toggle" onClick={() => setProfileOpen((v) => !v)}>
         <span className="cpt-titel">{profileOpen ? <Omlaag /> : <Uitklap />} Klantprofiel</span>
-        {/* Geen vinkje-teken in de knoptekst: de huisstijl staat geen emoji of
-            losse tekens toe in een knop met tekst (proeven/huisstijl.proef.ts).
-            Vink/Kruis zijn getekende iconen (app/_ui/Pijl.tsx), geen letters,
-            dus geen emoji-overtreding en ook leesbaar zonder kleur. */}
+        {/* Zelfde "Staat"/"Nog te doen"-pilletje als op elke Fundament-tegel
+            (FundamentPanel.tsx, .ob-chip ob-af / ob-open): één stand-taal door
+            het hele dashboard, in plaats van hier een eigen kleurverschil te
+            verzinnen (Maartens woorden, 26-08-2026: "dan is het tenminste
+            duidelijk en ook eenduidig door het hele dashboard"). */}
         <span className="cpt-rechts">
           {!profileOpen && (
             <>
-              <span className={parts.profileMd ? "plan-chip has" : "plan-chip"}>{parts.profileMd ? <Vink /> : <Kruis />} Klantprofiel</span>
-              <span className={parts.tovMd ? "plan-chip has" : "plan-chip"}>{parts.tovMd ? <Vink /> : <Kruis />} Tone of voice</span>
+              <span className="cpt-stand">Klantprofiel <span className={`ob-chip ob-${parts.profileMd ? "af" : "open"}`}>{parts.profileMd ? "Staat" : "Nog te doen"}</span></span>
+              <span className="cpt-stand">Tone of voice <span className={`ob-chip ob-${parts.tovMd ? "af" : "open"}`}>{parts.tovMd ? "Staat" : "Nog te doen"}</span></span>
             </>
           )}
           {profileSaved && <span className="focus-save-status">opgeslagen</span>}

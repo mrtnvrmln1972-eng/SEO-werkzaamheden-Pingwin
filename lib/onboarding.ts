@@ -286,7 +286,7 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
       af: euro.ingevuld,
       detail: euro.ingevuld
         ? `€ ${Math.round(euro.klantwaarde).toLocaleString("nl-NL")} per klant, ${euro.conversie}% conversie.`
-        : "Klantwaarde en conversiepercentage zijn nog niet ingevuld; alle lijsten blijven daardoor zonder bedragen.",
+        : "Nog niet ingevuld; lijsten blijven daardoor zonder bedragen.",
       sinds: null,
     },
     googleprofiel: {
@@ -294,14 +294,14 @@ export async function getOnboardingStand(slug: string): Promise<Stand> {
       bezig: gmb.bezig,
       detail: gmb.gekoppeld > 0
         ? `${gmb.gekoppeld} ${gmb.gekoppeld === 1 ? "profiel" : "profielen"} gekoppeld${gmb.locaties > gmb.gekoppeld ? ` van ${gmb.locaties} vestigingen` : ""}.`
-        : "Er is nog geen Google-bedrijfsprofiel gekoppeld; zonder profiel meten we niets op de kaart.",
+        : "Nog geen Google-bedrijfsprofiel gekoppeld; zonder profiel meten we niets.",
       sinds: gmb.sinds,
     },
     gmbbeheer: {
       af: gmb.beheer,
       detail: gmb.beheer
         ? "Pingwin is beheerder; de bezoekcijfers van het profiel komen binnen."
-        : "Nog geen beheertoegang. Vraag de klant om Pingwin als beheerder toe te voegen, dan zien we hoe vaak het profiel gezien wordt en wat optimalisaties opleveren.",
+        : "Nog geen beheertoegang; vraag de klant om Pingwin als beheerder toe te voegen.",
       sinds: null,
     },
     positionering: {

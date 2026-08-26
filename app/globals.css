@@ -1382,6 +1382,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
    van de knop in plaats van los achter de tekst aan (26-08-2026). */
 .cpt-titel { display: inline-flex; align-items: center; gap: var(--ruimte-krap); }
 .cpt-rechts { display: inline-flex; align-items: center; gap: var(--ruimte-naast); flex-shrink: 0; }
+.cpt-stand { display: inline-flex; align-items: center; gap: var(--ruimte-krap); font-size: var(--type-label); font-weight: 400; text-transform: none; color: var(--kleur-tekst-stil); }
 .client-profile-area { width: 100%; min-height: 110px; margin-top: var(--ruimte-naast); font-family: var(--letter); font-size: var(--type-bijschrift); color: var(--dark); line-height: 1.5; border: 1px solid var(--kleur-rand); border-radius: var(--ronding-klein); padding: var(--ruimte-naast) var(--ruimte-regel); outline: none; resize: vertical; }
 .client-profile-area:focus { border-color: var(--kleur-rand-accent); }
 .profile-note { margin-top: var(--ruimte-naast); padding: var(--ruimte-naast) var(--ruimte-regel); border-radius: var(--ronding-klein); background: var(--kleur-fout-vlak); border: 1px solid var(--kleur-fout); color: var(--kleur-fout); font-weight: 700; font-size: var(--type-bijschrift); }
@@ -6745,15 +6746,29 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
   margin-top: var(--s-5); padding-top: var(--ruimte-groep); border-top: 1px solid var(--kleur-rand);
 }
 .ob-log-kop { font-size: var(--type-lopend); line-height: var(--regel-lopend); font-weight: 700; color: var(--dark); margin-bottom: var(--ruimte-regel); }
-.ob-log-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-naast); }
-.ob-log-lijst li { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
-.ob-log-lijst strong { color: var(--dark); }
 
-/* Wat staat er nog open: dezelfde toggle-vorm als het logboek erboven. */
 .ob-open-toggle { margin-top: var(--ruimte-regel); }
-.ob-open-lijst { list-style: none; margin: var(--ruimte-regel) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-naast); }
-.ob-open-lijst li { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-naast); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
-.ob-open-lijst strong { color: var(--dark); }
+
+/* ── "Wat staat er nog open" en "De vorige rit": een echt rooster ──────────
+   Eerder gewone flex-rijen die wrapten: bij een lange toelichting begon de
+   omgeslagen regel gewoon weer bij de linkerkant van de rij, dus onder de
+   chip in plaats van onder zijn eigen tekstkolom (Maartens woorden,
+   26-08-2026: "dan komt die onder gedaan"). Met CSS grid (via display:contents
+   op elke <li>, zodat de kinderen in de gedeelde kolommen van de <ul> vallen)
+   blijft een omslaande regel binnen zijn eigen kolom, en staan chip, label,
+   tekst en knop over alle rijen heen strak op hetzelfde raster. */
+.ob-rooster { list-style: none; margin: var(--ruimte-regel) 0 0; padding: 0; display: grid; column-gap: var(--ruimte-regel); row-gap: 0; border: 1px solid var(--kleur-rand-zacht); border-radius: var(--ronding-knop); overflow: hidden; }
+.ob-rooster li { display: contents; }
+.ob-rooster li > * { padding: var(--ruimte-naast) 0; border-top: 1px solid var(--kleur-rand-zacht); align-self: start; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
+.ob-rooster li:first-child > * { border-top: none; }
+.ob-rooster li > *:first-child { padding-left: var(--ruimte-regel); }
+.ob-rooster li > *:last-child { padding-right: var(--ruimte-regel); }
+.ob-rooster strong { color: var(--dark); }
+
+.ob-rooster-open { grid-template-columns: auto 1fr auto; }
+.ob-rooster-open .ob-open-knop-cel { display: flex; justify-content: flex-end; }
+
+.ob-rooster-log { grid-template-columns: auto minmax(140px, max-content) 1fr; }
 
 /* De stappen zelf */
 .ob-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
