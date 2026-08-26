@@ -6736,7 +6736,12 @@ details.opr-onderwerp > summary::-webkit-details-marker { display: none; }
 }
 .ob-balk span { display: block; height: 100%; background: var(--kleur-accent); border-radius: var(--ronding-pil); transition: width 0.3s; }
 
-.ob-acties { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-regel); }
+/* margin-top hier, niet op .ob-open-toggle: die kaart-brede voorganger staat
+   er soms wel, soms niet (alleen als er iets openstaat), dus de vaste ruimte
+   naar de vorige regel hoort bij het blok dat er ALTIJD staat (26-08-2026:
+   zonder deze regel plakte deze knoprij tegen de rooster-rand hierboven aan,
+   net zoals dezelfde soort fout op 25-08-2026 al bij Klantprofiel gebeurde). */
+.ob-acties { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-regel); margin-top: var(--s-5); }
 .ob-acties .muted { max-width: 52ch; }
 
 .ob-fout { color: var(--kleur-fout); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); margin: var(--ruimte-regel) 0 0; }

@@ -139,7 +139,7 @@ export default function OnboardingPanel({ slug, onGaNaar, alleenKop }: { slug: s
         )}
 
         <div className="ob-acties">
-          <button type="button" className="btn btn-primary" onClick={start} disabled={bezig || draait}>
+          <button type="button" className="btn btn-primary btn-klein" onClick={start} disabled={bezig || draait}>
             {draait ? "Bezig…" : eersteKeer ? "Start de onboarding" : "Vul aan wat nog ontbreekt"}
           </button>
           <span className="muted">
