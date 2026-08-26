@@ -96,6 +96,13 @@ export default function DocVersies({ slug, url, triggerSlot, open, onStand, driv
   const [preview, setPreview] = useState<Versie | null>(null);
   const [hernoem, setHernoem] = useState<{ id: number; naam: string } | null>(null);
   const [toets, setToets] = useState<{ id: number; uitkomst: Toets } | null>(null);
+  // Een "verwerkte kopie" is geen andere versie: het is letterlijk hetzelfde
+  // stuk, gemaakt door een automatische stap ("Verwerk") die niet meer bestaat
+  // (zie lib/doc-naam.ts). Zo'n kopie staat daarom niet zomaar naast zijn bron
+  // in de lijst, maar verstopt achter een klein tokkeltje bij die bron; alleen
+  // openklappen als je echt de geschiedenis wilt zien. Sleutel = het id van de
+  // bron waar de kopie onder hoort.
+  const [toonGeschiedenis, setToonGeschiedenis] = useState<Record<number, boolean>>({});
   // Het open venster "ondersteunend maken" (welk document, welke doelpagina's),
   // de uitkomst ervan, en de paginalijst van deze klant om uit te kiezen. Die
   // lijst wordt pas opgehaald als je het venster opent: hij is voor elke andere
@@ -145,13 +152,16 @@ export default function DocVersies({ slug, url, triggerSlot, open, onStand, driv
   useEffect(() => { onStand?.({ aantal: versies.length, moetKiezen }); }, [versies.length, moetKiezen, onStand]);
 
   // ── De deelbare pagina voor de developer ──
-  // Alleen ophalen als er structured data ligt én de lijst openstaat: op elke
-  // andere kaart is dit een rondje naar de server voor niets.
+  // Dit blokje staat, in tegenstelling tot de rest van de documentenlijst,
+  // altijd in beeld als er structured data ligt: het zegt wat er geldt en wat
+  // de developer krijgt, en dat is precies waar je meteen naar zoekt. Alleen
+  // ophalen als er structured data ligt, op elke andere kaart is dit een
+  // rondje naar de server voor niets.
   const heeftStructured = versies.some((v) => v.kind === "structured");
   const [devDeelUrl, setDevDeelUrl] = useState("");
   const [deelGekopieerd, setDeelGekopieerd] = useState(false);
   useEffect(() => {
-    if (!open || !heeftStructured || devDeelUrl) return;
+    if (!heeftStructured || devDeelUrl) return;
     let af = false;
     fetch(`/api/admin/org-data?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
@@ -161,7 +171,7 @@ export default function DocVersies({ slug, url, triggerSlot, open, onStand, driv
       })
       .catch(() => { /* dan staat de regel er zonder link; de kaart werkt gewoon */ });
     return () => { af = true; };
-  }, [open, heeftStructured, devDeelUrl, slug]);
+  }, [heeftStructured, devDeelUrl, slug]);
   async function kopieerDeelLink() {
     if (!devDeelUrl) return;
     try { await navigator.clipboard.writeText(devDeelUrl); setDeelGekopieerd(true); setTimeout(() => setDeelGekopieerd(false), 2000); } catch { /* handmatig */ }
@@ -388,7 +398,7 @@ export default function DocVersies({ slug, url, triggerSlot, open, onStand, driv
           het leesbare overzicht. Stond dat er niet bij, dan opende je een
           aangeleverd Word-document en keek je naar een advies in de huisstijl,
           terwijl je een JSON-bestand zocht (21-08-2026). */}
-      {open && heeftStructured && (
+      {heeftStructured && (
         <div className="wp-doc-uitleg">
           <span className="wp-doc-uitleg-kop">Structured data</span>
           <p>
@@ -411,7 +421,15 @@ export default function DocVersies({ slug, url, triggerSlot, open, onStand, driv
           {/* Leesvolgorde = proces-volgorde (analyse, blauwdruk, copy), daarbinnen
               per onderwerp bij elkaar en pas dán nieuwste eerst. Zie de uitleg bij
               `opVolgorde` hierboven. */}
-          {opVolgorde.map((v) => (
+          {opVolgorde.map((v) => {
+            // Een verwerkte kopie is exact hetzelfde stuk als zijn bron, dus die
+            // blijft dicht totdat je zelf de geschiedenis opvraagt bij die bron.
+            const isVerwerkteKopie = docLabel(v.naam).merk === "verwerkte kopie";
+            if (isVerwerkteKopie && v.bronId && !toonGeschiedenis[v.bronId]) return null;
+            // Heeft dit stuk zelf zo'n verstopte kopie? Dan komt er een klein
+            // tokkeltje bij te staan om 'm alsnog te laten zien.
+            const kopieën = opVolgorde.filter((x) => x.bronId === v.id && docLabel(x.naam).merk === "verwerkte kopie");
+            return (
             <li key={v.id}
               className={"wp-docrij" + (gekozen === v.id ? " wp-docrij-aan" : "") + (v.goedgekeurd ? " wp-docrij-geldt" : "")
                 // Springt een stukje in onder het stuk waar hij uit voortkomt, zodat
@@ -469,7 +487,7 @@ export default function DocVersies({ slug, url, triggerSlot, open, onStand, driv
                     gegeven een datum. Een vinkje "welke versie geldt" zou een
                     tweede waarheid maken naast die kennisbank. */}
                 {v.kind === "structured" ? (
-                  <a className="wp-docrij-kennisbank" href={`/admin/client/${slug}?tab=klant`}
+                  <a className="wp-docrij-kennisbank" href={`/admin/client/${slug}?tab=klant#fund-structured-data`}
                     title="Wat hierin stond is per gegeven verwerkt in de kennisbank van deze klant. Daar staat welke waarde geldt en van wanneer die is; dit bestand is het archief.">
                     in de kennisbank
                   </a>
@@ -511,6 +529,15 @@ export default function DocVersies({ slug, url, triggerSlot, open, onStand, driv
                 {v.driveLink && <a className="wp-link" href={/\.(docx?|)$/i.test(v.naam || "") ? docsBewerkLink(v.driveLink) : v.driveLink} target="_blank" rel="noreferrer">openen</a>}
                 <button type="button" className="wp-icon wp-del" title="Van de lijst halen (het bestand blijft in Drive)"
                   onClick={() => void stuur({ action: "negeer", id: v.id }, "weg")}>×</button>
+                {/* Een verwerkte kopie voegt niets toe (het is letterlijk hetzelfde
+                    stuk), dus die staat niet zomaar naast zijn bron. Dit tokkeltje
+                    is de enige plek waar je 'm alsnog kunt opvragen. */}
+                {kopieën.length > 0 && (
+                  <button type="button" className="btn btn-quiet btn-klein"
+                    onClick={() => setToonGeschiedenis((s) => ({ ...s, [v.id]: !s[v.id] }))}>
+                    {toonGeschiedenis[v.id] ? "geschiedenis verbergen" : `geschiedenis (${kopieën.length})`}
+                  </button>
+                )}
               </span>
 
               {/* Wat dit document is en wat er anders in staat. Stond al in de
@@ -635,7 +662,8 @@ export default function DocVersies({ slug, url, triggerSlot, open, onStand, driv
                 </div>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

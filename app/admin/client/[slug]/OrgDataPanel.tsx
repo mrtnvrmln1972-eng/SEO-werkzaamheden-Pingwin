@@ -303,11 +303,17 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
   const [open, setOpen] = useState(false);
   const [dataOpen, setDataOpen] = useState(false);
 
-  // Vanaf het Fundament-paneel linkt "Structured data" hierheen. Dit kaartje
-  // staat standaard dicht; kom je binnen via dat anker, klap hem dan meteen
-  // open, anders scrol je naar een dichte kop en zie je nog niets.
+  // Vanaf het Fundament-paneel en vanaf een taakkaart met structured data
+  // linkt "kennisbank van deze klant" hierheen. Dit kaartje staat standaard
+  // dicht en wordt zelf pas na de eerste pagina-paint geladen (ssr: false):
+  // de browser probeert dan al naar het anker te scrollen vóórdat dit blok
+  // bestaat, en geeft het daarna niet nog een keer opnieuw een kans. Klap hem
+  // dus open én scrol er zelf naartoe, anders land je bovenaan de pagina.
   useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#fund-structured-data") setOpen(true);
+    if (typeof window !== "undefined" && window.location.hash === "#fund-structured-data") {
+      setOpen(true);
+      document.getElementById("fund-structured-data")?.scrollIntoView({ block: "start" });
+    }
   }, []);
 
   // Wat er in het formulier staat en wat er als laatste bewaard is. Zolang die
