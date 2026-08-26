@@ -2326,17 +2326,39 @@ button.ck-collapse-head {
 .kpi-spark-wrap { position: relative; width: 100%; margin-top: var(--ruimte-naast); }
 .kpi-spark { display: block; width: 100%; height: 34px; }
 
-/* ── Het werkplan (26-08-2026) ──────────────────────────────────────────────
-   Nieuwe combinaties van bestaande tokens en de cockpit-familie; geen nieuwe
-   kleuren, geen losse pixelwaarden.
+/* werkplan:begin */
+/* ── Het werkplan ───────────────────────────────────────────────────────────
+   ZES ROLLEN, ZES MATEN, VERDER NIETS
+   ═══════════════════════════════════
+   Op 26-08-2026 keek Maarten hiernaar en zag "weer een gaatje van allerlei
+   stijlen". Terecht, en de oorzaak is te benoemen: in één opengeklapte regel
+   stonden vier lettergroottes door elkaar. De labels op 11, het pad en de
+   waarden op 12,5, en de onderbouwing op 14, want die gaat door `.md` heen en
+   `.md` zet zelf geen maat maar erft van de body. Dat is nooit besloten, dat
+   gebeurde. Elke poort was groen, want elke maat kwam netjes uit een token; geen
+   enkele poort vroeg hoevéél maten er in één kaart staan.
+
+   Daarom hangt elk element hieronder aan precies één van deze zes rollen, en
+   staat er nooit een maat in die daar niet bij hoort:
+
+     hero        de paginatitel                        --type-hero
+     sectiekop   een fase-kop                          --type-sectiekop
+     kaartkop    de naam van een blok werk             --type-kaartkop
+     lopend      ALLE lopende tekst en alle waarden    --type-lopend
+     bijschrift  regels en meta in de bediening        --type-bijschrift
+     label       kleine kapitaaltjes en chips          --type-label
+
+   `proeven/werkplan-typografie.proef.ts` rekent dat na.
+
+   Verder: ÉÉN lettertype op deze pagina. Er stond een monospace op het pad en
+   op de datum, terwijl exact hetzelfde pad er een regel lager als gewone link
+   bij stond. Cijferkolommen lijnen uit met tabular-nums, niet met een tweede
+   lettertype.
 
    Drie niveaus, en precies drie:
      FASE     een kopje boven een groep kaarten, geen paneel;
      CLUSTER  .strategy-card + .strategy-head, het paneel van niveau 1;
-     PAGINA   .deelkop, de gedeelde inklapkop van niveau 2.
-   Een .strategy-card binnen een .strategy-card komt hier dus niet voor: die
-   kleurverloop-balk hoort bij niveau 1, en een stapel van die balken was
-   precies de fout die op 19-08-2026 op het beheerscherm gemaakt werd. */
+     PAGINA   .deelkop, de gedeelde inklapkop van niveau 2. */
 
 .wp-wrap { max-width: 1220px; margin: 0 auto; padding: var(--ruimte-scherm); }
 .wp-stack { display: flex; flex-direction: column; gap: var(--ruimte-regel); }
@@ -2344,23 +2366,24 @@ button.ck-collapse-head {
 .wp-grow { flex: 1 1 auto; min-width: 0; }
 .wp-item { padding: var(--ruimte-regel) 0; border-top: 1px solid var(--kleur-rand-zacht); }
 .wp-item:first-child { border-top: none; padding-top: 0; }
-.wp-datum { font-family: var(--letter-code); font-size: var(--type-label); color: var(--kleur-tekst-stil); white-space: nowrap; }
+.wp-datum { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-.wp-terug { display: inline-flex; align-items: center; gap: var(--ruimte-krap); font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); text-decoration: none; margin-bottom: var(--ruimte-groep); }
+.wp-terug { display: inline-flex; align-items: center; gap: var(--ruimte-krap); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); text-decoration: none; margin-bottom: var(--ruimte-groep); }
 .wp-terug:hover { color: var(--kleur-accent-diep); }
 
 .wp-mast { padding-bottom: var(--ruimte-blok); border-bottom: 1px solid var(--kleur-rand); margin-bottom: var(--ruimte-blok); }
-.wp-eyebrow { display: flex; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-label); letter-spacing: var(--spatie-label); text-transform: uppercase; font-weight: 700; color: var(--kleur-tekst-stil); }
+.wp-eyebrow { display: flex; align-items: center; gap: var(--ruimte-naast); font-size: var(--type-label); line-height: var(--regel-label); letter-spacing: var(--spatie-label); text-transform: uppercase; font-weight: 700; color: var(--kleur-tekst-stil); }
 .wp-eyebrow-bar { width: 22px; height: 3px; background: var(--kleur-accent); border-radius: var(--ronding-klein); }
 .wp-mast h1 { margin: var(--ruimte-naast) 0 0; font-size: var(--type-hero); line-height: var(--regel-hero); font-weight: 800; color: var(--kleur-kop); }
-.wp-lead { margin-top: var(--ruimte-naast); max-width: 68ch; font-size: var(--type-lopend); color: var(--kleur-tekst-zacht); }
-.wp-meta { margin-top: var(--ruimte-groep); display: flex; flex-wrap: wrap; gap: var(--ruimte-krap) var(--ruimte-blok); font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); }
+.wp-lead { margin-top: var(--ruimte-naast); max-width: 72ch; font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht); }
+.wp-meta { margin-top: var(--ruimte-groep); display: flex; flex-wrap: wrap; gap: var(--ruimte-krap) var(--ruimte-blok); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); }
 
-/* Soort werk, gedeeld door de filterbalk, de clusterkaart en het logboek. De
-   handeling-varianten eronder gebruiken dezelfde vorm met een andere tint, zodat
-   samenvoegen dezelfde kleur heeft als Cannibalisatie en titel-en-description
-   dezelfde als Meta en CTR. Eén systeem, twee lagen die elkaar bevestigen. */
-.werk-chip { display: inline-flex; align-items: center; font-size: var(--type-label); font-weight: 700; letter-spacing: var(--spatie-label); text-transform: uppercase; padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-pil); white-space: nowrap; }
+/* Chips. Twee soorten label die niet hetzelfde mogen lijken: SOORT WERK hoort
+   bij het blok (gevuld), WAT ER MET DEZE PAGINA GEBEURT hoort bij de regel
+   (omlijnd). Eerst waren allebei gevulde paarse pillen met een andere tekst, en
+   dan lijkt "Content" hetzelfde soort ding als "uitbouwen". Zelfde vorm en
+   zelfde kleurtaal, één zichtbaar verschil, één systeem. */
+.werk-chip { display: inline-flex; align-items: center; font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700; letter-spacing: var(--spatie-label); text-transform: uppercase; padding: var(--ruimte-krap) var(--ruimte-naast); border-radius: var(--ronding-pil); white-space: nowrap; }
 .werk-chip.can, .werk-chip.h-samenvoegen { color: var(--kleur-accent-diep); background: var(--brand-orange-soft); }
 .werk-chip.link { color: var(--brand-blue); background: var(--brand-blue-light); }
 .werk-chip.meta, .werk-chip.h-meta { color: var(--kleur-goed); background: var(--kleur-goed-vlak); }
@@ -2369,72 +2392,87 @@ button.ck-collapse-head {
 .werk-chip.meet, .werk-chip.h-blijft { color: var(--brand-teal); background: var(--brand-teal-light); }
 .werk-chip.mail { color: var(--brand-blue); background: var(--brand-blue-light); }
 .werk-chip.overig, .werk-chip.h-opruimen { color: var(--kleur-tekst-zacht); background: var(--kleur-rustig); }
+/* Omlijnd in plaats van gevuld; de kleur komt van de regel hierboven. Een rand
+   via inset-schaduw, want een echte border verandert de maat van de chip. */
+/* Een outline in plaats van een box-shadow of een border: een border zou de chip
+   groter maken en een schaduw zou een derde schaduwwaarde aan het fundament
+   toevoegen (de stijl-teller ving dat terecht). Een outline doet geen van beide. */
+.werk-chip.omlijnd { background: transparent; outline: 1px solid currentColor; outline-offset: -1px; }
 
-/* De stuurbalk: één plek waar je kiest waar de pagina over gaat, en hij blijft in
-   beeld terwijl je scrollt. De filterknoppen zijn gewone knoppen uit het
-   knopsysteem; er stond hier eerst een eigen soort filterknop naast, en dat waren
-   twee filterstijlen op één scherm. */
+/* De stuurbalk: één plek waar je kiest waar de pagina over gaat. */
 .wp-stuur { position: sticky; top: 0; z-index: 5; display: flex; flex-direction: column; gap: var(--ruimte-naast); }
 .wp-stuur-rij { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
 .wp-stuur-label { flex: 0 0 auto; font-size: var(--type-label); line-height: var(--regel-label); letter-spacing: var(--spatie-label); text-transform: uppercase; font-weight: 700; color: var(--kleur-tekst-stil); }
-.wp-zoekveld { flex: 1 1 260px; min-width: 0; }
+.wp-stuur-uitleg { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); }
+.wp-zoekveld { flex: 1 1 240px; min-width: 0; max-width: 420px; }
 
-/* FASE: een kopje boven een groep kaarten. Geen paneel, want dan krijg je een
-   paneel in een paneel; de fase is een hoofdstuktitel, niet een blok. */
+/* FASE: een kopje boven een groep kaarten. Geen paneel in een paneel. */
 .wp-fase { display: flex; flex-direction: column; gap: var(--ruimte-regel); margin-top: var(--ruimte-blok); }
 .wp-fase-kop { display: flex; align-items: baseline; gap: var(--ruimte-naast); flex-wrap: wrap; border-bottom: 2px solid var(--kleur-accent); padding-bottom: var(--ruimte-naast); }
 .wp-fase-nr { font-size: var(--type-label); line-height: var(--regel-label); letter-spacing: var(--spatie-label); text-transform: uppercase; font-weight: 700; color: var(--kleur-accent-diep); }
 .wp-fase-kop h2 { margin: 0; font-size: var(--type-sectiekop); line-height: var(--regel-sectiekop); font-weight: 800; color: var(--kleur-kop); }
-.wp-fase-meta { margin-left: auto; font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); }
-.wp-fase-waarom { margin: 0; max-width: 78ch; font-size: var(--type-bijschrift); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht); }
+.wp-fase-meta { margin-left: auto; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); font-variant-numeric: tabular-nums; }
+.wp-fase-waarom { margin: 0; max-width: 72ch; font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht); }
 
 /* CLUSTER: het genummerde bolletje en de twee regels in de kop. De gedeelde kop
-   lijnt standaard op de basislijn uit; met een bolletje en een tweeregelige titel
-   ernaast moet dat op het midden. Alleen uitlijning, verder blijft de bouwsteen
-   precies zoals hij overal is (zelfde kleurverloop, zelfde driehoekje). */
+   lijnt op de basislijn uit; met een bolletje en een tweeregelige titel ernaast
+   moet dat op het midden. Alleen uitlijning; de bouwsteen zelf blijft precies
+   zoals hij overal is. */
 .wp-kaart-head.strategy-head { align-items: center; }
-.wp-week-nr { flex: none; width: 30px; height: 30px; border-radius: var(--ronding-klein); background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); display: grid; place-items: center; font-weight: 800; font-size: var(--type-bijschrift); }
+.wp-week-nr { flex: none; width: 30px; height: 30px; border-radius: var(--ronding-klein); background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); display: grid; place-items: center; font-weight: 800; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); }
 .wp-clus-tekst { display: flex; flex-direction: column; gap: var(--ruimte-krap); flex: 1 1 auto; min-width: 0; }
-.wp-kaart-titel { font-size: var(--type-lopend); line-height: var(--regel-lopend); font-weight: 700; color: var(--kleur-kop); }
-.wp-clus-sub { font-weight: 400; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
+.wp-kaart-titel { font-size: var(--type-kaartkop); line-height: var(--regel-kaartkop); font-weight: 700; color: var(--kleur-kop); }
+.wp-clus-sub { font-weight: 400; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); }
 
 /* Wat er aan de hand is: één keer per cluster, niet per pagina herhaald. */
+/* .wp-proza: de merkklasse voor elke container waar door `netteHtml` gerenderde
+   tekst in landt. `.md` zet met opzet geen eigen maat (zodat hij zich aanpast aan
+   waar hij staat), dus de container MOET het doen; laat je dat weg, dan erft de
+   tekst van de body en springt hij uit een kaart die op 11 en 12,5 draait. Dat is
+   precies wat er op 26-08-2026 misging. `proeven/werkplan-typografie.proef.ts`
+   rekent na dat elke gerenderde tekst binnen een .wp-proza staat en dat deze
+   klasse een maat afspreekt. */
+.wp-proza { font-size: var(--type-lopend); line-height: var(--regel-lopend); }
 .wp-groep-achtergrond { margin: 0; padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-accent); background: var(--brand-orange-faint); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; }
 .wp-groep-achtergrond h4,
 .wp-rail-card h4,
-.wp-vervalt h4 { margin: 0 0 var(--ruimte-krap); font-size: var(--type-label); line-height: var(--regel-label); letter-spacing: var(--spatie-label); text-transform: uppercase; color: var(--kleur-tekst-stil); }
+.wp-vervalt h4,
+.wp-veldnaam { margin: 0 0 var(--ruimte-krap); font-size: var(--type-label); line-height: var(--regel-label); letter-spacing: var(--spatie-label); text-transform: uppercase; font-weight: 700; color: var(--kleur-tekst-stil); }
+/* De afstand komt van de flex-gap van het paneel, niet ook nog eens van een
+   eigen marge; dat gaf dubbele gaten boven "De werkzaamheden". */
+.wp-veldnaam { margin-bottom: 0; }
 
-/* Hoe het nu staat, naast wat het moet worden. Twee gelijke kolommen, want het
-   is een vergelijking; de doelkaart krijgt de accentrand omdat dat de kant is
-   waar je naartoe werkt. */
+/* Hoe het nu staat, naast wat het moet worden. */
 .wp-nustraks { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ruimte-regel); }
 .wp-rail-card { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-kaart); padding: var(--ruimte-regel); }
 .wp-doelkaart { border-color: var(--kleur-rand-accent); background: var(--brand-orange-faint); }
 .wp-kentabel { display: flex; flex-direction: column; gap: var(--ruimte-krap); margin: 0; }
 .wp-kentabel > div { display: flex; align-items: baseline; gap: var(--ruimte-naast); }
-.wp-kentabel dt { flex: 0 0 auto; min-width: 14ch; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
-/* tabular-nums: anders staan 5.400 en 9.700 onder elkaar niet uitgelijnd, en dat
-   is precies waar je in twee kolommen naast elkaar naar zit te kijken. */
-.wp-kentabel dd { margin: 0; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 700; color: var(--kleur-kop); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.wp-veldnaam { margin: var(--ruimte-regel) 0 0; font-size: var(--type-label); line-height: var(--regel-label); letter-spacing: var(--spatie-label); text-transform: uppercase; font-weight: 700; color: var(--kleur-tekst-stil); }
+.wp-kentabel dt { flex: 0 0 auto; min-width: 15ch; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); }
+.wp-kentabel dd { margin: 0; font-size: var(--type-lopend); line-height: var(--regel-lopend); font-weight: 700; color: var(--kleur-kop); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 
-/* PAGINA: één regel met een tokkeltje naar de onderbouwing. Geen knop, want bij
-   honderden pagina's is elke knop een knop te veel (wet van Hick). */
+/* PAGINA: één regel met een tokkeltje naar de onderbouwing. Geen knop per regel. */
 .wp-taak { display: flex; flex-direction: column; gap: var(--ruimte-naast); }
-.wp-taak-pad { font-family: var(--letter-code); font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-kop); overflow-wrap: anywhere; }
-.wp-taak-diep { padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-rand); background: var(--kleur-rustig); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; display: flex; flex-direction: column; gap: var(--ruimte-krap); }
-.wp-taak-diep .wp-veldnaam:first-child { margin-top: 0; }
+.wp-taak-pad { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-kop); overflow-wrap: anywhere; }
+/* Het open detailblok is een leespaneel: alles erin staat op lopende maat, alleen
+   de kapitaaltjes-labels zijn klein. Twee maten, niet vier. */
+.wp-taak-diep { padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-rand); background: var(--kleur-rustig); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; display: flex; flex-direction: column; gap: var(--ruimte-naast); }
 .wp-taak-diep p { margin: 0; }
+.wp-taak-diep .wp-kentabel dt { min-width: 18ch; }
 
 /* Werk dat vervalt omdat de pagina toch verdwijnt: zichtbaar, niet stil weglaten. */
 .wp-vervalt { padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-rand); background: var(--kleur-rustig); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; }
-.wp-vervalt ul { margin: 0; padding-left: var(--ruimte-blok); font-size: var(--type-bijschrift); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht); }
+.wp-vervalt ul { margin: 0; padding-left: var(--ruimte-blok); font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht); }
+
+/* Buiten de drie maanden: wat er bij dit budget niet meer in een kwartaal past. */
+.wp-horizon { padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-accent); background: var(--brand-orange-faint); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht); }
+.wp-horizon strong { color: var(--kleur-kop); }
 
 .wp-ruis-kop { margin-top: var(--ruimte-regel); }
 .btn-quiet.wp-linkstijl, .btn-quiet.wp-linkstijl:hover:not(:disabled) { color: var(--kleur-accent-diep); text-decoration: underline; text-underline-offset: 2px; }
 .btn-quiet.wp-linkstijl:hover:not(:disabled) { color: var(--kleur-accent); background: transparent; border-color: transparent; }
-
 @media (max-width: 760px) { .wp-nustraks { grid-template-columns: 1fr; } }
+/* werkplan:eind */
 .kpi-spark rect { cursor: crosshair; }
 .kpi-spark-hline { stroke: #c4c4c4; stroke-width: 1; vector-effect: non-scaling-stroke; }
 .kpi-spark-tip { position: absolute; top: -7px; transform: translateX(-50%); background: var(--kleur-kop); color: var(--kleur-tekst-op-vlak); font-size: var(--type-label); font-weight: 700; padding: var(--ruimte-krap) var(--ruimte-krap); border-radius: var(--ronding-klein); white-space: nowrap; pointer-events: none; z-index: 5; box-shadow: var(--diepte-druk); }

@@ -55,7 +55,7 @@ import {
 } from "../../../../../lib/werk-clusters";
 import {
   bouwWerkplan, urenTekst, paginaRegel, paginaNaam,
-  FASE_TITEL, FASE_WAAROM, HANDELING_LABEL,
+  FASE_TITEL, FASE_WAAROM, HANDELING_LABEL, WEKEN_IN_KWARTAAL,
   type ClusterPagina, type Werkcluster, type Handeling,
 } from "../../../../../lib/werkplan";
 
@@ -78,12 +78,13 @@ const kortDatum = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", m
 function WerkChip({ categorie }: { categorie: Categorie }) {
   return <span className={`werk-chip ${categorie}`}>{CATEGORIE_LABEL[categorie]}</span>;
 }
-// Dezelfde chip-vorm als hierboven, alleen een andere tint per handeling. Bewust
-// hetzelfde systeem en geen tweede soort label: samenvoegen is oranje net als
-// Cannibalisatie, titel en description groen net als Meta en CTR, uitbouwen paars
-// net als Content. Zo zeggen de twee lagen hetzelfde met dezelfde kleur.
+// Wat er met één pagina gebeurt. Zelfde vorm en zelfde kleurtaal als de chip
+// hierboven (samenvoegen oranje net als Cannibalisatie, titel en description
+// groen net als Meta en CTR), maar OMLIJND in plaats van gevuld. Dat verschil is
+// nodig: eerst waren "Content" en "uitbouwen" allebei een gevulde paarse pil, en
+// dan lijkt het soort werk hetzelfde soort ding als de handeling.
 function HandelingChip({ handeling }: { handeling: Handeling }) {
-  return <span className={`werk-chip h-${handeling}`}>{HANDELING_LABEL[handeling]}</span>;
+  return <span className={`werk-chip omlijnd h-${handeling}`}>{HANDELING_LABEL[handeling]}</span>;
 }
 
 function Slug({ url, domein }: { url: string; domein?: string | null }) {
@@ -188,14 +189,27 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
     return t;
   }, [plan.clusters]);
 
+  // Een werkplan is een kwartaal. Bij 3 uur per week en 131 blokken kwam het plan
+  // op 92 weken uit, en dat is geen planning meer maar een lijst met weeknummers
+  // ervoor. Alles voorbij week 13 zakt daarom naar één blok onderaan, met wat het
+  // kost om het wél binnen een kwartaal te doen.
+  const binnenKwartaal = useMemo(
+    () => clustersGetoond.filter((c) => c.week <= WEKEN_IN_KWARTAAL),
+    [clustersGetoond],
+  );
+  const buitenKwartaal = useMemo(
+    () => clustersGetoond.filter((c) => c.week > WEKEN_IN_KWARTAAL),
+    [clustersGetoond],
+  );
+
   const perFaseGetoond = useMemo(() => ([1, 2, 3] as const).map((fase) => {
-    const lijst = clustersGetoond.filter((c) => c.fase === fase);
+    const lijst = binnenKwartaal.filter((c) => c.fase === fase);
     return {
       fase, clusters: lijst,
       minuten: lijst.reduce((s, c) => s + c.minuten, 0),
       paginas: lijst.reduce((s, c) => s + c.paginas.length, 0),
     };
-  }).filter((f) => f.clusters.length > 0), [clustersGetoond]);
+  }).filter((f) => f.clusters.length > 0), [binnenKwartaal]);
 
   const filterAan = filterCategorie !== "alle" || zoek.trim().length > 0;
   const getoondMinuten = clustersGetoond.reduce((s, c) => s + c.minuten, 0);
@@ -293,7 +307,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
           <div className="deelkop deelkop-vast">{inhoud}</div>
         )}
         {open && (
-          <div className="wp-taak-diep">
+          <div className="wp-taak-diep wp-proza">
             <dl className="wp-kentabel">
               {p.term && <div><dt>zoekterm</dt><dd>{p.term}</dd></div>}
               {p.volume != null && <div><dt>per maand</dt><dd>{getal(p.volume)}</dd></div>}
@@ -301,9 +315,14 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               {p.klikken > 0 && <div><dt>klikken</dt><dd>{getal(p.klikken)}</dd></div>}
               {p.meta?.extraClicks ? <div><dt>te winnen klikken</dt><dd>+{getal(p.meta.extraClicks)} per 90 dagen</dd></div> : null}
             </dl>
-            <p className="wp-veldnaam">Bekijken</p>
-            <p><Slug url={p.pad} domein={domein} /></p>
-            {p.naar && <p className="muted">Gaat naar <Slug url={p.naar} domein={domein} /></p>}
+            {/* Eén regel met de pagina en waar hij heen gaat. Dit stonden er drie:
+                "Bekijken", het pad, en nog een regel "Gaat naar". Het pad stond
+                daarmee twee keer in beeld, want de regel erboven toont hem al. */}
+            <p className="wp-veldnaam">Pagina openen</p>
+            <p>
+              <Slug url={p.pad} domein={domein} />
+              {p.naar && <> &#8594; <Slug url={p.naar} domein={domein} /></>}
+            </p>
             {p.onderbouwing.length > 0 && (
               <>
                 <p className="wp-veldnaam">Waarom dit besluit</p>
@@ -343,14 +362,22 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
         </button>
         {open && (
           <div className="strategy-body">
-            <Chips>
+            {/* Alleen soort werk als chip. "Er is hier al aan gewerkt" is geen
+                label maar informatie; dat stond er als een derde soort chip
+                naast en dan lijken drie verschillende dingen hetzelfde. */}
+            <div className="wp-row">
               {c.categorieen.map((cat) => <WerkChip key={cat} categorie={cat} />)}
-              {c.inPlanning > 0 && <Chip toon="goed">{c.inPlanning} staat al in de planning</Chip>}
-              {c.alGedaan > 0 && <Chip toon="neutraal">{c.alGedaan} eerder gedaan op deze pagina&#8217;s</Chip>}
-            </Chips>
+              {(c.inPlanning > 0 || c.alGedaan > 0) && (
+                <span className="wp-clus-sub">
+                  {[c.inPlanning > 0 ? `${c.inPlanning} taken lopen al` : "",
+                    c.alGedaan > 0 ? `${c.alGedaan} eerder gedaan op deze pagina's` : ""]
+                    .filter(Boolean).join(" · ")}
+                </span>
+              )}
+            </div>
 
             {c.gedeeld.length > 0 && (
-              <div className="wp-groep-achtergrond">
+              <div className="wp-groep-achtergrond wp-proza">
                 <h4>Wat er aan de hand is</h4>
                 <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(c.gedeeld.join("\n\n"), { basis: domein || undefined }) }} />
               </div>
@@ -424,7 +451,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
           <span className="deelkop-meta">{c.items.length}</span>
         </button>
         {open && (
-          <div className="wp-taak-diep">
+          <div className="wp-taak-diep wp-proza">
             {c.items.map((a) => (
               <div key={a.id} className="wp-row wp-item">
                 <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
@@ -491,7 +518,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               <div className="pnl-acties-groep" role="group">
                 <button type="button" className={"btn btn-klein " + (filterCategorie === "alle" ? "btn-primary" : "btn-ghost")}
                   onClick={() => setFilterCategorie("alle")}>
-                  Alles ({tellingPerCategorie.get("alle") || 0})
+                  Alles
                 </button>
                 {CATEGORIE_VOLGORDE.filter((c) => tellingPerCategorie.get(c)).map((c) => (
                   <button key={c} type="button" className={"btn btn-klein " + (filterCategorie === c ? "btn-primary" : "btn-ghost")}
@@ -503,7 +530,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             </div>
             {filterAan && (
               <div className="wp-stuur-rij">
-                <span className="muted">
+                <span className="wp-stuur-uitleg">
                   {clustersGetoond.length} van de {plan.clusters.length} blokken, samen {urenTekst(getoondMinuten)}.
                   Een blok blijft heel: een filter laat blokken weg, hij haalt geen pagina&#8217;s uit een blok.
                 </span>
@@ -537,6 +564,22 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               </div>
             </section>
           ))}
+
+          {buitenKwartaal.length > 0 && (
+            <div className="wp-horizon">
+              <p>
+                <strong>{buitenKwartaal.length} blokken passen niet in dit kwartaal.</strong>{" "}
+                Hierboven staan de {binnenKwartaal.length} blokken die bij {budget} uur per week in dertien
+                weken passen. De rest is samen {urenTekst(buitenKwartaal.reduce((s, c) => s + c.minuten, 0))} werk
+                en schuift door naar het kwartaal daarna.
+              </p>
+              <p>
+                Wil je het hele plan wél binnen een kwartaal af hebben, dan is er{" "}
+                <strong>{String(plan.urenVoorKwartaal).replace(".", ",")} uur per week</strong> nodig
+                in plaats van {budget}. Op het huidige budget duurt het hele plan {plan.weken} weken.
+              </p>
+            </div>
+          )}
 
           {!perFaseGetoond.length && (
             <p className="muted">

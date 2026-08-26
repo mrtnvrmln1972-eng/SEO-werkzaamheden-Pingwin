@@ -173,6 +173,14 @@ export type Werkplan = {
   vervallen: number;
   /** Clusters die buiten de drie maanden vallen bij dit budget. */
   buitenBereik: number;
+  /** De tijd die in die overloop zit, zodat je kunt zeggen hoeveel er blijft liggen. */
+  buitenBereikMinuten: number;
+  /**
+   * Hoeveel uur per week er nodig is om het hele plan wél binnen een kwartaal te
+   * doen. Zonder dit getal zegt het scherm alleen "92 weken" en dat is een
+   * doodlopende mededeling; hiermee is het een gesprek over budget.
+   */
+  urenVoorKwartaal: number;
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -186,8 +194,13 @@ export function urenTekst(minuten: number): string {
   if (minuten < 60) return `${minuten} min`;
   const u = Math.floor(minuten / 60);
   const m = minuten % 60;
-  return m ? `${u} u ${m}` : `${u} uur`;
+  // "2 u 15" laat in het midden of dat kwartieren of minuten zijn; er hoort
+  // "min" achter, anders sta je te rekenen bij een tijd die je moet inschatten.
+  return m ? `${u} u ${m} min` : `${u} uur`;
 }
+
+/** De horizon van een plan: een kwartaal. Wat daarbuiten valt is geen planning meer. */
+export const WEKEN_IN_KWARTAAL = 13;
 
 function opsomming(delen: string[]): string {
   if (delen.length <= 1) return delen[0] || "";
@@ -411,14 +424,20 @@ export function bouwWerkplan(
     };
   }).filter((f) => f.clusters.length > 0);
 
+  const totaalMinuten = clusters.reduce((s, c) => s + c.minuten, 0);
+  const buiten = clusters.filter((c) => c.week > WEKEN_IN_KWARTAAL);
   return {
     clusters, perFase,
     weken: clusters.length ? Math.max(...clusters.map((c) => c.week)) : 0,
-    minuten: clusters.reduce((s, c) => s + c.minuten, 0),
+    minuten: totaalMinuten,
     paginas: clusters.reduce((s, c) => s + c.paginas.length, 0),
     volume: clusters.reduce((s, c) => s + c.volume, 0),
     vervallen: clusters.reduce((s, c) => s + c.vervallen, 0),
-    buitenBereik: clusters.filter((c) => c.week > 13).length,
+    buitenBereik: buiten.length,
+    buitenBereikMinuten: buiten.reduce((s, c) => s + c.minuten, 0),
+    // Naar boven op halve uren, want een kwartier meer per week bestaat niet
+    // als afspraak met een klant.
+    urenVoorKwartaal: Math.ceil((totaalMinuten / WEKEN_IN_KWARTAAL / 60) * 2) / 2,
   };
 }
 

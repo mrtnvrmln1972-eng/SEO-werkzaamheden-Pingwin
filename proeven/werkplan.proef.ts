@@ -136,7 +136,7 @@ proef("bij een kleiner budget loopt het plan over meer weken",
 proef("een cluster wordt nooit midden doorgeknipt over twee weken",
   new Set(plan2.clusters.map((c) => `${c.nummer}`)).size === plan2.clusters.length);
 proef("tijd staat er in gewone taal, niet in minuten",
-  urenTekst(45) === "45 min" && urenTekst(200) === "3 u 20" && urenTekst(120) === "2 uur",
+  urenTekst(45) === "45 min" && urenTekst(200) === "3 u 20 min" && urenTekst(120) === "2 uur",
   `${urenTekst(45)} / ${urenTekst(200)} / ${urenTekst(120)}`);
 
 // ── 6. Nu en straks, en wat er per pagina gebeurt ──
