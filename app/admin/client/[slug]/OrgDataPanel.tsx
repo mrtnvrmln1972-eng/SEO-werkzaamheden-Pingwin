@@ -562,7 +562,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             {/* De adressen zelf staan al uitgeschreven in de mail eronder; hier
                 staat wat het is, of hij het kan openen, en een kopieerknop. */}
             <div className="dev-deel-rij">
-              <a className="dev-deel-naam" href={devLink} target="_blank" rel="noreferrer">De code als JSON-bestand</a>
+              <a className="dev-deel-naam" href={devLink} target="_blank" rel="noreferrer" title="Opent het JSON-bestand in Google Drive">De code als JSON-bestand</a>
               <span className={"dev-deel-stand" + (devGedeeld ? "" : " dev-deel-stand-let")}>
                 {devGedeeld ? "iedereen met de link kan hem openen" : "delen lukte niet; zet hem in Drive zelf op ‘iedereen met de link’"}
               </span>
@@ -570,7 +570,7 @@ export default function OrgDataPanel({ slug, clientEmail }: { slug: string; clie
             </div>
             {devShareUrl && (
               <div className="dev-deel-rij">
-                <a className="dev-deel-naam" href={devShareUrl} target="_blank" rel="noreferrer">Alle bedrijfsgegevens plus deze code</a>
+                <a className="dev-deel-naam" href={devShareUrl} target="_blank" rel="noreferrer" title="Alleen-lezen overzicht met alle bedrijfsgegevens en deze code, geen inlog nodig">Alle bedrijfsgegevens plus deze code</a>
                 <span className="dev-deel-stand">alleen-lezen, geen inlog nodig</span>
                 <button type="button" className="btn btn-ghost btn-klein" onClick={() => void kopieer(devShareUrl, "overzicht")}>{devLinkCopied === "overzicht" ? "✓ gekopieerd" : "Kopieer link"}</button>
               </div>

@@ -166,39 +166,53 @@ export default function FundamentPanel({ slug, positioneringUrl, huisstijlUrl, a
     );
   }
 
+  // Vier volle kaarten onder elkaar duwden de rest van het tabblad ver naar
+  // beneden, terwijl je dit blok in de praktijk alleen even induikt om te
+  // checken wat er nog ontbreekt. Nu is het één kaart, met de vier blokken
+  // achter een hover-uitklapper in plaats van als aparte kaarten (25-08-2026).
+  const samenvatting = stand.klaar
+    ? "Alles staat"
+    : `Nog open: ${stand.mist.slice(0, 3).join(", ")}${stand.mist.length > 3 ? ` en ${stand.mist.length - 3} meer` : ""}.`;
+
   return (
-    <>
-      {BLOKKEN.map((blok) => {
-        const stappen = stand.stappen.filter((s) => s.blok === blok);
-        if (!stappen.length) return null;
-        return (
-          <div className="cockpit-card acc-orange" key={blok}>
-            <div className="ck-section-head">
-              <span>
-                {BLOK_TITEL[blok]}{" "}
-                {blok === "aansluiten" && (
-                  <HelpHint
-                    title="Het fundament van deze klant"
-                    text={"In één oogopslag wat er staat en wat nog moet, live afgelezen uit de echte gegevens: er wordt niets apart bijgehouden, dus dit kan nooit een ander verhaal vertellen dan de rest van het dashboard.\n\n**Aansluiten** zijn de koppelingen waar alle data vandaan komt. **" + BLOK_LABEL.kennen + "** is wie de klant is: profiel, tone of voice, bedrijfsgegevens, concurrenten, positionering en huisstijl.\n\nDe volledige checklist (ook de site-brede scans en de strategie) staat op het tabblad Onboarding, met dezelfde cijfers."}
-                  />
-                )}
-              </span>
-            </div>
-            <div className="fnd-grid">
-              {stappen.map((s) => {
-                if (LINK_VELDEN.has(s.key)) {
-                  return <LinkTegel key={s.key} slug={slug} s={s} waarde={waardeVoor(s.key)} onOpgeslagen={haal} />;
-                }
-                const actieKind = ACTIE_VOOR[s.key];
-                const extra = actieKind && s.staat !== "af"
-                  ? <FundamentActieKnop slug={slug} kind={actieKind} live onKlaar={() => haal()} />
-                  : undefined;
-                return <Tegel key={s.key} s={s} onGaNaar={gaNaar} extra={extra} ankerHref={ANKER_VOOR[s.key]} />;
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </>
+    <div className="cockpit-card acc-orange">
+      <div className="ck-section-head">
+        <span>
+          Fundament{" "}
+          <HelpHint
+            title="Het fundament van deze klant"
+            text={"In één oogopslag wat er staat en wat nog moet, live afgelezen uit de echte gegevens: er wordt niets apart bijgehouden, dus dit kan nooit een ander verhaal vertellen dan de rest van het dashboard.\n\n**Aansluiten** zijn de koppelingen waar alle data vandaan komt. **" + BLOK_LABEL.kennen + "** is wie de klant is: profiel, tone of voice, bedrijfsgegevens, concurrenten, positionering en huisstijl.\n\nDe volledige checklist (ook de site-brede scans en de strategie) staat op het tabblad Onboarding, met dezelfde cijfers.\n\nHoud de muis boven de samenvatting hieronder om alle vier de blokken open te klappen."}
+          />
+        </span>
+      </div>
+      <div className="fnd-dropdown" tabIndex={0}>
+        <div className="fnd-dropdown-trigger">
+          <span className={stand.klaar ? "ob-chip ob-af" : "muted"}>{samenvatting}</span>
+        </div>
+        <div className="fnd-dropdown-panel">
+          {BLOKKEN.map((blok) => {
+            const stappen = stand.stappen.filter((s) => s.blok === blok);
+            if (!stappen.length) return null;
+            return (
+              <div className="fnd-dropdown-blok" key={blok}>
+                <div className="fnd-dropdown-bloktitel">{BLOK_TITEL[blok]}</div>
+                <div className="fnd-grid">
+                  {stappen.map((s) => {
+                    if (LINK_VELDEN.has(s.key)) {
+                      return <LinkTegel key={s.key} slug={slug} s={s} waarde={waardeVoor(s.key)} onOpgeslagen={haal} />;
+                    }
+                    const actieKind = ACTIE_VOOR[s.key];
+                    const extra = actieKind && s.staat !== "af"
+                      ? <FundamentActieKnop slug={slug} kind={actieKind} live onKlaar={() => haal()} />
+                      : undefined;
+                    return <Tegel key={s.key} s={s} onGaNaar={gaNaar} extra={extra} ankerHref={ANKER_VOOR[s.key]} />;
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }
