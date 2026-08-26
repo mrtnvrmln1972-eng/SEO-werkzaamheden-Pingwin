@@ -95,9 +95,16 @@ proef("het werkplan gebruikt één lettertype, geen losse monospace",
 // Dit is het geval dat misging. `.md` zet met opzet geen font-size (zodat hij
 // zich aanpast), dus de container eromheen moet het doen; anders erft de tekst
 // van de body en springt hij uit de kaart.
-const tsxPad = "app/admin/client/[slug]/werkplanning-proef/WerkplanningProef.tsx";
-const tsx = fs.readFileSync(path.join(WORTEL, tsxPad), "utf8");
-const tsxRegels = tsx.split("\n");
+// Élk scherm-bestand van deze pagina, niet alleen het hoofdbestand. Toen het
+// draaiboek erbij kwam als eigen component, keek deze proef daar nog niet naar;
+// dan heeft een poort vanaf dag één een gat.
+const SCHERM_MAP = "app/admin/client/[slug]/werkplanning-proef";
+const tsxRegels: string[] = [];
+for (const naam of fs.readdirSync(path.join(WORTEL, SCHERM_MAP)).sort()) {
+  if (!naam.endsWith(".tsx")) continue;
+  tsxRegels.push(`// ── bestand: ${naam} ──`);
+  tsxRegels.push(...fs.readFileSync(path.join(WORTEL, SCHERM_MAP, naam), "utf8").split("\n"));
+}
 
 // Uit de JSX afleiden wélk element de ouder is, bleek te wankel: op inspringing
 // zoeken vond de BUURREGEL (`<p class="wp-veldnaam">Waarom dit besluit</p>`) in

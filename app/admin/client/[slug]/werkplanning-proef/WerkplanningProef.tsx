@@ -58,6 +58,8 @@ import {
   FASE_TITEL, FASE_WAAROM, HANDELING_LABEL, WEKEN_IN_KWARTAAL,
   type ClusterPagina, type Werkcluster, type Handeling,
 } from "../../../../../lib/werkplan";
+import type { StapStand } from "../../../../../lib/cluster-draaiboek";
+import Draaiboek, { Fasestreep } from "./Draaiboek";
 
 type WeekplanTaak = {
   id: number; thread: string; taak: string; url: string; taaktype: string;
@@ -135,6 +137,9 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   const [openPagina, setOpenPagina] = useState<Record<string, boolean>>({});
   const [openSectie, setOpenSectie] = useState<Record<string, boolean>>({});
   const [openActCluster, setOpenActCluster] = useState<Record<string, boolean>>({});
+  // De standen van álle draaiboeken in één keer, voor de voortgangsstreep op elke
+  // kaart. Eén verzoek voor de hele pagina, niet één per blok.
+  const [draaiStanden, setDraaiStanden] = useState<Record<string, StapStand[]>>({});
   const [bezig, setBezig] = useState<string | null>(null);
 
   const [filterCategorie, setFilterCategorie] = useState<Categorie | "alle">("alle");
@@ -150,6 +155,11 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
         fetch(`/api/admin/meta-ctr?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
         fetch(`/api/admin/activiteit?slug=${encodeURIComponent(slug)}`).then((r) => r.json()),
       ]);
+      // De draaiboeken los, want die mogen het laden van het plan niet ophouden.
+      fetch(`/api/admin/cluster-draaiboek?slug=${encodeURIComponent(slug)}`)
+        .then((r) => r.json())
+        .then((d) => { if (d?.ok) setDraaiStanden(d.standen || {}); })
+        .catch(() => { /* stil: zonder standen staan de streepjes gewoon leeg */ });
       if (!wr?.ok) setFout(wr?.error || "De opruimlijst kon niet geladen worden.");
       setOpruim(wr?.ok ? wr.regels || [] : []);
       setMetas(mc?.ok ? (mc.rows || []).filter((r: any) => r.reden === "klikwinst" || r.reden === "kapot") : []);
@@ -358,7 +368,10 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             <span className="wp-kaart-titel">{c.naam}</span>
             <span className="wp-clus-sub">{c.samenvatting}</span>
           </span>
-          <span className="strategy-meta-right">week {c.week} · {urenTekst(c.minuten)}</span>
+          <span className="strategy-meta-right">
+            <Fasestreep cluster={c} standen={draaiStanden[c.naam] || []} />
+            week {c.week} · {urenTekst(c.minuten)}
+          </span>
         </button>
         {open && (
           <div className="strategy-body">
@@ -397,6 +410,14 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                 </dl>
               </div>
             </div>
+
+            <Draaiboek cluster={c} slug={slug} domein={domein}
+              opVerandering={() => {
+                fetch(`/api/admin/cluster-draaiboek?slug=${encodeURIComponent(slug)}`)
+                  .then((r) => r.json())
+                  .then((d) => { if (d?.ok) setDraaiStanden(d.standen || {}); })
+                  .catch(() => { /* stil */ });
+              }} />
 
             <p className="wp-veldnaam">De werkzaamheden ({teDoen.length})</p>
             {c.paginas.map((p) => <PaginaRij key={p.pad} p={p} cluster={c} />)}

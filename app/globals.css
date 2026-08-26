@@ -2468,6 +2468,37 @@ button.ck-collapse-head {
 .wp-horizon { padding: var(--ruimte-regel) var(--ruimte-groep); border-left: 3px solid var(--kleur-accent); background: var(--brand-orange-faint); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; font-size: var(--type-lopend); line-height: var(--regel-lopend); color: var(--kleur-tekst-zacht); }
 .wp-horizon strong { color: var(--kleur-kop); }
 
+/* HET DRAAIBOEK: dertien stappen met een slot ertussen.
+   De voortgangsstreep op de kop van een blok is dezelfde gedachte als de
+   fase-bolletjes op een taak: in één oogopslag zien waar je staat, zonder de
+   kaart open te klappen. */
+.wp-fasestreep { display: inline-flex; align-items: center; gap: var(--ruimte-krap); margin-right: var(--ruimte-naast); }
+.wp-fasestip { width: 6px; height: 6px; border-radius: var(--ronding-pil); background: var(--kleur-rand); }
+.wp-fasestip.af { background: var(--kleur-goed); }
+.wp-fasestip.bezig { background: var(--kleur-accent); }
+.wp-fasestreep-n { font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); font-variant-numeric: tabular-nums; }
+
+/* De kop van een blokje met een knop ernaast: de titel links, de knop rechts,
+   het lijntje van kpi-sub-head onder de hele rij. */
+.wp-clus-kop { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.wp-draaiboek { display: flex; flex-direction: column; gap: var(--ruimte-naast); }
+/* Eén stap: nummer, tekst, knoppen. Het randje links zegt zonder woorden waar hij
+   staat; de stand staat er ook als tekst bij, want kleur alleen is geen stand. */
+.wp-stap { display: flex; align-items: flex-start; gap: var(--ruimte-naast); flex-wrap: wrap; padding: var(--ruimte-naast) var(--ruimte-regel); border-left: 3px solid var(--kleur-rand); background: var(--kleur-kaart); border-radius: 0 var(--ronding-kaart) var(--ronding-kaart) 0; }
+.wp-stap.wacht { background: var(--kleur-rustig); }
+.wp-stap.klaar-om-te-starten { border-left-color: var(--kleur-accent); }
+.wp-stap.bezig { border-left-color: var(--kleur-accent); background: var(--brand-orange-faint); }
+.wp-stap.klaar, .wp-stap.overgeslagen { border-left-color: var(--kleur-goed); }
+.wp-stap.mislukt { border-left-color: var(--kleur-fout); }
+.wp-stap-nr { flex: none; width: 22px; height: 22px; border-radius: var(--ronding-pil); background: var(--kleur-rustig); color: var(--kleur-tekst-stil); display: grid; place-items: center; font-size: var(--type-label); line-height: var(--regel-label); font-weight: 700; }
+.wp-stap.klaar .wp-stap-nr, .wp-stap.overgeslagen .wp-stap-nr { background: var(--kleur-goed-vlak); color: var(--kleur-goed); }
+.wp-stap.bezig .wp-stap-nr, .wp-stap.klaar-om-te-starten .wp-stap-nr { background: var(--kleur-accent); color: var(--kleur-tekst-op-vlak); }
+.wp-stap-naam { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 700; color: var(--kleur-kop); }
+.wp-stap-uitleg { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); max-width: 72ch; }
+.wp-stap-meer { align-self: flex-start; }
+.wp-stap-acties { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
+.wp-stap-uitkomst { flex-basis: 100%; padding: var(--ruimte-regel) 0 0; }
+
 .wp-ruis-kop { margin-top: var(--ruimte-regel); }
 .btn-quiet.wp-linkstijl, .btn-quiet.wp-linkstijl:hover:not(:disabled) { color: var(--kleur-accent-diep); text-decoration: underline; text-underline-offset: 2px; }
 .btn-quiet.wp-linkstijl:hover:not(:disabled) { color: var(--kleur-accent); background: transparent; border-color: transparent; }

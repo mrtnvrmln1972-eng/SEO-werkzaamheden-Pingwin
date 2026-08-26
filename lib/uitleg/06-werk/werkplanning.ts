@@ -42,6 +42,35 @@ export const BLOKKEN: Uitklapper[] = [
       "Andersom optimaliseer je pagina's die je een week later doorstuurt.",
   },
   {
+    titel: "Het draaiboek: dertien stappen met een slot ertussen",
+    kern: "Per blok zie je waar je staat, en niets kan in de verkeerde volgorde. Jij zet elke stap zelf aan.",
+    tekst:
+      "Een blok werk is geen knop maar een route. Bij \"Amsterdam\" moet er van alles gebeuren, en " +
+      "sommige stappen mogen pas als een eerdere af is. De belangrijkste: **een omleiding zetten vóórdat " +
+      "de tekst is overgezet gooit precies weg wat je wilde behouden**, en dat is niet terug te draaien, " +
+      "want de oude pagina is dan weg.\n\n" +
+      "Daarom heeft elk blok een draaiboek van dertien stappen: kijken wat er nu staat, analyse per " +
+      "pagina, de zoektermen verdelen, bepalen wat er met elke pagina gebeurt, blauwdruk, copy, jouw " +
+      "beoordeling, het linkplan, het bouwpakket, de bouwer, de titels doorzetten, de omleidingen en " +
+      "het nameten. Op de kop van elk blok staan dertien stipjes, net als de fases op een taak, dus je " +
+      "ziet zonder openklappen waar het staat.\n\n" +
+      "**Elke stap noemt waar hij op wacht, in gewone taal.** Staat er \"wacht op: de bouwer zet het " +
+      "live\", dan is er geen knop. Dat slot zit niet alleen in het scherm maar ook op de server, want " +
+      "een uitgeschakelde knop is een beleefdheid en dit moet een grendel zijn.\n\n" +
+      "**Jij zet elke stap zelf aan, ook de stappen die het dashboard zelf kan doen.** Alles staat op " +
+      "handmatig. Zie je dat een stap steeds goed gaat, dan zet je hem met één klik op \"laat vanzelf " +
+      "gaan\" en vuurt hij voortaan zodra zijn slot opengaat. Twee stappen kunnen dat nooit: het " +
+      "nalezen van de copy en het afvinken van de bouwer. Daar staat geen knop voor, en dat is geen " +
+      "instelling maar een eigenschap.\n\n" +
+      "Vier stappen rekent het dashboard zelf uit, zonder AI en zonder wachten: de termverdeling, het " +
+      "verdict per pagina, het linkplan en het bouwpakket. Je klikt op start en de uitkomst staat er. " +
+      "Drie stappen draaien op de bestaande documentmotor (analyse, blauwdruk en copy), één " +
+      "achtergrondrun per pagina die blijft; die kun je rustig wegklikken. De rest is werk van een mens " +
+      "dat je afvinkt.\n\n" +
+      "Loopt er iets mis of wil je iets overdoen, dan zet je een stap met \"Opnieuw\" weer open, of je " +
+      "begint het hele draaiboek van dat blok opnieuw.",
+  },
+  {
     titel: "Filteren, zoeken en er taken van maken",
     kern: "Eén stuurbalk voor de hele pagina, en één knop per blok in plaats van een knop per regel.",
     tekst:
