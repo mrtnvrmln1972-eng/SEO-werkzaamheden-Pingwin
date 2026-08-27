@@ -58,6 +58,11 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
   const [veldStempel, setVeldStempel] = useState(0);
   const [mails, setMails] = useState<Mail[]>([]);
   const [mailOpen, setMailOpen] = useState(false);
+  // Stand per mail, niet één stand voor het hele blok. Met alleen een globale
+  // "bezig" stonden alle knoppen uit zonder dat je zag waarom, en een tweede
+  // klik verdween in het niets: op 27-08-2026 dacht Maarten daardoor dat de
+  // knop stuk was, terwijl de eerste mail gewoon aan het verwerken was.
+  const [mailStand, setMailStand] = useState<Record<string, "bezig" | "klaar" | "fout">>({});
 
   const laden = useCallback(async () => {
     try {
@@ -95,7 +100,9 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
   }
 
   async function doeMail(messageId: string) {
-    setBezig(true); setFout(""); setMelding(""); setVoorstellen([]); setGezet([]);
+    if (mailStand[messageId] === "bezig" || mailStand[messageId] === "klaar") return;
+    setMailStand((s) => ({ ...s, [messageId]: "bezig" }));
+    setFout(""); setMelding(""); setVoorstellen([]); setGezet([]);
     try {
       const r = await fetch("/api/admin/klant-correcties", {
         method: "POST", headers: { "content-type": "application/json" },
@@ -103,12 +110,22 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
       });
       const j = await r.json();
       if (j.correcties) setCorrecties(j.correcties as Correctie[]);
-      if (j.mails) setMails(j.mails as Mail[]);
-      if (!j.ok) { setFout(j.error || "Deze mail verwerken lukte niet."); return; }
-      setVoorstellen((j.orgVoorstellen || []) as OrgVoorstel[]);
+      if (!j.ok) {
+        setMailStand((s) => ({ ...s, [messageId]: "fout" }));
+        setFout(j.error || "Deze mail verwerken lukte niet.");
+        return;
+      }
+      // De lijst bewust NIET vervangen: de verwerkte mail zou er dan uit
+      // springen terwijl je er net op klikte. Hij blijft staan met "Verwerkt"
+      // erachter en is bij de volgende keer openen vanzelf weg.
+      setMailStand((s) => ({ ...s, [messageId]: "klaar" }));
       const v = Number(j.vervallen || 0);
       setMelding(`${j.aantal || 0} regel${Number(j.aantal) === 1 ? "" : "s"} uit deze mail gehaald${v ? `, ${v} eerdere regel${v === 1 ? "" : "s"} vervallen` : ""}.`);
-    } catch (e) { setFout((e as Error).message); } finally { setBezig(false); }
+      setVoorstellen((j.orgVoorstellen || []) as OrgVoorstel[]);
+    } catch (e) {
+      setMailStand((s) => ({ ...s, [messageId]: "fout" }));
+      setFout((e as Error).message);
+    }
   }
 
   async function doeActie(body: Record<string, unknown>) {
@@ -169,7 +186,7 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
               {plakOpen ? "Plakvak sluiten" : "Tekst van de klant toevoegen"}
             </button>
             {mails.length > 0 && (
-              <button type="button" className="btn btn-klein btn-ghost" onClick={() => setMailOpen((v) => !v)} disabled={bezig}>
+              <button type="button" className="btn btn-klein btn-ghost" onClick={() => { const nu = !mailOpen; setMailOpen(nu); if (nu) laden(); }} disabled={bezig}>
                 {mailOpen ? "Mails verbergen" : `Uit een mail halen (${mails.length})`}
               </button>
             )}
@@ -194,11 +211,22 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
                       {[m.van, m.datum ? m.datum.split("-").reverse().join("-") : ""].filter(Boolean).join(", ")}
                       {m.link && <> · <a className="kc-mail-link" href={m.link} target="_blank" rel="noreferrer">mail openen</a></>}
                     </span>
-                    <button type="button" className="btn btn-klein btn-ghost" onClick={() => doeMail(m.id)} disabled={bezig}>Verwerken</button>
+                    {mailStand[m.id] === "klaar"
+                      ? <span className="ob-chip ob-af">Verwerkt</span>
+                      : (
+                        <button
+                          type="button"
+                          className={"btn btn-klein" + (mailStand[m.id] === "bezig" ? " btn-ghost busy" : mailStand[m.id] === "fout" ? " btn-danger" : " btn-ghost")}
+                          onClick={() => doeMail(m.id)}
+                          disabled={mailStand[m.id] === "bezig"}
+                        >
+                          {mailStand[m.id] === "bezig" ? "Bezig, even geduld…" : mailStand[m.id] === "fout" ? "Opnieuw proberen" : "Verwerken"}
+                        </button>
+                      )}
                   </li>
                 ))}
               </ul>
-              <span className="muted kc-klein">Alleen binnengekomen mail; verwerkte mails verdwijnen uit deze lijst.</span>
+              <span className="muted kc-klein">Alleen binnengekomen mail van deze klant. Verwerken duurt ongeveer een halve minuut per mail; je kunt er meerdere tegelijk aanzetten. Verwerkte mails zijn bij de volgende keer openen weg.</span>
             </div>
           )}
 
