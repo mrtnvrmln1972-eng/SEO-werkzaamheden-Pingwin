@@ -18,6 +18,7 @@ import {
   taalBomen, taalVan, zonderTaal, taalVanZoekopdracht, beoordeelTaalvarianten, merkWoordenVan,
   type GscRegel,
 } from "../lib/taalvarianten";
+import { readFileSync } from "fs";
 import { teBredeAdsPaden, zonderTeBrede, isAdsPad } from "../lib/opruim-regels";
 
 let fouten = 0;
@@ -167,6 +168,35 @@ if (isAdsPad("/soa-klinieken/soa-test-utrecht/", effectief)) {
   goed("de echte stadslandingspagina blijft wél een advertentiepagina");
 } else {
   faal("de stadspagina van Utrecht verloor zijn ads-markering; die moet juist beschermd blijven");
+}
+
+// ── Iedereen leest dezelfde ads-lijst ──────────────────────
+// Dit ging op 27-08-2026 mis en het is precies het soort fout dat deze proeven
+// horen te vangen. De breedte-regel werd toegepast in het plaatsadvies en in de
+// werklijst, maar NIET in de analysemotor zelf. Maarten draaide daarna een verse
+// analyse van twintig minuten, en die sloot de 313 Engelse pagina's alsnog uit,
+// terwijl het scherm zei dat ze meededen.
+//
+// Eén bron, en de rest leest daaruit: `adsVoorKlant` haalt de lijst op mét de te
+// brede regels eraf. Wie rechtstreeks `getAdsPaginas` gebruikt om te beslissen of
+// iets een advertentiepagina is, omzeilt die regel.
+console.log("Iedereen leest dezelfde ads-lijst");
+const motor = readFileSync(new URL("../lib/cannibal-redirect.ts", import.meta.url), "utf8");
+if (!/getAdsPaginas\s*\(/.test(motor)) {
+  goed("de analysemotor haalt de ads-lijst via adsVoorKlant op");
+} else {
+  faal("de analysemotor gebruikt getAdsPaginas rechtstreeks. Dan gelden de te brede regels daar wél en sluit een verse analyse alsnog hele secties uit.");
+}
+if (/adsVoorKlant\s*\(/.test(motor)) {
+  goed("hij gebruikt de gedeelde ingang");
+} else {
+  faal("adsVoorKlant komt niet voor in de analysemotor");
+}
+const regels = readFileSync(new URL("../lib/opruim-regels.ts", import.meta.url), "utf8");
+if (/export async function adsVoorKlant/.test(regels) && /zonderTeBrede\(/.test(regels.slice(regels.indexOf("adsVoorKlant")))) {
+  goed("adsVoorKlant haalt de te brede regels er zelf af");
+} else {
+  faal("adsVoorKlant past zonderTeBrede niet toe; dan is de gedeelde ingang een lege huls");
 }
 
 if (fouten) {

@@ -9,7 +9,7 @@ import { getGscForPage, getGscKeywordUrlFlips } from "./google";
 import { getAhrefsTopPages, getUrlOrganicKeywords, ahrefsConfigured } from "./ahrefs";
 import { fetchPageContent } from "./page-content";
 import { callClaude, callClaudeAgentic, type ToolDef, type ToolRunner } from "./anthropic";
-import { regelsAlsInstructie, getAdsPaginas, isAdsPad, type AdsPaginas } from "./opruim-regels";
+import { regelsAlsInstructie, adsVoorKlant, isAdsPad, type AdsPaginas } from "./opruim-regels";
 import { zwakkePaginas, type ZwakkePagina } from "./concurrenten";
 import { weegKandidaten, weegPaden, termUitPad, isFunctioneel, type Oppakker } from "./opruim-waarde";
 import { vindOnderwerpen, tweelingenVan, type Onderwerp } from "./opruim-onderwerpen";
@@ -319,7 +319,7 @@ export async function getCannibalAnalysis(slug: string): Promise<CannibalState> 
   // ze anders in een lijst houden die naar een klant gaat, tot er een nieuwe run
   // van twintig minuten overheen is gegaan. Een instructie is een verzoek, een
   // filter bij het uitlezen is een garantie.
-  const adsNu = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+  const adsNu = await adsVoorKlant(slug);
   if (!r) return { status: "idle", result: null, error: "", updatedAt: null, fase: "", ronde: 0, stap: 0, stappen: STAPPEN, stapLabel: "", cronTik, cronStil, kandidaten: 0, beoordeeld: 0 };
   const { stap, label } = stapVan(r.fase, r.ronde);
   return {
@@ -567,7 +567,7 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
   // Advertentiepagina's gaan er meteen uit. Ze halen niets uit Google omdat ze op
   // noindex staan, dus ze zouden bovenaan de opruimlijst belanden terwijl de
   // advertenties erheen wijzen. Opruimen kost dan echt geld.
-  const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+  const ads = await adsVoorKlant(slug);
 
   const ahrefsSeen = new Set(topPages.map((t) => pagePath(t.url)));
   const ahrefsTable = [...topPages].sort((a, b) => (b.traffic || 0) - (a.traffic || 0)).slice(0, 240)
@@ -712,7 +712,7 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
         return { uit: "verder", reden: `hoofdanalyse gaf geen geldige JSON (${laatsteTekst.slice(0, 80).replace(/\s+/g, " ")}), door naar de kandidaten` };
       }
 
-      const adsNu = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+      const adsNu = await adsVoorKlant(slug);
       const result: CannibalResult = {
         samenvatting: typeof parsed.samenvatting === "string" ? parsed.samenvatting : "",
         datakwaliteit: parsed.datakwaliteit && typeof parsed.datakwaliteit === "object" ? (parsed.datakwaliteit as Datakwaliteit) : undefined,
@@ -745,7 +745,7 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
     // zijn. Op 03-08-2026 stopte de analyse na één ronde omdat de lijst leeg in de
     // rij stond; "geen kandidaten" en "alle kandidaten gehad" zien er van buiten
     // hetzelfde uit, en dat verschil moet de motor zelf kunnen herstellen.
-    const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
+    const ads = await adsVoorKlant(slug);
     // Pagina's met een waardevolle eigen zoekterm blijven buiten de opruimlijst,
     // ook als de kandidatenlijst onderweg opnieuw wordt opgehaald.
     const beschermd = new Set((row.oppakken || []).map((o) => padOf(o.pad)));
