@@ -331,6 +331,42 @@ export type GscData = {
   pages: { url: string; clicks: number; impressions: number }[];
 };
 
+
+/**
+ * ═══════════════════════════════════════════════════════════
+ * ÉLKE PAGINA DIE SEARCH CONSOLE KENT (27-08-2026)
+ * ═══════════════════════════════════════════════════════════
+ * `getGscForClient` haalt de top 25 zoekwoorden en de **top 15 pagina's** over
+ * ongeveer vier weken op. Dat is precies goed voor het kaartje op het scherm, en
+ * precies fout als bron voor de paginalijst van de site, en dat laatste gebeurde
+ * wel: de sitescan gebruikte die vijftien pagina's als "de bron Search Console".
+ *
+ * Gevolg bij One Day Clinic: van de 791 pagina's die Search Console kent, zaten er
+ * 16 met de herkomst "gsc" in de lijst, en ontbraken er 47 helemaal (vooral
+ * Engelse, zoals /en/bloedonderzoek/ en /en/hiv-test-den-haag/). Die vielen
+ * daarmee buiten élke analyse. De lijst dacht Search Console te gebruiken, maar
+ * gebruikte een dashboardwidget.
+ *
+ * Deze functie doet wat de naam van die bron belooft: alle pagina's, over een
+ * ruime periode. Gebruik hem overal waar het om dekking gaat; `getGscForClient`
+ * blijft voor het scherm.
+ */
+export async function getGscAllPages(domain: string, days = 90, limit = 25000): Promise<{ url: string; clicks: number; impressions: number }[]> {
+  const token = await accessTokenFor("google");
+  if (!token || !domain) return [];
+  const site = await gscPickSite(token, domain);
+  if (!site) return [];
+  const rows = await gscQuery(token, site, {
+    startDate: isoDaysAgo(days + 3),
+    endDate: isoDaysAgo(3),
+    dimensions: ["page"],
+    rowLimit: limit,
+  });
+  return rows
+    .map((r) => ({ url: String(r.keys?.[0] || ""), clicks: r.clicks || 0, impressions: r.impressions || 0 }))
+    .filter((x) => x.url);
+}
+
 export async function getGscForClient(domain: string): Promise<GscData | null> {
   const token = await accessTokenFor("google");
   if (!token) return null;

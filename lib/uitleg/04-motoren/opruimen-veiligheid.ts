@@ -8,6 +8,26 @@ import type { Uitklapper } from "../types";
 
 export const VEILIGHEID: Uitklapper[] = [
   {
+    titel: "Waar de paginalijst vandaan komt, en waarom dat niet de sitemap alleen is",
+    tekst:
+      "Een analyse is nooit beter dan de lijst pagina's waarop hij draait. Die lijst komt daarom uit " +
+      "**vier bronnen tegelijk**: de sitemap, Search Console, de toppagina's uit Ahrefs, en de interne " +
+      "links die tijdens het scannen op de pagina's zelf gevonden worden. Per pagina wordt bewaard waar " +
+      "hij vandaan komt, zodat \"staat live maar niet in de sitemap\" zelf een bevinding is.\n\n" +
+      "Dat dit nodig is, bleek bij One Day Clinic: van de ruim achthonderd pagina's staat er nog niet " +
+      "eens de helft in de sitemap. Een lijst die alleen de sitemap gelooft, mist precies de pagina's " +
+      "die aandacht nodig hebben.\n\n" +
+      "**Eén van die vier bronnen deed lang niet wat zijn naam beloofde (gerepareerd 27-08-2026).** Als " +
+      "\"Search Console\" werd de functie achter het kaartje op het scherm gebruikt: top 25 zoekwoorden, " +
+      "top 15 pagina's, ongeveer vier weken. Prima voor een kaartje, veel te smal voor een paginalijst. " +
+      "Search Console kende 791 pagina's; er stonden er zestien met die herkomst in de lijst, en " +
+      "zevenenveertig ontbraken helemaal. Nu wordt élke pagina opgehaald die Google kent, over negentig " +
+      "dagen. Een pagina hoort er immers in zodra Google hem kent, ook met één vertoning in maand twee.\n\n" +
+      "De volgorde die daaruit volgt: **eerst de site opnieuw scannen, dan pas de analyse draaien.** " +
+      "Andersom draait de analyse op een lijst waar pagina's in ontbreken, en dan is \"geen aanleiding " +
+      "gevonden\" in werkelijkheid \"nooit bekeken\".",
+  },
+  {
     titel: "Een tweede taal is een eigen boom, geen dubbeling",
     tekst:
       "Op de lijst met advertentiepagina's van One Day Clinic stond de regel `/en/`. Zo'n regel dekt " +

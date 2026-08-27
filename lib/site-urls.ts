@@ -1,6 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
-import { getGscForClient } from "./google";
+import { getGscAllPages } from "./google";
 
 // ═══════════════════════════════════════════════════════════
 // PAGINA'S-LAAG: de URL-lijst als SPIEGEL van de live site
@@ -304,13 +304,22 @@ export async function scanClientUrls(slug: string, domain: string): Promise<{ sc
     WHERE client_slug = ${slug} AND url ~* '/(tags?|labels?)/'
       AND url NOT IN (SELECT url FROM page_plans WHERE client_slug = ${slug})`;
 
-  // Bron 2: Search Console (laatste 28 dagen), best effort. Levert de cijfers
-  // per pagina én de pagina's die Google kent maar de sitemap niet noemt.
+  // Bron 2: Search Console over 90 dagen, ÉLKE pagina die Google kent.
+  //
+  // Hier stond `getGscForClient`, en dat is de functie achter het kaartje op het
+  // scherm: top 25 zoekwoorden, **top 15 pagina's**, ongeveer vier weken. Als bron
+  // voor een paginalijst is dat veel te smal, en dat is jarenlang niet opgevallen
+  // omdat de bron wél "gsc" heette. Gemeten bij One Day Clinic op 27-08-2026:
+  // Search Console kent 791 pagina's, er stonden er 16 met herkomst "gsc" in de
+  // lijst, en 47 ontbraken helemaal (vooral Engelse). Die vielen daarmee buiten
+  // élke analyse, terwijl ze in Google gewoon posities hebben.
+  //
+  // Een pagina hoort in de lijst zodra Google hem kent, ook als hij één vertoning
+  // had in maand twee. Vandaar 90 dagen en een ruime grens in plaats van vijftien.
   const gscMap = new Map<string, { clicks: number; impressions: number }>();
   const gscPerPad = new Map<string, { clicks: number; impressions: number }>();
   try {
-    const gsc = await getGscForClient(domain);
-    if (gsc) for (const p of gsc.pages) {
+    for (const p of await getGscAllPages(domain, 90)) {
       gscMap.set(normUrl(p.url), { clicks: p.clicks, impressions: p.impressions });
       gscPerPad.set(padSleutel(p.url), { clicks: p.clicks, impressions: p.impressions });
     }
