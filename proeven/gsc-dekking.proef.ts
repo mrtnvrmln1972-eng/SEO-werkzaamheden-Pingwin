@@ -85,6 +85,30 @@ if (dubbel.length === 1 && dubbel[0].bronnen.includes("sitemap") && dubbel[0].br
   faal(`dezelfde pagina uit sitemap én Search Console leverde ${dubbel.length} regels op`);
 }
 
+// ── Een bron die stilvalt moet opvallen ────────────────────
+// Op 27-08-2026 leverde Search Console nul pagina's op en was van buitenaf niet te
+// zien of dat aan de koppeling lag, aan Google, of aan een scan die vóór een
+// deploy liep. De fout werd stil weggeslikt en de telling werd nergens getoond.
+// Precies zo kon de top-15-fout jarenlang blijven staan: de bron stond in de
+// lijst, dus hij leek te werken.
+console.log("Een bron die stilvalt valt op");
+if (/perBron/.test(scan)) {
+  goed("de scan telt per bron hoeveel pagina's die heeft opgeleverd");
+} else {
+  faal("de scan geeft geen telling per bron terug; dan is 'Search Console gaf niets' onzichtbaar");
+}
+if (!/catch\s*\{\s*\/\* optioneel \*\/\s*\}[\s\S]{0,80}getGscAllPages/.test(scan) && /gscFout/.test(scan)) {
+  goed("een fout bij het ophalen wordt onthouden in plaats van weggeslikt");
+} else {
+  faal("een fout bij Search Console wordt nog steeds stil weggeslikt");
+}
+const urlsRoute = lees("app/api/admin/urls/route.ts");
+if (/perBron/.test(urlsRoute) && /Search Console leverde geen enkele pagina/.test(urlsRoute)) {
+  goed("de scan meldt het met zoveel woorden als Search Console niets opleverde");
+} else {
+  faal("de uitkomst van de scan noemt de bronnen niet, dus een stilgevallen bron blijft onzichtbaar");
+}
+
 if (fouten) {
   console.error(`\n${fouten} ${fouten === 1 ? "fout" : "fouten"} in de dekking van de paginalijst.`);
   process.exit(1);

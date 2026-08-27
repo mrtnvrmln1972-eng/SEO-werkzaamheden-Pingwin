@@ -53,8 +53,17 @@ export async function POST(req: NextRequest) {
   waitUntil(draaiKlus(slug, "site-inlezen", "De site inlezen", 2, async (stap) => {
     await stap(1, "De sitemap van de site ophalen en de pagina's nalopen");
     const res = await scanClientUrls(slug, domain);
+    // Per bron erbij, want een bron die stilvalt hoort op te vallen. Search
+    // Console gaf op 27-08-2026 nul pagina's terug en dat was nergens te zien.
+    const bronnen = Object.entries(res.perBron)
+      .filter(([naam]) => naam !== "gscFout")
+      .map(([naam, n]) => `${naam}: ${n}`)
+      .join(", ");
+    const waarschuwing = res.perBron.gsc === 0
+      ? " LET OP: Search Console leverde geen enkele pagina, dus die bron doet nu niets."
+      : "";
     await stap(2, `${res.scanned} pagina's ingelezen`);
-    return `${res.scanned} pagina's ingelezen.`;
+    return `${res.scanned} pagina's ingelezen (${bronnen}).${waarschuwing}`;
   }));
   return NextResponse.json({ ok: true, gestart: true });
 }

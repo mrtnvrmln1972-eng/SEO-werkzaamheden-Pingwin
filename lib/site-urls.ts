@@ -288,10 +288,10 @@ async function mapLimited<T, R>(items: T[], limit: number, fn: (t: T) => Promise
 // sitemap zat. Een lijst die alleen de sitemap gelooft, mist precies de
 // pagina's die aandacht nodig hebben. De herkomst wordt per pagina bewaard,
 // zodat "live maar niet in de sitemap" een zichtbare bevinding is.
-export async function scanClientUrls(slug: string, domain: string): Promise<{ scanned: number }> {
+export async function scanClientUrls(slug: string, domain: string): Promise<{ scanned: number; perBron: Record<string, number> }> {
   await ensureSchema();
   await ensureTables();
-  if (!domain) return { scanned: 0 };
+  if (!domain) return { scanned: 0, perBron: {} };
 
   // Ruime grens: grote sites (webshops) hebben al snel duizenden pagina's in de
   // sitemap. Tag-/filterpagina's worden al bij het lezen uitgesloten.
@@ -318,12 +318,19 @@ export async function scanClientUrls(slug: string, domain: string): Promise<{ sc
   // had in maand twee. Vandaar 90 dagen en een ruime grens in plaats van vijftien.
   const gscMap = new Map<string, { clicks: number; impressions: number }>();
   const gscPerPad = new Map<string, { clicks: number; impressions: number }>();
+  let gscFout = "";
   try {
     for (const p of await getGscAllPages(domain, 90)) {
       gscMap.set(normUrl(p.url), { clicks: p.clicks, impressions: p.impressions });
       gscPerPad.set(padSleutel(p.url), { clicks: p.clicks, impressions: p.impressions });
     }
-  } catch { /* optioneel */ }
+  } catch (e) {
+    // NIET stil wegslikken. Op 27-08-2026 leverde deze bron nul pagina's op en was
+    // van buitenaf niet te zien of dat kwam doordat de scan vóór een deploy liep,
+    // doordat de koppeling stuk was, of doordat Google niets teruggaf. Een bron die
+    // stilvalt hoort net zo hard op te vallen als een bron die verkeerde data geeft.
+    gscFout = e instanceof Error ? e.message : "onbekende fout";
+  }
 
   // Bron 3: Ahrefs-toppagina's (30 dagen gecachet in lib/ahrefs.ts), best effort.
   let ahrefsUrls: string[] = [];
@@ -368,7 +375,17 @@ export async function scanClientUrls(slug: string, domain: string): Promise<{ sc
         gsc_clicks = ${g.clicks}, gsc_impressions = ${g.impressions}, bronnen = ${bron || null}, last_scanned = now()`;
   }
 
-  return { scanned: rijen.length };
+  // Wat elke bron heeft opgeleverd. Zonder deze telling is "Search Console gaf
+  // niets" onzichtbaar, en dat is precies hoe de top-15-fout jarenlang kon blijven
+  // staan: de bron stond in de lijst, dus hij leek te werken.
+  const perBron: Record<string, number> = {
+    sitemap: sitemapUrls.length,
+    gsc: gscMap.size,
+    ahrefs: ahrefsUrls.length,
+    links: new Set(linkDoelen.map(padSleutel)).size,
+  };
+  if (gscFout) perBron.gscFout = 1;
+  return { scanned: rijen.length, perBron };
 }
 
 // De URL-lijst met de plan-alinea erbij (spiegel + plan).
