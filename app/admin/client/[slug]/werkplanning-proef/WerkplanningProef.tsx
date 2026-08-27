@@ -157,7 +157,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
 
   const [openCluster, setOpenCluster] = useState<Record<string, boolean>>({});
   const [openPagina, setOpenPagina] = useState<Record<string, boolean>>({});
-  const [openSectie, setOpenSectie] = useState<Record<string, boolean>>({});
+  const [openSectie, setOpenSectie] = useState<Record<string, boolean | undefined>>({});
   const [openActCluster, setOpenActCluster] = useState<Record<string, boolean>>({});
   // De standen van álle draaiboeken in één keer, voor de voortgangsstreep op elke
   // kaart. Eén verzoek voor de hele pagina, niet één per blok.
@@ -271,6 +271,13 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
       .filter((r) => per.get(r)?.length)
       .map((r) => ({ reden: r, paden: per.get(r)! }));
   }, [weggelatenGetoond]);
+
+  // Zoek je, dan is dit blok het antwoord op je vraag, dus dan staat het open.
+  // Dicht laten zou betekenen dat je op "Utrecht" zoekt, vier blokken titelwerk
+  // ziet, en zélf moet bedenken dat de verklaring achter een dichtgeklapte kop
+  // zit. Klap je hem daarna met de hand dicht, dan blijft dat jouw keuze; zonder
+  // zoekopdracht staat hij gewoon dicht.
+  const wegOpen = openSectie.weggelaten ?? !!zoek.trim();
 
   // Blokken waar niets meer te doen is. Zoek je op een plaats die vorige maand al
   // is opgeruimd, dan hoort het scherm "dit is af" te zeggen in plaats van niets.
@@ -757,8 +764,11 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                 weggelatenGetoond.length ? `${weggelatenGetoond.length} pagina's` : "",
                 afgerondGetoond.length ? `${afgerondGetoond.length} al af` : "",
               ].filter(Boolean).join(" · ")}
-              open={!!openSectie.weggelaten}
-              onToggle={() => setOpenSectie((s) => ({ ...s, weggelaten: !s.weggelaten }))}
+              open={wegOpen}
+              // Op de stand die je nú ziet, niet op de opgeslagen stand: bij een
+              // zoekopdracht staat het blok vanzelf open terwijl er nog niets is
+              // opgeslagen, en dan zou een klik op "dicht" hem juist opslaan als open.
+              onToggle={() => setOpenSectie((s) => ({ ...s, weggelaten: !wegOpen }))}
               uitleg={
                 weggelaten
                   ? `Van de ${weggelaten.live} pagina's die live staan, staan er ${weggelaten.beoordeeld} in de opruim-analyse. De rest valt er om een reden buiten, en die reden staat hieronder. Een pagina die hier staat is dus niet vergeten, hij is overgeslagen.`
