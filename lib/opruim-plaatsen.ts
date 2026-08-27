@@ -170,7 +170,7 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
   // Let op het verschil met `telPerVorm` verderop: welke VORMEN meetellen wordt
   // wél uit de kern bepaald, want de ads-lijst bevat hele mappen en die zouden
   // anders een tweede set vormen opleveren.
-  const { vormVan, plaatsIn } = plaatsHerkenning(liveMetAds);
+  const { vormVan: vormRuw, plaatsIn: plaatsRuw } = plaatsHerkenning(liveMetAds);
 
   // Waar zit de klant echt? Uit de bedrijfsgegevens die voor de structured data
   // al zijn ingevuld: elke vestiging heeft een plaats. areaServed telt mee als
@@ -179,6 +179,56 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
   for (const v of org?.data.vestigingen || []) if (v.plaats) vestigingen.add(sleutel(v.plaats));
   if (org?.data.plaats) vestigingen.add(sleutel(org.data.plaats));
   const bereik = new Set([...(org?.data.areaServed || [])].map(sleutel).filter(Boolean));
+
+  // ── De vestigingen tellen ALTIJD als plaatsnaam ──────────────────────────
+  // De herkenning hierboven leert plaatsnamen af uit patronen: een woord is een
+  // plaats als er op dezelfde plek in de URL minstens twintig andere woorden
+  // kunnen staan. Dat werkt prima zolang er tientallen stadspagina's zijn, en het
+  // faalt precies waar het pijn doet: na een opruimronde zijn de meeste van die
+  // pagina's omgeleid, en dan is het patroon weg.
+  //
+  // Gemeten op 27-08-2026: Rotterdam en Den Haag werden niet meer als plaats
+  // herkend (nog vier Nederlandse pagina's over), waardoor de motor hun hele stad
+  // oversloeg. Terwijl juist dáár de landingspagina staat waar geld op zit, met
+  // pagina's eromheen die hem in de weg kunnen zitten.
+  //
+  // We hoeven dat niet te raden: waar de klant zit staat in de bedrijfsgegevens,
+  // ingevuld voor de structured data. Een vestigingsplaats is per definitie een
+  // plaats, hoeveel pagina's er ook over bestaan.
+  const bekendePlaatsen = [...vestigingen, ...bereik].filter(Boolean);
+  const delenVan = (p: string) => p.replace(/^\/|\/$/g, "").split(/[/\-]/).filter(Boolean);
+  const vindBekende = (pad: string): string => {
+    const d = delenVan(pad.toLowerCase());
+    // Langste eerst, zodat "den-haag" wint van een losse "haag".
+    for (const plaats of [...bekendePlaatsen].sort((a, b) => b.length - a.length)) {
+      const delen = plaats.split("-").filter(Boolean);
+      if (!delen.length) continue;
+      for (let i = 0; i + delen.length <= d.length; i++) {
+        if (delen.every((x, j) => d[i + j] === x)) return plaats;
+      }
+    }
+    return "";
+  };
+  const plaatsIn = (pad: string): string => plaatsRuw(pad) || vindBekende(pad);
+  const vormVan = (pad: string): string => {
+    const v = vormRuw(pad);
+    if (v.includes("<plaats>")) return v;
+    // Ook de vorm moet de vestiging als plaats zien, anders valt de pagina alsnog
+    // buiten de vormtelling en dus buiten het advies.
+    const bekend = vindBekende(pad);
+    if (!bekend) return v;
+    const delen = bekend.split("-");
+    const seg = pad.replace(/^\/|\/$/g, "").split("/");
+    return "/" + seg.map((x) => {
+      const st = x.split("-");
+      for (let i = 0; i + delen.length <= st.length; i++) {
+        if (delen.every((d, j) => st[i + j].toLowerCase() === d)) {
+          return [...st.slice(0, i), "<plaats>", ...st.slice(i + delen.length)].join("-");
+        }
+      }
+      return x;
+    }).join("/") + "/";
+  };
 
   // Per pagina de cijfers uit Search Console.
   const perPagina = new Map<string, { klikken: number; vertoningen: number; beste: number | null }>();

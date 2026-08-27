@@ -66,6 +66,7 @@ import type { StapStand } from "../../../../../lib/cluster-draaiboek";
 import { sorteerClusters, SORTERING_LABEL, type Sortering } from "../../../../../lib/cluster-volgorde";
 import { bouwOverzicht, splitsBevindingen } from "../../../../../lib/cluster-uitvoering";
 import Draaiboek, { Fasestreep } from "./Draaiboek";
+import WegBlok from "./WegBlok";
 
 type WeekplanTaak = {
   id: number; thread: string; taak: string; url: string; taaktype: string;
@@ -264,14 +265,14 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   }, [weggelaten, zoek]);
 
   const weggelatenPerReden = useMemo(() => {
-    const per = new Map<WeglaatReden, string[]>();
+    const per = new Map<WeglaatReden, typeof weggelatenGetoond>();
     for (const p of weggelatenGetoond) {
       if (!per.has(p.reden)) per.set(p.reden, []);
-      per.get(p.reden)!.push(p.pad);
+      per.get(p.reden)!.push(p);
     }
     return (["advertentie", "plaats-verweesd", "geen-aanleiding"] as WeglaatReden[])
       .filter((r) => per.get(r)?.length)
-      .map((r) => ({ reden: r, paden: per.get(r)! }));
+      .map((r) => ({ reden: r, paginas: per.get(r)! }));
   }, [weggelatenGetoond]);
 
   // Zoek je, dan is dit blok het antwoord op je vraag, dus dan staat het open.
@@ -809,42 +810,13 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                   : undefined
               }
             >
-              {afgerondGetoond.length > 0 && (
-                <div className="wp-weg-groep">
-                  <p className="wp-veldnaam">Al afgerond ({afgerondGetoond.length})</p>
-                  <p className="muted">
-                    Hier is niets meer te doen: alles in deze blokken is al doorgevoerd. Ze staan niet
-                    in het plan omdat een plan over openstaand werk gaat, maar ze zijn er wel geweest.
-                  </p>
-                  <ul className="wp-weg-lijst">
-                    {afgerondGetoond.map((c) => (
-                      <li key={c.sleutel}>
-                        <span className="wp-kaart-titel">{c.naam}</span>
-                        <span className="wp-clus-sub"> · {c.paginas.length} pagina&#8217;s, alles doorgevoerd</span>
-                        <span className="wp-weg-paden">
-                          {c.paginas.map((p) => <Slug key={p.pad} url={p.pad} domein={domein} />)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {weggelatenPerReden.map(({ reden, paden }) => (
-                <div key={reden} className="wp-weg-groep">
-                  <p className="wp-veldnaam">{WEGLAAT_LABEL[reden]} ({paden.length})</p>
-                  <p className="muted">{WEGLAAT_UITLEG[reden]}</p>
-                  <div className="wp-weg-paden">
-                    {paden.slice(0, TOON_WEGGELATEN).map((p) => <Slug key={p} url={p} domein={domein} />)}
-                  </div>
-                  {paden.length > TOON_WEGGELATEN && (
-                    <p className="muted">
-                      en nog {paden.length - TOON_WEGGELATEN} andere. Zoek hierboven op een stad of een
-                      stuk van een pad om te zien welke dat zijn.
-                    </p>
-                  )}
-                </div>
-              ))}
+              <WegBlok
+                weggelaten={weggelatenGetoond}
+                afgerond={afgerondGetoond}
+                domein={domein}
+                open={openSectie}
+                onToggle={(k, v) => setOpenSectie((st) => ({ ...st, [k]: v }))}
+              />
             </Sectie>
           )}
 

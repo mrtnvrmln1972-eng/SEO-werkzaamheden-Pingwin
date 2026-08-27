@@ -33,9 +33,9 @@ export const WEGLAAT_LABEL: Record<WeglaatReden, string> = {
  */
 export const WEGLAAT_UITLEG: Record<WeglaatReden, string> = {
   advertentie:
-    "Deze pagina staat op de lijst met advertentiepagina's. Die worden bewust buiten de opruim-analyse gehouden: ze staan meestal op noindex en horen weinig uit Google te halen, dus een voorstel om ze samen te voegen of op te ruimen zou fout zijn. Klopt de lijst niet meer, dan pas je hem aan bij de opruim-instellingen.",
+    "Belangrijke pagina: hier staan advertenties op. Er gaat nooit iets van zo'n pagina weg, want dat kost direct geld. Let op: dit zijn alléén de advertentiepagina's waar de analyse verder niets bij gevonden heeft. De meeste staan gewoon ín het plan, als de pagina die blijft en sterker wordt, met de pagina's die hem in de weg zitten eromheen. Ze ontbreken hier dus niet, ze staan hierboven.",
   "plaats-verweesd":
-    "Van deze plaats is de hoofdpagina een advertentiepagina, en juist die pagina is waarmee de motor de plaats herkent. Daardoor valt de hele plaats buiten het plaats-advies, inclusief deze pagina, die zelf géén advertentiepagina is. Dit is geen keuze maar een gevolg: hier kan echt werk blijven liggen.",
+    "Deze pagina hoort bij een plaats waarvan de motor het patroon niet meer kan aflezen, meestal omdat de andere pagina's van die plaats al zijn omgeleid. Hij kan wél degelijk de landingspagina van die plaats in de weg zitten, dus hier kan werk blijven liggen. Staat een plaats hier terwijl de klant er een vestiging heeft, dan is dat een fout: vestigingen tellen altijd als plaats.",
   "geen-aanleiding":
     "Geen van de analyses is op deze pagina uitgekomen: geen cannibalisatie, geen plaats-advies en geen titel- of description-kans. Dat betekent niet dat de pagina perfect is, alleen dat er nu geen aanleiding ligt.",
 };
@@ -45,6 +45,13 @@ export type WeggelatenPagina = {
   reden: WeglaatReden;
   /** De plaats waar deze pagina bij hoort, als die te bepalen was. */
   plaats: string;
+  /**
+   * De soort pagina, afgeleid uit het pad. Driehonderd losse URL's onder elkaar
+   * zeggen niets; "zes keer een afspraak-maken-pagina" is meteen een bevinding.
+   * Maartens woorden: "als er zes afspraken-maken-pagina's zijn, dan moeten we
+   * daar misschien ook gewoon naar kijken."
+   */
+  soort: string;
 };
 
 export type Weggelaten = {
@@ -58,6 +65,22 @@ export type Weggelaten = {
 };
 
 const norm = (p: string) => padVan(p).replace(/\/$/, "").toLowerCase();
+
+/**
+ * De soort pagina, uit het pad. Een map wint van een los woord: alles onder
+ * `/over-ons/vacatures/` hoort bij elkaar, en anders is het eerste betekenisvolle
+ * woord de soort (`afspraak-maken`, `bloedonderzoek`). Zo wordt een lijst van
+ * driehonderd URL's een handvol groepen waar je een besluit over kunt nemen.
+ */
+export function soortVan(pad: string): string {
+  const seg = norm(pad).split("/").filter(Boolean);
+  if (!seg.length) return "Homepage";
+  if (seg.length > 1) return seg.slice(0, seg.length - 1).join("/");
+  // Eén segment: neem het deel vóór de laatste streepjes, zodat
+  // /afspraak-maken-soa-test/ en /afspraak-maken-hiv/ bij elkaar komen.
+  const d = seg[0].split("-").filter(Boolean);
+  return d.length > 2 ? d.slice(0, 2).join("-") : seg[0];
+}
 
 /**
  * Welke plaats zit er in dit pad, volgens de URL-vormen die de motor zélf heeft
@@ -128,7 +151,7 @@ export function bepaalWeggelaten(
       : wees
         ? "plaats-verweesd"
         : "geen-aanleiding";
-    paginas.push({ pad, reden, plaats: wees || plaatsUitVorm(pad, vormen) });
+    paginas.push({ pad, reden, plaats: wees || plaatsUitVorm(pad, vormen), soort: soortVan(pad) });
   }
 
   paginas.sort((a, b) => a.reden.localeCompare(b.reden) || a.pad.localeCompare(b.pad));

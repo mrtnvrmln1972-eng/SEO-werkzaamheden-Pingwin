@@ -2490,6 +2490,11 @@ button.ck-collapse-head {
 .wp-weg-groep { display: flex; flex-direction: column; gap: var(--ruimte-krap); }
 .wp-weg-groep + .wp-weg-groep { margin-top: var(--ruimte-regel); padding-top: var(--ruimte-regel); border-top: 1px solid var(--kleur-rand); }
 .wp-weg-paden { display: flex; flex-wrap: wrap; gap: var(--ruimte-krap) var(--ruimte-naast); }
+/* Een inklapper bínnen het weglaat-blok. Alleen ruimte en uitlijning; het uiterlijk
+   komt van de gedeelde deelkop, zodat hij er hetzelfde uitziet als overal. */
+.wp-vouw + .wp-vouw { margin-top: var(--ruimte-krap); }
+.wp-vouw-body { padding: var(--ruimte-regel) 0 var(--ruimte-regel) var(--ruimte-groep); display: flex; flex-direction: column; gap: var(--ruimte-regel); }
+
 .wp-weg-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-regel); }
 
 /* Hoe het nu staat, naast wat het moet worden. */
