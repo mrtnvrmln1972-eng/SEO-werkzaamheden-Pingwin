@@ -367,6 +367,10 @@ export async function mailsOmTeVerwerken(slug: string, limiet = 100): Promise<
     // twee van hem waren; de rest was Ahrefs, Search Console en Stiply. Dan zoek
     // je alsnog, en zoeken is precies wat dit blok moest wegnemen.
     .filter((m) => !isRuisMail({ fromAddress: m.fromAddress, subject: m.subject }))
+    // Ook automatische post van het domein van de klant zelf eruit. De
+    // WordPress-mail "[Paul Hoevenaars] login details" stond in de lijst met een
+    // wachtwoord-herstellink erin; die hoort niet in een klantprofiel te belanden.
+    .filter((m) => !/^(website|no-?reply|noreply|wordpress|postmaster|mailer|admin|nieuwsbrief|newsletter)@/i.test((m.fromAddress || "").trim()))
     .filter((m) => {
       if (!eigen.length) return true;
       const adres = (m.fromAddress || "").toLowerCase();
