@@ -16,6 +16,7 @@
 //   3. Een blok waar niets meer te doen is verdwijnt niet, maar komt terug in
 //      `plan.afgerond`. Anders is "dit is af" hetzelfde beeld als "nooit bekeken".
 
+import { readFileSync } from "fs";
 import { bepaalWeggelaten, WEGLAAT_LABEL, WEGLAAT_UITLEG } from "../lib/opruim-weggelaten";
 import { bouwWerkplan, type OpruimRegel } from "../lib/werkplan";
 
@@ -125,6 +126,34 @@ if (plan.clusters.some((c) => c.naam === "Woerden")) {
   goed("een blok met open werk blijft gewoon in het plan staan");
 } else {
   faal("Woerden heeft open werk maar staat niet in het plan");
+}
+
+// ── De aanroep moet álles meegeven wat de functie nodig heeft ──
+// Dit stond er eerst niet, en precies daar ging het mis: de functie was goed en
+// groen, maar de route gaf de URL-vormen niet mee. Zonder die vormen kan geen
+// enkele plaats als verweesd herkend worden en valt alles stil terug op "geen
+// aanleiding". Live was de teller voor 'plaats-verweesd' dus nul, terwijl de
+// proef groen stond. Een pure functie bewaken is niet genoeg als de aanroep de
+// helft van het antwoord weggooit.
+console.log("De aanroep in de API");
+const route = readFileSync(new URL("../app/api/admin/opruim-werklijst/route.ts", import.meta.url), "utf8");
+// Commentaar eerst weg: de toelichting bíj de aanroep noemt dezelfde woorden als
+// de argumenten, dus zonder dit keurt de proef zijn eigen uitleg goed in plaats
+// van de code. Precies dat gebeurde bij de eerste versie van deze controle.
+const aanroep = (/bepaalWeggelaten\(([\s\S]*?)\n\s*\);/.exec(route)?.[1] || "")
+  .replace(/\/\/[^\n]*/g, "")
+  .replace(/\/\*[\s\S]*?\*\//g, "");
+if (!aanroep) {
+  faal("kan de aanroep van bepaalWeggelaten niet vinden in de opruim-werklijst-route");
+} else {
+  for (const [wat, patroon] of [
+    ["de ads-lijst", /\bads\b/],
+    ["de plaatsen waarvoor advies is", /adviezen/],
+    ["de URL-vormen", /vormen/],
+  ] as const) {
+    if (patroon.test(aanroep)) goed(`de route geeft ${wat} mee`);
+    else faal(`de route geeft ${wat} NIET mee aan bepaalWeggelaten. Zonder dat valt een reden stil terug op "geen aanleiding" en is het gat weer onzichtbaar.`);
+  }
 }
 
 if (fouten) {

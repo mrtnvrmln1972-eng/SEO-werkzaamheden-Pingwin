@@ -51,6 +51,10 @@ export async function GET(req: NextRequest) {
       regels.map((r) => r.pad),
       ads,
       (plaatsen?.adviezen || []).map((a) => a.plaats),
+      // Zonder de vormen valt de reden "plaats-verweesd" stil terug op "geen
+      // aanleiding", en dan is precies het gat dat we zichtbaar wilden maken weer
+      // onzichtbaar. De proef dekt de functie, niet deze aanroep; vandaar dit.
+      plaatsen?.vormen || [],
     );
     return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), weggelaten, lijstDatum: st.result?.generatedAt || null });
   } catch (e) {
