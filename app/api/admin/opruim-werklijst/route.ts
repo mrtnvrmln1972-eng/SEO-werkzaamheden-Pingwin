@@ -9,7 +9,7 @@ import { getAdsPaginas, getOpruimRegels, teBredeAdsPaden, zonderTeBrede } from "
 import { beoordeelTaalvarianten, merkWoordenVan } from "../../../../lib/taalvarianten";
 import { getGscQueryPagePairs } from "../../../../lib/google";
 import { bepaalWeggelaten } from "../../../../lib/opruim-weggelaten";
-import { duidRest, type PaginaCijfers } from "../../../../lib/rest-duiding";
+import { duidRest, sleutelVan, type PaginaCijfers } from "../../../../lib/rest-duiding";
 import { getClientUrls } from "../../../../lib/site-urls";
 
 export const runtime = "nodejs";
@@ -87,8 +87,7 @@ export async function GET(req: NextRequest) {
     // is niet te plannen.
     const cijfers = new Map<string, PaginaCijfers>();
     for (const r of gsc) {
-      const k = (r.page || "").replace(/^https?:\/\/[^/]+/, "").replace(/\/$/, "").toLowerCase();
-      if (!k) continue;
+      const k = sleutelVan((r.page || "").replace(/^https?:\/\/[^/]+/, ""));
       const e = cijfers.get(k) || { klikken: 0, vertoningen: 0, positie: null };
       e.klikken += r.clicks;
       e.vertoningen += r.impressions;

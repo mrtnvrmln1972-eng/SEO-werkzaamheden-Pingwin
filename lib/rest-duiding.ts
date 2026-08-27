@@ -84,6 +84,17 @@ export function isGeenEchtePagina(pad: string): boolean {
 const getal = (n: number) => new Intl.NumberFormat("nl-NL").format(n);
 
 /**
+ * De sleutel waarop een pad tegen de Search Console-cijfers gelegd wordt. De
+ * homepage moet hier "/" blijven: strip je de slash, dan wordt hij een lege tekst,
+ * vindt de opzoeking niets, en krijgt juist de belangrijkste pagina van de site
+ * het oordeel "niemand vindt hem, opruimen". Dat stond op 27-08-2026 live.
+ */
+export function sleutelVan(pad: string): string {
+  const p = padVan(pad).replace(/\/+$/, "").toLowerCase();
+  return p || "/";
+}
+
+/**
  * Wat moet er met deze pagina? Eén oordeel, met de cijfers waarop het rust.
  *
  * De volgorde is de redenering zelf: eerst of het überhaupt een pagina is, dan of
@@ -137,7 +148,7 @@ export const REST_VOLGORDE: RestOordeel[] = [
 /** Alle overgebleven pagina's beoordeeld en gegroepeerd, grootste groep eerst binnen de vaste volgorde. */
 export function duidRest(paden: string[], cijfers: Map<string, PaginaCijfers>): { oordeel: RestOordeel; regels: RestRegel[] }[] {
   const leeg: PaginaCijfers = { klikken: 0, vertoningen: 0, positie: null };
-  const alle = paden.map((p) => duidPagina(p, cijfers.get(padVan(p).replace(/\/$/, "").toLowerCase()) || leeg));
+  const alle = paden.map((p) => duidPagina(p, cijfers.get(sleutelVan(p)) || leeg));
   return REST_VOLGORDE
     .map((oordeel) => ({ oordeel, regels: alle.filter((r) => r.oordeel === oordeel).sort((a, b) => b.vertoningen - a.vertoningen || a.pad.localeCompare(b.pad)) }))
     .filter((g) => g.regels.length > 0);

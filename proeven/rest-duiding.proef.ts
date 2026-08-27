@@ -11,7 +11,7 @@
 // duizend pagina's is dood gewicht een probleem), wél vraag maar geen ranking
 // betekent optimaliseren. Deze proef legt die vertaling vast.
 
-import { duidPagina, duidRest, isGeenEchtePagina, REST_LABEL, REST_WAT_NU, REST_VOLGORDE, type PaginaCijfers } from "../lib/rest-duiding";
+import { duidPagina, duidRest, isGeenEchtePagina, sleutelVan, REST_LABEL, REST_WAT_NU, REST_VOLGORDE, type PaginaCijfers } from "../lib/rest-duiding";
 
 let fouten = 0;
 const faal = (wat: string) => { console.error(`  ✗ ${wat}`); fouten++; };
@@ -91,6 +91,20 @@ if (zonderCijfers[0]?.oordeel === "opruimen") {
 
 if (!isGeenEchtePagina("/soa-test/")) goed("een gewone pagina is geen paginering");
 else faal("/soa-test/ werd als techniek-adres gezien");
+
+// De homepage mag nooit in de opruimbak belanden. Dat gebeurde wel: het pad "/"
+// werd na het strippen van de slash een lege tekst, de opzoeking vond niets, en
+// dan krijgt de belangrijkste pagina van de site het oordeel "niemand vindt hem".
+console.log("De homepage");
+if (sleutelVan("/") === "/") goed('het pad "/" blijft "/" en wordt geen lege tekst');
+else faal(`sleutelVan("/") gaf ${JSON.stringify(sleutelVan("/"))}`);
+
+const metHome = duidRest(["/"], new Map([["/", c(600, 40000, 1)]]));
+if (metHome[0]?.oordeel === "doet-het-goed") {
+  goed("de homepage met 600 klikken krijgt het oordeel 'doet het goed'");
+} else {
+  faal(`de homepage kreeg '${metHome[0]?.oordeel}'. Dat is de belangrijkste pagina van de site.`);
+}
 
 if (fouten) {
   console.error(`\n${fouten} ${fouten === 1 ? "fout" : "fouten"} in de duiding.`);
