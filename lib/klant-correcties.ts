@@ -106,7 +106,7 @@ export async function alleRegels(slug: string): Promise<CorrectieRegel[]> {
     SELECT id, correctie_id, categorie, regel, bron, datum, vervallen_door
     FROM klant_correctie_regels WHERE client_slug = ${slug}
     ORDER BY datum DESC NULLS LAST, id DESC`;
-  return rows.map((r) => ({
+  return datumBeslist(rows.map((r) => ({
     id: r.id,
     correctieId: r.correctie_id,
     categorie: alsCategorie(r.categorie),
@@ -114,10 +114,42 @@ export async function alleRegels(slug: string): Promise<CorrectieRegel[]> {
     bron: r.bron || "",
     datum: alsDag(r.datum),
     vervallenDoor: r.vervallen_door,
-  }));
+  })));
 }
 
-/** De regels die nu gelden (dus niet achterhaald door een latere regel). */
+/**
+ * DE NIEUWSTE DATUM WINT, niet de volgorde waarin je de tekst verwerkt.
+ *
+ * `vervallen_door` in de database zegt alleen: deze twee regels gaan over
+ * hetzelfde en kunnen niet allebei gelden. WIE er wint wordt hier bepaald, op
+ * de datum van de mail waar de regel uit komt. Dat is de enige plek waar die
+ * keuze valt, dus het scherm en het blok dat de AI leest kunnen niet uit elkaar
+ * lopen, en oude gevallen worden vanzelf goed gezet zonder migratie.
+ *
+ * Waarom (27-08-2026): de mail van 8 juni werd als laatste verwerkt en zette
+ * daarmee afspraken van 15 juli en 20 augustus opzij. Paul noemde in juni
+ * "Exclusieve tuin" nog een interessant zoekwoord en wilde datzelfde woord in
+ * augustus juist niet meer. Wat hij het laatst zei, hoort te gelden, ongeacht
+ * wanneer jij die mail toevallig invoert. Zonder datum telt het latere nummer.
+ */
+function datumBeslist(rijen: CorrectieRegel[]): CorrectieRegel[] {
+  const opId = new Map(rijen.map((r) => [r.id, r]));
+  const uit = rijen.map((r) => ({ ...r, vervallenDoor: null as number | null }));
+  const uitOpId = new Map(uit.map((r) => [r.id, r]));
+  for (const oud of rijen) {
+    if (oud.vervallenDoor === null) continue;
+    const nieuw = opId.get(oud.vervallenDoor);
+    if (!nieuw) continue; // partner weggehaald: dan gelden ze allebei weer
+    const a = oud.datum || "", b = nieuw.datum || "";
+    const wint = b > a ? nieuw : a > b ? oud : (nieuw.id > oud.id ? nieuw : oud);
+    const verliest = wint.id === nieuw.id ? oud : nieuw;
+    const rij = uitOpId.get(verliest.id);
+    if (rij) rij.vervallenDoor = wint.id;
+  }
+  return uit;
+}
+
+/** De regels die nu gelden (dus niet achterhaald door een latere afspraak). */
 export async function geldigeRegels(slug: string): Promise<CorrectieRegel[]> {
   return (await alleRegels(slug)).filter((r) => r.vervallenDoor === null);
 }

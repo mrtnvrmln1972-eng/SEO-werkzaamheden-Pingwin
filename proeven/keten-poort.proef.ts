@@ -22,6 +22,8 @@
 
 import { readFileSync } from "node:fs";
 
+import { isEchtConflict } from "../lib/keten-poort";
+
 const fouten: string[] = [];
 const lees = (p: string) => { try { return readFileSync(p, "utf8"); } catch { fouten.push(`Bestand ontbreekt: ${p}`); return ""; } };
 
@@ -57,6 +59,36 @@ if (!/ZELFWEERLEGGEND/.test(poort) || !/geen conflict/.test(poort) || !/dat klop
 // ── SLOT D: een conflict is één zin, geen beschouwing ──────────────────────
 if (!/MAX_VELDLENGTE/.test(poort)) {
   fouten.push("lib/keten-poort.ts: de lengtegrens op claim/feit is weg. Een harde tegenspraak past in één zin; alles daarboven is een redenering en hoort de keten niet dicht te gooien.");
+}
+
+// ── SLOT G: een voorgenomen wijziging is geen tegenspraak ─────────────────
+// Vijfde onterechte blokkade (27-08-2026): het plan stelde een 301-redirect
+// voor op /hovenier-uden/ en de meting zei dat die pagina bestaat en verkeer
+// heeft. Dat is de aanleiding voor het plan, niet een weerlegging ervan. Hier
+// draaien we de echte functie, niet de tekst van het bestand.
+{
+  const toekomst: [string, string, boolean][] = [
+    ["Het plan stelt voor de URL via 301-redirect om te zetten.",
+     "De huidige URL staat actief in GSC met 326 vertoningen en 14 klikken.", false],
+    ["De pagina moet worden samengevoegd met /hovenier-oss/.",
+     "De pagina bestaat en rankt op positie 3.", false],
+    ["Het plan wil deze pagina verplaatsen naar een nieuw pad.",
+     "De pagina is live en heeft 12 interne links.", false],
+    // Dit blijft wél een conflict: het doel van de omleiding bestaat niet.
+    ["Het plan stelt een 301-redirect voor naar /hovenier/uden/.",
+     "Dat adres geeft 404 en bestaat niet.", true],
+    // En een gewone harde tegenspraak blijft ook staan.
+    ["Het plan zegt dat er geen FAQ-blok op de pagina staat.",
+     "De live pagina heeft een FAQ-blok met zes vragen.", true],
+  ];
+  for (const [claim, feit, verwacht] of toekomst) {
+    if (isEchtConflict(claim, feit) !== verwacht) {
+      fouten.push(`lib/keten-poort.ts: "${claim.slice(0, 55)}…" hoort ${verwacht ? "WEL" : "GEEN"} conflict te zijn. Een voorgenomen wijziging (redirect, samenvoegen, verplaatsen) kan een meting van de huidige situatie niet tegenspreken; alleen een doel dat niet bestaat is wél hard.`);
+    }
+  }
+  if (!/isToekomstplan/.test(poort) || !/DOEL_ONTBREEKT/.test(poort)) {
+    fouten.push("lib/keten-poort.ts: slot G (voorgenomen wijziging is geen tegenspraak) is weg. Dit was de vijfde onterechte blokkade; zonder dit slot komt hij terug.");
+  }
 }
 
 // ── SLOT E: er is altijd een uitweg ────────────────────────────────────────

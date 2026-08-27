@@ -72,7 +72,7 @@ BELANGRIJK OM TE BEGRIJPEN: deze hele documentketen bestaat OM verbeteringen voo
 - het plan kiest een primair zoekwoord dat lijnrecht ingaat tegen wat een eerdere ketenstap vastlegde.
 GEEN conflict (poort open laten), dit is GEEN uitputtende lijst maar de meest voorkomende valkuilen:
 - ELK criterium/norm/doel uit de scorecard (lengte-normen zoals H1/meta, dekkingspercentages zoals H2-dekking, FAQ-aantallen, keyword density) vergeleken met de huidige gemeten waarde, en het voorstel om dat te verbeteren. Dat is per definitie de inhoud van deze documenten, nooit een conflict, ook niet als de huidige waarde ver onder de norm zit of de norm zelf ergens anders vandaan lijkt te komen. Alleen als het plan LETTERLIJK beweert dat de norm AL BEHAALD is ("H1 is al 45 tekens, voldoet") terwijl de meting iets heel anders laat zien, is dat wel een conflict.
-- het plan stelt voor iets TOE TE VOEGEN, UIT TE BREIDEN of OP TE BOUWEN wat er volgens de meting nog niet is. Dat is geen tegenspraak maar overeenstemming: het plan bevestigt de meting en zegt wat er moet gebeuren. Ook een plan dat een pagina wil bouwen, herbouwen of samenvoegen valt hieronder.
+- het plan stelt voor iets TOE TE VOEGEN, UIT TE BREIDEN of OP TE BOUWEN wat er volgens de meting nog niet is. Dat is geen tegenspraak maar overeenstemming: het plan bevestigt de meting en zegt wat er moet gebeuren. Ook een plan dat een pagina wil bouwen, herbouwen, samenvoegen, omleiden (301), verplaatsen, hernoemen of opheffen valt hieronder: dat is een voorgenomen wijziging, geen bewering over de huidige situatie. Dat de pagina nu bestaat, verkeer heeft of ergens op rankt, spreekt zo'n plan niet tegen, dat is juist de aanleiding ervoor.
 - een andere formulering, een mening, een dosering, iets dat de meting niet kan zien (bijvoorbeeld tekst onderaan de pagina die niet in de eerste koppen zit), of ontbrekende data.
 Bij twijfel: geen conflict. Twijfel je tussen "dit is een norm-vs-meting-verbetervoorstel" en "dit is een conflict", kies dan ALTIJD geen conflict.
 Antwoord met UITSLUITEND geldige JSON, exact dit formaat, niets eromheen:
@@ -95,13 +95,48 @@ const ZELFWEERLEGGEND = [
   "is consistent", "consistent met", "in lijn met", "geen probleem",
 ];
 
+// SLOT G: een plan voor de TOEKOMST kan een meting van het HEDEN niet
+// tegenspreken.
+//
+// Vijfde onterechte blokkade, 27-08-2026, op /hovenier-uden/: het plan stelt
+// een 301-redirect voor, en de meting zegt dat die pagina bestaat en 326
+// vertoningen heeft. Dat is geen tegenspraak, dat is precies de reden waaróm er
+// een plan ligt. De poort behandelde een voorgenomen wijziging als een bewering
+// over de huidige situatie.
+//
+// De prompt noemde "toevoegen, uitbreiden, opbouwen" al als geen-conflict, maar
+// niet omzetten, omleiden, samenvoegen of opheffen. Dit bestand weet inmiddels
+// dat prompt-tekst dat niet oplost, dus het slot zit in de code.
+//
+// Wat WEL een conflict blijft: een omleiding naar een doel dat volgens de
+// meting niet bestaat. Daarom kijkt dit slot ook naar het feit: noemt dat een
+// ontbrekend of onbereikbaar doel, dan blijft het conflict gewoon staan.
+const VOORGENOMEN = [
+  "redirect", "omleiden", "omgeleid", "omzetten", "omgezet", "verplaatsen", "verplaatst",
+  "samenvoegen", "samengevoegd", "opheffen", "opgeheven", "hernoemen", "hernoemd",
+  "moet worden", "moeten worden", "wordt vervangen", "gaat vervangen", "nieuwe url",
+];
+const DOEL_ONTBREEKT = [
+  "404", "410", "bestaat niet", "niet bestaan", "niet bereikbaar", "niet gevonden",
+  "geen pagina", "onvindbaar", "levert een fout",
+];
+
+function isToekomstplan(claim: string, feit: string): boolean {
+  const c = claim.toLowerCase();
+  const f = feit.toLowerCase();
+  if (!VOORGENOMEN.some((v) => c.includes(v))) return false;
+  // Wijst de meting op een ontbrekend doel, dan is het wél een echt conflict.
+  return !DOEL_ONTBREEKT.some((d) => f.includes(d));
+}
+
 // SLOT D: een harde tegenspraak past in één zin. Alles daarboven is een
 // beschouwing, en een beschouwing hoort de keten niet dicht te gooien.
 const MAX_VELDLENGTE = 300;
 
-function isEchtConflict(claim: string, feit: string): boolean {
+export function isEchtConflict(claim: string, feit: string): boolean {
   if (!claim || !feit) return false;
   if (claim.length > MAX_VELDLENGTE || feit.length > MAX_VELDLENGTE) return false;
+  if (isToekomstplan(claim, feit)) return false;
   const samen = `${claim} ${feit}`.toLowerCase();
   return !ZELFWEERLEGGEND.some((z) => samen.includes(z));
 }

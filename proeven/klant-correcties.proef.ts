@@ -122,6 +122,28 @@ const aantal = gen.split("Wat de klant zelf zegt (LEIDEND)").length - 1;
 check(aantal >= 4, `Niet alle vier de analyse-prompts noemen het correctieblok (nu ${aantal} van de 4). Dan schrijft een nieuwe analyse rechtgezette feiten terug.`);
 check(gen.includes("ctx.correcties"), "De analyse krijgt het correctieblok niet mee als context.");
 
+// ── 6. De nieuwste datum wint, niet de invoervolgorde ──────────────────────
+// Op 27-08-2026 werd de mail van 8 juni als laatste verwerkt en zette daarmee
+// afspraken van 15 juli en 20 augustus opzij. Paul noemde in juni "Exclusieve
+// tuin" nog een goed zoekwoord en wilde datzelfde woord in augustus niet meer.
+// Wat hij het laatst zei hoort te gelden, ongeacht wanneer je die mail invoert.
+{
+  const bron = lees("lib/klant-correcties.ts");
+  check(/function datumBeslist/.test(bron),
+    "lib/klant-correcties.ts: datumBeslist is weg. Dan wint weer de volgorde waarin je mails verwerkt in plaats van de datum, en zet een oude mail een nieuwe afspraak opzij.");
+  check(/return datumBeslist\(/.test(bron),
+    "lib/klant-correcties.ts: alleRegels laat de datum niet meer beslissen. Zowel het scherm als het blok dat de AI leest hangen daaraan.");
+  // De volgorde in de database mag niet uitmaken: een oudere regel die een
+  // nieuwere "vervangt" hoort zélf te vervallen.
+  const oud: CorrectieRegel = { id: 1, correctieId: 1, categorie: "woorden", regel: "Exclusief mag.", bron: "mail", datum: "2026-06-08", vervallenDoor: null };
+  const nieuw: CorrectieRegel = { id: 2, correctieId: 2, categorie: "woorden", regel: "Exclusief niet.", bron: "mail", datum: "2026-08-20", vervallenDoor: null };
+  // Zo staat het in de database als de JUNI-mail als laatste verwerkt is:
+  // de augustusregel is "vervangen door" de juniregel.
+  const blokNa = regelsNaarBlok([{ ...nieuw, vervallenDoor: 1 }, oud]);
+  check(!blokNa.includes("Exclusief niet."),
+    "regelsNaarBlok werkt op de ruwe stand; de datumkeuze hoort in alleRegels te vallen, en die is hier niet nagerekend.");
+}
+
 if (fouten.length) {
   console.error("Wat de klant zelf zegt: er ging iets mis.\n");
   for (const f of fouten) console.error(`  - ${f}`);
