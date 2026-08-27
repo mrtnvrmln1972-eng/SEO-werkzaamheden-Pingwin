@@ -1,11 +1,12 @@
 import { getClientUrls } from "./site-urls";
 import { getGscQueryPagePairs } from "./google";
 import { getOrgData } from "./org-data";
-import { getUrlStructuur, getAdsPaginas, isAdsPad } from "./opruim-regels";
+import { getUrlStructuur, getAdsPaginas, isAdsPad, zonderTeBrede } from "./opruim-regels";
 import { plaatsHerkenning } from "./opruim-structuur";
 import { termUitPad } from "./opruim-waarde";
 import { feitenPerTerm } from "./opruim-intentie";
 import { weegHaalbaarheid, autoriteitVan, type Haalbaarheid } from "./opruim-haalbaarheid";
+import { taalBomen, taalVan } from "./taalvarianten";
 
 // ═══════════════════════════════════════════════════════════
 // PLAATSPAGINA'S: VIJF VRAGEN, EN PAS DE LAATSTE GAAT OVER EEN VESTIGING
@@ -114,7 +115,7 @@ const DREMPEL_VOLUME = 30;
 const DOET_MEE_VERTONINGEN = 100;
 
 export async function adviesPerPlaats(slug: string, domain: string): Promise<PlaatsenRapport> {
-  const [urls, paren, org, gekozenVorm, ads, autoriteit] = await Promise.all([
+  const [urls, paren, org, gekozenVorm, adsRuw, autoriteit] = await Promise.all([
     getClientUrls(slug).catch(() => []),
     getGscQueryPagePairs(domain, 90).catch(() => []),
     getOrgData(slug).catch(() => null),
@@ -142,6 +143,17 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
   // Wat een advertentiepagina beschermt is dus niet dat hij onzichtbaar is, maar
   // dat hij nooit weggaat. Dat wordt verderop afgedwongen.
   const liveMetAds = urls.filter((u) => (u.status ?? 200) === 200).map((u) => padVan(u.url));
+  // Een regel die een hele sectie dekt telt niet als advertentiepagina. Bij One
+  // Day Clinic stond `/en/` op de lijst en dat zette 315 pagina's buiten beeld.
+  const ads = zonderTeBrede(adsRuw, liveMetAds);
+  // Taal is een eigen dimensie, geen dubbeling. Nu `/en/` niet meer als
+  // advertentiesectie wegvalt, doen die pagina's gewoon mee, en dan moet één ding
+  // vaststaan: een Engelse plaatspagina hoort bij de Engelse boom en gaat NOOIT op
+  // in zijn Nederlandse tegenhanger. Die twee zijn via hreflang netjes aan elkaar
+  // gekoppeld; samenvoegen zou een werkende taalstructuur slopen. Wat er met een
+  // taalvariant moet gebeuren is een eigen vraag, en die wordt beantwoord in
+  // `lib/taalvarianten.ts`: is er zoekvraag in díe taal?
+  const bomen = taalBomen(liveMetAds);
   const live = liveMetAds.filter((p) => !isAdsPad(p, ads));
   if (live.length < 10) {
     return { adviezen: [], vestigingen: [], vormen: [], gekozenVorm, autoriteit, paginasNu: 0, paginasStraks: 0 };
@@ -207,8 +219,12 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
   const vormen = new Set<string>();
   const pushPagina = (pad: string, vorm: string, plaats: string) => {
     const g = perPagina.get(norm(pad));
-    if (!perPlaats.has(plaats)) perPlaats.set(plaats, []);
-    perPlaats.get(plaats)!.push({
+    // De sleutel draagt de taal mee, zodat "Haarlem" en "Haarlem (EN)" twee losse
+    // besluiten zijn in plaats van één hoop waarin ze elkaar opeten.
+    const taal = taalVan(pad, bomen);
+    const sleutelPlaats = taal ? `${taal}:${plaats}` : plaats;
+    if (!perPlaats.has(sleutelPlaats)) perPlaats.set(sleutelPlaats, []);
+    perPlaats.get(sleutelPlaats)!.push({
       pad, vorm, term: termUitPad(pad),
       klikken: g?.klikken || 0,
       vertoningen: g?.vertoningen || 0,
@@ -264,7 +280,10 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
     if (locatieVormen.has(vorm)) continue; // al meegenomen in de eerste ronde
     if (!vorm.includes("<plaats>") || !echteVorm(vorm)) continue;
     const plaats = plaatsIn(pad);
-    if (!plaats || !perPlaats.has(plaats)) continue; // alleen aanhaken bij een al bekende plaats
+    // Dezelfde sleutel als hierboven: een Nederlandse zwerver haakt alleen aan bij
+    // de Nederlandse boom, een Engelse alleen bij de Engelse.
+    const zwerverSleutel = taalVan(pad, bomen) ? `${taalVan(pad, bomen)}:${plaats}` : plaats;
+    if (!plaats || !perPlaats.has(zwerverSleutel)) continue; // alleen aanhaken bij een al bekende plaats
     // Zelfde onderwerp als de locatiepagina's, anders blijft hij eraf.
     if (kernwoorden.length) {
       const woorden = woordenVanVorm(vorm);
@@ -286,8 +305,14 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
   const feiten = await feitenPerTerm([...termPerPlaats.values()]).catch(() => new Map());
 
   const adviezen: PlaatsAdvies[] = [];
-  for (const [plaats, paginas] of perPlaats) {
-    const term = termPerPlaats.get(plaats) || "";
+  for (const [sleutelPlaats, paginas] of perPlaats) {
+    // De sleutel draagt de taal mee ("en:haarlem"); voor de naam, de vestiging en
+    // het bereik hebben we de kale plaatsnaam nodig.
+    const dp = sleutelPlaats.indexOf(":");
+    const taal = dp > 0 ? sleutelPlaats.slice(0, dp) : "";
+    const plaats = dp > 0 ? sleutelPlaats.slice(dp + 1) : sleutelPlaats;
+    const naam = taal ? `${mooiePlaats(plaats)} (${taal.toUpperCase()})` : mooiePlaats(plaats);
+    const term = termPerPlaats.get(sleutelPlaats) || "";
     const f = feiten.get(term);
     const volume = f?.volume ?? null;
     const moeilijkheid = f?.moeilijkheid ?? null;
@@ -343,11 +368,11 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
       .map((p) => p.pad);
 
     adviezen.push({
-      plaats, naam: mooiePlaats(plaats), paginas, blijft, gaatWeg, uitkomst,
+      plaats: sleutelPlaats, naam, paginas, blijft, gaatWeg, uitkomst,
       vestiging, term, volume, moeilijkheid, haalbaarheid,
       klikken, vertoningen, bestePositie,
       onderbouwing: bouwOnderbouwing({
-        naam: mooiePlaats(plaats), paginas, term, volume, moeilijkheid, autoriteit, haalbaarheid,
+        naam, paginas, term, volume, moeilijkheid, autoriteit, haalbaarheid,
         klikken, vertoningen, bestePositie, vestiging, doetMee, vraag, meerdereVormen,
         uitkomst, blijft, gaatWeg, gekozenVorm,
       }),

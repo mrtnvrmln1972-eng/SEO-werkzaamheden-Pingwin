@@ -5,7 +5,9 @@ import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-
 import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst, markeerContentOver, markeerDoelRisico, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
 import { chatBesluitenVoor } from "../../../../lib/opruim-chat-besluiten";
-import { getAdsPaginas, getOpruimRegels } from "../../../../lib/opruim-regels";
+import { getAdsPaginas, getOpruimRegels, teBredeAdsPaden, zonderTeBrede } from "../../../../lib/opruim-regels";
+import { beoordeelTaalvarianten } from "../../../../lib/taalvarianten";
+import { getGscQueryPagePairs } from "../../../../lib/google";
 import { bepaalWeggelaten } from "../../../../lib/opruim-weggelaten";
 import { getClientUrls } from "../../../../lib/site-urls";
 
@@ -35,10 +37,22 @@ export async function GET(req: NextRequest) {
       getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false })),
       getClientUrls(slug).catch(() => []),
     ]);
+
+    // De Engelse vraagmeting: per pagina in een taalboom of er zoekvraag in díe
+    // taal is. Zonder eigen publiek is het een vertaling die niemand zoekt en die
+    // zijn tegenhanger in de weg zit; mét publiek blijft hij en moet hij echt
+    // vertaald worden. Zie lib/taalvarianten.ts voor de redenering.
+    const livePaden = urls.filter((u) => (u.status ?? 200) === 200).map((u) => u.url);
+    const gsc = domain ? await getGscQueryPagePairs(domain, 90).catch(() => []) : [];
+    const taal = beoordeelTaalvarianten(livePaden, gsc);
+    // Een regel die een hele sectie dekt is geen advertentiepagina. Genegeerd bij
+    // het rekenen, en gemeld op het scherm zodat hij opgeruimd kan worden.
+    const adsEffectief = zonderTeBrede(ads, livePaden);
+    const adsTeBreed = teBredeAdsPaden(ads, livePaden);
     const regels = markeerDoelRisico(
       markeerContentOver(
         markeerDoorgevoerd(
-          bouwWerklijst(st.result, plaatsen?.adviezen || [], chatBesluitenVoor(slug)),
+          bouwWerklijst(st.result, plaatsen?.adviezen || [], chatBesluitenVoor(slug), taal.oordelen),
           vaste.filter((r) => r.doorgevoerd).map((r) => r.van),
         ),
         vaste.filter((r) => r.contentOver).map((r) => r.van),
@@ -59,14 +73,14 @@ export async function GET(req: NextRequest) {
     const weggelaten = bepaalWeggelaten(
       urls.filter((u) => (u.status ?? 200) === 200).map((u) => u.url),
       regels.map((r) => r.pad),
-      ads,
+      adsEffectief,
       (plaatsen?.adviezen || []).map((a) => a.plaats),
       // Zonder de vormen valt de reden "plaats-verweesd" stil terug op "geen
       // aanleiding", en dan is precies het gat dat we zichtbaar wilden maken weer
       // onzichtbaar. De proef dekt de functie, niet deze aanroep; vandaar dit.
       plaatsen?.vormen || [],
     );
-    return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), weggelaten, lijstDatum: st.result?.generatedAt || null });
+    return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), weggelaten, adsTeBreed, taalBomen: taal.bomen, lijstDatum: st.result?.generatedAt || null });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Lijst bouwen mislukt." }, { status: 500 });
   }

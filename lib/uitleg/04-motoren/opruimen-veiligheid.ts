@@ -8,6 +8,40 @@ import type { Uitklapper } from "../types";
 
 export const VEILIGHEID: Uitklapper[] = [
   {
+    titel: "Een tweede taal is een eigen boom, geen dubbeling",
+    tekst:
+      "Op de lijst met advertentiepagina's van One Day Clinic stond de regel `/en/`. Zo'n regel dekt " +
+      "alles eronder, dus die ene regel zette 315 pagina's buiten élke analyse. Dat klopte niet: die " +
+      "pagina's staan op `index, follow` met een eigen canonical, en 211 ervan hebben een echte positie " +
+      "in Google.\n\n" +
+      "**Een advertentiepagina is een landingspagina, geen sectie.** Een regel die een hele tak dekt " +
+      "wordt daarom genegeerd, en op het scherm gemeld zodat je hem kunt weghalen. Een gewone " +
+      "landingspagina blijft gewoon werken, ook als hij op de wortel staat.\n\n" +
+      "Maar die Engelse pagina's zomaar in het gewone opruimen gooien is óók fout, en dat is het punt " +
+      "dat makkelijk misgaat. De Nederlandse en de Engelse versie verwijzen via hreflang netjes naar " +
+      "elkaar. Google ziet ze dus als taalvarianten, niet als duplicaten, en samenvoegen zou een " +
+      "werkende taalstructuur slopen. **Een taalvariant wordt daarom nooit samengevoegd met zijn " +
+      "tegenhanger in de hoofdtaal**, en een Engelse plaatspagina hoort bij de Engelse boom in plaats " +
+      "van bij de Nederlandse.\n\n" +
+      "Waarom ze nu tóch in de weg zitten: de titel is vertaald, de tekst eronder niet. Daardoor rankt " +
+      "`/en/een-soa-test-doen-in-utrecht/` op \"soa test utrecht\", een Nederlandse term, en " +
+      "concurreert hij met de Nederlandse pagina. Vertaal je hem echt, dan richt hij zich op Engelse " +
+      "termen en verdwijnt die concurrentie vanzelf.\n\n" +
+      "**De vraag is dus niet of hij dubbel is, maar of er zoekvraag in die taal is.** Dat wordt " +
+      "gemeten: per pagina wordt gekeken op hoeveel vertoningen hij binnenkomt via zoekopdrachten in " +
+      "de eigen taal, tegenover die in de hoofdtaal. De taal van een zoekopdracht volgt uit " +
+      "functiewoorden en vakwoorden (\"soa\" tegenover \"std\" en \"sti\"); is er geen signaal, dan telt " +
+      "hij voor geen van beide mee. Liever een eerlijk \"weet ik niet\" dan een verkeerde helft van een " +
+      "besluit.\n\n" +
+      "- **Geen eigen zoekvraag** → een vertaling die niemand zoekt en die zijn tegenhanger in de weg " +
+      "zit. Hij gaat erin op, en de hreflang-verwijzing gaat eraf. Zonder die laatste stap blijft " +
+      "Google een vertaling verwachten die er niet meer is.\n" +
+      "- **Wel eigen zoekvraag** → hij blijft en gaat de vertaalwachtrij in.\n\n" +
+      "En dat laatste bepaalt de volgorde: **eerst beslissen of een pagina blijft, dan pas vertalen.** " +
+      "Vertalen is contentwerk en hoort in fase 2, om precies dezelfde reden als alle andere " +
+      "inhoudelijke stappen: een pagina vertalen die je daarna wegstuurt is weggegooid werk.",
+  },
+  {
     titel: "Een advertentiepagina doet mee, maar gaat nooit weg",
     tekst:
       "Ads-landingspagina's werden helemaal buiten de opruim-analyse gehouden. Dat leek veilig en was " +

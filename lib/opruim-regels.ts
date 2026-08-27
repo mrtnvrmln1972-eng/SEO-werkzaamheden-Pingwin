@@ -164,11 +164,69 @@ export async function zetAdsPaginas(slug: string, paden: string[], geen: boolean
  */
 export function isAdsPad(pad: string, ads: AdsPaginas): boolean {
   const p = padVan(pad).replace(/\/$/, "").toLowerCase();
-  return ads.paden.some((a) => {
-    const b = padVan(a).replace(/\/$/, "").toLowerCase();
+  return bruikbareAdsPaden(ads).some((b) => {
     if (!b) return p === "";              // "/" is alleen de homepage zelf
     return p === b || p.startsWith(b + "/");
   });
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════
+ * EEN HELE SECTIE IS GEEN ADVERTENTIEPAGINA (27-08-2026)
+ * ═══════════════════════════════════════════════════════════
+ * Op de lijst van One Day Clinic stond `/en/`, en omdat een regel álles eronder
+ * dekt zette die ene regel 315 pagina's buiten beeld: de complete Engelse sectie.
+ * Dat zijn geen advertentiepagina's. Ze staan op `index, follow` met een eigen
+ * canonical, 211 ervan hebben een echte positie in Google, en er loopt een
+ * kloppende hreflang-koppeling met de Nederlandse pagina's.
+ *
+ * Dit is dezelfde fout als met `/` een paar weken eerder, en die is toen met een
+ * uitzondering opgelost in plaats van met een regel. Nu de regel: een
+ * advertentiepagina is een landingspagina, geen taalboom en geen halve site. Een
+ * regel die een eigen sectie beslaat wordt genegeerd, en het scherm meldt hem via
+ * `teBredeAdsPaden` zodat hij opgeruimd kan worden in plaats van stilletjes te
+ * blijven werken.
+ *
+ * `/` blijft toegestaan, want die dekt (door de regel hierboven) alleen de
+ * homepage zelf en is dus per definitie één pagina.
+ */
+// Hoeveel pagina's mag één regel dekken voordat het een sectie is? Een campagne
+// heeft er een handvol; een taalboom heeft er honderden. Deze grens wordt tegen
+// de echte pagina's van de site gehouden, niet tegen de vorm van het pad: een
+// gewone landingspagina op de wortel (`/soa-test-kopen/`) ziet er hetzelfde uit
+// als een map, en die mag natuurlijk gewoon.
+const ADS_MAX_PAGINAS = 25;
+
+/** De paden van de lijst die echt als advertentiepagina gelden, genormaliseerd. */
+export function bruikbareAdsPaden(ads: AdsPaginas): string[] {
+  return ads.paden.map((a) => padVan(a).replace(/\/$/, "").toLowerCase());
+}
+
+function dekt(regel: string, paden: string[]): number {
+  const b = padVan(regel).replace(/\/$/, "").toLowerCase();
+  if (!b) return 1;                       // "/" dekt alleen de homepage
+  return paden.filter((p) => {
+    const q = padVan(p).replace(/\/$/, "").toLowerCase();
+    return q === b || q.startsWith(b + "/");
+  }).length;
+}
+
+/**
+ * Welke regels dekken zoveel pagina's dat het geen landingspagina meer is? Die
+ * worden genegeerd; `zonderTeBrede` levert de lijst waarmee gerekend wordt.
+ */
+export function teBredeAdsPaden(ads: AdsPaginas, livePaden: string[]): { pad: string; paginas: number }[] {
+  return ads.paden
+    .map((pad) => ({ pad, paginas: dekt(pad, livePaden) }))
+    .filter((x) => x.paginas > ADS_MAX_PAGINAS)
+    .sort((a, b) => b.paginas - a.paginas);
+}
+
+/** De ads-lijst zonder de regels die een hele sectie beslaan. */
+export function zonderTeBrede(ads: AdsPaginas, livePaden: string[]): AdsPaginas {
+  const weg = new Set(teBredeAdsPaden(ads, livePaden).map((x) => x.pad));
+  const paden = ads.paden.filter((p) => !weg.has(p));
+  return { ...ads, paden, ingevuld: ads.geen || paden.length > 0 };
 }
 
 export async function adsAlsInstructie(slug: string): Promise<string> {

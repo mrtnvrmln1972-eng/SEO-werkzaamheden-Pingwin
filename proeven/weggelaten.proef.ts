@@ -150,7 +150,7 @@ if (!aanroep) {
   faal("kan de aanroep van bepaalWeggelaten niet vinden in de opruim-werklijst-route");
 } else {
   for (const [wat, patroon] of [
-    ["de ads-lijst", /\bads\b/],
+    ["de ads-lijst", /ads/i],
     ["de plaatsen waarvoor advies is", /adviezen/],
     ["de URL-vormen", /vormen/],
   ] as const) {

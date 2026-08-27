@@ -1,6 +1,7 @@
 import type { CannibalResult } from "./cannibal-redirect";
 import type { PlaatsAdvies } from "./opruim-plaatsen";
 import type { ChatBesluit } from "./opruim-chat-besluiten";
+import type { VariantOordeel } from "./taalvarianten";
 
 // ═══════════════════════════════════════════════════════════
 // ÉÉN LIJST, MEERDERE VIEWS
@@ -28,7 +29,7 @@ export type Uitkomst = "uitbouwen" | "samenvoegen" | "blijft" | "opruimen" | "ni
 /** Waarom deze pagina in de lijst staat. Meerdere kunnen tegelijk gelden.
     "chat" betekent: besloten in een chat-analyse en hier geland via
     lib/opruim-chat-besluiten/; zo'n besluit overruled de motor-uitkomst. */
-export type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie" | "chat";
+export type Herkomst = "plaats" | "onderwerp" | "kans" | "gat" | "cannibalisatie" | "chat" | "taal";
 
 export type WerkRegel = {
   pad: string;
@@ -80,7 +81,7 @@ const norm = (u: string) => {
  * bij elkaar gezet: dan zie je in één regel dát hij op twee gronden opviel, in
  * plaats van hem twee keer tegen te komen.
  */
-export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdvies[], chatBesluiten: ChatBesluit[] = []): WerkRegel[] {
+export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdvies[], chatBesluiten: ChatBesluit[] = [], taalOordelen: VariantOordeel[] = []): WerkRegel[] {
   const perPad = new Map<string, WerkRegel>();
 
   // Zwaarte: wat er met een pagina gebeurt weegt zwaarder naarmate er meer werk
@@ -250,7 +251,28 @@ export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdv
     });
   }
 
-  // 6. Besluiten uit een chat. Die komen ná de motor-bronnen en spelen niet mee
+  // 6. De taalvarianten. Een tweede taal is een eigen boom, geen dubbeling: een
+  // Engelse pagina gaat NOOIT op in zijn Nederlandse tegenhanger als er Engelse
+  // zoekvraag is, want die twee zijn via hreflang aan elkaar gekoppeld. Is die
+  // vraag er niet, dan is het een vertaling die niemand zoekt en die ondertussen
+  // de hoofdtaal in de weg zit; dan is samenvoegen juist wél het werk.
+  for (const t of taalOordelen) {
+    if (t.uitkomst === "onbekend") continue;
+    const taalNaam = t.taal.toUpperCase();
+    zet({
+      pad: t.pad,
+      uitkomst: t.uitkomst === "blijft-vertalen" ? "uitbouwen" : "samenvoegen",
+      naar: t.uitkomst === "samenvoegen" ? t.tegenhanger : "",
+      herkomst: ["taal"],
+      reden: t.reden,
+      onderbouwing: t.onderbouwing,
+      term: t.bewijs, volume: null, klikken: 0, vertoningen: t.eigenTaal + t.hoofdtaal, positie: null,
+      groep: `Taalversie ${taalNaam}`,
+    });
+  }
+
+
+  // 7. Besluiten uit een chat. Die komen ná de motor-bronnen en spelen niet mee
   // in het zwaarte-spel: een chat-besluit is een besluit van Maarten en wint dus
   // altijd van de motor, precies zoals de vaste regels de volgende analyse
   // overrulen. De motor-onderbouwing blijft wel bewaard onder die van de chat.

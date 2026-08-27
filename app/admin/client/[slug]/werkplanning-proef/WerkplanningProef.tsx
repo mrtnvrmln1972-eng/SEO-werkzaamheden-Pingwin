@@ -148,6 +148,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   const [taken, setTaken] = useState<WeekplanTaak[]>([]);
   const [activiteit, setActiviteit] = useState<ActRegel[]>([]);
   const [weggelaten, setWeggelaten] = useState<Weggelaten | null>(null);
+  const [adsTeBreed, setAdsTeBreed] = useState<{ pad: string; paginas: number }[]>([]);
   const [budget, setBudget] = useState(3);
   const [budgetIngevuld, setBudgetIngevuld] = useState(false);
   const [periode, setPeriode] = useState<(typeof PERIODES)[number]["key"]>("mnd");
@@ -189,6 +190,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
       if (!wr?.ok) setFout(wr?.error || "De opruimlijst kon niet geladen worden.");
       setOpruim(wr?.ok ? wr.regels || [] : []);
       setWeggelaten(wr?.ok ? wr.weggelaten || null : null);
+      setAdsTeBreed(wr?.ok ? wr.adsTeBreed || [] : []);
       setMetas(mc?.ok ? (mc.rows || []).filter((r: any) => r.reden === "klikwinst" || r.reden === "kapot") : []);
       if (wp?.ok) setTaken((wp.tasks || []).map((t: any) => ({
         id: t.id, thread: t.thread || "", taak: t.taak, url: t.url, taaktype: t.taaktype || "",
@@ -769,6 +771,14 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               </div>
             )}
           </div>
+
+          {/* Een regel op de ads-lijst die een hele sectie dekt is geen
+              landingspagina. Hij wordt genegeerd bij het rekenen, maar hij staat er
+              nog wel, dus dit hoort in beeld tot hij weg is. */}
+          {adsTeBreed.length > 0 && (
+            <Signalen soort="let-op" regels={adsTeBreed.map((a) =>
+              `De regel ${a.pad} staat op de lijst met advertentiepagina's, maar dekt ${a.paginas} pagina's. Dat is een hele sectie en geen landingspagina, dus hij wordt genegeerd en die pagina's doen gewoon mee in de analyse. Haal hem weg bij de opruim-instellingen zodat de lijst weer klopt.`)} />
+          )}
 
           {plan.vervallen > 0 && (
             <p className="muted">
