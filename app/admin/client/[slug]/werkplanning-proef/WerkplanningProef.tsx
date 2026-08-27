@@ -59,6 +59,8 @@ import {
   type ClusterPagina, type Werkcluster, type Handeling,
 } from "../../../../../lib/werkplan";
 import type { StapStand } from "../../../../../lib/cluster-draaiboek";
+import { sorteerClusters, SORTERING_LABEL, type Sortering } from "../../../../../lib/cluster-volgorde";
+import { bouwOverzicht, splitsBevindingen } from "../../../../../lib/cluster-uitvoering";
 import Draaiboek, { Fasestreep } from "./Draaiboek";
 
 type WeekplanTaak = {
@@ -76,6 +78,17 @@ const PERIODES = [
 const nl = new Intl.NumberFormat("nl-NL");
 const getal = (n: number | null | undefined) => (n == null ? "—" : nl.format(n));
 const kortDatum = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+// De periode van een groep als één vaste kolom: één datum, of van-tot. Stond eerder
+// in de ondertitel verwerkt, waardoor de ene regel wel en de andere geen datum op
+// dezelfde plek had en niets uitlijnde.
+function periodeTekst(c: ActCluster): string {
+  const van = new Date(c.van);
+  if (Number.isNaN(van.getTime())) return "";
+  const a = kortDatum(van);
+  const tot = new Date(c.tot);
+  const b = Number.isNaN(tot.getTime()) ? a : kortDatum(tot);
+  return a === b ? a : `${a} \u2013 ${b}`;
+}
 
 function WerkChip({ categorie }: { categorie: Categorie }) {
   return <span className={`werk-chip ${categorie}`}>{CATEGORIE_LABEL[categorie]}</span>;
@@ -144,6 +157,10 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
 
   const [filterCategorie, setFilterCategorie] = useState<Categorie | "alle">("alle");
   const [zoek, setZoek] = useState("");
+  const [sortering, setSortering] = useState<Sortering>("plan");
+  // Blokken die jij zelf vooraan hebt gezet. Gaan altijd voor de berekende
+  // volgorde: de motor weet niet dat de stadspagina's voor jou het zwaarst wegen.
+  const [prioriteiten, setPrioriteiten] = useState<Record<string, number>>({});
 
   async function laadAlles() {
     setLaden(true); setFout("");
@@ -158,7 +175,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
       // De draaiboeken los, want die mogen het laden van het plan niet ophouden.
       fetch(`/api/admin/cluster-draaiboek?slug=${encodeURIComponent(slug)}`)
         .then((r) => r.json())
-        .then((d) => { if (d?.ok) setDraaiStanden(d.standen || {}); })
+        .then((d) => { if (d?.ok) { setDraaiStanden(d.standen || {}); setPrioriteiten(d.prioriteiten || {}); } })
         .catch(() => { /* stil: zonder standen staan de streepjes gewoon leeg */ });
       if (!wr?.ok) setFout(wr?.error || "De opruimlijst kon niet geladen worden.");
       setOpruim(wr?.ok ? wr.regels || [] : []);
@@ -199,27 +216,26 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
     return t;
   }, [plan.clusters]);
 
-  // Een werkplan is een kwartaal. Bij 3 uur per week en 131 blokken kwam het plan
-  // op 92 weken uit, en dat is geen planning meer maar een lijst met weeknummers
-  // ervoor. Alles voorbij week 13 zakt daarom naar één blok onderaan, met wat het
-  // kost om het wél binnen een kwartaal te doen.
-  const binnenKwartaal = useMemo(
-    () => clustersGetoond.filter((c) => c.week <= WEKEN_IN_KWARTAAL),
-    [clustersGetoond],
-  );
-  const buitenKwartaal = useMemo(
-    () => clustersGetoond.filter((c) => c.week > WEKEN_IN_KWARTAAL),
-    [clustersGetoond],
+  // ALLES staat onder elkaar; filteren maakt de lijst korter, niet een afkap.
+  //
+  // Hier zat een echte fout in. Het plan werd afgekapt op week 13, maar `c.week`
+  // komt uit het ONGEFILTERDE plan. Zoeken op "rotterdam" liet dus twee blokken
+  // over met weeknummers ver voorbij de dertien, en die vielen allemaal buiten het
+  // kwartaal: het scherm zei "2 van de 131 blokken" en toonde er nul. De horizon
+  // is nu geen afkap meer maar een mededeling onderaan.
+  const clustersGesorteerd = useMemo(
+    () => sorteerClusters(clustersGetoond, sortering, prioriteiten),
+    [clustersGetoond, sortering, prioriteiten],
   );
 
   const perFaseGetoond = useMemo(() => ([1, 2, 3] as const).map((fase) => {
-    const lijst = binnenKwartaal.filter((c) => c.fase === fase);
+    const lijst = clustersGesorteerd.filter((c) => c.fase === fase);
     return {
       fase, clusters: lijst,
       minuten: lijst.reduce((s, c) => s + c.minuten, 0),
       paginas: lijst.reduce((s, c) => s + c.paginas.length, 0),
     };
-  }).filter((f) => f.clusters.length > 0), [binnenKwartaal]);
+  }).filter((f) => f.clusters.length > 0), [clustersGesorteerd]);
 
   const filterAan = filterCategorie !== "alle" || zoek.trim().length > 0;
   const getoondMinuten = clustersGetoond.reduce((s, c) => s + c.minuten, 0);
@@ -259,6 +275,20 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
       await laadAlles();
     } catch { setFout("Uit de planning halen mislukte."); }
     finally { setBezig(null); }
+  }
+
+  // Zelf de volgorde bepalen. De motor rekent fase en waarde uit, maar weet niet
+  // dat de stadspagina's voor jou het zwaarst wegen; dit gaat daar altijd voor.
+  async function zetVolgorde(c: Werkcluster, actie: "vooraan" | "losmaken") {
+    setMelding(""); setFout("");
+    try {
+      const d = await fetch("/api/admin/cluster-draaiboek", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug, cluster: c.naam, actie }),
+      }).then((r) => r.json());
+      if (d?.ok) { setPrioriteiten(d.prioriteiten || {}); setMelding(d.melding || ""); }
+      else setFout(d?.error || "De volgorde aanpassen mislukte.");
+    } catch { setFout("De volgorde aanpassen mislukte."); }
   }
 
   // Eén cluster is één beslissing, dus ook één klik: alle pagina's erin worden
@@ -333,12 +363,27 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               <Slug url={p.pad} domein={domein} />
               {p.naar && <> &#8594; <Slug url={p.naar} domein={domein} /></>}
             </p>
-            {p.onderbouwing.length > 0 && (
-              <>
-                <p className="wp-veldnaam">Waarom dit besluit</p>
-                <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(p.onderbouwing.join("\n\n"), { basis: domein || undefined }) }} />
-              </>
-            )}
+            {/* Staat een pagina in twee analyses, dan plakt de opruimlijst allebei
+                de onderbouwingen achter elkaar. Dat werd één blok met TWEE keer
+                "Wat we doen", en dat leest als tegenspraak terwijl het twee losse
+                bevindingen zijn. Nu apart, genummerd, elk met zijn eigen conclusie. */}
+            {(() => {
+              const bevindingen = splitsBevindingen(p.onderbouwing);
+              if (!bevindingen.length) return null;
+              return bevindingen.map((b, i) => (
+                <div key={i} className="wp-proza">
+                  <p className="wp-veldnaam">
+                    {bevindingen.length > 1 ? `Bevinding ${i + 1} van ${bevindingen.length}` : "Waarom dit besluit"}
+                  </p>
+                  {b.regels.length > 0 && (
+                    <div className="md" dangerouslySetInnerHTML={{ __html: netteHtml(b.regels.join("\n\n"), { basis: domein || undefined }) }} />
+                  )}
+                  {b.conclusie && (
+                    <div className="wp-conclusie md" dangerouslySetInnerHTML={{ __html: netteHtml(b.conclusie, { basis: domein || undefined }) }} />
+                  )}
+                </div>
+              ));
+            })()}
             {p.meta && (
               <>
                 <p className="wp-veldnaam">Wat er nu in het zoekresultaat staat</p>
@@ -389,6 +434,57 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               )}
             </div>
 
+            {/* Wat je als eerste wilt weten. Stond nergens; je moest het uit vier
+                open regels bij elkaar rapen. */}
+            {(() => {
+              const o = bouwOverzicht(c);
+              return (
+                <div className="wp-overzicht">
+                  {o.winnaar && (
+                    <>
+                      <p className="wp-veldnaam">De winnende pagina</p>
+                      <div className="wp-ozrij">
+                        <span className="wp-ozpad"><Slug url={o.winnaar.pad} domein={domein} /></span>
+                        <span className="wp-ozmeta">
+                          {[o.winnaar.term, o.winnaar.positie != null ? `positie ${String(o.winnaar.positie).replace(".", ",")}` : "",
+                            o.winnaar.klikken ? `${getal(o.winnaar.klikken)} klikken` : ""].filter(Boolean).join(" · ")}
+                        </span>
+                        <span className="wp-ozreden">alles in dit blok wijst hiernaartoe</span>
+                      </div>
+                    </>
+                  )}
+                  {o.inDeWeg.length > 0 && (
+                    <>
+                      <p className="wp-veldnaam">Wat er in de weg zit ({o.inDeWeg.length})</p>
+                      {o.inDeWeg.map((w) => (
+                        <div key={w.pad} className="wp-ozrij">
+                          <span className="wp-ozpad"><Slug url={w.pad} domein={domein} /></span>
+                          <span className="wp-ozmeta">
+                            {[w.term, w.positie != null ? `positie ${String(w.positie).replace(".", ",")}` : ""].filter(Boolean).join(" · ")}
+                          </span>
+                          <span className="wp-ozreden">{w.waarom}</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {o.eigenVraag.length > 0 && (
+                    <>
+                      <p className="wp-veldnaam">Blijft staan, eigen zoekvraag ({o.eigenVraag.length})</p>
+                      {o.eigenVraag.map((e) => (
+                        <div key={e.pad} className="wp-ozrij">
+                          <span className="wp-ozpad"><Slug url={e.pad} domein={domein} /></span>
+                          <span className="wp-ozmeta">
+                            {[e.term, e.positie != null ? `positie ${String(e.positie).replace(".", ",")}` : ""].filter(Boolean).join(" · ")}
+                          </span>
+                          <span className="wp-ozreden">zit niet in de weg, wordt niet omgeleid</span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+
             {c.gedeeld.length > 0 && (
               <div className="wp-groep-achtergrond wp-proza">
                 <h4>Wat er aan de hand is</h4>
@@ -436,6 +532,10 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                 onClick={() => zetInPlanning(c)}>
                 {bezig === c.sleutel ? "Bezig…" : `Zet dit blok in de planning (${teDoen.length})`}
               </button>
+              <button type="button" className="btn btn-ghost btn-klein"
+                onClick={() => zetVolgorde(c, (prioriteiten[c.naam] || 0) > 0 ? "losmaken" : "vooraan")}>
+                {(prioriteiten[c.naam] || 0) > 0 ? "Laat los uit vooraan" : "Zet vooraan"}
+              </button>
               {c.inPlanning > 0 && (
                 <span className="muted pnl-acties-info">Er lopen al {c.inPlanning} taken voor dit blok.</span>
               )}
@@ -447,37 +547,60 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   }
 
   // ── Eén cluster uit het logboek ──
+  // Eén regel in "Wat er al gedaan is". Een groep van één en een groep van tien
+  // zagen er eerst totaal anders uit: de een een platte rij, de ander een kop met
+  // een pijltje. Maartens woorden: "de ene heeft wel pijltjes en de andere niet,
+  // ik wil dat alles op één grid netjes hetzelfde eruitziet."
+  //
+  // Nu één rij-vorm voor allebei, met dezelfde kolommen op dezelfde plek: datum,
+  // soort werk, tekst, aantal. Alleen het pijltje verschilt, en dat is precies
+  // wat het verschil ís: hier kun je wel of niet dieper.
   function ActClusterBlok({ c }: { c: ActCluster }) {
-    if (c.items.length === 1) {
-      const a = c.items[0];
-      return (
-        <div className="wp-row wp-item">
-          <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
-          <WerkChip categorie={c.categorie} />
-          <span className="wp-grow">{c.titel}</span>
-          {c.paginas[0] && <Slug url={c.paginas[0]} domein={domein} />}
-        </div>
-      );
-    }
     const open = !!openActCluster[c.sleutel];
+    const enkel = c.items.length === 1;
+    const item = c.items[0];
+    const inhoud = (
+      <>
+        <span className="wp-akol-datum">{periodeTekst(c)}</span>
+        <WerkChip categorie={c.categorie} />
+        <span className="wp-clus-tekst">
+          <span className="wp-akol-titel">{c.titel}</span>
+          {c.subtitel && <span className="wp-clus-sub">{c.subtitel}</span>}
+        </span>
+        <span className="deelkop-meta">{c.items.length}</span>
+      </>
+    );
     return (
       <div className="wp-taak">
-        <button type="button" className="deelkop" aria-expanded={open}
-          onClick={() => setOpenActCluster((s) => ({ ...s, [c.sleutel]: !s[c.sleutel] }))}>
-          <WerkChip categorie={c.categorie} />
-          <span className="wp-clus-tekst">
-            <span>{c.titel}</span>
-            {c.subtitel && <span className="wp-clus-sub">{c.subtitel}</span>}
-          </span>
-          <span className="deelkop-meta">{c.items.length}</span>
-        </button>
-        {open && (
+        {enkel ? (
+          <div className="deelkop deelkop-vast">{inhoud}</div>
+        ) : (
+          <button type="button" className="deelkop" aria-expanded={open}
+            onClick={() => setOpenActCluster((s) => ({ ...s, [c.sleutel]: !s[c.sleutel] }))}>
+            {inhoud}
+          </button>
+        )}
+        {/* Bij een enkele regel staat de link meteen op de regel zelf, want er valt
+            niets open te klappen. Bij een groep staan ze binnen de uitklap. */}
+        {enkel && (item.bewijs || c.paginas[0]) && (
+          <div className="wp-arij">
+            <span className="wp-akol-datum" />
+            <span className="wp-grow">
+              {item.bewijs
+                ? <a className="uk-pad" href={item.bewijs} target="_blank" rel="noreferrer">open de mail</a>
+                : <Slug url={c.paginas[0]} domein={domein} />}
+            </span>
+          </div>
+        )}
+        {!enkel && open && (
           <div className="wp-taak-diep wp-proza">
             {c.items.map((a) => (
-              <div key={a.id} className="wp-row wp-item">
-                <span className="wp-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
+              <div key={a.id} className="wp-arij">
+                <span className="wp-akol-datum">{kortDatum(new Date(a.gebeurdeOp))}</span>
                 <span className="wp-grow">{a.intern}</span>
-                {c.paginas.length <= 1 && a.url && <Slug url={a.url} domein={domein} />}
+                {a.bewijs
+                  ? <a className="uk-pad" href={a.bewijs} target="_blank" rel="noreferrer">open de mail</a>
+                  : a.url ? <Slug url={a.url} domein={domein} /> : null}
               </div>
             ))}
           </div>
@@ -549,6 +672,23 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                 ))}
               </div>
             </div>
+            <div className="wp-stuur-rij">
+              <span className="wp-stuur-label">Volgorde</span>
+              <div className="pnl-acties-groep" role="group">
+                {(["plan", "waarde", "tijd", "naam"] as const).map((k) => (
+                  <button key={k} type="button"
+                    className={"btn btn-klein " + (sortering === k ? "btn-primary" : "btn-ghost")}
+                    onClick={() => setSortering(k)}>
+                    {SORTERING_LABEL[k]}
+                  </button>
+                ))}
+              </div>
+              {Object.values(prioriteiten).some((p) => p > 0) && (
+                <span className="wp-stuur-uitleg">
+                  Blokken die jij vooraan hebt gezet staan altijd bovenaan, wat je hier ook kiest.
+                </span>
+              )}
+            </div>
             {filterAan && (
               <div className="wp-stuur-rij">
                 <span className="wp-stuur-uitleg">
@@ -586,18 +726,17 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             </section>
           ))}
 
-          {buitenKwartaal.length > 0 && (
+          {plan.weken > WEKEN_IN_KWARTAAL && !filterAan && (
             <div className="wp-horizon">
               <p>
-                <strong>{buitenKwartaal.length} blokken passen niet in dit kwartaal.</strong>{" "}
-                Hierboven staan de {binnenKwartaal.length} blokken die bij {budget} uur per week in dertien
-                weken passen. De rest is samen {urenTekst(buitenKwartaal.reduce((s, c) => s + c.minuten, 0))} werk
-                en schuift door naar het kwartaal daarna.
+                Alle {plan.clusters.length} blokken staan hieronder, op volgorde. Bij {budget} uur per week
+                is dit <strong>{plan.weken} weken</strong> werk in totaal, dus niet alles past in een kwartaal.
+                Wil je het hele plan wél binnen dertien weken af hebben, dan is er{" "}
+                <strong>{String(plan.urenVoorKwartaal).replace(".", ",")} uur per week</strong> nodig.
               </p>
               <p>
-                Wil je het hele plan wél binnen een kwartaal af hebben, dan is er{" "}
-                <strong>{String(plan.urenVoorKwartaal).replace(".", ",")} uur per week</strong> nodig
-                in plaats van {budget}. Op het huidige budget duurt het hele plan {plan.weken} weken.
+                Gebruik de filters en de zoekregel hierboven om de lijst korter te maken, en zet met
+                &#8220;vooraan&#8221; de blokken bovenaan die voor jou het zwaarst wegen.
               </p>
             </div>
           )}

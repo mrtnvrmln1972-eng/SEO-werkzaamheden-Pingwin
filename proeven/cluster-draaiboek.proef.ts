@@ -20,7 +20,9 @@ import {
 } from "../lib/cluster-draaiboek";
 import {
   bouwTermverdeling, bouwVerdict, bouwLinkplan, bouwBouwpakket, blijvendePaginas,
+  bouwOverzicht, splitsBevindingen,
 } from "../lib/cluster-uitvoering";
+import { sorteerClusters } from "../lib/cluster-volgorde";
 import { bouwWerkplan, type OpruimRegel, type MetaKans } from "../lib/werkplan";
 
 let fouten = 0;
@@ -175,6 +177,53 @@ proef("het bouwpakket bevat de linktabel en de omleidingen",
   /Omleidingen, als allerlaatste stap/.test(pakket));
 proef("het bouwpakket waarschuwt dat de omleiding als laatste komt",
   /pas nadat de teksten hierboven live staan/i.test(pakket));
+
+// ── 8. Het overzicht bovenaan een blok: wie wint, wie zit in de weg ──
+const oz = bouwOverzicht(cluster);
+proef("het overzicht wijst de winnende pagina aan",
+  oz.winnaar?.pad === "/soa-klinieken/soa-test-amsterdam/", oz.winnaar?.pad);
+proef("het overzicht zegt welke pagina's in de weg zitten en waarom",
+  oz.inDeWeg.length === 2 &&
+  oz.inDeWeg.every((w) => w.waarom.length > 0) &&
+  oz.inDeWeg.some((w) => w.pad === "/snelle-soa-test-amsterdam/"),
+  oz.inDeWeg.map((w) => `${w.pad}: ${w.waarom}`).join(" | "));
+proef("een pagina met een eigen zoekvraag staat apart, want die zit NIET in de weg",
+  oz.eigenVraag.length === 1 && oz.eigenVraag[0].pad === "/testen-in-amsterdam-welke-opties-heb-je/",
+  oz.eigenVraag.map((e) => e.pad).join(", "));
+
+// ── 9. Twee analyses over één pagina zijn twee bevindingen, geen tegenspraak ──
+const twee = splitsBevindingen([
+  "Op deze term staan drie eigen pagina's.",
+  "Wat we doen: de spoedpassages verhuizen naar de landingspagina.",
+  "Uit de analyse: 0 verwijzende domeinen, dunne pagina.",
+  "**Wat we doen:** een omleiding naar /soa-test/.",
+]);
+proef("een onderbouwing met twee keer 'Wat we doen' wordt twee losse bevindingen",
+  twee.length === 2 && twee[0].regels.length === 1 && twee[1].regels.length === 1,
+  twee.map((b) => `[${b.regels.length} regels + ${b.conclusie ? "conclusie" : "geen"}]`).join(" "));
+proef("elke bevinding houdt zijn eigen conclusie",
+  /spoedpassages/.test(twee[0].conclusie) && /omleiding/.test(twee[1].conclusie));
+proef("één bevinding blijft één bevinding",
+  splitsBevindingen(["Alleen een waarneming."]).length === 1);
+
+// ── 10. De volgorde: eigen prioriteit gaat altijd voor de berekende ──
+const drie = [
+  { naam: "Klein", nummer: 1, volume: 100, minuten: 30 },
+  { naam: "Groot", nummer: 2, volume: 9000, minuten: 300 },
+  { naam: "Midden", nummer: 3, volume: 500, minuten: 60 },
+] as unknown as Parameters<typeof sorteerClusters>[0];
+proef("zonder eigen volgorde volgt de lijst het plan",
+  sorteerClusters(drie, "plan", {}).map((c) => c.naam).join(",") === "Klein,Groot,Midden");
+proef("op waarde sorteren zet het grootste zoekvolume bovenaan",
+  sorteerClusters(drie, "waarde", {}).map((c) => c.naam).join(",") === "Groot,Midden,Klein");
+proef("op tijd sorteren zet de kortste klus bovenaan",
+  sorteerClusters(drie, "tijd", {}).map((c) => c.naam).join(",") === "Klein,Midden,Groot");
+proef("een blok dat jij vooraan zet blijft vooraan, wat de sortering ook is",
+  sorteerClusters(drie, "waarde", { Klein: 1 }).map((c) => c.naam).join(",") === "Klein,Groot,Midden" &&
+  sorteerClusters(drie, "tijd", { Groot: 5 }).map((c) => c.naam).join(",") === "Groot,Klein,Midden",
+  sorteerClusters(drie, "waarde", { Klein: 1 }).map((c) => c.naam).join(","));
+proef("wie het laatst vooraan gezet is, staat het hoogst",
+  sorteerClusters(drie, "plan", { Klein: 1, Midden: 2 }).map((c) => c.naam).join(",") === "Midden,Klein,Groot");
 
 console.log(fouten === 0 ? "\nAlles klopt: de volgorde is niet te omzeilen." : `\n${fouten} fout(en).`);
 if (fouten > 0) process.exit(1);

@@ -11,7 +11,7 @@
 // `proeven/cluster-uitvoering.proef.ts` kan het narekenen met een echt cluster.
 
 import { padVan } from "./werk-clusters";
-import { urenTekst, paginaRegel, HANDELING_LABEL, type ClusterPagina, type Werkcluster } from "./werkplan";
+import { urenTekst, paginaRegel, HANDELING_LABEL, type ClusterPagina, type Handeling, type Werkcluster } from "./werkplan";
 
 const nl = new Intl.NumberFormat("nl-NL");
 const getal = (n: number | null | undefined) => (n == null ? "onbekend" : nl.format(n));
@@ -129,6 +129,77 @@ export function bouwLinkplan(cluster: Werkcluster): LinkRegel[] {
       });
     }
   }
+  return uit;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 3b. HET OVERZICHT BOVENAAN EEN BLOK
+// ═══════════════════════════════════════════════════════════
+// Wat je als eerste wilt weten: welke pagina wint, en welke zitten daar om welke
+// reden in de weg. Dat stond nergens; je moest het uit vier open regels bij
+// elkaar rapen.
+
+export type Overzicht = {
+  winnaar: { pad: string; term: string; positie: number | null; klikken: number } | null;
+  inDeWeg: { pad: string; handeling: Handeling; waarom: string; term: string; positie: number | null }[];
+  eigenVraag: { pad: string; term: string; positie: number | null }[];
+  losseKansen: { pad: string; term: string }[];
+};
+
+export function bouwOverzicht(cluster: Werkcluster): Overzicht {
+  const doel = padVan(cluster.doel || "");
+  const winnaarPagina = cluster.paginas.find((p) => padVan(p.pad) === doel);
+  return {
+    winnaar: winnaarPagina
+      ? { pad: padVan(winnaarPagina.pad), term: winnaarPagina.term, positie: winnaarPagina.positie, klikken: winnaarPagina.klikken }
+      : null,
+    // Wat er in de weg zit: alles wat verdwijnt of opgaat in de winnaar.
+    inDeWeg: cluster.paginas
+      .filter((p) => p.handeling === "samenvoegen" || p.handeling === "opruimen")
+      .map((p) => ({
+        pad: padVan(p.pad), handeling: p.handeling, waarom: p.reden,
+        term: p.term, positie: p.positie,
+      })),
+    // Pagina's die blijven omdat ze een eigen zoekvraag hebben; die zitten juist
+    // NIET in de weg, en dat verschil moet je in één oogopslag zien.
+    eigenVraag: cluster.paginas
+      .filter((p) => (p.handeling === "blijft" || p.handeling === "uitbouwen") && padVan(p.pad) !== doel)
+      .map((p) => ({ pad: padVan(p.pad), term: p.term, positie: p.positie })),
+    losseKansen: cluster.paginas
+      .filter((p) => p.handeling === "meta")
+      .map((p) => ({ pad: padVan(p.pad), term: p.term })),
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// 3c. DE ONDERBOUWING UIT ELKAAR HALEN
+// ═══════════════════════════════════════════════════════════
+// Staat een pagina in twee analyses (bijvoorbeeld de plaatsanalyse én de
+// onderwerpanalyse), dan plakt de opruimlijst allebei de onderbouwingen achter
+// elkaar. Op het scherm werd dat één blok met TWEE keer "Wat we doen", en dat
+// leest als tegenspraak terwijl het twee losse bevindingen zijn. Maartens
+// woorden: "ik zie twee keer wat we doen en het lijkt erop alsof daar zelfs
+// tegenspraken in zitten."
+//
+// Hier knippen we op precies die grens: een bevinding eindigt met zijn eigen
+// conclusie, en de volgende begint daarna.
+
+export type Bevinding = { regels: string[]; conclusie: string };
+
+const CONCLUSIE = /^\s*(?:\*\*)?wat we doen\b/i;
+
+export function splitsBevindingen(onderbouwing: string[]): Bevinding[] {
+  const uit: Bevinding[] = [];
+  let lopend: string[] = [];
+  for (const regel of onderbouwing) {
+    if (CONCLUSIE.test(regel)) {
+      uit.push({ regels: lopend, conclusie: regel });
+      lopend = [];
+    } else {
+      lopend.push(regel);
+    }
+  }
+  if (lopend.length) uit.push({ regels: lopend, conclusie: "" });
   return uit;
 }
 

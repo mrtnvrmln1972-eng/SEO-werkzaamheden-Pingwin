@@ -2499,10 +2499,35 @@ button.ck-collapse-head {
 .wp-stap-acties { display: flex; align-items: center; gap: var(--ruimte-naast); flex-wrap: wrap; }
 .wp-stap-uitkomst { flex-basis: 100%; padding: var(--ruimte-regel) 0 0; }
 
+/* HET OVERZICHT BOVENAAN EEN BLOK: wie wint, wie zit in de weg, waarom.
+   Drie kolommen op een vast raster, zodat de paden onder elkaar staan en de
+   redenen ook. Op een smal scherm klapt het naar onder elkaar. */
+.wp-overzicht { display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+.wp-ozrij { display: grid; grid-template-columns: minmax(18ch, 26ch) minmax(14ch, 22ch) 1fr; gap: var(--ruimte-naast); align-items: baseline; padding: var(--ruimte-krap) 0; border-top: 1px solid var(--kleur-rand-zacht); }
+.wp-ozrij:first-of-type { border-top: none; }
+.wp-ozpad { min-width: 0; overflow-wrap: anywhere; font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); }
+.wp-ozmeta { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-stil); font-variant-numeric: tabular-nums; }
+.wp-ozreden { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); color: var(--kleur-tekst-zacht); }
+
+/* De conclusie van een bevinding: hetzelfde blok, maar met een randje zodat je
+   ziet dat het de uitkomst is en niet nog een waarneming. */
+.wp-conclusie { border-left: 3px solid var(--kleur-accent); padding-left: var(--ruimte-regel); }
+
+/* HET LOGBOEK OP ÉÉN GRID. Elke regel heeft dezelfde kolommen op dezelfde plek,
+   of hij nu openklapt of niet: datum, soort werk, tekst, aantal. */
+.wp-akol-datum { flex: 0 0 11ch; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wp-akol-titel { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 700; color: var(--kleur-kop); }
+.wp-arij { display: flex; align-items: baseline; gap: var(--ruimte-naast); padding: var(--ruimte-krap) 0; }
+.wp-arij .wp-grow { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); }
+/* De uitklap begint precies onder de tekstkolom van de regel erboven, niet onder
+   het pijltje; anders staat de inhoud van een groep verschoven ten opzichte van
+   de groepen zonder uitklap. */
+.wp-taak-diep .wp-arij:first-child { padding-top: 0; }
+
 .wp-ruis-kop { margin-top: var(--ruimte-regel); }
 .btn-quiet.wp-linkstijl, .btn-quiet.wp-linkstijl:hover:not(:disabled) { color: var(--kleur-accent-diep); text-decoration: underline; text-underline-offset: 2px; }
 .btn-quiet.wp-linkstijl:hover:not(:disabled) { color: var(--kleur-accent); background: transparent; border-color: transparent; }
-@media (max-width: 760px) { .wp-nustraks { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .wp-nustraks { grid-template-columns: 1fr; } .wp-ozrij { grid-template-columns: 1fr; } }
 /* werkplan:eind */
 .kpi-spark rect { cursor: crosshair; }
 .kpi-spark-hline { stroke: #c4c4c4; stroke-width: 1; vector-effect: non-scaling-stroke; }

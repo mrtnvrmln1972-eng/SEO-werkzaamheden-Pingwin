@@ -5,6 +5,7 @@ import {
   STAP_VAN_SLEUTEL, type StapSleutel, type Stand, type Modus,
 } from "../../../../lib/cluster-draaiboek";
 import { createDocRun } from "../../../../lib/page-doc-run";
+import { getPrioriteiten, zetPrioriteit, volgendeVoorrang } from "../../../../lib/cluster-volgorde";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -34,7 +35,10 @@ export async function GET(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Klant verplicht." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   try {
-    if (!cluster) return NextResponse.json({ ok: true, standen: await getAlleStanden(slug) });
+    if (!cluster) {
+      const [standen, prioriteiten] = await Promise.all([getAlleStanden(slug), getPrioriteiten(slug)]);
+      return NextResponse.json({ ok: true, standen, prioriteiten });
+    }
     const heeftSamenvoeging = req.nextUrl.searchParams.get("samenvoeging") !== "nee";
     const standen = await getStanden(slug, cluster);
     return NextResponse.json({ ok: true, draaiboek: bouwDraaiboek(cluster, standen, { heeftSamenvoeging }) });
@@ -66,6 +70,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         ok: true, melding: "Het draaiboek staat weer op het begin.",
         draaiboek: bouwDraaiboek(cluster, [], { heeftSamenvoeging }),
+      });
+    }
+
+    // De eigen volgorde. Hoort niet bij een stap, dus vóór de stap-controle.
+    if (body.actie === "vooraan" || body.actie === "losmaken") {
+      const p = body.actie === "vooraan" ? await volgendeVoorrang(slug) : 0;
+      await zetPrioriteit(slug, cluster, p);
+      return NextResponse.json({
+        ok: true,
+        melding: p ? `"${cluster}" staat nu vooraan.` : `"${cluster}" volgt weer de gewone volgorde.`,
+        prioriteiten: await getPrioriteiten(slug),
       });
     }
 
