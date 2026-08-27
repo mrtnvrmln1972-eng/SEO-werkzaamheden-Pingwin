@@ -91,6 +91,29 @@ if (!/MAX_VELDLENGTE/.test(poort)) {
   }
 }
 
+// ── SLOT H: het feit moet een meting zijn, geen ander document ────────────
+// Zesde onterechte blokkade (27-08-2026): de poort zette "het plan stelt voor"
+// en "het klantprofiel stelt letterlijk" in het feit-veld en blokkeerde daarop.
+// Twee documenten die elkaar tegenspreken zijn geen poortzaak; daar gaat de
+// laatst vastgelegde afspraak al voor.
+{
+  const documenten: [string, string, boolean][] = [
+    ["De pagina-URL moet hier blijven.", "Het plan stelt voor dat het doel /hovenier/uden/ is.", false],
+    ["Het bedrijf is gevestigd in Uden.", "Het klantprofiel stelt letterlijk: gevestigd in Vorstenbosch.", false],
+    ["De pagina heeft geen FAQ.", "De blauwdruk beschrijft een FAQ met zes vragen.", false],
+    // Een echte meting blijft gewoon een conflict.
+    ["De pagina heeft geen H1.", "De live pagina heeft een H1 van 42 tekens.", true],
+  ];
+  for (const [claim, feit, verwacht] of documenten) {
+    if (isEchtConflict(claim, feit) !== verwacht) {
+      fouten.push(`lib/keten-poort.ts: feit "${feit.slice(0, 55)}…" hoort ${verwacht ? "WEL" : "GEEN"} conflict te zijn. Het feit-veld moet uit de verse meting komen; een verwijzing naar het plan, de blauwdruk of het klantprofiel is geen meting.`);
+    }
+  }
+  if (!/isGeenMeting/.test(poort) || !/GEEN_METING/.test(poort)) {
+    fouten.push("lib/keten-poort.ts: slot H (het feit moet een meting zijn) is weg. Dit was de zesde onterechte blokkade.");
+  }
+}
+
 // ── SLOT E: er is altijd een uitweg ────────────────────────────────────────
 if (!/negeerPoort/.test(doc) || !/if \(!negeerPoort\)/.test(doc)) {
   fouten.push("lib/page-doc.ts: de overslaan-route (negeerPoort) is weg. Dan is de poort weer een muur zonder deur en kost één vals alarm opnieuw een halve dag.");

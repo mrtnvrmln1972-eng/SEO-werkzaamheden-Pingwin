@@ -74,7 +74,7 @@ GEEN conflict (poort open laten), dit is GEEN uitputtende lijst maar de meest vo
 - ELK criterium/norm/doel uit de scorecard (lengte-normen zoals H1/meta, dekkingspercentages zoals H2-dekking, FAQ-aantallen, keyword density) vergeleken met de huidige gemeten waarde, en het voorstel om dat te verbeteren. Dat is per definitie de inhoud van deze documenten, nooit een conflict, ook niet als de huidige waarde ver onder de norm zit of de norm zelf ergens anders vandaan lijkt te komen. Alleen als het plan LETTERLIJK beweert dat de norm AL BEHAALD is ("H1 is al 45 tekens, voldoet") terwijl de meting iets heel anders laat zien, is dat wel een conflict.
 - het plan stelt voor iets TOE TE VOEGEN, UIT TE BREIDEN of OP TE BOUWEN wat er volgens de meting nog niet is. Dat is geen tegenspraak maar overeenstemming: het plan bevestigt de meting en zegt wat er moet gebeuren. Ook een plan dat een pagina wil bouwen, herbouwen, samenvoegen, omleiden (301), verplaatsen, hernoemen of opheffen valt hieronder: dat is een voorgenomen wijziging, geen bewering over de huidige situatie. Dat de pagina nu bestaat, verkeer heeft of ergens op rankt, spreekt zo'n plan niet tegen, dat is juist de aanleiding ervoor.
 - een andere formulering, een mening, een dosering, iets dat de meting niet kan zien (bijvoorbeeld tekst onderaan de pagina die niet in de eerste koppen zit), of ontbrekende data.
-Bij twijfel: geen conflict. Twijfel je tussen "dit is een norm-vs-meting-verbetervoorstel" en "dit is een conflict", kies dan ALTIJD geen conflict.
+Het "feit" moet ALTIJD uit de verse meting komen (live koppen, HTTP-status, Search Console, Ahrefs). Verwijs in "feit" nooit naar het plan, de strategie, de blauwdruk, de analyse, het klantprofiel of een ander document: twee documenten die elkaar tegenspreken zijn geen poortzaak, want de laatst vastgelegde afspraak gaat daar altijd voor. Bij twijfel: geen conflict. Twijfel je tussen "dit is een norm-vs-meting-verbetervoorstel" en "dit is een conflict", kies dan ALTIJD geen conflict.
 Antwoord met UITSLUITEND geldige JSON, exact dit formaat, niets eromheen:
 {"conflicten":[{"claim":"wat het plan of de eerdere stap beweert, kort","feit":"wat de verse meting laat zien, kort","hard":true,"waarom":"waarom dit wel of niet een echte tegenspraak is"}]}
 REGELS VOOR DE VELDEN, hier gaat het meestal mis:
@@ -129,6 +129,31 @@ function isToekomstplan(claim: string, feit: string): boolean {
   return !DOEL_ONTBREEKT.some((d) => f.includes(d));
 }
 
+// SLOT H: het "feit" moet een METING zijn, geen ander document.
+//
+// Zesde onterechte blokkade, 27-08-2026, weer op /hovenier-uden/. Twee stuks:
+//   • "Het plan zegt: de URL moet blijven — maar de verse meting laat zien: het
+//     plan stelt voor dat het doel /hovenier/uden/ is." Dat is plan tegen plan.
+//   • "Het plan zegt: gevestigd in Uden — maar de verse meting laat zien: het
+//     klantprofiel stelt letterlijk Vorstenbosch." Dat is plan tegen profiel.
+//
+// Allebei kunnen waar zijn, en allebei worden ze elders al opgelost: een oud
+// plan dat is achterhaald wordt overruled door "Wat de klant zelf zegt", dat
+// bovenaan élke opdracht staat. De poort is er alleen voor het ene geval dat
+// niet elders wordt opgelost: het plan beweert iets over de HUIDIGE pagina dat
+// de verse meting weerlegt. Staat er in het feit een verwijzing naar het plan,
+// het profiel, de strategie of een eerder document, dan is het per definitie
+// geen meting en dus geen poortzaak.
+const GEEN_METING = [
+  "het plan", "de strategie", "de blauwdruk", "de analyse", "het klantprofiel",
+  "de tone of voice", "het profiel", "een eerdere stap", "de eerdere stap",
+  "wat de klant zelf zegt", "de correctie", "het document", "de briefing",
+];
+
+function isGeenMeting(feit: string): boolean {
+  return GEEN_METING.some((g) => feit.toLowerCase().includes(g));
+}
+
 // SLOT D: een harde tegenspraak past in één zin. Alles daarboven is een
 // beschouwing, en een beschouwing hoort de keten niet dicht te gooien.
 const MAX_VELDLENGTE = 300;
@@ -137,6 +162,7 @@ export function isEchtConflict(claim: string, feit: string): boolean {
   if (!claim || !feit) return false;
   if (claim.length > MAX_VELDLENGTE || feit.length > MAX_VELDLENGTE) return false;
   if (isToekomstplan(claim, feit)) return false;
+  if (isGeenMeting(feit)) return false;
   const samen = `${claim} ${feit}`.toLowerCase();
   return !ZELFWEERLEGGEND.some((z) => samen.includes(z));
 }
