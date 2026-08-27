@@ -6,7 +6,7 @@ import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst, markeerContentOver, markeerDoelRisico, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
 import { chatBesluitenVoor } from "../../../../lib/opruim-chat-besluiten";
 import { getAdsPaginas, getOpruimRegels, teBredeAdsPaden, zonderTeBrede } from "../../../../lib/opruim-regels";
-import { beoordeelTaalvarianten } from "../../../../lib/taalvarianten";
+import { beoordeelTaalvarianten, merkWoordenVan } from "../../../../lib/taalvarianten";
 import { getGscQueryPagePairs } from "../../../../lib/google";
 import { bepaalWeggelaten } from "../../../../lib/opruim-weggelaten";
 import { getClientUrls } from "../../../../lib/site-urls";
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     // vertaald worden. Zie lib/taalvarianten.ts voor de redenering.
     const livePaden = urls.filter((u) => (u.status ?? 200) === 200).map((u) => u.url);
     const gsc = domain ? await getGscQueryPagePairs(domain, 90).catch(() => []) : [];
-    const taal = beoordeelTaalvarianten(livePaden, gsc);
+    const taal = beoordeelTaalvarianten(livePaden, gsc, merkWoordenVan(domain));
     // Een regel die een hele sectie dekt is geen advertentiepagina. Genegeerd bij
     // het rekenen, en gemeld op het scherm zodat hij opgeruimd kan worden.
     const adsEffectief = zonderTeBrede(ads, livePaden);

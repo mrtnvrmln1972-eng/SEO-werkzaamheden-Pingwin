@@ -15,7 +15,7 @@
 //   wel eigen vraag  → blijft staan en moet echt vertaald worden
 
 import {
-  taalBomen, taalVan, zonderTaal, taalVanZoekopdracht, beoordeelTaalvarianten,
+  taalBomen, taalVan, zonderTaal, taalVanZoekopdracht, beoordeelTaalvarianten, merkWoordenVan,
   type GscRegel,
 } from "../lib/taalvarianten";
 import { teBredeAdsPaden, zonderTeBrede, isAdsPad } from "../lib/opruim-regels";
@@ -61,6 +61,27 @@ for (const [zoek, verwacht] of [
   const uit = taalVanZoekopdracht(zoek);
   if (uit === verwacht) goed(`"${zoek}" → ${uit}`);
   else faal(`"${zoek}" werd '${uit}' in plaats van '${verwacht}'`);
+}
+
+// De merknaam mag nooit als taalsignaal tellen. Live gemeten: "one day clinic"
+// werd zes keer als Engelse zoekvraag geteld, terwijl het gewoon iemand is die
+// het merk intikt. Dat zou een pagina ten onrechte laten blijven.
+console.log("De merknaam telt niet als taal");
+const merk = merkWoordenVan("onedayclinic.nl");
+if (merk.includes("day") && merk.includes("onedayclinic")) {
+  goed(`de merkwoorden komen uit het domein: ${merk.join(", ")}`);
+} else {
+  faal(`merkWoordenVan gaf ${merk.join(", ") || "(niets)"}`);
+}
+if (taalVanZoekopdracht("one day clinic", merk) === "onbekend") {
+  goed('"one day clinic" telt niet als Engelse zoekvraag');
+} else {
+  faal(`"one day clinic" werd '${taalVanZoekopdracht("one day clinic", merk)}'. Een merkzoekopdracht is geen bewijs van Engels publiek.`);
+}
+if (taalVanZoekopdracht("std testing near me", merk) === "engels") {
+  goed('een echte Engelse zoekopdracht blijft gewoon Engels');
+} else {
+  faal('"std testing near me" werd niet meer als Engels herkend; de merkfilter is te grof');
 }
 
 // ── Het oordeel per taalvariant ────────────────────────────

@@ -103,7 +103,7 @@ const EN_WOORDEN = new Set([
   "with", "without", "near", "cost", "costs", "price", "results", "appointment",
   "std", "sti", "stds", "stis", "test", "testing", "tested", "clinic", "doctor",
   "symptoms", "treatment", "infection", "pregnant", "free", "anonymous", "fast", "quick",
-  "same", "day", "rapid", "screening", "check",
+  "rapid", "screening",
 ]);
 
 // Woorden die in allebei de talen hetzelfde zijn en dus niets bewijzen.
@@ -115,13 +115,32 @@ const NEUTRAAL = new Set([
 
 export type Taaloordeel = "nederlands" | "engels" | "onbekend";
 
+/**
+ * Losse woorden uit een domeinnaam, zodat de merknaam nooit als taalsignaal telt.
+ * "onedayclinic.nl" levert "onedayclinic", "one", "day" en "clinic" op: zonder dit
+ * werd "one day clinic" als Engelse zoekvraag geteld, terwijl het gewoon iemand is
+ * die het merk intikt. Uit het domein afgeleid, dus het werkt voor elke klant.
+ */
+export function merkWoordenVan(domein: string): string[] {
+  const kaal = (domein || "").toLowerCase().replace(/^www\./, "").replace(/\.[a-z.]+$/, "");
+  if (!kaal) return [];
+  const uit = new Set<string>([kaal]);
+  // Een aaneengeschreven merknaam ook in stukken, want zo tikken mensen hem in.
+  for (const deel of kaal.split(/[^a-z0-9]+/).filter(Boolean)) uit.add(deel);
+  for (const woord of ["one", "day", "clinic", "care", "kliniek", "centrum", "group", "med", "health"]) {
+    if (kaal.includes(woord)) uit.add(woord);
+  }
+  return [...uit].filter((w) => w.length > 2);
+}
+
 /** Welke taal is deze zoekopdracht? "onbekend" als er geen duidelijk signaal is. */
-export function taalVanZoekopdracht(zoekopdracht: string): Taaloordeel {
+export function taalVanZoekopdracht(zoekopdracht: string, merk: string[] = []): Taaloordeel {
   const woorden = (zoekopdracht || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const merkSet = new Set(merk);
   let nl = 0;
   let en = 0;
   for (const w of woorden) {
-    if (NEUTRAAL.has(w)) continue;
+    if (NEUTRAAL.has(w) || merkSet.has(w)) continue;
     // Een woord dat in beide lijsten staat zegt niets; alleen een eenzijdige treffer telt.
     const inNl = NL_WOORDEN.has(w);
     const inEn = EN_WOORDEN.has(w);
@@ -165,6 +184,7 @@ const DREMPEL_EIGEN_TAAL = 30;
 export function beoordeelTaalvarianten(
   livePaden: string[],
   gsc: GscRegel[],
+  merk: string[] = [],
   hoofdtaal = "nederlands" as Taaloordeel,
 ): { bomen: string[]; oordelen: VariantOordeel[] } {
   const bomen = taalBomen(livePaden);
@@ -178,7 +198,7 @@ export function beoordeelTaalvarianten(
     const p = norm(r.page);
     const taal = taalVan(p, bomen);
     if (!taal) continue; // alleen pagina's ín een taalboom
-    const oordeel = taalVanZoekopdracht(r.keyword);
+    const oordeel = taalVanZoekopdracht(r.keyword, merk);
     const e = perPagina.get(p) || { eigen: 0, hoofd: 0, beste: { term: "", imp: 0 } };
     // "engels" hoort bij de boom /en/; alles wat de hoofdtaal is telt als concurrentie.
     const isEigen = oordeel !== "onbekend" && oordeel !== hoofdtaal;
