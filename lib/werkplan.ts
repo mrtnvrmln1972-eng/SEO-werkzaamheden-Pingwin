@@ -176,6 +176,14 @@ export type Werkplan = {
   /** De tijd die in die overloop zit, zodat je kunt zeggen hoeveel er blijft liggen. */
   buitenBereikMinuten: number;
   /**
+   * Blokken waar niets meer te doen is omdat alles al doorgevoerd is. Die vielen
+   * hiervoor stil uit het plan (de zeef `minuten > 0`), en dat was niet te zien:
+   * zocht je op "Zeist", dan kreeg je nul blokken, precies hetzelfde beeld als
+   * wanneer de plaats nooit was bekeken. Nu staan ze apart, met hun pagina's, dus
+   * "dit is af" is te onderscheiden van "hier is nooit naar gekeken".
+   */
+  afgerond: Werkcluster[];
+  /**
    * Hoeveel uur per week er nodig is om het hele plan wél binnen een kwartaal te
    * doen. Zonder dit getal zegt het scherm alleen "92 weken" en dat is een
    * doodlopende mededeling; hiermee is het een gesprek over budget.
@@ -396,6 +404,12 @@ export function bouwWerkplan(
   }
 
   // ── 5. De volgorde: fase eerst, daarbinnen de grootste waarde eerst ──
+  // Een blok zonder open werk hoort niet in een plan, maar wél op het scherm: het
+  // apart zetten in plaats van weggooien is het verschil tussen "dit is af" en
+  // een gat waarvan niemand kan zien of er ooit naar gekeken is.
+  const afgerond = clusters
+    .filter((c) => c.minuten <= 0)
+    .sort((a, b) => b.paginas.length - a.paginas.length || a.naam.localeCompare(b.naam));
   clusters = clusters
     .filter((c) => c.minuten > 0)
     .sort((a, b) => a.fase - b.fase || b.volume - a.volume || b.paginas.length - a.paginas.length || a.naam.localeCompare(b.naam));
@@ -435,6 +449,7 @@ export function bouwWerkplan(
     vervallen: clusters.reduce((s, c) => s + c.vervallen, 0),
     buitenBereik: buiten.length,
     buitenBereikMinuten: buiten.reduce((s, c) => s + c.minuten, 0),
+    afgerond,
     // Naar boven op halve uren, want een kwartier meer per week bestaat niet
     // als afspraak met een klant.
     urenVoorKwartaal: Math.ceil((totaalMinuten / WEKEN_IN_KWARTAAL / 60) * 2) / 2,

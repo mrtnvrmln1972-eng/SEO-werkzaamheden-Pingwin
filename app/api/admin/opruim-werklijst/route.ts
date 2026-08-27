@@ -5,7 +5,9 @@ import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-
 import { getClientBySlug } from "../../../../lib/clients";
 import { bouwWerklijst, markeerContentOver, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
 import { chatBesluitenVoor } from "../../../../lib/opruim-chat-besluiten";
-import { getOpruimRegels } from "../../../../lib/opruim-regels";
+import { getAdsPaginas, getOpruimRegels } from "../../../../lib/opruim-regels";
+import { bepaalWeggelaten } from "../../../../lib/opruim-weggelaten";
+import { getClientUrls } from "../../../../lib/site-urls";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,10 +28,12 @@ export async function GET(req: NextRequest) {
     // analyse. Het live doen kostte veertien seconden, en dat drie keer per
     // scherm, waardoor het bovenste blok minutenlang "wordt samengesteld" toonde.
     const domain = (await getClientBySlug(slug).catch(() => null))?.domain || "";
-    const [st, plaatsen, vaste] = await Promise.all([
+    const [st, plaatsen, vaste, ads, urls] = await Promise.all([
       getCannibalAnalysis(slug),
       domain ? zorgVoorPlaatsen(slug, domain).catch(() => null) : Promise.resolve(null),
       getOpruimRegels(slug).catch(() => []),
+      getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false })),
+      getClientUrls(slug).catch(() => []),
     ]);
     const regels = markeerContentOver(
       markeerDoorgevoerd(
@@ -38,7 +42,17 @@ export async function GET(req: NextRequest) {
       ),
       vaste.filter((r) => r.contentOver).map((r) => r.van),
     );
-    return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), lijstDatum: st.result?.generatedAt || null });
+    // Wat er NIET in de lijst staat, met de reden. Zonder dit is een weglating
+    // niet te onderscheiden van een gat: zoeken op "Utrecht" gaf vier blokken
+    // titelwerk en verder niets, terwijl er zes Utrecht-pagina's bewust buiten
+    // de analyse zijn gehouden.
+    const weggelaten = bepaalWeggelaten(
+      urls.filter((u) => (u.status ?? 200) === 200).map((u) => u.url),
+      regels.map((r) => r.pad),
+      ads,
+      (plaatsen?.adviezen || []).map((a) => a.plaats),
+    );
+    return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), weggelaten, lijstDatum: st.result?.generatedAt || null });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Lijst bouwen mislukt." }, { status: 500 });
   }

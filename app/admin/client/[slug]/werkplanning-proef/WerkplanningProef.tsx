@@ -58,6 +58,10 @@ import {
   FASE_TITEL, FASE_WAAROM, HANDELING_LABEL, WEKEN_IN_KWARTAAL,
   type ClusterPagina, type Werkcluster, type Handeling,
 } from "../../../../../lib/werkplan";
+import {
+  WEGLAAT_LABEL, WEGLAAT_UITLEG,
+  type Weggelaten, type WeglaatReden,
+} from "../../../../../lib/opruim-weggelaten";
 import type { StapStand } from "../../../../../lib/cluster-draaiboek";
 import { sorteerClusters, SORTERING_LABEL, type Sortering } from "../../../../../lib/cluster-volgorde";
 import { bouwOverzicht, splitsBevindingen } from "../../../../../lib/cluster-uitvoering";
@@ -78,6 +82,10 @@ const PERIODES = [
 const nl = new Intl.NumberFormat("nl-NL");
 const getal = (n: number | null | undefined) => (n == null ? "—" : nl.format(n));
 const kortDatum = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+// Hoeveel weggelaten paden we uitschrijven voor je gaat zoeken. Bij One Day
+// Clinic vallen er 594 pagina’s buiten het plan; die allemaal neerzetten maakt
+// van een verantwoording weer een muur. Zoeken maakt de lijst vanzelf kort.
+const TOON_WEGGELATEN = 24;
 // De periode van een groep als één vaste kolom: één datum, of van-tot. Stond eerder
 // in de ondertitel verwerkt, waardoor de ene regel wel en de andere geen datum op
 // dezelfde plek had en niets uitlijnde.
@@ -139,6 +147,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   const [metas, setMetas] = useState<any[]>([]);
   const [taken, setTaken] = useState<WeekplanTaak[]>([]);
   const [activiteit, setActiviteit] = useState<ActRegel[]>([]);
+  const [weggelaten, setWeggelaten] = useState<Weggelaten | null>(null);
   const [budget, setBudget] = useState(3);
   const [budgetIngevuld, setBudgetIngevuld] = useState(false);
   const [periode, setPeriode] = useState<(typeof PERIODES)[number]["key"]>("mnd");
@@ -179,6 +188,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
         .catch(() => { /* stil: zonder standen staan de streepjes gewoon leeg */ });
       if (!wr?.ok) setFout(wr?.error || "De opruimlijst kon niet geladen worden.");
       setOpruim(wr?.ok ? wr.regels || [] : []);
+      setWeggelaten(wr?.ok ? wr.weggelaten || null : null);
       setMetas(mc?.ok ? (mc.rows || []).filter((r: any) => r.reden === "klikwinst" || r.reden === "kapot") : []);
       if (wp?.ok) setTaken((wp.tasks || []).map((t: any) => ({
         id: t.id, thread: t.thread || "", taak: t.taak, url: t.url, taaktype: t.taaktype || "",
@@ -239,6 +249,34 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
 
   const filterAan = filterCategorie !== "alle" || zoek.trim().length > 0;
   const getoondMinuten = clustersGetoond.reduce((s, c) => s + c.minuten, 0);
+
+  // ── Wat er NIET in het plan staat ──
+  // Zoeken op "Utrecht" gaf vier blokken titelwerk en verder niets, en daar was
+  // geen touw aan vast te knopen: zijn de cannibalisatie-blokken vergeten, of
+  // horen ze er niet te zijn? Het antwoord stond nergens op het scherm. Nu staat
+  // het er, en het volgt dezelfde zoekregel als de blokken zelf, zodat het
+  // antwoord verschijnt op het moment dat je de vraag stelt.
+  const weggelatenGetoond = useMemo(() => {
+    if (!weggelaten) return [];
+    return weggelaten.paginas.filter((p) => zoekTreffer(zoek, p.pad, p.plaats, WEGLAAT_LABEL[p.reden]));
+  }, [weggelaten, zoek]);
+
+  const weggelatenPerReden = useMemo(() => {
+    const per = new Map<WeglaatReden, string[]>();
+    for (const p of weggelatenGetoond) {
+      if (!per.has(p.reden)) per.set(p.reden, []);
+      per.get(p.reden)!.push(p.pad);
+    }
+    return (["advertentie", "plaats-verweesd", "geen-aanleiding"] as WeglaatReden[])
+      .filter((r) => per.get(r)?.length)
+      .map((r) => ({ reden: r, paden: per.get(r)! }));
+  }, [weggelatenGetoond]);
+
+  // Blokken waar niets meer te doen is. Zoek je op een plaats die vorige maand al
+  // is opgeruimd, dan hoort het scherm "dit is af" te zeggen in plaats van niets.
+  const afgerondGetoond = useMemo(() => plan.afgerond.filter((c) =>
+    zoekTreffer(zoek, c.naam, c.samenvatting,
+      c.paginas.map((p) => `${p.pad} ${p.term}`).join(" "))), [plan.afgerond, zoek]);
 
   // ── Wat er al gedaan is ──
   const periodeInfo = PERIODES.find((p) => p.key === periode)!;
@@ -706,6 +744,64 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               {plan.vervallen} titel-kansen staan niet in dit plan omdat die pagina&#8217;s worden samengevoegd
               of opgeruimd. Ze staan per blok vermeld, zodat je ziet dát ze er waren.
             </p>
+          )}
+
+          {/* Wat het plan weglaat. Dit hoort hier, direct onder de zoekregel: zoek
+              je op een stad en krijg je alleen titelwerk terug, dan is de vraag
+              "waar zijn de rest van de blokken" en niet "hoe ziet blok 4 eruit".
+              Het antwoord moet dus op dezelfde hoogte staan als de vraag. */}
+          {(weggelatenGetoond.length > 0 || afgerondGetoond.length > 0) && (
+            <Sectie
+              titel={zoek.trim() ? `Wat er buiten dit plan valt voor "${zoek.trim()}"` : "Wat er buiten dit plan valt"}
+              telling={[
+                weggelatenGetoond.length ? `${weggelatenGetoond.length} pagina's` : "",
+                afgerondGetoond.length ? `${afgerondGetoond.length} al af` : "",
+              ].filter(Boolean).join(" · ")}
+              open={!!openSectie.weggelaten}
+              onToggle={() => setOpenSectie((s) => ({ ...s, weggelaten: !s.weggelaten }))}
+              uitleg={
+                weggelaten
+                  ? `Van de ${weggelaten.live} pagina's die live staan, staan er ${weggelaten.beoordeeld} in de opruim-analyse. De rest valt er om een reden buiten, en die reden staat hieronder. Een pagina die hier staat is dus niet vergeten, hij is overgeslagen.`
+                  : undefined
+              }
+            >
+              {afgerondGetoond.length > 0 && (
+                <div className="wp-weg-groep">
+                  <p className="wp-veldnaam">Al afgerond ({afgerondGetoond.length})</p>
+                  <p className="muted">
+                    Hier is niets meer te doen: alles in deze blokken is al doorgevoerd. Ze staan niet
+                    in het plan omdat een plan over openstaand werk gaat, maar ze zijn er wel geweest.
+                  </p>
+                  <ul className="wp-weg-lijst">
+                    {afgerondGetoond.map((c) => (
+                      <li key={c.sleutel}>
+                        <span className="wp-kaart-titel">{c.naam}</span>
+                        <span className="wp-clus-sub"> · {c.paginas.length} pagina&#8217;s, alles doorgevoerd</span>
+                        <span className="wp-weg-paden">
+                          {c.paginas.map((p) => <Slug key={p.pad} url={p.pad} domein={domein} />)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {weggelatenPerReden.map(({ reden, paden }) => (
+                <div key={reden} className="wp-weg-groep">
+                  <p className="wp-veldnaam">{WEGLAAT_LABEL[reden]} ({paden.length})</p>
+                  <p className="muted">{WEGLAAT_UITLEG[reden]}</p>
+                  <div className="wp-weg-paden">
+                    {paden.slice(0, TOON_WEGGELATEN).map((p) => <Slug key={p} url={p} domein={domein} />)}
+                  </div>
+                  {paden.length > TOON_WEGGELATEN && (
+                    <p className="muted">
+                      en nog {paden.length - TOON_WEGGELATEN} andere. Zoek hierboven op een stad of een
+                      stuk van een pad om te zien welke dat zijn.
+                    </p>
+                  )}
+                </div>
+              ))}
+            </Sectie>
           )}
 
           {perFaseGetoond.map((f) => (

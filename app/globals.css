@@ -2442,6 +2442,14 @@ button.ck-collapse-head {
    eigen marge; dat gaf dubbele gaten boven "De werkzaamheden". */
 .wp-veldnaam { margin-bottom: 0; }
 
+/* Wat er buiten het plan valt, per reden. Bewust rustig en zonder eigen kleur:
+   dit is een verantwoording, geen waarschuwing. Alleen ruimte en uitlijning, dus
+   de gedeelde bouwstenen eromheen (strategy-card) blijven eruitzien als overal. */
+.wp-weg-groep { display: flex; flex-direction: column; gap: var(--ruimte-krap); }
+.wp-weg-groep + .wp-weg-groep { margin-top: var(--ruimte-regel); padding-top: var(--ruimte-regel); border-top: 1px solid var(--kleur-rand); }
+.wp-weg-paden { display: flex; flex-wrap: wrap; gap: var(--ruimte-krap) var(--ruimte-naast); }
+.wp-weg-lijst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ruimte-regel); }
+
 /* Hoe het nu staat, naast wat het moet worden. */
 .wp-nustraks { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ruimte-regel); }
 .wp-rail-card { background: var(--kleur-kaart); border: 1px solid var(--kleur-rand); border-radius: var(--ronding-kaart); padding: var(--ruimte-regel); }

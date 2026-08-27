@@ -196,6 +196,31 @@ export const BLOKKEN: Uitklapper[] = [
           "site, dan ontbreekt er structuur die er hoort te zijn.",
       },
       {
+        titel: "Het plan zegt wat het weglaat, en waarom",
+        tekst:
+          "Zoeken op \"Utrecht\" in het werkplan gaf alleen titelwerk terug. Daar zijn twee verklaringen " +
+          "voor, en ze zijn tegengesteld: de motor heeft de cannibalisatie gemist, of er valt niets op te " +
+          "ruimen. Het scherm zei niets, dus je kon niet kiezen. Dat is het probleem met stil weglaten: een " +
+          "weglating zonder reden is niet te onderscheiden van een gat.\n\n" +
+          "Onder de zoekregel staat nu \"Wat er buiten dit plan valt\", en dat blok beweegt mee met waar je " +
+          "op zoekt. Zoek je op een stad, dan zie je precies welke pagina's van die stad buiten de analyse " +
+          "vielen, met per pagina de reden. Er zijn er drie:\n\n" +
+          "- **Advertentiepagina.** De pagina staat op de lijst met Ads-landingspagina's. Die worden bewust " +
+          "overgeslagen: ze staan meestal op noindex, dus een voorstel om ze samen te voegen of op te ruimen " +
+          "zou fout zijn. Dit is de reden waarom Utrecht en Rotterdam geen opruimblok hebben.\n" +
+          "- **Plaats valt buiten de analyse.** Dit is geen keuze maar een gevolg, en het is de reden dat dit " +
+          "blok er kwam. De motor herkent een plaats aan de pagina in de vaste stadsvorm. Is juist díe pagina " +
+          "een advertentiepagina, dan valt de hele plaats uit het plaats-advies, inclusief pagina's die zelf " +
+          "niets met adverteren te maken hebben. Bij One Day Clinic gaat het om achttien pagina's in Utrecht, " +
+          "Rotterdam, Den Haag en Eindhoven. Daar kan echt werk blijven liggen, dus die krijgen een eigen " +
+          "reden in plaats van dat ze op één hoop gaan met \"geen aanleiding\".\n" +
+          "- **Geen aanleiding gevonden.** Geen enkele analyse is op deze pagina uitgekomen.\n\n" +
+          "In hetzelfde blok staan de blokken waarin álles al doorgevoerd is, als \"al afgerond\". Die " +
+          "verdwenen eerder stil uit het plan omdat er geen minuten werk meer in zaten, wat klopt voor een " +
+          "planning maar niet voor het scherm: zoeken op een plaats die vorige maand is opgeruimd gaf nul " +
+          "blokken, precies hetzelfde beeld als een plaats die nooit is bekeken.",
+      },
+      {
         titel: "De deelbare leeslink laat nu hetzelfde zien als de cockpit",
         tekst:
           "De werklijst (één regel per pagina, met per regel de volledige onderbouwing uitklapbaar) stond tot " +
