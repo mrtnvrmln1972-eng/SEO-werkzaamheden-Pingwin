@@ -33,7 +33,7 @@ import { getSetting, setSetting } from "./settings";
 // ═══════════════════════════════════════════════════════════
 
 /** Welke schermen deelbaar zijn. Een nieuwe soort erbij is één regel. */
-export type DeelSoort = "opruim" | "sitemap";
+export type DeelSoort = "opruim" | "sitemap" | "werkplan";
 
 /**
  * De romp van de sleutels waaronder een token wordt opgeborgen. Opruim houdt
@@ -42,12 +42,14 @@ export type DeelSoort = "opruim" | "sitemap";
 const SLEUTELROMP: Record<DeelSoort, string> = {
   opruim: "opruim_deel",
   sitemap: "sitemap_deel",
+  werkplan: "werkplan_deel",
 };
 
 /** Het pad van de publieke pagina die bij een soort hoort. */
 export const DEEL_PAD: Record<DeelSoort, string> = {
   opruim: "/share/opruim",
   sitemap: "/share/sitemap",
+  werkplan: "/share/werkplan",
 };
 
 export function isDeelSoort(x: string): x is DeelSoort {

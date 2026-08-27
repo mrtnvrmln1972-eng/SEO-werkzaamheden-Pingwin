@@ -68,6 +68,7 @@ import { sorteerClusters, SORTERING_LABEL, type Sortering } from "../../../../..
 import { bouwOverzicht, splitsBevindingen } from "../../../../../lib/cluster-uitvoering";
 import Draaiboek, { Fasestreep } from "./Draaiboek";
 import WegBlok from "./WegBlok";
+import DeelLink from "../../../_ui/DeelLink";
 
 type WeekplanTaak = {
   id: number; thread: string; taak: string; url: string; taaktype: string;
@@ -767,6 +768,8 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                 </span>
               )}
             </div>
+            <DeelLink slug={slug} soort="werkplan" wat="Dit hele werkplan, te openen" />
+
             {filterAan && (
               <div className="wp-stuur-rij">
                 <span className="wp-stuur-uitleg">
