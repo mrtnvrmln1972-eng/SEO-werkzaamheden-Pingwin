@@ -2,6 +2,7 @@ import type { CannibalResult } from "./cannibal-redirect";
 import type { PlaatsAdvies } from "./opruim-plaatsen";
 import type { ChatBesluit } from "./opruim-chat-besluiten";
 import type { VariantOordeel } from "./taalvarianten";
+import { bepaalFamilies, familieTitel } from "./werk-clusters";
 
 // ═══════════════════════════════════════════════════════════
 // ÉÉN LIJST, MEERDERE VIEWS
@@ -256,9 +257,17 @@ export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdv
   // zoekvraag is, want die twee zijn via hreflang aan elkaar gekoppeld. Is die
   // vraag er niet, dan is het een vertaling die niemand zoekt en die ondertussen
   // de hoofdtaal in de weg zit; dan is samenvoegen juist wél het werk.
+  // Één blok per taal was onwerkbaar: bij One Day Clinic stonden er 365 pagina's
+  // in "Taalversie EN", en een blok hoort één zitting werk te zijn. Daarom
+  // opgesplitst op wat je ermee doet (vertalen of samenvoegen) én op
+  // pagina-familie, precies zoals de losse titel-kansen dat al deden.
+  const taalFamilies = bepaalFamilies(taalOordelen.map((t) => t.pad));
   for (const t of taalOordelen) {
     if (t.uitkomst === "onbekend") continue;
     const taalNaam = t.taal.toUpperCase();
+    const fam = taalFamilies.get(t.pad) || "";
+    const famNaam = fam ? familieTitel(fam) : "overig";
+    const watWeDoen = t.uitkomst === "blijft-vertalen" ? "vertalen" : "samenvoegen";
     zet({
       pad: t.pad,
       uitkomst: t.uitkomst === "blijft-vertalen" ? "uitbouwen" : "samenvoegen",
@@ -267,7 +276,7 @@ export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdv
       reden: t.reden,
       onderbouwing: t.onderbouwing,
       term: t.bewijs, volume: null, klikken: 0, vertoningen: t.eigenTaal + t.hoofdtaal, positie: null,
-      groep: `Taalversie ${taalNaam}`,
+      groep: `${taalNaam} ${watWeDoen}: ${famNaam}`,
     });
   }
 

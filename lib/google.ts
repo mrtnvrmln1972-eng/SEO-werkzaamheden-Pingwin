@@ -1371,6 +1371,11 @@ export async function getGscQueryPagePairs(domain: string, days = 90, maxRijen =
     keyword: x.keys?.[0] || "", page: x.keys?.[1] || "",
     clicks: Math.round(x.clicks), impressions: Math.round(x.impressions), position: Math.round(x.position * 10) / 10,
   })).filter((x) => x.keyword && x.page);
-  paarCache.set(sleutel, { tijd: Date.now(), data: uit });
+  // Een LEGE uitkomst niet onthouden. Google kan een keer een fout of een lege
+  // bladzijde teruggeven, en dat werd vijf minuten lang vastgehouden. Alles wat in
+  // die vijf minuten op deze cijfers wacht (de opruimkandidaten, de gaten, het
+  // plaatsadvies, de taalmeting) kreeg dan stilletjes nul terug, zonder enige
+  // melding. Een leeg antwoord is nooit een resultaat dat je wilt bewaren.
+  if (uit.length) paarCache.set(sleutel, { tijd: Date.now(), data: uit });
   return uit;
 }

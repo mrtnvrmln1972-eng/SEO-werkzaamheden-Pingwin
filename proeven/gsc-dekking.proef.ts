@@ -109,6 +109,18 @@ if (/perBron/.test(urlsRoute) && /Search Console leverde geen enkele pagina/.tes
   faal("de uitkomst van de scan noemt de bronnen niet, dus een stilgevallen bron blijft onzichtbaar");
 }
 
+// ── Een leeg antwoord wordt niet onthouden ─────────────────
+// Het geheugen van vijf minuten bewaarde ook een LEGE uitkomst. Eén hik bij Google
+// en alles wat in die vijf minuten op die cijfers wacht (opruimkandidaten, gaten,
+// plaatsadvies, taalmeting) kreeg stilletjes nul terug. Dat is precies het soort
+// stilte waar hier vandaag een halve dag in is gaan zitten.
+console.log("Een leeg antwoord wordt niet onthouden");
+if (/if \(uit\.length\) paarCache\.set/.test(google)) {
+  goed("een lege uitkomst gaat niet in het geheugen");
+} else {
+  faal("een lege uitkomst wordt vijf minuten vastgehouden; één hik bij Google zet dan alles op nul");
+}
+
 if (fouten) {
   console.error(`\n${fouten} ${fouten === 1 ? "fout" : "fouten"} in de dekking van de paginalijst.`);
   process.exit(1);
