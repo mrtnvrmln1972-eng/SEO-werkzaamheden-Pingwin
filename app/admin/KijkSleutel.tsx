@@ -22,6 +22,10 @@ export default function KijkSleutel() {
   const [sleutel, setSleutel] = useState("");
   const [bezig, setBezig] = useState(false);
   const [kopie, setKopie] = useState(false);
+  // De meekijk-link is dezelfde sleutel, alleen als adres: één klik en je zit in
+  // het dashboard, alleen-lezen. Het adres komt uit de browser zelf, zodat hij
+  // op een voorbeeldomgeving niet stiekem naar productie wijst.
+  const [linkKopie, setLinkKopie] = useState(false);
   // Een mislukte knopdruk moet je kunnen zíen. Eerst gebeurde er bij een fout
   // helemaal niets op het scherm: geen sleutel, geen melding. Dan denk je dat
   // het gelukt is terwijl er niets klaarstaat, en dat kost een hele ronde.
@@ -77,6 +81,10 @@ export default function KijkSleutel() {
       setFout("Het dashboard antwoordde niet. Controleer je verbinding en probeer het nog een keer.");
     } finally { setBezig(false); }
   }
+
+  const kijkLink = sleutel
+    ? `${typeof window === "undefined" ? "" : window.location.origin}/kijk?sleutel=${encodeURIComponent(sleutel)}`
+    : "";
 
   const datum = (s: string | null) => (s ? new Date(s).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : "");
   const tijdstip = (s: string | null) =>
@@ -140,6 +148,20 @@ export default function KijkSleutel() {
                 onClick={() => { void navigator.clipboard.writeText(`PINGWIN_KIJK_SLEUTEL=${sleutel}`).then(() => { setKopie(true); setTimeout(() => setKopie(false), 2000); }); }}
               >
                 {kopie ? "Gekopieerd ✓" : "Kopieer die hele regel"}
+              </button>
+              <p className="kijk-meta">
+                <strong>Of deel deze link.</strong> Wie hem opent kijkt mee in het hele dashboard, zonder
+                sleutel en zonder instellingen: handig voor een Claude die geen omgevingsvariabelen kent
+                (Cowork, een gewone chat). Alleen lezen, en met Intrekken hieronder meteen dicht. Deel hem
+                dus niet breder dan je het dashboard zelf zou laten zien.
+              </p>
+              <code className="kijk-waarde">{kijkLink}</code>
+              <button
+                type="button"
+                className="btn btn-klein"
+                onClick={() => { void navigator.clipboard.writeText(kijkLink).then(() => { setLinkKopie(true); setTimeout(() => setLinkKopie(false), 2000); }); }}
+              >
+                {linkKopie ? "Gekopieerd ✓" : "Kopieer de meekijk-link"}
               </button>
               <ol className="kijk-stappen">
                 <li>Ga naar <a href="https://claude.ai/code" target="_blank" rel="noreferrer">claude.ai/code</a></li>
