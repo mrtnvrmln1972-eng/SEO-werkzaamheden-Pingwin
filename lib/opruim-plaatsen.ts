@@ -147,7 +147,18 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
     return { adviezen: [], vestigingen: [], vormen: [], gekozenVorm, autoriteit, paginasNu: 0, paginasStraks: 0 };
   }
 
-  const { vormVan, plaatsIn } = plaatsHerkenning(live);
+  // De WOORDENSCHAT wordt geleerd uit álles, ook de advertentiepagina's. Deze
+  // herkenning leidt af welk stukje van een URL een plaatsnaam is door te kijken
+  // welke woorden op dezelfde plek in een patroon voor elkaar inwisselbaar zijn.
+  // Leer je dat alleen uit de kern, dan komen Utrecht, Amsterdam, Rotterdam, Den
+  // Haag en Eindhoven daar nooit in voor (hun stadspagina staat op de ads-lijst)
+  // en herkent de motor die woorden dus niet als plaats. Dan valt de stad alsnog
+  // buiten het advies, ook al laten we de pagina hieronder wél toe.
+  //
+  // Let op het verschil met `telPerVorm` verderop: welke VORMEN meetellen wordt
+  // wél uit de kern bepaald, want de ads-lijst bevat hele mappen en die zouden
+  // anders een tweede set vormen opleveren.
+  const { vormVan, plaatsIn } = plaatsHerkenning(liveMetAds);
 
   // Waar zit de klant echt? Uit de bedrijfsgegevens die voor de structured data
   // al zijn ingevuld: elke vestiging heeft een plaats. areaServed telt mee als
