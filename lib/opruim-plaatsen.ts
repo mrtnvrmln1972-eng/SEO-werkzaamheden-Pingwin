@@ -123,15 +123,26 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
     autoriteitVan(domain).catch(() => null),
   ]);
 
-  // Advertentiepagina's blijven hier STAAN. Ze werden er eerst uitgefilterd, en
-  // daarmee verdween niet alleen de pagina zelf maar de hele plaats: de motor
-  // herkent een plaats aan de pagina in de vaste stadsvorm, en juist die is bij
-  // de grote steden de Ads-pagina. Gevolg: Utrecht, Rotterdam, Den Haag en
-  // Eindhoven hadden geen enkel blok, terwijl er per stad vier of vijf pagina's
-  // voor de landingspagina in de weg staan. Wat een advertentiepagina beschermt
-  // is niet dat hij onzichtbaar is, maar dat hij nooit weggaat; dat wordt hieronder
-  // afgedwongen.
-  const live = urls.filter((u) => (u.status ?? 200) === 200).map((u) => padVan(u.url));
+  // ── Twee lijsten, met opzet ──────────────────────────────────────────────
+  // `live` is de KERN: alles behalve de advertentiepagina's. Daaruit leert de
+  // motor hoe een plaatspagina er op deze site uitziet. Dat moet uit de kern
+  // komen, want de ads-lijst bevat naast losse landingspagina's ook hele mappen
+  // (bij One Day Clinic de complete `/en/`-sectie en `/`). Namen we die mee in
+  // het leren, dan ontstond er een tweede set vormen (`/en/soa-poli-<plaats>/`
+  // en familie) en zakte het advies van 62 plaatsen naar 18: precies de
+  // opruimklussen die er wél moeten staan verdwenen.
+  //
+  // `liveMetAds` is alles. Een advertentiepagina mag namelijk wél meedoen zodra
+  // hij in een vorm staat die de kern als plaatsvorm herkent. Dat is precies de
+  // stadspagina van Utrecht, Rotterdam, Amsterdam, Den Haag en Eindhoven, en
+  // zonder die pagina viel de hele stad uit het advies terwijl er vier of vijf
+  // pagina's voor de landingspagina in de weg staan. Een vacaturepagina of een
+  // Engelse variant komt er zo niet in, want die vormen kent de kern niet.
+  //
+  // Wat een advertentiepagina beschermt is dus niet dat hij onzichtbaar is, maar
+  // dat hij nooit weggaat. Dat wordt verderop afgedwongen.
+  const liveMetAds = urls.filter((u) => (u.status ?? 200) === 200).map((u) => padVan(u.url));
+  const live = liveMetAds.filter((p) => !isAdsPad(p, ads));
   if (live.length < 10) {
     return { adviezen: [], vestigingen: [], vormen: [], gekozenVorm, autoriteit, paginasNu: 0, paginasStraks: 0 };
   }
@@ -194,7 +205,11 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
       advertentie: isAdsPad(pad, ads),
     });
   };
-  for (const pad of live) {
+  // Over ALLE pagina's, dus inclusief de advertentiepagina's, maar alleen in een
+  // vorm die de kern hierboven als plaatsvorm heeft herkend. Zo komt de
+  // stadspagina van Utrecht en Amsterdam er wél in, en een vacature- of een
+  // Engelse pagina niet: die vormen staan niet in `locatieVormen`.
+  for (const pad of liveMetAds) {
     const vorm = vormVan(pad);
     if (!locatieVormen.has(vorm)) continue;
     const plaats = plaatsIn(pad);

@@ -18,6 +18,7 @@
 
 import { readFileSync } from "fs";
 import { bepaalWeggelaten, WEGLAAT_LABEL, WEGLAAT_UITLEG } from "../lib/opruim-weggelaten";
+import { isAdsPad } from "../lib/opruim-regels";
 import { bouwWerklijst, markeerDoelRisico, type WerkRegel } from "../lib/opruim-werklijst";
 import type { PlaatsAdvies, PlaatsPagina } from "../lib/opruim-plaatsen";
 import { bouwWerkplan, type OpruimRegel } from "../lib/werkplan";
@@ -264,6 +265,54 @@ for (const c of concurrenten) {
   } else {
     faal(`${c} zou naar de advertentiepagina moeten wijzen, maar kreeg '${r?.uitkomst}' naar '${r?.naar}'. Dit is precies het werk dat eerder helemaal niet in het plan kwam.`);
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ADS MEENEMEN MAG DE PLAATSHERKENNING NIET OPBLAZEN (27-08-2026)
+// ═══════════════════════════════════════════════════════════
+// De eerste versie liet ALLE advertentiepagina's meedoen in de plaatsherkenning.
+// Dat leek de goede uitkomst en was een regressie: de ads-lijst bevat naast losse
+// landingspagina's ook hele mappen (bij One Day Clinic de complete `/en/`-sectie).
+// Daardoor ontstond een tweede set vormen (`/en/soa-poli-<plaats>/` en familie)
+// en zakte het advies van 62 plaatsen naar 18, terwijl er ineens vacaturepagina's
+// werden samengevoegd met een SOA-landingspagina. Live gemeten, niet bedacht.
+//
+// De regel: de VORMEN worden geleerd uit de pagina's zonder ads. Een ads-pagina
+// doet daarna mee als hij in zo'n herkende vorm staat, en anders niet.
+console.log("Plaatsherkenning met advertentiepagina's erbij");
+
+const plaatsUrls = [
+  // De kern: drie plaatsen in twee vormen, genoeg om de vormen te leren.
+  ...["haarlem", "gouda", "zaandam", "houten", "bunnik"].flatMap((p) => [
+    { url: `/soa-klinieken/soa-test-${p}/`, status: 200 },
+    { url: `/soa-poli-${p}/`, status: 200 },
+  ]),
+  // Utrecht: alleen de ads-stadspagina. Die MOET de plaats binnenhalen.
+  { url: "/soa-klinieken/soa-test-utrecht/", status: 200 },
+  { url: "/soa-poli-utrecht/", status: 200 },
+  // De Engelse sectie en een vacaturepagina staan ook op de ads-lijst. Die mogen
+  // GEEN plaatsvorm worden; dat was precies de regressie.
+  ...["haarlem", "gouda", "zaandam", "houten", "bunnik", "utrecht"].map((p) => ({ url: `/en/soa-poli-${p}/`, status: 200 })),
+  ...["amsterdam", "utrecht", "eindhoven", "rotterdam", "den-haag"].map((p) => ({ url: `/over-ons/vacatures/vacature-basisarts-${p}/`, status: 200 })),
+];
+const adsLijst = { paden: ["/en/", "/soa-klinieken/soa-test-utrecht/", "/over-ons/vacatures/"], geen: false, ingevuld: true };
+const kern = plaatsUrls.map((u) => u.url).filter((u) => !isAdsPad(u, adsLijst));
+const vormenUitKern = new Set(kern.map((u) => u.replace(/[a-z-]+\/?$/, "<plaats>/")));
+
+if (![...vormenUitKern].some((v) => v.startsWith("/en/"))) {
+  goed("de Engelse sectie levert geen eigen plaatsvorm op (die staat op de ads-lijst)");
+} else {
+  faal("een /en/-vorm werd als plaatsvorm geleerd. Dat blies het advies eerder op van 62 plaatsen naar 18.");
+}
+if (kern.every((u) => !u.startsWith("/over-ons/vacatures/"))) {
+  goed("vacaturepagina's tellen niet mee bij het leren van plaatsvormen");
+} else {
+  faal("een vacaturepagina zat in de kern. Die werd eerder samengevoegd met een SOA-landingspagina.");
+}
+if (!kern.includes("/soa-klinieken/soa-test-utrecht/") && kern.includes("/soa-poli-utrecht/")) {
+  goed("de ads-stadspagina zit niet in de kern, maar de gewone stadspagina wel");
+} else {
+  faal("de kern is verkeerd samengesteld: de ads-stadspagina hoort er niet in, de gewone wel.");
 }
 
 if (fouten) {
