@@ -1,5 +1,6 @@
 import { sql, ensureSchema } from "./db";
 import { callClaudeForcedTool } from "./anthropic";
+import { msStatus, msSearchClientEmails, type LiveEmail } from "./ms-graph";
 
 // ═══════════════════════════════════════════════════════════
 // WAT DE KLANT ZELF ZEGT
@@ -353,28 +354,21 @@ export async function verwerkPlaksel(
  * De mail staat al in het dashboard; er is geen reden om hem eerst ergens anders
  * te openen.
  */
-export async function mailsOmTeVerwerken(slug: string, limiet = 25): Promise<
+export async function mailsOmTeVerwerken(slug: string, limiet = 40): Promise<
   { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string }[]
 > {
   await ensureSchema();
-  const [{ rows }, gedaan] = await Promise.all([
-    sql<{ id: string; subject: string | null; from_name: string | null; from_address: string | null; received_at: string | Date | null; preview: string | null; body_html: string | null }>`
-      SELECT id, subject, from_name, from_address, received_at, preview, body_html
-      FROM client_emails WHERE client_slug = ${slug} AND direction = 'in'
-      ORDER BY received_at DESC NULLS LAST LIMIT ${limiet}`,
-    sql<{ bron: string }>`SELECT bron FROM klant_correcties WHERE client_slug = ${slug}`,
-  ]);
-  const verwerkt = new Set(gedaan.rows.map((r) => (r.bron || "").trim()).filter(Boolean));
-  return rows
-    .filter((r) => (r.body_html || r.preview || "").trim())
-    .map((r) => ({
-      id: r.id,
-      onderwerp: (r.subject || "(zonder onderwerp)").trim(),
-      van: (r.from_name || r.from_address || "").trim(),
-      datum: alsDag(r.received_at),
-      aanhef: (r.preview || "").replace(/\s+/g, " ").trim().slice(0, 140),
+  const [live, gedaan] = await Promise.all([liveMails(slug, limiet), verwerkteBronnen(slug)]);
+  return live
+    .filter((m) => m.direction === "in" && (m.bodyHtml || m.preview || "").trim())
+    .map((m) => ({
+      id: m.id,
+      onderwerp: (m.subject || "(zonder onderwerp)").trim(),
+      van: (m.fromName || m.fromAddress || "").trim(),
+      datum: alsDag(m.receivedAt),
+      aanhef: (m.preview || "").replace(/\s+/g, " ").trim().slice(0, 140),
     }))
-    .filter((m) => !verwerkt.has(mailBron(m.van, m.onderwerp)));
+    .filter((m) => !gedaan.has(mailBron(m.van, m.onderwerp)));
 }
 
 /** Vaste bronnaam voor een mail, zodat een verwerkte mail herkenbaar blijft. */
@@ -383,18 +377,53 @@ export function mailBron(van: string, onderwerp: string): string {
   return `mail ${naam}: ${(onderwerp || "").trim()}`.slice(0, 200);
 }
 
+async function verwerkteBronnen(slug: string): Promise<Set<string>> {
+  const { rows } = await sql<{ bron: string }>`SELECT bron FROM klant_correcties WHERE client_slug = ${slug}`;
+  return new Set(rows.map((r) => (r.bron || "").trim()).filter(Boolean));
+}
+
+/**
+ * De mails met deze klant, live uit Microsoft 365 met de opgeslagen mails als
+ * terugval. Live is nodig omdat de mailtabel lang niet voor elke klant gevuld
+ * is: bij Paul Hoevenaars stond er niets in, terwijl het cockpitscherm zijn
+ * mails gewoon toonde. Een kiezer die daardoor leeg blijft, is geen kiezer.
+ */
+async function liveMails(slug: string, limiet: number): Promise<LiveEmail[]> {
+  // Bewust een eigen query en niet getClientBySlug: dat bestand leest juist ons
+  // correctieblok, en dan wijzen de twee bestanden naar elkaar.
+  const { rows: kl } = await sql<{ email: string | null; domain: string | null }>`
+    SELECT email, domain FROM clients WHERE slug = ${slug} LIMIT 1`;
+  const zoek = (kl[0]?.email || kl[0]?.domain || "").trim();
+  if (zoek) {
+    try {
+      const status = await msStatus();
+      if (status.connected) {
+        const uit = await msSearchClientEmails(zoek, status.account || "", Math.min(100, Math.max(15, limiet)));
+        if (uit && uit.length) return uit;
+      }
+    } catch { /* terugval hieronder */ }
+  }
+  const { rows } = await sql<{ id: string; subject: string | null; from_name: string | null; from_address: string | null; received_at: string | Date | null; preview: string | null; body_html: string | null; direction: string | null }>`
+    SELECT id, subject, from_name, from_address, received_at, preview, body_html, direction
+    FROM client_emails WHERE client_slug = ${slug}
+    ORDER BY received_at DESC NULLS LAST LIMIT ${limiet}`;
+  return rows.map((r) => ({
+    id: r.id, subject: r.subject, fromName: r.from_name, fromAddress: r.from_address,
+    receivedAt: r.received_at ? new Date(r.received_at as string).toISOString() : null,
+    preview: r.preview, webLink: null, superhumanLink: null, bodyHtml: r.body_html,
+    direction: r.direction, toAddresses: [],
+  }));
+}
+
 /** Eén mail uit het dashboard rechtstreeks verwerken, zonder kopiëren en plakken. */
 export async function verwerkMail(slug: string, messageId: string): Promise<VerwerkResultaat> {
   await ensureSchema();
-  const { rows } = await sql<{ subject: string | null; from_name: string | null; from_address: string | null; received_at: string | Date | null; preview: string | null; body_html: string | null }>`
-    SELECT subject, from_name, from_address, received_at, preview, body_html
-    FROM client_emails WHERE id = ${messageId} AND client_slug = ${slug} LIMIT 1`;
-  const m = rows[0];
-  if (!m) return { ok: false, error: "Die mail staat niet (meer) bij deze klant." };
-  const tekst = (m.body_html || m.preview || "").trim();
-  if (!tekst) return { ok: false, error: "Van deze mail is de tekst niet bewaard. Plak hem met de hand." };
-  const van = (m.from_name || m.from_address || "").trim();
-  return verwerkPlaksel(slug, tekst, { bron: mailBron(van, m.subject || ""), datum: alsDag(m.received_at) });
+  const m = (await liveMails(slug, 60)).find((x) => x.id === messageId);
+  if (!m) return { ok: false, error: "Die mail is niet meer te vinden bij deze klant." };
+  const tekst = (m.bodyHtml || m.preview || "").trim();
+  if (!tekst) return { ok: false, error: "Van deze mail is de tekst niet op te halen. Plak hem met de hand." };
+  const van = (m.fromName || m.fromAddress || "").trim();
+  return verwerkPlaksel(slug, tekst, { bron: mailBron(van, m.subject || ""), datum: alsDag(m.receivedAt) });
 }
 
 /** Eén geplakt stuk tekst opnieuw uitwerken (na een mislukte ronde of een correctie). */
