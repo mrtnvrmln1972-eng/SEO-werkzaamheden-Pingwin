@@ -344,6 +344,59 @@ export async function verwerkPlaksel(
   return { ok: true, correctieId, aantal, vervallen, orgVoorstellen };
 }
 
+/**
+ * Rechtstreeks uit de mailbox: de binnengekomen mails van deze klant, met de
+ * mails die al verwerkt zijn eruit gefilterd.
+ *
+ * Dit bestaat omdat kopiëren en plakken de enige handeling was die overbleef, en
+ * dat is precies het soort handeling dat overgeslagen wordt zodra het druk is.
+ * De mail staat al in het dashboard; er is geen reden om hem eerst ergens anders
+ * te openen.
+ */
+export async function mailsOmTeVerwerken(slug: string, limiet = 25): Promise<
+  { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string }[]
+> {
+  await ensureSchema();
+  const [{ rows }, gedaan] = await Promise.all([
+    sql<{ id: string; subject: string | null; from_name: string | null; from_address: string | null; received_at: string | Date | null; preview: string | null; body_html: string | null }>`
+      SELECT id, subject, from_name, from_address, received_at, preview, body_html
+      FROM client_emails WHERE client_slug = ${slug} AND direction = 'in'
+      ORDER BY received_at DESC NULLS LAST LIMIT ${limiet}`,
+    sql<{ bron: string }>`SELECT bron FROM klant_correcties WHERE client_slug = ${slug}`,
+  ]);
+  const verwerkt = new Set(gedaan.rows.map((r) => (r.bron || "").trim()).filter(Boolean));
+  return rows
+    .filter((r) => (r.body_html || r.preview || "").trim())
+    .map((r) => ({
+      id: r.id,
+      onderwerp: (r.subject || "(zonder onderwerp)").trim(),
+      van: (r.from_name || r.from_address || "").trim(),
+      datum: alsDag(r.received_at),
+      aanhef: (r.preview || "").replace(/\s+/g, " ").trim().slice(0, 140),
+    }))
+    .filter((m) => !verwerkt.has(mailBron(m.van, m.onderwerp)));
+}
+
+/** Vaste bronnaam voor een mail, zodat een verwerkte mail herkenbaar blijft. */
+export function mailBron(van: string, onderwerp: string): string {
+  const naam = (van || "").split(/[<@]/)[0].trim() || "mail";
+  return `mail ${naam}: ${(onderwerp || "").trim()}`.slice(0, 200);
+}
+
+/** Eén mail uit het dashboard rechtstreeks verwerken, zonder kopiëren en plakken. */
+export async function verwerkMail(slug: string, messageId: string): Promise<VerwerkResultaat> {
+  await ensureSchema();
+  const { rows } = await sql<{ subject: string | null; from_name: string | null; from_address: string | null; received_at: string | Date | null; preview: string | null; body_html: string | null }>`
+    SELECT subject, from_name, from_address, received_at, preview, body_html
+    FROM client_emails WHERE id = ${messageId} AND client_slug = ${slug} LIMIT 1`;
+  const m = rows[0];
+  if (!m) return { ok: false, error: "Die mail staat niet (meer) bij deze klant." };
+  const tekst = (m.body_html || m.preview || "").trim();
+  if (!tekst) return { ok: false, error: "Van deze mail is de tekst niet bewaard. Plak hem met de hand." };
+  const van = (m.from_name || m.from_address || "").trim();
+  return verwerkPlaksel(slug, tekst, { bron: mailBron(van, m.subject || ""), datum: alsDag(m.received_at) });
+}
+
 /** Eén geplakt stuk tekst opnieuw uitwerken (na een mislukte ronde of een correctie). */
 export async function opnieuwUitwerken(slug: string, correctieId: number): Promise<VerwerkResultaat> {
   await ensureSchema();

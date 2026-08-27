@@ -31,6 +31,7 @@ type Regel = {
 };
 type Correctie = { id: number; bron: string; datum: string | null; ruw: string; regels: Regel[] };
 type OrgVoorstel = { veld: string; waarde: string };
+type Mail = { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string };
 
 const ORG_LABEL: Record<string, string> = {
   plaats: "Plaats", straat: "Straat", postcode: "Postcode", telefoon: "Telefoon", email: "E-mail",
@@ -55,12 +56,14 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
   const [historieOpen, setHistorieOpen] = useState(false);
   const [bronOpen, setBronOpen] = useState<number | null>(null);
   const [veldStempel, setVeldStempel] = useState(0);
+  const [mails, setMails] = useState<Mail[]>([]);
+  const [mailOpen, setMailOpen] = useState(false);
 
   const laden = useCallback(async () => {
     try {
       const r = await fetch(`/api/admin/klant-correcties?slug=${encodeURIComponent(slug)}`);
       const j = await r.json();
-      if (j.ok) setCorrecties(j.correcties as Correctie[]);
+      if (j.ok) { setCorrecties(j.correcties as Correctie[]); setMails((j.mails || []) as Mail[]); }
     } catch { /* stil: het blok is dan gewoon leeg */ }
   }, [slug]);
 
@@ -80,6 +83,7 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
       });
       const j = await r.json();
       if (j.correcties) setCorrecties(j.correcties as Correctie[]);
+      if (j.mails) setMails(j.mails as Mail[]);
       if (!j.ok) { setFout(j.error || "Het verwerken mislukte."); return; }
       setRuw(""); setBron(""); setDatum(""); setVeldStempel((n) => n + 1); setPlakOpen(false);
       setVoorstellen((j.orgVoorstellen || []) as OrgVoorstel[]);
@@ -90,6 +94,23 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
     } finally { setBezig(false); }
   }
 
+  async function doeMail(messageId: string) {
+    setBezig(true); setFout(""); setMelding(""); setVoorstellen([]); setGezet([]);
+    try {
+      const r = await fetch("/api/admin/klant-correcties", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slug, wat: "mail", messageId }),
+      });
+      const j = await r.json();
+      if (j.correcties) setCorrecties(j.correcties as Correctie[]);
+      if (j.mails) setMails(j.mails as Mail[]);
+      if (!j.ok) { setFout(j.error || "Deze mail verwerken lukte niet."); return; }
+      setVoorstellen((j.orgVoorstellen || []) as OrgVoorstel[]);
+      const v = Number(j.vervallen || 0);
+      setMelding(`${j.aantal || 0} regel${Number(j.aantal) === 1 ? "" : "s"} uit deze mail gehaald${v ? `, ${v} eerdere regel${v === 1 ? "" : "s"} vervallen` : ""}.`);
+    } catch (e) { setFout((e as Error).message); } finally { setBezig(false); }
+  }
+
   async function doeActie(body: Record<string, unknown>) {
     setBezig(true); setFout("");
     try {
@@ -98,6 +119,7 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
       });
       const j = await r.json();
       if (j.correcties) setCorrecties(j.correcties as Correctie[]);
+      if (j.mails) setMails(j.mails as Mail[]);
       if (!j.ok) setFout(j.error || "Dat lukte niet.");
     } catch (e) { setFout((e as Error).message); } finally { setBezig(false); }
   }
@@ -108,6 +130,7 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
       const r = await fetch(`/api/admin/klant-correcties?slug=${encodeURIComponent(slug)}&id=${id}`, { method: "DELETE" });
       const j = await r.json();
       if (j.correcties) setCorrecties(j.correcties as Correctie[]);
+      if (j.mails) setMails(j.mails as Mail[]);
     } catch (e) { setFout((e as Error).message); } finally { setBezig(false); }
   }
 
@@ -145,12 +168,36 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
             <button type="button" className="btn btn-klein btn-primary" onClick={() => setPlakOpen((v) => !v)} disabled={bezig}>
               {plakOpen ? "Plakvak sluiten" : "Tekst van de klant toevoegen"}
             </button>
+            {mails.length > 0 && (
+              <button type="button" className="btn btn-klein btn-ghost" onClick={() => setMailOpen((v) => !v)} disabled={bezig}>
+                {mailOpen ? "Mails verbergen" : `Uit een mail halen (${mails.length})`}
+              </button>
+            )}
             {vervallen.length > 0 && (
               <button type="button" className="btn btn-klein btn-quiet pnl-acties-info" onClick={() => setHistorieOpen((v) => !v)}>
                 {historieOpen ? "Verberg eerder gezegd" : `Eerder gezegd (${vervallen.length})`}
               </button>
             )}
           </div>
+
+          {mailOpen && mails.length > 0 && (
+            <div className="kc-bakje">
+              <div className="kc-kopje">Mails van deze klant die nog niet verwerkt zijn</div>
+              <ul className="kc-lijst">
+                {mails.map((m) => (
+                  <li key={m.id}>
+                    <span className="kc-regel">
+                      <strong>{m.onderwerp}</strong>
+                      {m.aanhef && <><br /><span className="muted">{m.aanhef}</span></>}
+                    </span>
+                    <span className="kc-bron">{[m.van, m.datum ? m.datum.split("-").reverse().join("-") : ""].filter(Boolean).join(", ")}</span>
+                    <button type="button" className="btn btn-klein btn-ghost" onClick={() => doeMail(m.id)} disabled={bezig}>Verwerken</button>
+                  </li>
+                ))}
+              </ul>
+              <span className="muted kc-klein">Alleen binnengekomen mail; verwerkte mails verdwijnen uit deze lijst.</span>
+            </div>
+          )}
 
           {plakOpen && (
             <div className="kc-plak">

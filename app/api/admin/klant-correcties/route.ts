@@ -3,6 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import {
   alleCorrecties, verwerkPlaksel, opnieuwUitwerken, verwijderCorrectie, wijzigRegel,
+  mailsOmTeVerwerken, verwerkMail,
 } from "../../../../lib/klant-correcties";
 import { getOrgData, saveOrgData, type OrgData } from "../../../../lib/org-data";
 
@@ -20,7 +21,8 @@ export async function GET(req: NextRequest) {
   const slug = req.nextUrl.searchParams.get("slug") || "";
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
-  return NextResponse.json({ ok: true, correcties: await alleCorrecties(slug) });
+  const [correcties, mails] = await Promise.all([alleCorrecties(slug), mailsOmTeVerwerken(slug).catch(() => [])]);
+  return NextResponse.json({ ok: true, correcties, mails });
 }
 
 // POST: een geplakt stuk tekst verwerken, of een eerdere ronde opnieuw uitwerken,
@@ -40,6 +42,13 @@ export async function POST(req: NextRequest) {
     if (!id) return NextResponse.json({ ok: false, error: "Geen tekst opgegeven." }, { status: 400 });
     const res = await opnieuwUitwerken(slug, id);
     return NextResponse.json({ ...res, correcties: await alleCorrecties(slug) });
+  }
+
+  if (wat === "mail") {
+    const id = String(body.messageId || "").trim();
+    if (!id) return NextResponse.json({ ok: false, error: "Geen mail opgegeven." }, { status: 400 });
+    const res = await verwerkMail(slug, id);
+    return NextResponse.json({ ...res, correcties: await alleCorrecties(slug), mails: await mailsOmTeVerwerken(slug).catch(() => []) });
   }
 
   if (wat === "regel") {
