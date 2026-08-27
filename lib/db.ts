@@ -20,7 +20,7 @@ import { eenmalig } from "./schema-stand";
 // blok, dan hoort dit getal mee te veranderen; `proeven/schema-versie.proef.ts`
 // rekent dat na en laat de bouw mislukken als het niet klopt. De proef noemt
 // zelf de waarde die je moet invullen, dus je hoeft niets uit te rekenen.
-export const KERN_SCHEMA_VERSIE = "kern-921bea1a";
+export const KERN_SCHEMA_VERSIE = "kern-c18f20dc";
 
 async function init(): Promise<void> {
   await sql`
@@ -463,6 +463,49 @@ async function init(): Promise<void> {
     )`;
   await sql`CREATE INDEX IF NOT EXISTS client_focus_historie_idx
     ON client_focus_historie (client_slug, veld, bewaard_op DESC)`;
+
+  // ── Wat de klant zelf zegt: correcties die vóór de analyses gaan ──────────
+  // Twee tabellen, met opzet. `klant_correcties` bewaart de RUWE tekst die
+  // Maarten plakte (een mail, een appje) plus waar hij vandaan komt; daar wordt
+  // nooit in geknipt, zodat je altijd terug kunt naar wat de klant echt schreef.
+  // `klant_correctie_regels` bevat wat daaruit gedestilleerd is: korte regels in
+  // drie bakjes (feit, aanbod, woorden), elk met datum en bron.
+  //
+  // Waarom een aparte tabel en niet gewoon een stuk tekst in het klantprofiel:
+  // dat profielveld wordt overschreven door de knoppen "Klantprofiel opstellen"
+  // en "Tone-of-voice analyse". Op 27-08-2026 verdween de aangeleverde
+  // nuancering van Paul Hoevenaars daardoor in één klik. Wat buiten dat veld
+  // leeft, kan geen enkele analyseknop meer aanraken.
+  await sql`
+    CREATE TABLE IF NOT EXISTS klant_correcties (
+      id          SERIAL PRIMARY KEY,
+      client_slug TEXT NOT NULL,
+      bron        TEXT NOT NULL DEFAULT '',
+      datum       DATE,
+      ruw         TEXT NOT NULL DEFAULT '',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS klant_correcties_idx
+    ON klant_correcties (client_slug, datum DESC, id DESC)`;
+
+  // `vervallen_door` wijst naar de regel die deze regel achterhaalde. Een oude
+  // regel wordt dus nooit weggegooid: hij verdwijnt uit de lijst die de AI leest
+  // en blijft zichtbaar als geschiedenis. Zo zie je altijd wanneer een klant van
+  // gedachten veranderde (bijvoorbeeld: wél HOOG-partner, later niet meer).
+  await sql`
+    CREATE TABLE IF NOT EXISTS klant_correctie_regels (
+      id            SERIAL PRIMARY KEY,
+      client_slug   TEXT NOT NULL,
+      correctie_id  INTEGER REFERENCES klant_correcties(id) ON DELETE CASCADE,
+      categorie     TEXT NOT NULL DEFAULT 'feit',
+      regel         TEXT NOT NULL,
+      bron          TEXT NOT NULL DEFAULT '',
+      datum         DATE,
+      vervallen_door INTEGER,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    )`;
+  await sql`CREATE INDEX IF NOT EXISTS klant_correctie_regels_idx
+    ON klant_correctie_regels (client_slug, vervallen_door, categorie, id)`;
 
   // OAuth-tokens voor externe koppelingen (Microsoft Graph, Google).
   // Eén rij per provider; bewaart de refresh-token waarmee de app zelf

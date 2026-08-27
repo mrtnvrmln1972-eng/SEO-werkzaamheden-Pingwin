@@ -73,7 +73,11 @@ const TEKEN_KNOP = /^[\s×✕✓✔☑☐▾▴▸▪▶◀←→↑↓⋮⋯•
 // `schakel-knop` hoort er sinds 19-08-2026 ook bij: kiezen tussen twee weergaven
 // van dezelfde data is geen actie op die data, en die knopjes horen klein en
 // stil te zijn. Vijf plekken hadden daar hun eigen vorm voor.
-const KOP_KNOP = /\b(strategy-head|deelkop|schakel-knop|werkbalk-knop)\b/;
+// De gedeelde inklapkoppen van een paneel. `client-profile-toggle` hoort hier
+// net zo goed bij als `strategy-head`: het is de kop van een cockpit-kaart, geen
+// actieknop, en hij wordt door meerdere panelen gedeeld. Zet hier alleen een
+// klasse bij die écht een gedeelde kop is; een gewone knop hoort op .btn.
+const KOP_KNOP = /\b(strategy-head|deelkop|schakel-knop|werkbalk-knop|client-profile-toggle)\b/;
 
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}]/u;
 

@@ -1395,6 +1395,32 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .profile-part-head { font-size: var(--type-bijschrift); font-weight: 700; text-transform: uppercase; letter-spacing: var(--spatie-label); color: var(--kleur-accent-diep); margin-bottom: var(--ruimte-naast); }
 .profile-part-body { font-size: var(--type-bijschrift); color: var(--dark); max-width: 760px; }
 .profile-part .client-profile-area { margin-top: 0; }
+/* ── Wat de klant zelf zegt ────────────────────────────────────────────────
+   Het blok boven het klantprofiel. Alleen ruimte en uitlijning: de kaart, de
+   kop, de knoppen en de chips zijn de gedeelde bouwstenen, want een gedeelde
+   bouwsteen ziet er overal hetzelfde uit (CLAUDE.md, 19-08-2026). */
+.kc-uitleg { display: flex; align-items: flex-start; gap: var(--ruimte-krap); font-size: var(--type-bijschrift); color: var(--kleur-tekst-stil); margin-bottom: var(--ruimte-regel); max-width: 760px; }
+.kc-klein { display: block; font-size: var(--type-label); margin-top: var(--ruimte-krap); }
+.kc-marge { margin: var(--ruimte-naast) 0; }
+.kc-plak { margin: var(--ruimte-regel) 0; }
+.kc-plak-rij { display: flex; align-items: flex-end; flex-wrap: wrap; gap: var(--ruimte-naast); margin-top: var(--ruimte-naast); }
+.kc-bakje { margin-top: var(--ruimte-regel); }
+.kc-kopje { font-size: var(--type-bijschrift); font-weight: 700; text-transform: uppercase; letter-spacing: var(--spatie-label); color: var(--kleur-accent-diep); margin-bottom: var(--ruimte-krap); }
+.kc-lijst { list-style: none; margin: 0; padding: 0; max-width: 760px; }
+.kc-lijst li { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--ruimte-krap); padding: var(--ruimte-krap) 0; border-bottom: 1px solid var(--kleur-rand-zacht); font-size: var(--type-bijschrift); color: var(--dark); }
+.kc-regel { flex: 1 1 320px; }
+.kc-bron { font-size: var(--type-label); color: var(--kleur-tekst-stil); white-space: nowrap; }
+.kc-weg { background: none; border: none; cursor: pointer; color: var(--kleur-tekst-stil); font-size: var(--type-bijschrift); line-height: 1; padding: 0 var(--ruimte-krap); }
+.kc-weg:hover { color: var(--kleur-fout); }
+.kc-vervallen .kc-regel { text-decoration: line-through; color: var(--kleur-tekst-stil); }
+.kc-voorstellen { margin-top: var(--ruimte-regel); }
+.kc-voorstel { display: flex; align-items: center; flex-wrap: wrap; gap: var(--ruimte-naast); padding: var(--ruimte-krap) 0; font-size: var(--type-bijschrift); }
+.kc-veld { font-weight: 700; min-width: 130px; }
+.kc-waarde { flex: 1 1 200px; color: var(--kleur-tekst-stil); }
+.kc-bronnen { margin-top: var(--ruimte-groep); }
+.kc-bronrij { padding: var(--ruimte-krap) 0; border-top: 1px solid var(--kleur-rand-zacht); }
+.kc-bronknop { display: flex; align-items: center; gap: var(--ruimte-krap); width: 100%; background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-size: var(--type-bijschrift); color: var(--dark); }
+.kc-ruw { margin: var(--ruimte-naast) 0; max-width: 760px; }
 .profile-made-note { margin: var(--ruimte-krap) 0 var(--ruimte-naast); padding: var(--ruimte-naast) var(--ruimte-regel); border-radius: var(--ronding-klein); background: var(--brand-teal-light); border: 1px solid var(--brand-teal); color: var(--kleur-kop); font-size: var(--type-bijschrift); }
 .profile-made-note a { color: var(--brand-blue); font-weight: 700; }
 

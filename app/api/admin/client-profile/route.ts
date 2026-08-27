@@ -29,5 +29,5 @@ export async function GET(req: NextRequest) {
   if (!slug) return NextResponse.json({ ok: false, error: "Geen klant opgegeven." }, { status: 400 });
   const g = await guardSlug(req, slug); if (!g.ok) return g.res;
   const client = await getClientBySlug(slug);
-  return NextResponse.json({ ok: true, profile: client?.seoProfile || "" });
+  return NextResponse.json({ ok: true, profile: client?.seoProfileRuw || "" });
 }

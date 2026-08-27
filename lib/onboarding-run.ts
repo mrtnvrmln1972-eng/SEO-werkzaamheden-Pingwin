@@ -179,7 +179,7 @@ export async function draaiOnboardingRun(slug: string, alleen?: StapKey[]): Prom
         if (!res.ok) { await noteer({ key, label: label(key), uitkomst: "mislukt", toelichting: res.error }); continue; }
         // Steeds opnieuw ophalen: de vorige stap heeft het profielveld net gewijzigd.
         const vers = await getClientBySlug(slug);
-        await saveClientProfile(slug, mergeProfileSection(vers?.seoProfile || "", res.section));
+        await saveClientProfile(slug, mergeProfileSection(vers?.seoProfileRuw || "", res.section));
         await noteer({ key, label: label(key), uitkomst: "gedaan", toelichting: "Gemaakt op basis van de echte pagina's van de site." });
       } catch (e) {
         await noteer({ key, label: label(key), uitkomst: "mislukt", toelichting: (e as Error).message });

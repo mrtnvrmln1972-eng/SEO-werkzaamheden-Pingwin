@@ -417,7 +417,7 @@ export async function executeAction(slug: string, action: ProposedAction, thread
       return { ok: true, message: `Pijplijn gestart (${steps.join(" → ")}). Volg de voortgang in de Pagina's-tab.`, runId };
     }
     case "profiel_bijwerken": {
-      const merged = mergeProfielSectie(client?.seoProfile || "", action.tekst || "");
+      const merged = mergeProfielSectie(client?.seoProfileRuw || "", action.tekst || "");
       await saveClientProfile(slug, merged);
       return { ok: true, message: "Klantprofiel bijgewerkt uit de mail. Copy, meta en strategie gebruiken deze nuance vanaf nu automatisch.", text: action.tekst };
     }

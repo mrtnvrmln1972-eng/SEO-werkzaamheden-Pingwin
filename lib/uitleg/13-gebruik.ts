@@ -37,6 +37,34 @@ export const HOOFDSTUK: Hoofdstuk = {
         "\"dit is aan jou\", met de reden erbij.",
     },
     {
+      titel: "Wat de klant zelf zegt gaat vóór wat de website zegt",
+      kern: "Eén plakvak per klant, en die regels overrulen elke analyse.",
+      tekst:
+        "Het klantprofiel en de tone of voice worden afgeleid uit de live website. Dat is een goed " +
+        "vertrekpunt, maar een website loopt achter op de werkelijkheid: een partnerschap dat is " +
+        "beëindigd staat er nog, een vestigingsplaats klopt niet meer, en woorden waar de eigenaar " +
+        "inmiddels van af wil staan er nog op elke pagina.\n\n" +
+        "Daarvoor is er per klant één plakvak: **Wat de klant zelf zegt**. Je plakt er de mail, het " +
+        "appje of de aantekening in waarin de klant iets rechtzet, en het dashboard maakt er korte " +
+        "werkregels van in drie bakjes: feiten, wat we wel en niet doen, en woorden en toon. Elke regel " +
+        "krijgt de bron en de datum mee.\n\n" +
+        "Drie dingen maken dit meer dan een notitieveld:\n\n" +
+        "- **Het gaat automatisch overal mee.** Deze regels staan bovenaan élke opdracht aan de AI: de " +
+        "strategie-chat, de analyse, de blauwdruk, de copy, de meta-motor en de mails. Je hoeft ze " +
+        "nergens meer bij te plakken en niets te onthouden.\n" +
+        "- **Ze winnen van de analyse.** Er staat letterlijk bij dat ze later door de klant zijn " +
+        "aangeleverd en dus vóór de website-analyse gaan. Zegt het automatische profiel Uden en zegt de " +
+        "klant Vorstenbosch, dan wint de klant. Ook een nieuwe analyse leest ze eerst, dus die schrijft " +
+        "een rechtgezet feit niet terug.\n" +
+        "- **Ze kunnen niet kwijtraken.** De knoppen \"Klantprofiel opstellen\" en \"Tone-of-voice " +
+        "analyse\" schrijven alleen in hun eigen blok en kunnen hier niet bij. Spreekt een nieuwe regel " +
+        "een oude tegen, dan vervalt de oude maar blijft hij zichtbaar onder \"Eerder gezegd\", zodat je " +
+        "later kunt zien wanneer een klant van gedachten veranderde.\n\n" +
+        "Noemt de aangeleverde tekst iets dat in de structured data hoort (een werkgebied, een " +
+        "oprichtingsjaar, een adres), dan komt daar een knop \"Doorvoeren\" bij te staan, zodat de " +
+        "bedrijfsgegevens niet achterblijven bij wat er in de teksten staat.",
+    },
+    {
       titel: "Waarom er niets draait voordat de inventarisatie klopt",
       kern: "Een scan zonder inventarisatie is een gok met een grafiek eromheen.",
       tekst:

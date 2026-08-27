@@ -5,6 +5,8 @@ import { callClaude } from "./anthropic";
 import { buildPingwinDoc, type DocSpec, type DocSection } from "./pingwin-docx";
 import { uploadDocx } from "./drive";
 import { upsertStepTask } from "./tasks";
+import { correctieBlok } from "./klant-correcties";
+import { voegSectieSamen } from "./profiel-samenvoegen";
 
 // ═══════════════════════════════════════════════════════════
 // KLANTPROFIEL + TONE-OF-VOICE GENEREREN uit de live site
@@ -29,7 +31,7 @@ export { CLIENT_FOLDER_KEY } from "./constants";
 import { CLIENT_FOLDER_KEY } from "./constants";
 
 // Kernpagina's van de klant ophalen en uitlezen (homepage + drukste pagina's).
-async function gatherSiteContext(slug: string): Promise<{ name: string; domain: string; existing: string; pagesText: string } | { error: string }> {
+async function gatherSiteContext(slug: string): Promise<{ name: string; domain: string; existing: string; correcties: string; pagesText: string } | { error: string }> {
   const client = await getClientBySlug(slug);
   if (!client) return { error: "Klant niet gevonden." };
   const domain = (client.domain || "").trim();
@@ -58,7 +60,7 @@ async function gatherSiteContext(slug: string): Promise<{ name: string; domain: 
     });
 
   if (blocks.length === 0) return { error: "Kon de live pagina's niet uitlezen (geen bereikbare pagina's gevonden)." };
-  return { name: client.name, domain, existing: (client.seoProfile || "").trim(), pagesText: blocks.join("\n\n---\n\n") };
+  return { name: client.name, domain, existing: (client.seoProfileRuw || "").trim(), correcties: await correctieBlok(slug), pagesText: blocks.join("\n\n---\n\n") };
 }
 
 const PROFILE_SYSTEM = `Je bent een SEO- en merkstrateeg van bureau Pingwin. Je stelt een COMPACT klantprofiel op als werkinstructie voor copywriting en strategie, gegrond in de echte website (hieronder). Verzin niets; leid alles af uit de aangeleverde pagina's. Waar je iets niet zeker weet, schrijf "(navragen)".
@@ -93,7 +95,9 @@ Antwoord in NETTE markdown, exact met deze kop bovenaan en deze structuur, zonde
 **Commerciële voorkeur en schrijfhouding**
 - <ideale klant/projecten, prijspositionering, balans eerlijk vs overtuigend; (navragen) waar de site dit niet toont>
 
-Houd elk onderdeel kort (bullets, geen lange lappen). Concrete keuzes en voorbeelden zijn waardevoller dan abstracte beschrijving.`;
+Houd elk onderdeel kort (bullets, geen lange lappen). Concrete keuzes en voorbeelden zijn waardevoller dan abstracte beschrijving.
+
+STAAT ER EEN BLOK "Wat de klant zelf zegt (LEIDEND)" IN DE OPDRACHT? Dan gaan die regels vóór alles wat je op de site leest. Neem ze letterlijk over in je uitwerking, schrijf nooit iets terug dat daar wordt tegengesproken of verboden, en noem geen feit dat daar is rechtgezet in zijn oude vorm.`;
 
 const TOV_SYSTEM = `Je bent een tone-of-voice-analist van bureau Pingwin. Je analyseert de SCHRIJFSTIJL van de klant, gegrond in de echte website (hieronder). Verzin niets; haal echte voorbeeldzinnen uit de aangeleverde tekst.
 
@@ -113,7 +117,9 @@ Antwoord in NETTE markdown, exact met deze kop bovenaan en deze structuur, zonde
 - "<echte zin 1 uit de tekst>"
 - "<echte zin 2 uit de tekst>"
 
-Houd het bruikbaar als schrijf-instructie. Als de site te weinig tekst heeft voor een oordeel, zeg dat eerlijk.`;
+Houd het bruikbaar als schrijf-instructie. Als de site te weinig tekst heeft voor een oordeel, zeg dat eerlijk.
+
+STAAT ER EEN BLOK "Wat de klant zelf zegt (LEIDEND)" IN DE OPDRACHT? Dan gaan die regels vóór alles wat je op de site leest. Neem ze letterlijk over in je uitwerking, schrijf nooit iets terug dat daar wordt tegengesproken of verboden, en noem geen feit dat daar is rechtgezet in zijn oude vorm.`;
 
 // ═══════════════════════════════════════════════════════════
 // SKILL-KWALITEIT RAPPORTEN (getrouw overgezet uit de Pingwin-skills)
@@ -154,7 +160,9 @@ Eén inleidende zin, daarna 4 tot 5 pijlers. Elke pijler als een bullet die begi
 4 bullets met een **vette titel** + 1 tot 2 zinnen, inzetbaar als USP-sectie.
 
 ## Samenvatting en vervolgstappen
-Eén samenvattende alinea. Daarna 4 tot 5 bullets met concrete vervolgstappen (doorvertaling naar landingpagina's, SEO, advertenties, tests).`;
+Eén samenvattende alinea. Daarna 4 tot 5 bullets met concrete vervolgstappen (doorvertaling naar landingpagina's, SEO, advertenties, tests).
+
+STAAT ER EEN BLOK "Wat de klant zelf zegt (LEIDEND)" IN DE OPDRACHT? Dan gaan die regels vóór alles wat je op de site leest. Neem ze letterlijk over in je uitwerking, schrijf nooit iets terug dat daar wordt tegengesproken of verboden, en noem geen feit dat daar is rechtgezet in zijn oude vorm.`;
 
 const TOV_DOC_SYSTEM = `Je bent een ervaren merkstrateeg, senior copywriter en conversiespecialist bij bureau Pingwin. Je analyseert de tone of voice van de website hieronder en zet die om in een compacte, praktische SCHRIJFHANDLEIDING (max ~2 A4) die een copywriter of AI direct kan volgen. Geen droge analyse: een bruikbaar instructiedocument.
 
@@ -172,7 +180,9 @@ Antwoord in NETTE markdown, met EXACT deze secties als "## " koppen, in deze vol
 Een markdown-tabel met twee kolommen (kop: | Wel | Niet |) en 6 tot 8 rijen met concrete voorbeeldzinnen die de schrijfregels illustreren.
 
 ## Conversiepijlers
-4 tot 6 bullets, elk met een **vette titel** + wat het is, waarom het werkt en een concreet voorbeeld van deze website (of, als het ontbreekt, wat de site hierop moet verbeteren).`;
+4 tot 6 bullets, elk met een **vette titel** + wat het is, waarom het werkt en een concreet voorbeeld van deze website (of, als het ontbreekt, wat de site hierop moet verbeteren).
+
+STAAT ER EEN BLOK "Wat de klant zelf zegt (LEIDEND)" IN DE OPDRACHT? Dan gaan die regels vóór alles wat je op de site leest. Neem ze letterlijk over in je uitwerking, schrijf nooit iets terug dat daar wordt tegengesproken of verboden, en noem geen feit dat daar is rechtgezet in zijn oude vorm.`;
 
 // ── Van markdown-rapport naar een Pingwin-huisstijl document + taak ──────
 
@@ -230,10 +240,21 @@ export type ProfileDeliverable = {
   error?: string;
 };
 
-type SiteCtx = { name: string; domain: string; existing: string; pagesText: string };
+type SiteCtx = { name: string; domain: string; existing: string; correcties: string; pagesText: string };
 // Eén prompt draaien tegen de gedeelde site-context (grond-feiten hieronder).
+//
+// De door de klant aangeleverde correcties staan BOVENAAN en worden NOOIT
+// afgekapt. Dat is met opzet: precies deze analyse mag niet opnieuw opschrijven
+// wat de klant zojuist heeft rechtgezet. Zonder dit blok schreef de analyse van
+// Paul Hoevenaars "gevestigd in Uden" terug de dag nadat hij had gemeld dat hij
+// in Vorstenbosch zit, want dat stond nu eenmaal zo op zijn eigen site.
 async function runProfilePrompt(ctx: SiteCtx, system: string, maxTokens: number): Promise<string> {
-  const user = `KLANT: ${ctx.name} (${ctx.domain})\n\n${ctx.existing ? `WAT DE STRATEEG AL WEET (bestaand profiel + eigen know-how, mag je meenemen):\n${ctx.existing.slice(0, 2500)}\n\n` : ""}LIVE PAGINA'S:\n\n${ctx.pagesText}`;
+  const user = [
+    `KLANT: ${ctx.name} (${ctx.domain})`,
+    ctx.correcties ? `\n${ctx.correcties}\n` : "",
+    ctx.existing ? `WAT DE STRATEEG AL WEET (bestaand profiel + eigen know-how, mag je meenemen; de regels hierboven gaan hier vóór):\n${ctx.existing.slice(0, 2500)}\n` : "",
+    `LIVE PAGINA'S:\n\n${ctx.pagesText}`,
+  ].filter(Boolean).join("\n");
   const raw = await callClaude(system, [{ role: "user", content: user }], maxTokens, { action: "klantprofiel" });
   return raw.trim();
 }
@@ -296,21 +317,11 @@ export async function makeProfileDeliverable(slug: string, kind: ProfileKind, fo
   return { ok: true, section, taskId, link, driveError };
 }
 
-// Voegt een gegenereerde sectie (met "## Kop" bovenaan) samen met de bestaande
-// profieltekst: vervangt de sectie met dezelfde kop, of plakt hem eronder. Zelfde
-// logica als in de UI (PagesPanel), maar server-side voor de achtergrond-run.
+// Voegt een gegenereerde sectie samen met de bestaande profieltekst. De echte
+// logica staat in lib/profiel-samenvoegen.ts, want het scherm doet exact
+// hetzelfde en twee kopieën van dezelfde regel lopen gegarandeerd uit elkaar.
 export function mergeProfileSection(current: string, section: string): string {
-  const cur = current || "";
-  const header = (section.split("\n")[0] || "").trim();
-  if (!header.startsWith("##")) return cur.trim() ? cur.trim() + "\n\n" + section.trim() : section.trim();
-  const lines = cur.split("\n");
-  const startIdx = lines.findIndex((l) => l.trim() === header);
-  if (startIdx === -1) return (cur.trim() ? cur.trim() + "\n\n" : "") + section.trim();
-  let endIdx = lines.length;
-  for (let i = startIdx + 1; i < lines.length; i++) { if (/^##\s/.test(lines[i])) { endIdx = i; break; } }
-  const before = lines.slice(0, startIdx).join("\n").trim();
-  const after = lines.slice(endIdx).join("\n").trim();
-  return [before, section.trim(), after].filter(Boolean).join("\n\n");
+  return voegSectieSamen(current, section);
 }
 
 export async function generateProfileSection(slug: string, kind: ProfileKind): Promise<{ ok: true; section: string } | { ok: false; error: string }> {

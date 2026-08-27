@@ -200,7 +200,7 @@ export async function voegSamen(behoudSlug: string, wegSlug: string): Promise<Sa
       domain               = COALESCE(NULLIF(domain, ''), ${weg.domain || null}),
       email                = COALESCE(NULLIF(email, ''), ${weg.email || null}),
       opvolg_datum         = COALESCE(opvolg_datum, ${weg.opvolgDatum || null}),
-      seo_profile          = COALESCE(NULLIF(seo_profile, ''), ${weg.seoProfile || null}),
+      seo_profile          = COALESCE(NULLIF(seo_profile, ''), ${weg.seoProfileRuw || null}),
       ahrefs_project_id    = COALESCE(NULLIF(ahrefs_project_id, ''), ${weg.ahrefsProjectId || null}),
       moneybird_contact_id = COALESCE(NULLIF(moneybird_contact_id, ''), ${weg.moneybirdContactId || null}),
       backend_url          = COALESCE(NULLIF(backend_url, ''), ${weg.backendUrl || null}),

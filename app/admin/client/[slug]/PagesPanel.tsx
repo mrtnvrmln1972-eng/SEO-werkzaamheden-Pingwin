@@ -14,6 +14,7 @@ import { urlKey } from "../../../../lib/url-key";
 import { kaartTekst, faseVoorstel } from "../../../../lib/weekplan-kaarttekst";
 import { FASE_VOLGORDE } from "../../../../lib/fase-volgorde";
 import { PROFILE_HEADER, TOV_HEADER } from "../../../../lib/constants";
+import { voegSectieSamen, knipProfiel, plakProfiel } from "../../../../lib/profiel-samenvoegen";
 import Voortgang from "./Voortgang";
 import { useKlus } from "./useKlus";
 import { Omlaag, Uitklap } from "../../../_ui/Pijl";
@@ -29,23 +30,11 @@ function statusBadge(status: number | null, redirectTarget: string) {
   return <span className="url-badge url-bad">{status}</span>;
 }
 
-// Voegt een gegenereerde sectie (met een "## Kop"-regel bovenaan) samen met de
-// bestaande profieltekst: vervangt een sectie met dezelfde kop, of plakt hem
-// eronder als hij nog niet bestaat. Zo kun je profiel en tone-of-voice los
-// (her)genereren zonder elkaar te overschrijven.
-function mergeSection(current: string, section: string): string {
-  const cur = current || "";
-  const header = (section.split("\n")[0] || "").trim();
-  if (!header.startsWith("##")) return cur.trim() ? cur.trim() + "\n\n" + section.trim() : section.trim();
-  const lines = cur.split("\n");
-  const startIdx = lines.findIndex((l) => l.trim() === header);
-  if (startIdx === -1) return (cur.trim() ? cur.trim() + "\n\n" : "") + section.trim();
-  let endIdx = lines.length;
-  for (let i = startIdx + 1; i < lines.length; i++) { if (/^##\s/.test(lines[i])) { endIdx = i; break; } }
-  const before = lines.slice(0, startIdx).join("\n").trim();
-  const after = lines.slice(endIdx).join("\n").trim();
-  return [before, section.trim(), after].filter(Boolean).join("\n\n");
-}
+// Voegt een gegenereerde sectie samen met de bestaande profieltekst. Eén bron
+// (lib/profiel-samenvoegen.ts), gedeeld met de server: dezelfde regel hier én
+// daar apart uitschrijven liep uit elkaar, en dat kostte op 27-08-2026 de eigen
+// know-how bij Paul Hoevenaars.
+const mergeSection = voegSectieSamen;
 
 // De twee automatisch gegenereerde secties dragen een vaste kop; alles daarbuiten
 // is de eigen know-how van de strateeg over de klant. De koppen zelf staan in
@@ -56,26 +45,21 @@ function mergeSection(current: string, section: string): string {
 // tone-of-voice-analyse, en de eigen know-how (de rest). Zo kunnen de eerste twee
 // netjes gerenderd worden en blijft het derde deel een bewerkbaar veld.
 function splitProfile(md: string): { profileMd: string; tovMd: string; knowhow: string } {
-  const lines = (md || "").split("\n");
-  const sections: { header: string; body: string[] }[] = [{ header: "", body: [] }];
-  for (const l of lines) {
-    if (/^##\s/.test(l)) sections.push({ header: l.trim(), body: [l] });
-    else sections[sections.length - 1].body.push(l);
-  }
-  let profileMd = "", tovMd = "";
-  const know: string[] = [];
-  for (const s of sections) {
-    const text = s.body.join("\n").trim();
-    if (!text) continue;
-    if (s.header === PROFILE_HEADER) profileMd = text;
-    else if (s.header === TOV_HEADER) tovMd = text;
-    else know.push(text);
-  }
-  return { profileMd, tovMd, knowhow: know.join("\n\n").trim() };
+  const delen = knipProfiel(md || "");
+  const van = (h: string) => (delen.secties.find((x) => x.header === h)?.tekst || "").trim();
+  return { profileMd: van(PROFILE_HEADER), tovMd: van(TOV_HEADER), knowhow: delen.knowhow };
 }
-// Zet de drie delen weer om naar één opgeslagen tekst (vaste volgorde).
+// Zet de drie delen weer om naar één opgeslagen tekst. De eigen know-how staat
+// VOORAAN, met een eigen kop: zonder die kop hoorde hij bij geen enkele sectie
+// en werd hij door de laatste opgeslokt zodra je een analyse opnieuw draaide.
 function recombineProfile(profileMd: string, tovMd: string, knowhow: string): string {
-  return [profileMd.trim(), tovMd.trim(), knowhow.trim()].filter(Boolean).join("\n\n");
+  return plakProfiel({
+    knowhow,
+    secties: [
+      { header: PROFILE_HEADER, tekst: profileMd },
+      { header: TOV_HEADER, tekst: tovMd },
+    ].filter((s) => s.tekst.trim()),
+  });
 }
 
 // Stabiele DOM-id per pagina-rij, zodat we er vanuit de KPI's naartoe kunnen scrollen.

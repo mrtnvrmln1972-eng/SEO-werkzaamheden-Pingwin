@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         const res = await makeProfileDeliverable(slug, kind, folderId || undefined);
         if (res.ok && res.section.trim()) {
           const client = await getClientBySlug(slug);
-          const merged = mergeProfileSection(client?.seoProfile || "", res.section);
+          const merged = mergeProfileSection(client?.seoProfileRuw || "", res.section);
           await saveClientProfile(slug, merged);
         }
       } catch { /* uitblijven = de gebruiker probeert opnieuw */ }

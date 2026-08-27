@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { sql, ensureSchema } from "./db";
 import { hashPassword, generatePassword } from "./password";
 import { dagUitDb } from "./dag-uit-db";
+import { correctieBlok, voegCorrectiesVoor } from "./klant-correcties";
 
 // ═══════════════════════════════════════════════════════════
 // KLANTEN (multi-client, uit de database)
@@ -66,7 +67,15 @@ export type ClientConfig = {
   domain: string | null;
   ahrefsProjectId: string | null;
   moneybirdContactId: string | null;
+  /**
+   * Het klantprofiel zoals de AI het moet lezen: de door de klant aangeleverde
+   * correcties bovenaan (zie lib/klant-correcties.ts), daaronder de opgeslagen
+   * tekst. Alleen gevuld via getClientBySlug; de lijst-functies laten dit veld
+   * gelijk aan de opgeslagen tekst.
+   */
   seoProfile: string | null;
+  /** Wat er écht is opgeslagen. Gebruik dit bij elk scherm dat het profiel opslaat. */
+  seoProfileRuw?: string | null;
   loginEnabled: boolean;
   // Klantgroep: null = eigen Pingwin-klant, "mmc" = Multimedia Concepts.
   grp: string | null;
@@ -148,6 +157,7 @@ function rowToConfig(r: ClientRow): ClientConfig {
     ahrefsProjectId: r.ahrefs_project_id ?? null,
     moneybirdContactId: r.moneybird_contact_id ?? null,
     seoProfile: r.seo_profile ?? null,
+    seoProfileRuw: r.seo_profile ?? null,
     loginEnabled: r.login_enabled === null || r.login_enabled === undefined ? true : !!r.login_enabled,
     grp: r.grp || null,
     ahrefsKeyRef: r.ahrefs_key_ref || null,
@@ -204,10 +214,31 @@ export async function setMoneybirdContact(slug: string, contactId: string): Prom
   return !!rowCount && rowCount > 0;
 }
 
+/**
+ * Eén klant, met de door de klant zelf aangeleverde correcties VOORAAN in
+ * `seoProfile` geplakt.
+ *
+ * Dit is met opzet hier gedaan en niet bij de twintig motoren die het profiel
+ * lezen. Diezelfde regel op twintig plekken uitschrijven loopt gegarandeerd uit
+ * elkaar (die les staat inmiddels vijf keer in CLAUDE.md), en één vergeten plek
+ * is precies een motor die de klant tegenspreekt. Nu krijgt elke chat, elk
+ * document en elke meta-motor het blok automatisch mee, bovenaan, zodat het ook
+ * niet wegvalt bij de afkapping die de meeste motoren op het profiel doen.
+ *
+ * `seoProfileRuw` is wat er écht in de database staat. ALLES wat het profiel
+ * opslaat of laat bewerken moet dat veld gebruiken; slaat iets `seoProfile`
+ * terug op, dan komt het correctieblok in de opgeslagen tekst terecht en gaat
+ * het bij de volgende ronde dubbel staan. `proeven/klant-correcties.proef.ts`
+ * rekent dat na.
+ */
 export async function getClientBySlug(slug: string): Promise<ClientConfig | null> {
   await ensureSchema();
   const { rows } = await sql<ClientRow>`SELECT * FROM clients WHERE slug = ${slug} LIMIT 1`;
-  return rows[0] ? rowToConfig(rows[0]) : null;
+  if (!rows[0]) return null;
+  const cfg = rowToConfig(rows[0]);
+  cfg.seoProfileRuw = cfg.seoProfile;
+  cfg.seoProfile = voegCorrectiesVoor(await correctieBlok(slug), cfg.seoProfile);
+  return cfg;
 }
 
 // Voor de login: geeft de config plus de wachtwoord-hash om te controleren.

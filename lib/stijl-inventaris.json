@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9588,
-    "stijlregels": 4623,
-    "classnamen": 3165
+    "regels": 9614,
+    "stijlregels": 4645,
+    "classnamen": 3185
   },
   "kleuren": {
     "verschillend": 40,
@@ -228,7 +228,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 66,
+      "aantal": 67,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -249,6 +249,7 @@
         "ghost-btn",
         "hm-knop",
         "kb-gaps-kop-btn",
+        "kc-bronknop",
         "kijk-knoppen",
         "kk-knop",
         "kmm-knop",
@@ -540,7 +541,7 @@
     },
     {
       "naam": "Invoervelden",
-      "aantal": 60,
+      "aantal": 61,
       "namen": [
         "add-month-select",
         "ag-checkbox-field",
@@ -561,6 +562,7 @@
         "kb-kaart-velden",
         "kb-veld",
         "kb-velden",
+        "kc-veld",
         "kpi-focus-select",
         "kpi-period-select",
         "kw-veld",
@@ -1929,7 +1931,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8906,
-    "schaalGebruik": 1505
+    "gebruik": 8942,
+    "schaalGebruik": 1508
   }
 }

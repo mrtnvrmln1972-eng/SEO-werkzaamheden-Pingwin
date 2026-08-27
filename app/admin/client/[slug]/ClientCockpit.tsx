@@ -33,6 +33,7 @@ const LeadTab = dynamic(() => import("./LeadTab"), { ssr: false, loading: Wacht 
 const OnboardingPanel = dynamic(() => import("./OnboardingPanel"), { ssr: false, loading: Wacht });
 const GmbPanel = dynamic(() => import("./GmbPanel"), { ssr: false, loading: Wacht });
 const OrgDataPanel = dynamic(() => import("./OrgDataPanel"), { ssr: false, loading: Wacht });
+const KlantCorrectiesPanel = dynamic(() => import("./KlantCorrectiesPanel"), { ssr: false, loading: Wacht });
 const Concurrenten = dynamic(() => import("./Concurrenten"), { ssr: false, loading: Wacht });
 const FundamentPanel = dynamic(() => import("./FundamentPanel"), { ssr: false, loading: Wacht });
 
@@ -921,8 +922,12 @@ export default function ClientCockpit({
             <div className="klant-kolom-links">
               {/* Hoe ver deze klant staat; zelfde cijfers als het fundament. */}
               <OnboardingPanel alleenKop slug={client.slug} onGaNaar={(t) => changeTab(validTab(t))} />
+              {/* Wat de klant zelf heeft rechtgezet. Staat bewust BOVEN het
+                  klantprofiel: het gaat er ook inhoudelijk vóór, en het is de
+                  enige laag die de analyseknoppen hieronder niet kunnen wissen. */}
+              <KlantCorrectiesPanel slug={client.slug} />
               {/* Klantprofiel en tone of voice: wie het bedrijf is, niet over pagina's. */}
-              <PagesPanel alleenProfiel slug={client.slug} initialProfile={client.seoProfile || ""} domain={client.domain || ""} />
+              <PagesPanel alleenProfiel slug={client.slug} initialProfile={client.seoProfileRuw ?? client.seoProfile ?? ""} domain={client.domain || ""} />
               <OrgDataPanel slug={client.slug} clientEmail={client.email || ""} />
               <Concurrenten slug={client.slug} />
             </div>
@@ -953,7 +958,7 @@ export default function ClientCockpit({
         )}
 
         <Bezocht tab="paginas" nu={tab} bezocht={bezocht}>
-          <PagesPanel slug={client.slug} initialProfile={client.seoProfile || ""} clientEmail={client.email || ""} clientName={client.name} domain={client.domain || ""} onGoToTask={goToNewTask} openTarget={pagesTarget} />
+          <PagesPanel slug={client.slug} initialProfile={client.seoProfileRuw ?? client.seoProfile ?? ""} clientEmail={client.email || ""} clientName={client.name} domain={client.domain || ""} onGoToTask={goToNewTask} openTarget={pagesTarget} />
         </Bezocht>
 
         <Bezocht tab="documenten" nu={tab} bezocht={bezocht}><DocumentenPanel slug={client.slug} onGoToPage={goToPage} /></Bezocht>
