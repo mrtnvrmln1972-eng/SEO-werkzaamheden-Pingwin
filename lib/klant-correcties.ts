@@ -1,6 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { callClaudeForcedTool } from "./anthropic";
 import { msStatus, msSearchClientEmails, type LiveEmail } from "./ms-graph";
+import { isRuisMail } from "./mail-tekst";
 
 // ═══════════════════════════════════════════════════════════
 // WAT DE KLANT ZELF ZEGT
@@ -354,13 +355,23 @@ export async function verwerkPlaksel(
  * De mail staat al in het dashboard; er is geen reden om hem eerst ergens anders
  * te openen.
  */
-export async function mailsOmTeVerwerken(slug: string, limiet = 40): Promise<
+export async function mailsOmTeVerwerken(slug: string, limiet = 100): Promise<
   { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string }[]
 > {
   await ensureSchema();
-  const [live, gedaan] = await Promise.all([liveMails(slug, limiet), verwerkteBronnen(slug)]);
+  const [live, gedaan, eigen] = await Promise.all([liveMails(slug, limiet), verwerkteBronnen(slug), eigenDomeinen(slug)]);
   return live
     .filter((m) => m.direction === "in" && (m.bodyHtml || m.preview || "").trim())
+    // Alleen mail van de klant zelf, en geen automatische ruis. Zonder dit filter
+    // stonden er bij Paul Hoevenaars vierentwintig regels in de kiezer waarvan er
+    // twee van hem waren; de rest was Ahrefs, Search Console en Stiply. Dan zoek
+    // je alsnog, en zoeken is precies wat dit blok moest wegnemen.
+    .filter((m) => !isRuisMail({ fromAddress: m.fromAddress, subject: m.subject }))
+    .filter((m) => {
+      if (!eigen.length) return true;
+      const adres = (m.fromAddress || "").toLowerCase();
+      return eigen.some((d) => adres.endsWith(`@${d}`) || adres === d);
+    })
     .map((m) => ({
       id: m.id,
       onderwerp: (m.subject || "(zonder onderwerp)").trim(),
@@ -375,6 +386,19 @@ export async function mailsOmTeVerwerken(slug: string, limiet = 40): Promise<
 export function mailBron(van: string, onderwerp: string): string {
   const naam = (van || "").split(/[<@]/)[0].trim() || "mail";
   return `mail ${naam}: ${(onderwerp || "").trim()}`.slice(0, 200);
+}
+
+/** De domeinen die bij deze klant horen (uit het klantmailadres en het domein). */
+async function eigenDomeinen(slug: string): Promise<string[]> {
+  const { rows } = await sql<{ email: string | null; domain: string | null }>`
+    SELECT email, domain FROM clients WHERE slug = ${slug} LIMIT 1`;
+  const uit = new Set<string>();
+  const mail = (rows[0]?.email || "").toLowerCase().trim();
+  if (mail.includes("@")) uit.add(mail.split("@")[1]);
+  const dom = (rows[0]?.domain || "").toLowerCase().trim()
+    .replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+  if (dom) uit.add(dom);
+  return [...uit].filter(Boolean);
 }
 
 async function verwerkteBronnen(slug: string): Promise<Set<string>> {
