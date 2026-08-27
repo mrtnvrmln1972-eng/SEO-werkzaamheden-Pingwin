@@ -229,12 +229,19 @@ export function zonderTeBrede(ads: AdsPaginas, livePaden: string[]): AdsPaginas 
   return { ...ads, paden, ingevuld: ads.geen || paden.length > 0 };
 }
 
-export async function adsAlsInstructie(slug: string): Promise<string> {
-  const ads = await getAdsPaginas(slug);
-  if (!ads.paden.length) return "";
+export async function adsAlsInstructie(slug: string, ads?: AdsPaginas): Promise<string> {
+  // De lijst komt bij voorkeur van buiten, want dan is hij al gesmald met
+  // `adsVoorKlant`. Zonder dat argument valt hij terug op de ruwe lijst, en dan
+  // krijgt het model te horen dat het een hele taalboom moet overslaan. Precies
+  // dat gebeurde op 27-08-2026: de code sloot `/en/` niet meer uit, maar de
+  // instructie aan het model deed het nog wél, dus kwam er geen enkele Engelse
+  // pagina in de clusters terecht.
+  const lijst = ads ?? (await getAdsPaginas(slug));
+  if (!lijst.paden.length) return "";
+  const ads2 = lijst;
   return [
     "ADVERTENTIEPAGINA'S. Dit is een HARDE regel en kent geen uitzondering.",
-    `Deze pagina's (en alles eronder) zijn landingspagina's voor Google Ads: ${ads.paden.join(", ")}.`,
+    `Deze pagina's (en alles eronder) zijn landingspagina's voor Google Ads: ${ads2.paden.join(", ")}.`,
     "Ze staan vaak op noindex en halen daarom weinig of niets uit de organische zoekresultaten. Dat is de bedoeling, geen probleem.",
     "- Stel ze NOOIT voor om op te ruimen, om te leiden, samen te voegen of te verhuizen.",
     "- Noem ze ook niet als verliezer in een cluster en gebruik ze niet als redirect-doel.",
@@ -242,8 +249,8 @@ export async function adsAlsInstructie(slug: string): Promise<string> {
   ].join("\n");
 }
 
-export async function regelsAlsInstructie(slug: string): Promise<string> {
-  const structuur = [await structuurAlsInstructie(slug), await adsAlsInstructie(slug)].filter(Boolean).join("\n\n");
+export async function regelsAlsInstructie(slug: string, ads?: AdsPaginas): Promise<string> {
+  const structuur = [await structuurAlsInstructie(slug), await adsAlsInstructie(slug, ads)].filter(Boolean).join("\n\n");
   const regels = await getOpruimRegels(slug).catch(() => []);
   if (!regels.length) return structuur;
   const houden = regels.filter((r) => r.besluit === "houden");

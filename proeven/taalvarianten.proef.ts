@@ -199,6 +199,18 @@ if (/export async function adsVoorKlant/.test(regels) && /zonderTeBrede\(/.test(
   faal("adsVoorKlant past zonderTeBrede niet toe; dan is de gedeelde ingang een lege huls");
 }
 
+// Ook de INSTRUCTIE aan het model moet de gesmalde lijst krijgen. Op 27-08-2026
+// sloot de code /en/ al niet meer uit, maar kreeg het model nog steeds te horen
+// "deze paden en alles eronder zijn advertentiepagina's, sla ze over". Er kwam
+// daardoor geen enkele Engelse pagina in de clusters, terwijl de teller zei dat
+// ze meededen. Een regel in de code én een regel in de prompt die elkaar
+// tegenspreken is precies het soort fout dat niemand ziet.
+if (/regelsAlsInstructie\(slug,/.test(motor)) {
+  goed("de instructie aan het model krijgt de gesmalde ads-lijst mee");
+} else {
+  faal("regelsAlsInstructie wordt zonder ads-lijst aangeroepen, dus het model krijgt alsnog te horen dat het hele secties moet overslaan");
+}
+
 if (fouten) {
   console.error(`\n${fouten} ${fouten === 1 ? "fout" : "fouten"} in de taalvarianten.`);
   process.exit(1);

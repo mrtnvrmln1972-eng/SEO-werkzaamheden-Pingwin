@@ -577,7 +577,15 @@ async function bouwSeed(slug: string, clientNaam: string, domain: string): Promi
     .map((u) => `- ${pagePath(u.url)} | status ${u.status ?? "?"} | ${u.gscClicks} clicks`).join("\n");
   const flipLines = flips.slice(0, 60).map((f) => `- "${f.keyword}": ${f.topUrls.join(" -> ")} (${f.flips}x)`).join("\n");
 
-  return { ok: true, kandidaten: (zwak.kandidaten || []).filter((k) => !isAdsPad(k.pad, ads)), seed: [
+  // Waarom er zoveel kandidaten overblijven, en waarom er eentje afvalt. Zonder
+  // deze regel is "0 kandidaten" een raadsel: op 27-08-2026 stond die teller drie
+  // runs lang op nul en was van buitenaf niet te zien of de berekening niets
+  // vond, of dat de ads-filter alles wegvaagde. Het was dat laatste.
+  const ruweKandidaten = zwak.kandidaten || [];
+  const naAds = ruweKandidaten.filter((k) => !isAdsPad(k.pad, ads));
+  console.log(`[opruimanalyse ${slug}] kandidaten: ${ruweKandidaten.length} uit de berekening, ${naAds.length} na de ads-filter (${ads.paden.length} ads-paden: ${ads.paden.join(", ") || "geen"})`);
+
+  return { ok: true, kandidaten: naAds, seed: [
     `KLANT: ${clientNaam || slug} (domein: ${domain})`,
     "",
     `DATAKWALITEIT (neem over in datakwaliteit): gsc=true, gscTijdreeks=${flips.length > 0}, ahrefsZoekwoorden=true, ahrefsBacklinks=true (verwijzende domeinen per pagina), crawl=false.`,
@@ -675,7 +683,9 @@ async function stapMetReden(slug: string): Promise<{ uit: "verder" | "klaar"; re
     // Daarbij de twee remmen als instructie. De code filtert wat hij kan meten;
     // deze tekst zorgt dat het model niet alsnog zelf over de intentiegrens heen
     // samenvoegt of een kansloze term als kans presenteert.
-    const eerdere = await regelsAlsInstructie(slug).catch(() => "");
+    // De gesmalde lijst mee, anders krijgt het model alsnog te horen dat het een
+    // hele taalboom moet overslaan terwijl de code hem juist meeneemt.
+    const eerdere = await regelsAlsInstructie(slug, await adsVoorKlant(slug).catch(() => undefined)).catch(() => "");
     const dr = await autoriteitVan(domain).catch(() => null);
     const systeem = [buildSystemPrompt(), intentieAlsInstructie(), haalbaarheidAlsInstructie(dr), eerdere]
       .filter(Boolean).join("\n\n");
