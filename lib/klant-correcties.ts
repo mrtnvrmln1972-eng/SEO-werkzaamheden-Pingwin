@@ -356,7 +356,7 @@ export async function verwerkPlaksel(
  * te openen.
  */
 export async function mailsOmTeVerwerken(slug: string, limiet = 100): Promise<
-  { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string; link: string }[]
+  { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string; link: string; verwerkt: boolean }[]
 > {
   await ensureSchema();
   const [live, gedaan, eigen] = await Promise.all([liveMails(slug, limiet), verwerkteBronnen(slug), eigenDomeinen(slug)]);
@@ -382,7 +382,12 @@ export async function mailsOmTeVerwerken(slug: string, limiet = 100): Promise<
       // overal in dit dashboard (zie superhumanThreadLink in lib/ms-graph.ts).
       link: (m.superhumanLink || m.webLink || "").trim(),
     }))
-    .filter((m) => !gedaan.has(mailBron(m.van, m.onderwerp)));
+    // Verwerkte mails blijven staan met een vinkje erachter, in plaats van uit de
+    // lijst te verdwijnen. Verdwijnen leest namelijk precies hetzelfde als "er is
+    // niets gebeurd": op 27-08-2026 dacht Maarten daardoor dat de knop niet
+    // werkte, terwijl beide mails gewoon verwerkt waren.
+    .map((m) => ({ ...m, verwerkt: gedaan.has(mailBron(m.van, m.onderwerp)) }))
+    .sort((a, b) => Number(a.verwerkt) - Number(b.verwerkt));
 }
 
 /** Vaste bronnaam voor een mail, zodat een verwerkte mail herkenbaar blijft. */

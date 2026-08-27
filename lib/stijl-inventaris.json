@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9615,
-    "stijlregels": 4646,
-    "classnamen": 3186
+    "regels": 9630,
+    "stijlregels": 4648,
+    "classnamen": 3183
   },
   "kleuren": {
     "verschillend": 40,
@@ -228,7 +228,7 @@
   "families": [
     {
       "naam": "Knoppen",
-      "aantal": 67,
+      "aantal": 66,
       "namen": [
         "ag-datumknop",
         "ag-day-selector-btn",
@@ -249,7 +249,6 @@
         "ghost-btn",
         "hm-knop",
         "kb-gaps-kop-btn",
-        "kc-bronknop",
         "kijk-knoppen",
         "kk-knop",
         "kmm-knop",
@@ -422,7 +421,7 @@
     },
     {
       "naam": "Labels en badges",
-      "aantal": 113,
+      "aantal": 114,
       "namen": [
         "act-edit-label",
         "ag-hour-label",
@@ -455,6 +454,7 @@
         "il-anchor-chip",
         "il-anchors-label",
         "invoice-badge",
+        "kc-labeltje",
         "kk-groep-label",
         "klus-chip",
         "kmm-item-label",
@@ -541,7 +541,7 @@
     },
     {
       "naam": "Invoervelden",
-      "aantal": 61,
+      "aantal": 60,
       "namen": [
         "add-month-select",
         "ag-checkbox-field",
@@ -562,7 +562,6 @@
         "kb-kaart-velden",
         "kb-veld",
         "kb-velden",
-        "kc-veld",
         "kpi-focus-select",
         "kpi-period-select",
         "kw-veld",
@@ -1931,7 +1930,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8943,
-    "schaalGebruik": 1508
+    "gebruik": 8944,
+    "schaalGebruik": 1507
   }
 }

@@ -31,7 +31,7 @@ type Regel = {
 };
 type Correctie = { id: number; bron: string; datum: string | null; ruw: string; regels: Regel[] };
 type OrgVoorstel = { veld: string; waarde: string };
-type Mail = { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string; link: string };
+type Mail = { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string; link: string; verwerkt: boolean };
 
 const ORG_LABEL: Record<string, string> = {
   plaats: "Plaats", straat: "Straat", postcode: "Postcode", telefoon: "Telefoon", email: "E-mail",
@@ -53,11 +53,11 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
   const [voorstellen, setVoorstellen] = useState<OrgVoorstel[]>([]);
   const [gezet, setGezet] = useState<string[]>([]);
   const [plakOpen, setPlakOpen] = useState(false);
-  const [historieOpen, setHistorieOpen] = useState(false);
   const [bronOpen, setBronOpen] = useState<number | null>(null);
   const [veldStempel, setVeldStempel] = useState(0);
   const [mails, setMails] = useState<Mail[]>([]);
-  const [mailOpen, setMailOpen] = useState(false);
+  // Elk blok staat standaard dicht; `false` betekent open.
+  const [dicht, setDicht] = useState<Record<string, boolean>>({});
   // Stand per mail, niet één stand voor het hele blok. Met alleen een globale
   // "bezig" stonden alle knoppen uit zonder dat je zag waarom, en een tweede
   // klik verdween in het niets: op 27-08-2026 dacht Maarten daardoor dat de
@@ -163,6 +163,22 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
     } catch (e) { setFout((e as Error).message); } finally { setBezig(false); }
   }
 
+  // Eén patroon voor élk blok hieronder: `deelkop`, de gedeelde inklapkop van
+  // niveau 2 die de cockpit overal gebruikt, met het aantal stil rechts in
+  // `deelkop-meta`. Alles staat standaard dicht. Geen eigen koppen, geen eigen
+  // knopvormen: dat is precies waar dit paneel de eerste ronde de mist in ging
+  // (twee gecentreerde knoppen die nergens anders zo staan).
+  const Blok = ({ id, titel, meta, children }: { id: string; titel: string; meta?: string; children: React.ReactNode }) => (
+    <div className="kc-blok">
+      <button type="button" className="deelkop" aria-expanded={dicht[id] === false}
+        onClick={() => setDicht((d) => ({ ...d, [id]: !(d[id] === false) }))}>
+        {titel}
+        {meta && <span className="deelkop-meta">{meta}</span>}
+      </button>
+      {dicht[id] === false && <div className="kc-blok-body">{children}</div>}
+    </div>
+  );
+
   return (
     <div className="cockpit-card acc-orange" id="fund-correcties">
       <button type="button" className="client-profile-toggle" onClick={() => setOpen((v) => !v)}>
@@ -185,50 +201,7 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
             <button type="button" className="btn btn-klein btn-primary" onClick={() => setPlakOpen((v) => !v)} disabled={bezig}>
               {plakOpen ? "Plakvak sluiten" : "Tekst van de klant toevoegen"}
             </button>
-            {mails.length > 0 && (
-              <button type="button" className="btn btn-klein btn-ghost" onClick={() => { const nu = !mailOpen; setMailOpen(nu); if (nu) laden(); }} disabled={bezig}>
-                {mailOpen ? "Mails verbergen" : `Uit een mail halen (${mails.length})`}
-              </button>
-            )}
-            {vervallen.length > 0 && (
-              <button type="button" className="btn btn-klein btn-quiet pnl-acties-info" onClick={() => setHistorieOpen((v) => !v)}>
-                {historieOpen ? "Verberg eerder gezegd" : `Eerder gezegd (${vervallen.length})`}
-              </button>
-            )}
           </div>
-
-          {mailOpen && mails.length > 0 && (
-            <div className="kc-bakje">
-              <div className="kc-kopje">Mails van deze klant die nog niet verwerkt zijn</div>
-              <ul className="kc-lijst">
-                {mails.map((m) => (
-                  <li key={m.id}>
-                    <span className="kc-regel">
-                      <strong>{m.onderwerp}</strong>
-                      {m.aanhef && <><br /><span className="muted">{m.aanhef}</span></>}
-                    </span>
-                    <span className="kc-bron">
-                      {[m.van, m.datum ? m.datum.split("-").reverse().join("-") : ""].filter(Boolean).join(", ")}
-                      {m.link && <> · <a className="kc-mail-link" href={m.link} target="_blank" rel="noreferrer">mail openen</a></>}
-                    </span>
-                    {mailStand[m.id] === "klaar"
-                      ? <span className="ob-chip ob-af">Verwerkt</span>
-                      : (
-                        <button
-                          type="button"
-                          className={"btn btn-klein" + (mailStand[m.id] === "bezig" ? " btn-ghost busy" : mailStand[m.id] === "fout" ? " btn-danger" : " btn-ghost")}
-                          onClick={() => doeMail(m.id)}
-                          disabled={mailStand[m.id] === "bezig"}
-                        >
-                          {mailStand[m.id] === "bezig" ? "Bezig, even geduld…" : mailStand[m.id] === "fout" ? "Opnieuw proberen" : "Verwerken"}
-                        </button>
-                      )}
-                  </li>
-                ))}
-              </ul>
-              <span className="muted kc-klein">Alleen binnengekomen mail van deze klant. Verwerken duurt ongeveer een halve minuut per mail; je kunt er meerdere tegelijk aanzetten. Verwerkte mails zijn bij de volgende keer openen weg.</span>
-            </div>
-          )}
 
           {plakOpen && (
             <div className="kc-plak">
@@ -259,82 +232,132 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
           {melding && <div className="saved-msg kc-marge">{melding}</div>}
 
           {voorstellen.length > 0 && (
-            <div className="kc-voorstellen">
-              <div className="kc-kopje">Dit hoort ook in de bedrijfsgegevens</div>
-              {voorstellen.map((v) => (
-                <div className="kc-voorstel" key={v.veld}>
-                  <span className="kc-veld">{ORG_LABEL[v.veld] || v.veld}</span>
-                  <span className="kc-waarde">{v.waarde}</span>
-                  {gezet.includes(v.veld)
-                    ? <span className="ob-chip ob-af">Doorgevoerd</span>
-                    : <button type="button" className="btn btn-klein btn-ghost" onClick={() => zetVeld(v)} disabled={bezig}>Doorvoeren</button>}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {correcties === null && <div className="muted kc-klein">Bezig met ophalen…</div>}
-
-          {correcties !== null && geldig.length === 0 && (
-            <div className="muted kc-klein">
-              Nog niets aangeleverd. Zodra een klant iets rechtzet of aanvult, plak je die tekst hier; dan telt het overal mee.
-            </div>
-          )}
-
-          {CATEGORIEEN.map((cat) => {
-            const van = geldig.filter((r) => r.categorie === cat);
-            if (!van.length) return null;
-            return (
-              <div className="kc-bakje" key={cat}>
-                <div className="kc-kopje">{CATEGORIE_LABEL[cat]}</div>
-                <ul className="kc-lijst">
-                  {van.map((r) => (
-                    <li key={r.id}>
-                      <span className="kc-regel">{r.regel}</span>
-                      {bronLabel(r.bron, r.datum) && <span className="kc-bron">{bronLabel(r.bron, r.datum)}</span>}
-                      <button type="button" className="kc-weg" title="Deze regel weghalen"
-                        onClick={() => doeActie({ wat: "regel", regelId: r.id, tekst: "" })} disabled={bezig}>&times;</button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-
-          {historieOpen && vervallen.length > 0 && (
-            <div className="kc-bakje kc-vervallen">
-              <div className="kc-kopje">Eerder gezegd, inmiddels achterhaald</div>
-              <ul className="kc-lijst">
-                {vervallen.map((r) => (
-                  <li key={r.id}>
-                    <span className="kc-regel">{r.regel}</span>
-                    {bronLabel(r.bron, r.datum) && <span className="kc-bron">{bronLabel(r.bron, r.datum)}</span>}
+            <div className="kc-blok-body">
+              <div className="kc-labeltje">Dit hoort ook in de bedrijfsgegevens</div>
+              <ul className="kc-lijst kc-lijst-org">
+                {voorstellen.map((v) => (
+                  <li key={v.veld}>
+                    <span className="kc-eerste"><strong>{ORG_LABEL[v.veld] || v.veld}</strong> {v.waarde}</span>
+                    <span className="kc-tweede" />
+                    <span className="kc-derde">
+                      {gezet.includes(v.veld)
+                        ? <span className="ob-chip ob-af">Doorgevoerd</span>
+                        : <button type="button" className="btn btn-klein btn-ghost" onClick={() => zetVeld(v)} disabled={bezig}>Doorvoeren</button>}
+                    </span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
 
-          {(correcties || []).length > 0 && (
-            <div className="kc-bronnen">
-              <div className="kc-kopje">De aangeleverde teksten zelf</div>
-              {(correcties || []).map((c) => (
-                <div className="kc-bronrij" key={c.id}>
-                  <button type="button" className="btn btn-klein btn-quiet kc-bronknop" onClick={() => setBronOpen(bronOpen === c.id ? null : c.id)}>
-                    {bronOpen === c.id ? <Omlaag /> : <Uitklap />} {bronLabel(c.bron, c.datum) || "zonder bron"} <span className="muted">({c.regels.length} regels)</span>
-                  </button>
-                  {bronOpen === c.id && (
-                    <>
-                      <div className="md kc-ruw" dangerouslySetInnerHTML={{ __html: netteHtml(c.ruw) }} />
-                      <div className="pnl-acties-groep">
-                        <button type="button" className="btn btn-klein btn-ghost" onClick={() => doeActie({ wat: "opnieuw", correctieId: c.id })} disabled={bezig}>Opnieuw uitwerken</button>
-                        <button type="button" className="btn btn-klein btn-danger" onClick={() => verwijder(c.id)} disabled={bezig}>Verwijderen</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
+          {correcties === null && <div className="muted kc-klein">Bezig met ophalen…</div>}
+
+          {mails.length > 0 && (
+            <Blok id="mails" titel="Mails van deze klant" meta={`${mails.filter((m) => !m.verwerkt && mailStand[m.id] !== "klaar").length} nog te doen`}>
+              <ul className="kc-lijst">
+                {mails.map((m) => {
+                  const klaar = m.verwerkt || mailStand[m.id] === "klaar";
+                  const stand = mailStand[m.id];
+                  return (
+                    <li key={m.id}>
+                      <span className="kc-eerste">
+                        <strong>{m.onderwerp}</strong>
+                        {m.aanhef && <span className="kc-aanhef">{m.aanhef}</span>}
+                      </span>
+                      <span className="kc-tweede">
+                        {[m.van, m.datum ? m.datum.split("-").reverse().join("-") : ""].filter(Boolean).join(", ")}
+                        {m.link && <><br /><a href={m.link} target="_blank" rel="noreferrer">mail openen</a></>}
+                      </span>
+                      <span className="kc-derde">
+                        {klaar
+                          ? <span className="ob-chip ob-af">Verwerkt</span>
+                          : (
+                            <button
+                              type="button"
+                              className={"btn btn-klein" + (stand === "bezig" ? " btn-ghost busy" : stand === "fout" ? " btn-danger" : " btn-ghost")}
+                              onClick={() => doeMail(m.id)}
+                              disabled={stand === "bezig"}
+                            >
+                              {stand === "bezig" ? "Bezig, even geduld…" : stand === "fout" ? "Opnieuw proberen" : "Verwerken"}
+                            </button>
+                          )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <span className="muted kc-klein">Alleen binnengekomen mail van deze klant. Verwerken duurt ongeveer een halve minuut per mail; je kunt er meerdere tegelijk aanzetten.</span>
+            </Blok>
+          )}
+
+          {correcties !== null && geldig.length === 0 && (
+            <div className="muted kc-klein">
+              Nog niets aangeleverd. Zodra een klant iets rechtzet of aanvult, plak je die tekst hier of haal je hem uit een mail; dan telt het overal mee.
             </div>
+          )}
+
+          {geldig.length > 0 && (
+            <Blok id="regels" titel="Regels die nu gelden" meta={String(geldig.length)}>
+              {CATEGORIEEN.map((cat) => {
+                const van = geldig.filter((r) => r.categorie === cat);
+                if (!van.length) return null;
+                return (
+                  <div className="kc-groep" key={cat}>
+                    <div className="kc-labeltje">{CATEGORIE_LABEL[cat]}</div>
+                    <ul className="kc-lijst">
+                      {van.map((r) => (
+                        <li key={r.id}>
+                          <span className="kc-eerste">{r.regel}</span>
+                          <span className="kc-tweede">{bronLabel(r.bron, r.datum)}</span>
+                          <span className="kc-derde">
+                            <button type="button" className="kc-weg" title="Deze regel weghalen"
+                              onClick={() => doeActie({ wat: "regel", regelId: r.id, tekst: "" })} disabled={bezig}>&times;</button>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </Blok>
+          )}
+
+          {vervallen.length > 0 && (
+            <Blok id="vervallen" titel="Eerder gezegd, inmiddels achterhaald" meta={String(vervallen.length)}>
+              <ul className="kc-lijst kc-vervallen">
+                {vervallen.map((r) => (
+                  <li key={r.id}>
+                    <span className="kc-eerste">{r.regel}</span>
+                    <span className="kc-tweede">{bronLabel(r.bron, r.datum)}</span>
+                    <span className="kc-derde" />
+                  </li>
+                ))}
+              </ul>
+            </Blok>
+          )}
+
+          {(correcties || []).length > 0 && (
+            <Blok id="bronnen" titel="De aangeleverde teksten zelf" meta={String((correcties || []).length)}>
+              <ul className="kc-lijst">
+                {(correcties || []).map((c) => (
+                  <li key={c.id}>
+                    <span className="kc-eerste">
+                      <strong>{bronLabel(c.bron, c.datum) || "zonder bron"}</strong>
+                      <span className="kc-aanhef">{c.regels.length} regel{c.regels.length === 1 ? "" : "s"} hieruit gehaald</span>
+                      {bronOpen === c.id && <span className="md kc-ruw" dangerouslySetInnerHTML={{ __html: netteHtml(c.ruw) }} />}
+                    </span>
+                    <span className="kc-tweede" />
+                    <span className="kc-derde kc-derde-groep">
+                      <button type="button" className="btn btn-klein btn-quiet" onClick={() => setBronOpen(bronOpen === c.id ? null : c.id)}>
+                        {bronOpen === c.id ? "Tekst verbergen" : "Tekst bekijken"}
+                      </button>
+                      <button type="button" className="btn btn-klein btn-ghost" onClick={() => doeActie({ wat: "opnieuw", correctieId: c.id })} disabled={bezig}>Opnieuw uitwerken</button>
+                      <button type="button" className="btn btn-klein btn-danger" onClick={() => verwijder(c.id)} disabled={bezig}>Verwijderen</button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Blok>
           )}
         </div>
       )}
