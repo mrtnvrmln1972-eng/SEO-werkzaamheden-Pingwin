@@ -1410,6 +1410,7 @@ td .dev-doc-link { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; 
 .kc-lijst li { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--ruimte-krap); padding: var(--ruimte-krap) 0; border-bottom: 1px solid var(--kleur-rand-zacht); font-size: var(--type-bijschrift); color: var(--dark); }
 .kc-regel { flex: 1 1 320px; }
 .kc-bron { font-size: var(--type-label); color: var(--kleur-tekst-stil); white-space: nowrap; }
+.kc-mail-link { color: var(--kleur-link); text-decoration: underline; }
 .kc-weg { background: none; border: none; cursor: pointer; color: var(--kleur-tekst-stil); font-size: var(--type-bijschrift); line-height: 1; padding: 0 var(--ruimte-krap); }
 .kc-weg:hover { color: var(--kleur-fout); }
 .kc-vervallen .kc-regel { text-decoration: line-through; color: var(--kleur-tekst-stil); }

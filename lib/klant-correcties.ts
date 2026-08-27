@@ -356,7 +356,7 @@ export async function verwerkPlaksel(
  * te openen.
  */
 export async function mailsOmTeVerwerken(slug: string, limiet = 100): Promise<
-  { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string }[]
+  { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string; link: string }[]
 > {
   await ensureSchema();
   const [live, gedaan, eigen] = await Promise.all([liveMails(slug, limiet), verwerkteBronnen(slug), eigenDomeinen(slug)]);
@@ -378,6 +378,9 @@ export async function mailsOmTeVerwerken(slug: string, limiet = 100): Promise<
       van: (m.fromName || m.fromAddress || "").trim(),
       datum: alsDag(m.receivedAt),
       aanhef: (m.preview || "").replace(/\s+/g, " ").trim().slice(0, 140),
+      // Superhuman opent de thread meteen; de Outlook-link is de terugval, zoals
+      // overal in dit dashboard (zie superhumanThreadLink in lib/ms-graph.ts).
+      link: (m.superhumanLink || m.webLink || "").trim(),
     }))
     .filter((m) => !gedaan.has(mailBron(m.van, m.onderwerp)));
 }

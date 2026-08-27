@@ -31,7 +31,7 @@ type Regel = {
 };
 type Correctie = { id: number; bron: string; datum: string | null; ruw: string; regels: Regel[] };
 type OrgVoorstel = { veld: string; waarde: string };
-type Mail = { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string };
+type Mail = { id: string; onderwerp: string; van: string; datum: string | null; aanhef: string; link: string };
 
 const ORG_LABEL: Record<string, string> = {
   plaats: "Plaats", straat: "Straat", postcode: "Postcode", telefoon: "Telefoon", email: "E-mail",
@@ -190,7 +190,10 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
                       <strong>{m.onderwerp}</strong>
                       {m.aanhef && <><br /><span className="muted">{m.aanhef}</span></>}
                     </span>
-                    <span className="kc-bron">{[m.van, m.datum ? m.datum.split("-").reverse().join("-") : ""].filter(Boolean).join(", ")}</span>
+                    <span className="kc-bron">
+                      {[m.van, m.datum ? m.datum.split("-").reverse().join("-") : ""].filter(Boolean).join(", ")}
+                      {m.link && <> · <a className="kc-mail-link" href={m.link} target="_blank" rel="noreferrer">mail openen</a></>}
+                    </span>
                     <button type="button" className="btn btn-klein btn-ghost" onClick={() => doeMail(m.id)} disabled={bezig}>Verwerken</button>
                   </li>
                 ))}
