@@ -82,6 +82,11 @@ export type OpruimRegel = {
   pad: string; uitkomst: string; naar: string; reden: string; onderbouwing: string[];
   term?: string; volume: number | null; klikken?: number; positie: number | null;
   groep: string; doorgevoerd?: boolean; contentOver?: boolean;
+  /** Gevuld als het doel van de omleiding niet deugt (bestaat niet, is zelf een
+      omleiding, of komt terug op de bronpagina). Komt uit `markeerDoelRisico`. */
+  doelRisico?: string;
+  /** Google Ads-landingspagina: doet mee in het plan, gaat nooit weg. */
+  advertentie?: boolean;
 };
 
 /** Eén kans uit de meta/CTR-lijst, zoals /api/admin/meta-ctr hem teruggeeft. */
@@ -116,6 +121,10 @@ export type ClusterPagina = {
   klikken: number;
   minuten: number;
   doorgevoerd: boolean;
+  /** Waarom deze omleiding nu niet doorgevoerd kan worden. Leeg = geen bezwaar. */
+  doelRisico: string;
+  /** Google Ads-landingspagina: blijft altijd staan, hier gaat niets heen of weg. */
+  advertentie: boolean;
   /** De titel/description-kans op deze pagina, als die er is en nog zin heeft. */
   meta: MetaKans | null;
   /** Gevuld als er wél een kans lag maar die niets meer oplevert, met de reden. */
@@ -158,6 +167,9 @@ export type Werkcluster = {
   volume: number;
   /** Hoeveel kansen hier vervielen omdat de pagina toch verdwijnt. */
   vervallen: number;
+  /** Hoeveel omleidingen in dit blok een doel hebben dat niet deugt. Zolang dit
+      boven nul staat mag het blok niet blind doorgevoerd worden. */
+  geblokkeerd: number;
   /** Staat dit cluster al (deels) in de planning, en is er al aan gewerkt. */
   inPlanning: number;
   alGedaan: number;
@@ -268,6 +280,7 @@ export function bouwWerkplan(
       onderbouwing: r.onderbouwing || [], term: r.term || "",
       volume: r.volume, positie: r.positie, klikken: r.klikken || 0,
       minuten: MINUTEN[handeling], doorgevoerd: !!r.doorgevoerd,
+      doelRisico: r.doelRisico || "", advertentie: !!r.advertentie,
       meta: null, vervallen: "",
     });
   }
@@ -314,7 +327,8 @@ export function bouwWerkplan(
       reden: m.reden === "kapot" ? "Titel of description ontbreekt of is kapot" : "Titel en description laten klikken liggen",
       onderbouwing: missend.length ? [`Wat er nu niet klopt: ${missend.join(", ")}.`] : [],
       term: m.keyword || "", volume: m.volume, positie: m.position, klikken: 0,
-      minuten: MINUTEN.meta, doorgevoerd: false, meta: m, vervallen: "",
+      minuten: MINUTEN.meta, doorgevoerd: false, doelRisico: "", advertentie: false,
+      meta: m, vervallen: "",
     });
   }
 
@@ -398,6 +412,7 @@ export function bouwWerkplan(
       samenvatting, gedeeld: gedeeldeRegels(paginas.map((p) => p.onderbouwing)),
       nu, straks, telling, categorieen, hoofdcategorie, volume,
       vervallen: paginas.filter((p) => p.vervallen).length,
+      geblokkeerd: open.filter((p) => p.doelRisico).length,
       inPlanning: takenPerThread.get(naam.toLowerCase()) || 0,
       alGedaan: paginas.reduce((s, p) => s + (gedaanPerPad.get(padVan(p.pad)) || 0), 0),
     });

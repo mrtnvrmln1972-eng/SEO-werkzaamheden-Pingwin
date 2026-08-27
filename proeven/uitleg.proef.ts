@@ -80,17 +80,37 @@ proef(
     `Een geïmporteerd hoofdstuk dat niet in de lijst staat, staat niet op /uitleg.`,
 );
 
-// Onderdelen in een hoofdstukmap hangen aan de index van díe map.
+// Onderdelen in een hoofdstukmap moeten BEREIKBAAR zijn vanaf de index van díe
+// map. Dat was eerst "rechtstreeks geïmporteerd door de index", en dat is één slag
+// te streng: een onderdeel dat te groot werd en in tweeën ging (opruimen.ts plus
+// opruimen-veiligheid.ts) hangt dan aan zijn buurman in plaats van aan de index,
+// en stond hier ten onrechte als losgeraakt. Waar het om gaat is dat een stuk
+// tekst niet stilletjes van de pagina kan verdwijnen, en dat kan niet zolang er
+// een keten van imports vanaf de index naartoe loopt. Die keten volgen we dus.
 for (const submap of alle.filter((b) => b.endsWith("/index.ts")).map((b) => b.replace("/index.ts", ""))) {
-  const subIndex = readFileSync(join(MAP, submap, "index.ts"), "utf8");
   const delen = alle
     .filter((b) => b.startsWith(`${submap}/`) && !b.endsWith("/index.ts"))
     .map((b) => b.slice(submap.length + 1).replace(/\.ts$/, ""));
-  const kwijt = delen.filter((d) => !subIndex.includes(`from "./${d}"`));
+
+  const bereikbaar = new Set<string>();
+  const teLezen = ["index"];
+  while (teLezen.length) {
+    const nu = teLezen.pop()!;
+    const inhoud = readFileSync(join(MAP, submap, `${nu}.ts`), "utf8");
+    for (const d of delen) {
+      if (bereikbaar.has(d)) continue;
+      if (inhoud.includes(`from "./${d}"`)) { bereikbaar.add(d); teLezen.push(d); }
+    }
+  }
+
+  const kwijt = delen.filter((d) => !bereikbaar.has(d));
   proef(
-    `elk onderdeel van ${submap}/ hangt in zijn eigen index (${delen.length} onderdelen)`,
+    `elk onderdeel van ${submap}/ is bereikbaar vanaf zijn eigen index (${delen.length} onderdelen)`,
     kwijt.length === 0,
-    kwijt.length ? `Niet geïmporteerd: ${kwijt.join(", ")}` : "",
+    kwijt.length
+      ? `Niet bereikbaar vanaf ${submap}/index.ts: ${kwijt.join(", ")}. ` +
+        `Zo'n bestand staat niet op /uitleg, hoe goed de tekst ook is.`
+      : "",
   );
 }
 

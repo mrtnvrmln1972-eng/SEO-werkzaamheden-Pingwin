@@ -3,7 +3,7 @@ import { ADMIN_COOKIE, verifyAdminSession } from "../../../../lib/admin-auth";
 import { guardSlug } from "../../../../lib/admin-scope";
 import { getCannibalAnalysis, zorgVoorPlaatsen } from "../../../../lib/cannibal-redirect";
 import { getClientBySlug } from "../../../../lib/clients";
-import { bouwWerklijst, markeerContentOver, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
+import { bouwWerklijst, markeerContentOver, markeerDoelRisico, markeerDoorgevoerd, tellingen } from "../../../../lib/opruim-werklijst";
 import { chatBesluitenVoor } from "../../../../lib/opruim-chat-besluiten";
 import { getAdsPaginas, getOpruimRegels } from "../../../../lib/opruim-regels";
 import { bepaalWeggelaten } from "../../../../lib/opruim-weggelaten";
@@ -35,12 +35,22 @@ export async function GET(req: NextRequest) {
       getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false })),
       getClientUrls(slug).catch(() => []),
     ]);
-    const regels = markeerContentOver(
-      markeerDoorgevoerd(
-        bouwWerklijst(st.result, plaatsen?.adviezen || [], chatBesluitenVoor(slug)),
-        vaste.filter((r) => r.doorgevoerd).map((r) => r.van),
+    const regels = markeerDoelRisico(
+      markeerContentOver(
+        markeerDoorgevoerd(
+          bouwWerklijst(st.result, plaatsen?.adviezen || [], chatBesluitenVoor(slug)),
+          vaste.filter((r) => r.doorgevoerd).map((r) => r.van),
+        ),
+        vaste.filter((r) => r.contentOver).map((r) => r.van),
       ),
-      vaste.filter((r) => r.contentOver).map((r) => r.van),
+      // Alleen pagina's die echt 200 geven tellen als bestaand doel. Een 301 is
+      // geen bestemming maar een doorverwijzing, en juist dat leverde het plan om
+      // `/soa-poli-zoetermeer/` naar een adres te sturen dat via twee stappen op
+      // zichzelf uitkwam.
+      urls.filter((u) => (u.status ?? 200) === 200).map((u) => u.url),
+      Object.fromEntries(
+        urls.filter((u) => u.redirectTarget).map((u) => [u.url, u.redirectTarget as string]),
+      ),
     );
     // Wat er NIET in de lijst staat, met de reden. Zonder dit is een weglating
     // niet te onderscheiden van een gat: zoeken op "Utrecht" gaf vier blokken

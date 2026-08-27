@@ -56,6 +56,14 @@ export type WerkRegel = {
   /** Bij een samenvoeging: is de content al overgezet naar het doel? Ook uit de
       vaste regels; de redirect-knop gaat pas open als dit waar is. */
   contentOver?: boolean;
+  /** Gevuld als het doel van deze omleiding niet deugt: het bestaat niet, het is
+      zelf een omleiding, of het komt terug op de bronpagina. Zolang dit gevuld is
+      mag er niets doorgevoerd worden. */
+  doelRisico?: string;
+  /** Is dit een Google Ads-landingspagina? Die doet gewoon mee in het plan (er
+      staan vaak vier of vijf pagina's voor in de weg), maar gaat zelf nooit weg.
+      Het scherm zet er een label bij, zodat zichtbaar is waaróm hij blijft. */
+  advertentie?: boolean;
 };
 
 const getal = (n: number | null | undefined) => (n == null ? "onbekend" : String(n));
@@ -112,14 +120,25 @@ export function bouwWerklijst(result: CannibalResult | null, plaatsen: PlaatsAdv
       : a.uitkomst === "samenvoegen" ? "samenvoegen" : "blijft";
     for (const p of a.paginas) {
       const isHouder = a.blijft === p.pad;
+      // Een advertentiepagina wordt nooit opgeruimd of samengevoegd, wat de
+      // uitkomst voor de plaats verder ook is. Hij blijft, en de rest van de
+      // plaats wijst naar hem toe.
+      const uitkomstVoorPagina: Uitkomst = p.advertentie
+        ? (isHouder && uit === "uitbouwen" ? "uitbouwen" : "blijft")
+        : isHouder
+          ? (uit === "opruimen" ? "opruimen" : uit === "samenvoegen" ? "uitbouwen" : uit)
+          : (a.blijft ? "samenvoegen" : "opruimen");
       zet({
         pad: p.pad,
-        uitkomst: isHouder ? (uit === "opruimen" ? "opruimen" : uit === "samenvoegen" ? "uitbouwen" : uit) : (a.blijft ? "samenvoegen" : "opruimen"),
-        naar: isHouder ? "" : a.blijft,
+        uitkomst: uitkomstVoorPagina,
+        naar: p.advertentie || isHouder ? "" : a.blijft,
         herkomst: ["plaats"],
-        reden: isHouder
-          ? `Blijft de pagina voor ${a.naam}.`
-          : a.blijft ? `Gaat op in de pagina voor ${a.naam}.` : `${a.naam} levert niets op en er is geen vraag.`,
+        advertentie: p.advertentie,
+        reden: p.advertentie
+          ? `Advertentiepagina voor ${a.naam}: blijft staan, hier gaat niets heen of weg. De andere pagina's van ${a.naam} wijzen hiernaartoe.`
+          : isHouder
+            ? `Blijft de pagina voor ${a.naam}.`
+            : a.blijft ? `Gaat op in de pagina voor ${a.naam}.` : `${a.naam} levert niets op en er is geen vraag.`,
         onderbouwing: a.onderbouwing,
         term: p.term, volume: a.volume, klikken: p.klikken, vertoningen: p.vertoningen, positie: p.positie,
         groep: a.naam,
@@ -285,4 +304,70 @@ export function markeerDoorgevoerd(regels: WerkRegel[], doorgevoerdePaden: strin
 export function markeerContentOver(regels: WerkRegel[], overgezettePaden: string[]): WerkRegel[] {
   const over = new Set(overgezettePaden.map(norm));
   return regels.map((r) => (over.has(norm(r.pad)) ? { ...r, contentOver: true } : r));
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════
+ * IS HET DOEL VAN EEN OMLEIDING WEL EEN ECHTE PAGINA?
+ * ═══════════════════════════════════════════════════════════
+ * Aanleiding (27-08-2026), gevonden door Maarten op het scherm. Het plan stelde
+ * voor om `/soa-poli-zoetermeer/` (positie 2, echte klikken) om te leiden naar
+ * `/soa-klinieken/soa-test-zoetermeer/`. Die tweede URL bestaat helemaal niet als
+ * pagina: hij is opgebouwd uit de gekozen URL-vorm, en op de site is het een 301
+ * die via `/soa-test-locaties/soa-test-zoetermeer/` terugkomt op de bronpagina.
+ * Doorvoeren zou een oneindige lus maken en een rankende pagina offline halen.
+ * Bij Purmerend is het een directe ping-pong tussen twee URL's.
+ *
+ * De oorzaak is dat een doel uit een patroon wordt gebouwd en nooit tegen de
+ * werkelijkheid wordt gehouden. Deze functie doet dat wel: elk doel moet een
+ * pagina zijn die live 200 geeft. Is dat niet zo, dan blijft de regel staan (de
+ * bevinding klopt, er ís cannibalisatie) maar krijgt hij een blokkade met de
+ * reden erbij, zodat er niets doorgevoerd kan worden op een verzonnen adres.
+ */
+export function markeerDoelRisico(regels: WerkRegel[], livePaden: string[], redirects: Record<string, string> = {}): WerkRegel[] {
+  const live = new Set(livePaden.map(norm));
+  const red = new Map(Object.entries(redirects).map(([van, naar]) => [norm(van), norm(naar)]));
+
+  /** Waar komt dit adres uiteindelijk uit? Stopt bij een lus of na tien stappen. */
+  const eindpunt = (start: string): { eind: string; lus: boolean; stappen: string[] } => {
+    const gezien = [start];
+    let p = start;
+    for (let i = 0; i < 10 && red.has(p); i++) {
+      p = red.get(p)!;
+      if (gezien.includes(p)) return { eind: p, lus: true, stappen: gezien };
+      gezien.push(p);
+    }
+    return { eind: p, lus: false, stappen: gezien };
+  };
+
+  return regels.map((r) => {
+    if (!r.naar) return r;
+    const bron = norm(r.pad);
+    const doel = norm(r.naar);
+    const { eind, lus, stappen } = eindpunt(doel);
+
+    if (eind === bron) {
+      return {
+        ...r,
+        doelRisico: stappen.length > 1
+          ? `Dit doel leidt via ${stappen.slice(1).join(" en ")} terug naar deze pagina zelf. Doorvoeren maakt een oneindige omleiding en haalt de pagina offline. Kies een ander doel, of haal eerst de bestaande omleiding weg.`
+          : "Dit doel is deze pagina zelf. Een pagina kan niet naar zichzelf omgeleid worden.",
+      };
+    }
+    if (lus) {
+      return { ...r, doelRisico: `Het doel zit in een omleidingslus (${stappen.join(" → ")}). Die moet eerst opgelost worden.` };
+    }
+    if (!live.has(eind)) {
+      return {
+        ...r,
+        doelRisico: eind === doel
+          ? `Het doel ${r.naar} is geen bestaande pagina (geen 200 op de site). Dit adres komt uit de gekozen URL-vorm, niet uit de site zelf; er is dus niets om naartoe te leiden.`
+          : `Het doel leidt door naar ${eind}, en dat is geen bestaande pagina. Leid liever meteen naar een adres dat wél bestaat.`,
+      };
+    }
+    if (eind !== doel) {
+      return { ...r, doelRisico: `Het doel is zelf een omleiding naar ${eind}. Leid meteen daarheen, anders bouw je een keten.` };
+    }
+    return r;
+  });
 }

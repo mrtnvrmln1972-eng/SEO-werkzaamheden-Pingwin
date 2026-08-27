@@ -18,6 +18,8 @@
 
 import { readFileSync } from "fs";
 import { bepaalWeggelaten, WEGLAAT_LABEL, WEGLAAT_UITLEG } from "../lib/opruim-weggelaten";
+import { bouwWerklijst, markeerDoelRisico, type WerkRegel } from "../lib/opruim-werklijst";
+import type { PlaatsAdvies, PlaatsPagina } from "../lib/opruim-plaatsen";
 import { bouwWerkplan, type OpruimRegel } from "../lib/werkplan";
 
 let fouten = 0;
@@ -153,6 +155,114 @@ if (!aanroep) {
   ] as const) {
     if (patroon.test(aanroep)) goed(`de route geeft ${wat} mee`);
     else faal(`de route geeft ${wat} NIET mee aan bepaalWeggelaten. Zonder dat valt een reden stil terug op "geen aanleiding" en is het gat weer onzichtbaar.`);
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// EEN OMLEIDING NAAR EEN DOEL DAT NIET BESTAAT (27-08-2026)
+// ═══════════════════════════════════════════════════════════
+// Maarten zag op het scherm dat `/soa-poli-zoetermeer/` (positie 2, echte
+// klikken) omgeleid zou worden naar `/soa-klinieken/soa-test-zoetermeer/`. Die
+// URL bestaat niet als pagina; hij is uit de gekozen URL-vorm gebouwd en is op de
+// site een 301 die via `/soa-test-locaties/soa-test-zoetermeer/` terugkomt op de
+// bronpagina. Doorvoeren = oneindige lus = pagina offline. Bij Purmerend is het
+// een directe ping-pong. Beide gevallen stonden gewoon in het plan.
+console.log("Doelen van omleidingen");
+
+const wr = (pad: string, naar: string): WerkRegel => ({
+  pad, uitkomst: "samenvoegen", naar, herkomst: ["plaats"], reden: "", onderbouwing: [],
+  term: "", volume: null, klikken: 0, vertoningen: 0, positie: null, groep: "test",
+});
+
+const live200 = ["/soa-poli-zoetermeer/", "/soa-test-locaties/soa-test-purmerend/", "/soa-klinieken/soa-test-haarlem/", "/soa-kliniek-haarlem/"];
+const omleidingen = {
+  // Zoetermeer: twee stappen, terug bij de bron.
+  "/soa-klinieken/soa-test-zoetermeer/": "/soa-test-locaties/soa-test-zoetermeer/",
+  "/soa-test-locaties/soa-test-zoetermeer/": "/soa-poli-zoetermeer/",
+  // Purmerend: directe ping-pong.
+  "/soa-klinieken/soa-test-purmerend/": "/soa-test-locaties/soa-test-purmerend/",
+};
+
+const gemarkeerd = markeerDoelRisico(
+  [
+    wr("/soa-poli-zoetermeer/", "/soa-klinieken/soa-test-zoetermeer/"),
+    wr("/soa-test-locaties/soa-test-purmerend/", "/soa-klinieken/soa-test-purmerend/"),
+    wr("/soa-kliniek-haarlem/", "/soa-klinieken/soa-test-haarlem/"),
+  ],
+  live200, omleidingen,
+);
+const risico = (pad: string) => gemarkeerd.find((r) => r.pad === pad)?.doelRisico || "";
+
+if (risico("/soa-poli-zoetermeer/")) {
+  goed("een doel dat via twee stappen terugkomt op de bron wordt geblokkeerd");
+} else {
+  faal("Zoetermeer werd NIET geblokkeerd. Doorvoeren maakt hier een oneindige omleiding op een pagina die op positie 2 staat.");
+}
+if (risico("/soa-test-locaties/soa-test-purmerend/")) {
+  goed("een directe ping-pong tussen twee adressen wordt geblokkeerd");
+} else {
+  faal("Purmerend werd NIET geblokkeerd, terwijl het doel meteen terugleidt naar de bron.");
+}
+if (!risico("/soa-kliniek-haarlem/")) {
+  goed("een omleiding naar een echte pagina blijft gewoon staan");
+} else {
+  faal(`Haarlem wijst naar een bestaande pagina maar werd geblokkeerd: ${risico("/soa-kliniek-haarlem/")}`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// EEN ADVERTENTIEPAGINA DOET MEE, MAAR GAAT NOOIT WEG
+// ═══════════════════════════════════════════════════════════
+// Ads-pagina's werden helemaal uit de analyse gehouden, en daarmee verdween de
+// hele stad: juist de grote steden hebben er vier of vijf pagina's omheen staan
+// die de landingspagina in de weg zitten. Ze doen nu mee als de pagina die
+// blijft; wat beschermd wordt is dat er nooit iets mee gebeurt.
+console.log("Advertentiepagina's in het plan");
+
+const pag = (pad: string, vorm: string, advertentie: boolean, klikken = 0): PlaatsPagina =>
+  ({ pad, vorm, term: "", klikken, vertoningen: 0, positie: null, advertentie });
+
+const advies: PlaatsAdvies = {
+  plaats: "utrecht", naam: "Utrecht",
+  paginas: [
+    pag("/soa-klinieken/soa-test-utrecht/", "/soa-klinieken/soa-test-<plaats>/", true),
+    pag("/een-soa-test-doen-in-utrecht/", "/een-soa-test-doen-in-<plaats>/", false, 40),
+    pag("/soa-poli-utrecht/", "/soa-poli-<plaats>/", false),
+  ],
+  blijft: "/soa-klinieken/soa-test-utrecht/",
+  gaatWeg: ["/een-soa-test-doen-in-utrecht/", "/soa-poli-utrecht/"],
+  uitkomst: "samenvoegen", vestiging: true, term: "soa test utrecht",
+  volume: 300, moeilijkheid: 20,
+  haalbaarheid: { oordeel: "kansrijk", kloof: -20, moeilijkheid: 20, autoriteit: 44, uitleg: "" },
+  klikken: 40, vertoningen: 900, bestePositie: 2, onderbouwing: [],
+};
+
+const lijst = bouwWerklijst(null, [advies]);
+const regelVan = (pad: string) => lijst.find((r) => r.pad === pad);
+const adsRegel = regelVan("/soa-klinieken/soa-test-utrecht/");
+
+if (adsRegel && (adsRegel.uitkomst === "blijft" || adsRegel.uitkomst === "uitbouwen")) {
+  goed("de advertentiepagina staat in het plan en blijft staan");
+} else {
+  faal(`de advertentiepagina kreeg uitkomst '${adsRegel?.uitkomst || "(ontbreekt)"}'. Hij moet blijven of uitgebouwd worden, nooit weg.`);
+}
+if (adsRegel && !adsRegel.naar) {
+  goed("de advertentiepagina wordt nergens heen geleid");
+} else {
+  faal(`de advertentiepagina zou omgeleid worden naar ${adsRegel?.naar}. Dat mag nooit: daar staat betaald verkeer op.`);
+}
+if (adsRegel?.advertentie) {
+  goed("de advertentiepagina is als zodanig gemerkt, zodat het scherm het label kan tonen");
+} else {
+  faal("de advertentiepagina heeft geen ads-markering, dus op het scherm is niet te zien waaróm er niets mee gebeurt");
+}
+const concurrenten = ["/een-soa-test-doen-in-utrecht/", "/soa-poli-utrecht/"];
+for (const c of concurrenten) {
+  const r = regelVan(c);
+  if (r && r.uitkomst === "samenvoegen" && r.naar === "/soa-klinieken/soa-test-utrecht/") {
+    goed(`${c} wijst naar de advertentiepagina`);
+  } else {
+    faal(`${c} zou naar de advertentiepagina moeten wijzen, maar kreeg '${r?.uitkomst}' naar '${r?.naar}'. Dit is precies het werk dat eerder helemaal niet in het plan kwam.`);
   }
 }
 

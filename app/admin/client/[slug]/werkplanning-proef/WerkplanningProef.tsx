@@ -45,7 +45,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { netteHtml } from "../../../../../lib/nette-html";
-import { Chip, Chips } from "../../../../_ui/Uitkomst";
+import { Chip, Chips, Signalen } from "../../../../_ui/Uitkomst";
 import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 import { SOORT_LABEL } from "../../../../../lib/activiteit";
 import {
@@ -374,11 +374,17 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
     const inhoud = (
       <>
         <HandelingChip handeling={p.handeling} />
+        {/* Een advertentiepagina staat gewoon in het blok mee (er staan vaak vier
+            of vijf pagina's voor in de weg), maar het moet in één oogopslag
+            duidelijk zijn waaróm er niets mee gebeurt. */}
+        {p.advertentie && <span className="werk-chip omlijnd h-blijft">Ads-pagina</span>}
         <span className="wp-clus-tekst">
           <span className="wp-taak-pad">{padVan(p.pad)}</span>
           <span className="wp-clus-sub">{paginaRegel(p)}{p.meta && p.handeling !== "meta" ? ", plus een nieuwe titel en description" : ""}</span>
         </span>
-        <span className="deelkop-meta">{p.doorgevoerd ? "al gedaan" : urenTekst(p.minuten)}</span>
+        <span className="deelkop-meta">
+          {p.doelRisico ? "kan niet door" : p.doorgevoerd ? "al gedaan" : urenTekst(p.minuten)}
+        </span>
       </>
     );
     return (
@@ -408,6 +414,15 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
               <Slug url={p.pad} domein={domein} />
               {p.naar && <> &#8594; <Slug url={p.naar} domein={domein} /></>}
             </p>
+            {/* Het doel van een omleiding is niet altijd een echte pagina: hij wordt
+                uit de gekozen URL-vorm gebouwd en werd nooit tegen de site gehouden.
+                Bij Zoetermeer leverde dat een doel op dat via twee stappen terugkwam
+                op de bronpagina, dus een oneindige lus op een pagina die op positie 2
+                stond. Zoiets hoort niet stil in een plan te zitten. */}
+            {p.doelRisico && (
+              <Signalen soort="let-op" domein={domein || undefined}
+                regels={[`Deze omleiding kan zo niet doorgevoerd worden. ${p.doelRisico}`]} />
+            )}
             {/* Staat een pagina in twee analyses, dan plakt de opruimlijst allebei
                 de onderbouwingen achter elkaar. Dat werd één blok met TWEE keer
                 "Wat we doen", en dat leest als tegenspraak terwijl het twee losse
@@ -570,6 +585,15 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
                   {vervallenRegels.map((p) => <li key={p.pad}>{padVan(p.pad)}: {p.vervallen}</li>)}
                 </ul>
               </div>
+            )}
+
+            {/* Zit er een onmogelijke omleiding in, dan moet dat bij de knop staan
+                en niet alleen diep in een uitklapper: de knop is het moment waarop
+                het fout kan gaan. */}
+            {c.geblokkeerd > 0 && (
+              <Signalen soort="let-op" regels={[
+                `${c.geblokkeerd} ${c.geblokkeerd === 1 ? "omleiding in dit blok kan" : "omleidingen in dit blok kunnen"} zo niet doorgevoerd worden: het doel bestaat niet of komt terug op de bronpagina. Klap de pagina open voor de reden. De rest van dit blok kan gewoon door.`,
+              ]} />
             )}
 
             <div className="pnl-acties-groep" role="group">
@@ -814,21 +838,31 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             </Sectie>
           )}
 
-          {perFaseGetoond.map((f) => (
-            <section key={f.fase} className="wp-fase">
-              <div className="wp-fase-kop">
-                <span className="wp-fase-nr">Fase {f.fase}</span>
-                <h2>{FASE_TITEL[f.fase]}</h2>
-                <span className="wp-fase-meta">
-                  {f.clusters.length} {f.clusters.length === 1 ? "blok" : "blokken"} · {urenTekst(f.minuten)} · {f.paginas} pagina&#8217;s
-                </span>
-              </div>
-              <p className="wp-fase-waarom">{FASE_WAAROM[f.fase]}</p>
-              <div className="wp-stack">
-                {f.clusters.map((c) => <ClusterKaart key={c.sleutel} c={c} />)}
-              </div>
-            </section>
-          ))}
+          {/* Een fase is nu hetzelfde soort inklapblok als "Wat er buiten dit plan
+              valt": dezelfde kaart, dezelfde kop, dezelfde manier van openklappen.
+              Er stonden hier twee vormen naast elkaar (een eigen fase-kop met een
+              streep eronder, en de gedeelde inklapkaart), en dan lijken twee dingen
+              die hetzelfde zijn verschillend. Dicht is de stand: honderdtweeëndertig
+              blokken onder elkaar is geen overzicht. Zoek je, dan gaat de fase open,
+              want dan is de inhoud het antwoord op je vraag. */}
+          {perFaseGetoond.map((f) => {
+            const sleutel = `fase-${f.fase}`;
+            const open = openSectie[sleutel] ?? !!zoek.trim();
+            return (
+              <Sectie
+                key={f.fase}
+                titel={`Fase ${f.fase} · ${FASE_TITEL[f.fase]}`}
+                telling={`${f.clusters.length} ${f.clusters.length === 1 ? "blok" : "blokken"} · ${urenTekst(f.minuten)} · ${f.paginas} pagina's`}
+                open={open}
+                onToggle={() => setOpenSectie((s) => ({ ...s, [sleutel]: !open }))}
+                uitleg={FASE_WAAROM[f.fase]}
+              >
+                <div className="wp-stack">
+                  {f.clusters.map((c) => <ClusterKaart key={c.sleutel} c={c} />)}
+                </div>
+              </Sectie>
+            );
+          })}
 
           {plan.weken > WEKEN_IN_KWARTAAL && !filterAan && (
             <div className="wp-horizon">

@@ -52,6 +52,14 @@ export type PlaatsPagina = {
   klikken: number;
   vertoningen: number;
   positie: number | null;
+  /**
+   * Is dit een Google Ads-landingspagina? Die deed eerst helemaal niet mee aan de
+   * analyse, en dat was te grof: het is óók een SEO-pagina, en juist daar staan
+   * vaak vier of vijf andere pagina's voor in de weg. Wat NIET mag is hem
+   * opruimen of omleiden; wat wél moet is de rest van de plaats erbij pakken. Hij
+   * is daarom altijd de pagina die blijft, en staat nooit bij wat weggaat.
+   */
+  advertentie: boolean;
 };
 
 export type Uitkomst = "uitbouwen" | "blijft" | "samenvoegen" | "weg";
@@ -115,8 +123,15 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
     autoriteitVan(domain).catch(() => null),
   ]);
 
-  const live = urls.filter((u) => (u.status ?? 200) === 200).map((u) => padVan(u.url))
-    .filter((p) => !isAdsPad(p, ads));
+  // Advertentiepagina's blijven hier STAAN. Ze werden er eerst uitgefilterd, en
+  // daarmee verdween niet alleen de pagina zelf maar de hele plaats: de motor
+  // herkent een plaats aan de pagina in de vaste stadsvorm, en juist die is bij
+  // de grote steden de Ads-pagina. Gevolg: Utrecht, Rotterdam, Den Haag en
+  // Eindhoven hadden geen enkel blok, terwijl er per stad vier of vijf pagina's
+  // voor de landingspagina in de weg staan. Wat een advertentiepagina beschermt
+  // is niet dat hij onzichtbaar is, maar dat hij nooit weggaat; dat wordt hieronder
+  // afgedwongen.
+  const live = urls.filter((u) => (u.status ?? 200) === 200).map((u) => padVan(u.url));
   if (live.length < 10) {
     return { adviezen: [], vestigingen: [], vormen: [], gekozenVorm, autoriteit, paginasNu: 0, paginasStraks: 0 };
   }
@@ -176,6 +191,7 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
       klikken: g?.klikken || 0,
       vertoningen: g?.vertoningen || 0,
       positie: g?.beste != null ? Math.round(g.beste * 10) / 10 : null,
+      advertentie: isAdsPad(pad, ads),
     });
   };
   for (const pad of live) {
@@ -235,11 +251,17 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
     // Welke pagina houden we? De gekozen URL-vorm gaat vóór, want anders blijf je
     // eeuwig redirecten tussen vormen. Bestaat die vorm niet voor deze plaats, dan
     // de pagina die het beste presteert.
+    // Een advertentiepagina gaat vóór alles: daar staat betaald verkeer op, dus
+    // die pagina is per definitie de pagina die blijft. De rest van de plaats
+    // wijst naar hem toe. Zonder deze voorrang zou de gekozen URL-vorm kunnen
+    // winnen en zou de Ads-pagina bij "gaat weg" belanden, en dat is precies wat
+    // nooit mag gebeuren.
+    const advertentie = paginas.find((p) => p.advertentie);
     const inVorm = gekozenVorm ? paginas.find((p) => p.vorm === gekozenVorm) : undefined;
     const sterkste = [...paginas].sort((a, b) =>
       b.klikken - a.klikken || b.vertoningen - a.vertoningen ||
       (a.positie ?? 999) - (b.positie ?? 999))[0];
-    const houder = inVorm || sterkste;
+    const houder = advertentie || inVorm || sterkste;
 
     // ── De vijf vragen ───────────────────────────────────────────────────────
     const doetMee = klikken > 0 || (vertoningen >= DOET_MEE_VERTONINGEN && (bestePositie ?? 999) <= 20);
@@ -256,9 +278,19 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
     // Blijft er iets staan én bestaan er meerdere vormen, dan is samenvoegen de
     // eerste stap; dat is een ander soort werk dan opruimen.
     if (uitkomst !== "weg" && meerdereVormen) uitkomst = "samenvoegen";
+    // Staat er een advertentiepagina bij, dan bestaat "weg" niet: op een plaats
+    // met betaald verkeer gooi je niets weg. Zijn er meer pagina's, dan is het
+    // werk juist het opruimen van wat vóór de landingspagina staat.
+    if (advertentie && uitkomst === "weg") uitkomst = paginas.length > 1 ? "samenvoegen" : "blijft";
 
     const blijft = uitkomst === "weg" ? "" : houder?.pad || "";
-    const gaatWeg = paginas.map((p) => p.pad).filter((p) => p !== blijft);
+    // Een advertentiepagina staat NOOIT bij wat weggaat, ook niet als een andere
+    // pagina de houder werd. Dit is het slot onder de regel hierboven: één plek
+    // die het afdwingt, zodat een latere wijziging aan de uitkomst-logica hem
+    // niet alsnog per ongeluk kan omleiden.
+    const gaatWeg = paginas
+      .filter((p) => !p.advertentie && p.pad !== blijft)
+      .map((p) => p.pad);
 
     adviezen.push({
       plaats, naam: mooiePlaats(plaats), paginas, blijft, gaatWeg, uitkomst,

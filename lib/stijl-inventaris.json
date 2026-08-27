@@ -1551,13 +1551,13 @@
     }
   ],
   "icoontekens": {
-    "totaal": 207,
+    "totaal": 208,
     "verschillend": 23,
     "nietTeTekenen": 0,
     "top": [
       {
         "teken": "✓",
-        "aantal": 64
+        "aantal": 65
       },
       {
         "teken": "→",
