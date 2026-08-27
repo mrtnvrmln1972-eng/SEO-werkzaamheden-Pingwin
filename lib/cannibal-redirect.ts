@@ -279,15 +279,18 @@ function zonderAds(result: CannibalResult, ads: AdsPaginas): CannibalResult {
     clusters: (result.clusters || [])
       .map((c) => ({ ...c, urls: c.urls.filter((u) => !weg(u.url)) }))
       .filter((c) => c.urls.length > 0),
-    // Ook in het plaatsadvies mag geen advertentiepagina blijven staan; dat
-      // advies wordt opgeslagen en kan dus van vóór het invullen dateren.
+    // In het plaatsadvies blijft een advertentiepagina sinds 27-08-2026 juist WEL
+    // staan. Hij eruit filteren leek veilig maar deed het tegenovergestelde: de
+    // motor herkent een plaats aan de pagina in de vaste stadsvorm, en dat is bij
+    // de grote steden precies de Ads-pagina, dus die ene regel liet de hele stad
+    // uit het advies vallen. En waar hij wél de winnaar is, hield het filter een
+    // advies over met alleen verliezers die naar een pagina wijzen die er niet
+    // meer in staat. De bescherming zit nu waar hij hoort, in `adviesPerPlaats` en
+    // `bouwWerklijst`: een advertentiepagina is altijd de pagina die blijft en
+    // staat nooit bij wat weggaat. Het `redirectMap`-filter hierboven blijft wél
+    // staan, want naar of vanaf een advertentiepagina omleiden mag nooit.
     plaatsen: result.plaatsen
-      ? {
-          ...result.plaatsen,
-          adviezen: result.plaatsen.adviezen
-            .map((a) => ({ ...a, paginas: a.paginas.filter((p) => !wegAds(p.pad)) }))
-            .filter((a) => a.paginas.length > 0),
-        }
+      ? { ...result.plaatsen }
       : result.plaatsen,
   };
 }
