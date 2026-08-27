@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import RijkTekstVeld from "../../../_velden/RijkTekstVeld";
 import HelpHint from "./HelpHint";
 import { Omlaag, Uitklap } from "../../../_ui/Pijl";
@@ -56,8 +56,12 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
   const [bronOpen, setBronOpen] = useState<number | null>(null);
   const [veldStempel, setVeldStempel] = useState(0);
   const [mails, setMails] = useState<Mail[]>([]);
-  // Elk blok staat standaard dicht; `false` betekent open.
-  const [dicht, setDicht] = useState<Record<string, boolean>>({});
+  // Welke blokken openstaan. Alles staat standaard dicht, dus een blok dat hier
+  // niet in staat is dicht. Bewust "open" en niet "dicht" als naam: de vorige
+  // versie hield dicht bij met een omkering erin, en die kon door een tweede
+  // omkering in de klik nooit meer opengaan. Een stand die je moet uitrekenen om
+  // te lezen, reken je een keer verkeerd uit.
+  const [openBlokken, setOpenBlokken] = useState<Record<string, boolean>>({});
   // Stand per mail, niet één stand voor het hele blok. Met alleen een globale
   // "bezig" stonden alle knoppen uit zonder dat je zag waarom, en een tweede
   // klik verdween in het niets: op 27-08-2026 dacht Maarten daardoor dat de
@@ -168,16 +172,19 @@ export default function KlantCorrectiesPanel({ slug }: { slug: string }) {
   // `deelkop-meta`. Alles staat standaard dicht. Geen eigen koppen, geen eigen
   // knopvormen: dat is precies waar dit paneel de eerste ronde de mist in ging
   // (twee gecentreerde knoppen die nergens anders zo staan).
-  const Blok = ({ id, titel, meta, children }: { id: string; titel: string; meta?: string; children: React.ReactNode }) => (
-    <div className="kc-blok">
-      <button type="button" className="deelkop" aria-expanded={dicht[id] === false}
-        onClick={() => setDicht((d) => ({ ...d, [id]: !(d[id] === false) }))}>
-        {titel}
-        {meta && <span className="deelkop-meta">{meta}</span>}
-      </button>
-      {dicht[id] === false && <div className="kc-blok-body">{children}</div>}
-    </div>
-  );
+  const Blok = ({ id, titel, meta, children }: { id: string; titel: string; meta?: string; children: ReactNode }) => {
+    const uit = !!openBlokken[id];
+    return (
+      <div className="kc-blok">
+        <button type="button" className="deelkop" aria-expanded={uit}
+          onClick={() => setOpenBlokken((o) => ({ ...o, [id]: !o[id] }))}>
+          {titel}
+          {meta && <span className="deelkop-meta">{meta}</span>}
+        </button>
+        {uit && <div className="kc-blok-body">{children}</div>}
+      </div>
+    );
+  };
 
   return (
     <div className="cockpit-card acc-orange" id="fund-correcties">
