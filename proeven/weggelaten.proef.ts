@@ -315,6 +315,44 @@ if (!kern.includes("/soa-klinieken/soa-test-utrecht/") && kern.includes("/soa-po
   faal("de kern is verkeerd samengesteld: de ads-stadspagina hoort er niet in, de gewone wel.");
 }
 
+// Een zwerver moet over hetzelfde onderwerp gaan als de locatiepagina's. Toen de
+// grote steden erbij kwamen, stelde de motor voor om een vacaturepagina en een
+// allergietest op te laten gaan in de SOA-landingspagina, puur omdat er een
+// stadsnaam in stond. Het onderwerp is af te lezen uit de erkende vormen zelf:
+// het woord dat in élke locatievorm voorkomt.
+console.log("Zwervers moeten over hetzelfde onderwerp gaan");
+const locatieVormen = [
+  "/soa-kliniek-<plaats>/", "/soa-klinieken/soa-test-<plaats>/",
+  "/soa-poli-<plaats>/", "/soa-test-locaties/soa-test-<plaats>/",
+];
+const woordenVanVorm = (v: string) =>
+  new Set(v.replace(/<plaats>/g, "").split(/[^a-z0-9]+/i).filter((w) => w.length > 2).map((w) => w.toLowerCase()));
+const vormWoorden = locatieVormen.map(woordenVanVorm);
+const onderwerp = [...vormWoorden[0]].filter((w) => vormWoorden.every((s) => s.has(w)));
+const magAanhaken = (vorm: string) => {
+  if (!onderwerp.length) return true;
+  const w = woordenVanVorm(vorm);
+  return onderwerp.some((k) => w.has(k));
+};
+
+if (onderwerp.includes("soa")) {
+  goed(`het gedeelde onderwerp van de locatievormen is herkend: ${onderwerp.join(", ")}`);
+} else {
+  faal(`geen gedeeld onderwerp gevonden in de locatievormen; gevonden: ${onderwerp.join(", ") || "(niets)"}`);
+}
+for (const [vorm, mag, waarom] of [
+  ["/soa-klinieken/soa-kliniek-<plaats>/", true, "dit is precies waarvoor de zwerver-ronde bedoeld is"],
+  ["/een-soa-test-doen-in-<plaats>/", true, "gaat over hetzelfde onderwerp"],
+  ["/over-ons/vacatures/vacature-basisarts-verpleegkundige-<plaats>/", false, "een vacature omleiden naar een SOA-testpagina vernietigt de vacature"],
+  ["/allergie-test-<plaats>/", false, "een allergietest is een andere dienst"],
+] as const) {
+  if (magAanhaken(vorm) === mag) {
+    goed(`${vorm} ${mag ? "haakt aan" : "blijft eraf"}: ${waarom}`);
+  } else {
+    faal(`${vorm} ${mag ? "haakte NIET aan" : "haakte WEL aan"}, terwijl: ${waarom}`);
+  }
+}
+
 if (fouten) {
   console.error(`\n${fouten} ${fouten === 1 ? "fout" : "fouten"} in de weglatingen.`);
   process.exit(1);

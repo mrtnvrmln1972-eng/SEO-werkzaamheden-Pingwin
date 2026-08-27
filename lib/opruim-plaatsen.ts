@@ -240,12 +240,36 @@ export async function adviesPerPlaats(slug: string, domain: string): Promise<Pla
   // -soa-kliniek-nuenen/ zijn de enige twee pagina's in die vorm en haalden de
   // drempel van vijf dus nooit, terwijl cuijk en nuenen via /soa-poli-<plaats>/
   // al lang bekende plaatsen waren.
+  //
+  // Maar een zwerver moet wél over hetzelfde ONDERWERP gaan. Zonder die eis
+  // haakt elke pagina aan die toevallig een stadsnaam bevat, en dat werd meteen
+  // zichtbaar toen de grote steden erbij kwamen: bij Amsterdam stelde de motor
+  // voor om `/over-ons/vacatures/vacature-basisarts-verpleegkundige-amsterdam/`
+  // en `/allergie-test-amsterdam/` op te laten gaan in de SOA-landingspagina. Een
+  // vacature is geen SOA-test; die omleiding zou de vacature vernietigen.
+  //
+  // Het onderwerp is af te lezen uit de erkende locatievormen zelf: het woord dat
+  // in élke locatievorm voorkomt (hier "soa"). Een zwerver moet dat woord ook
+  // hebben. `/soa-klinieken/soa-kliniek-cuijk/` komt zo nog steeds binnen, precies
+  // waarvoor deze ronde bedoeld was; de vacature en de allergietest niet.
+  const woordenVanVorm = (v: string) =>
+    new Set(v.replace(/<plaats>/g, "").split(/[^a-z0-9]+/i).filter((w) => w.length > 2).map((w) => w.toLowerCase()));
+  const vormLijst = [...locatieVormen].map(woordenVanVorm);
+  const kernwoorden = vormLijst.length
+    ? [...vormLijst[0]].filter((w) => vormLijst.every((s) => s.has(w)))
+    : [];
+
   for (const pad of live) {
     const vorm = vormVan(pad);
     if (locatieVormen.has(vorm)) continue; // al meegenomen in de eerste ronde
     if (!vorm.includes("<plaats>") || !echteVorm(vorm)) continue;
     const plaats = plaatsIn(pad);
     if (!plaats || !perPlaats.has(plaats)) continue; // alleen aanhaken bij een al bekende plaats
+    // Zelfde onderwerp als de locatiepagina's, anders blijft hij eraf.
+    if (kernwoorden.length) {
+      const woorden = woordenVanVorm(vorm);
+      if (!kernwoorden.some((w) => woorden.has(w))) continue;
+    }
     pushPagina(pad, vorm, plaats);
   }
 
