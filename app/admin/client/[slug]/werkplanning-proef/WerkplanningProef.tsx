@@ -62,6 +62,7 @@ import {
   WEGLAAT_LABEL, WEGLAAT_UITLEG,
   type Weggelaten, type WeglaatReden,
 } from "../../../../../lib/opruim-weggelaten";
+import type { RestOordeel, RestRegel } from "../../../../../lib/rest-duiding";
 import type { StapStand } from "../../../../../lib/cluster-draaiboek";
 import { sorteerClusters, SORTERING_LABEL, type Sortering } from "../../../../../lib/cluster-volgorde";
 import { bouwOverzicht, splitsBevindingen } from "../../../../../lib/cluster-uitvoering";
@@ -150,6 +151,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   const [activiteit, setActiviteit] = useState<ActRegel[]>([]);
   const [weggelaten, setWeggelaten] = useState<Weggelaten | null>(null);
   const [adsTeBreed, setAdsTeBreed] = useState<{ pad: string; paginas: number }[]>([]);
+  const [rest, setRest] = useState<{ oordeel: RestOordeel; regels: RestRegel[] }[]>([]);
   const [budget, setBudget] = useState(3);
   const [budgetIngevuld, setBudgetIngevuld] = useState(false);
   const [periode, setPeriode] = useState<(typeof PERIODES)[number]["key"]>("mnd");
@@ -191,6 +193,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
       if (!wr?.ok) setFout(wr?.error || "De opruimlijst kon niet geladen worden.");
       setOpruim(wr?.ok ? wr.regels || [] : []);
       setWeggelaten(wr?.ok ? wr.weggelaten || null : null);
+      setRest(wr?.ok ? wr.rest || [] : []);
       setAdsTeBreed(wr?.ok ? wr.adsTeBreed || [] : []);
       setMetas(mc?.ok ? (mc.rows || []).filter((r: any) => r.reden === "klikwinst" || r.reden === "kapot") : []);
       if (wp?.ok) setTaken((wp.tasks || []).map((t: any) => ({
@@ -281,6 +284,11 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
   // zit. Klap je hem daarna met de hand dicht, dan blijft dat jouw keuze; zonder
   // zoekopdracht staat hij gewoon dicht.
   const wegOpen = openSectie.weggelaten ?? !!zoek.trim();
+
+  // De rest beweegt mee met de zoekregel, net als de rest van het scherm.
+  const restGetoond = useMemo(() => rest
+    .map((g) => ({ ...g, regels: g.regels.filter((r) => zoekTreffer(zoek, r.pad, r.onderbouwing)) }))
+    .filter((g) => g.regels.length > 0), [rest, zoek]);
 
   // Blokken waar niets meer te doen is. Zoek je op een plaats die vorige maand al
   // is opgeruimd, dan hoort het scherm "dit is af" te zeggen in plaats van niets.
@@ -812,6 +820,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
             >
               <WegBlok
                 weggelaten={weggelatenGetoond}
+                rest={restGetoond}
                 afgerond={afgerondGetoond}
                 domein={domein}
                 open={openSectie}

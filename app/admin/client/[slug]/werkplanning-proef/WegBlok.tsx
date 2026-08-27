@@ -24,6 +24,7 @@ import { Omlaag, Uitklap } from "../../../../_ui/Pijl";
 import { padVan } from "../../../../../lib/werk-clusters";
 import { WEGLAAT_LABEL, WEGLAAT_UITLEG, type WeggelatenPagina, type WeglaatReden } from "../../../../../lib/opruim-weggelaten";
 import { HANDELING_LABEL, type Werkcluster, type Handeling } from "../../../../../lib/werkplan";
+import { REST_LABEL, REST_WAT_NU, type RestOordeel, type RestRegel } from "../../../../../lib/rest-duiding";
 
 function Slug({ url, domein }: { url: string; domein?: string | null }) {
   if (!url) return null;
@@ -92,14 +93,19 @@ function watErGebeurdeIs(c: Werkcluster): string {
   return `${stukken.join(", ") || `${c.paginas.length} pagina's`}.${waarheen} Live nagemeten, dus de omleidingen staan er echt.`;
 }
 
-export default function WegBlok({ weggelaten, afgerond, domein, open, onToggle }: {
+export default function WegBlok({ weggelaten, afgerond, rest, domein, open, onToggle }: {
   weggelaten: WeggelatenPagina[];
   afgerond: Werkcluster[];
+  /** De overgebleven pagina's, elk met een oordeel en de cijfers eronder. */
+  rest: { oordeel: RestOordeel; regels: RestRegel[] }[];
   domein?: string | null;
   open: Record<string, boolean | undefined>;
   onToggle: (sleutel: string, waarde: boolean) => void;
 }) {
-  const perReden = (["advertentie", "plaats-verweesd", "geen-aanleiding"] as WeglaatReden[])
+  // "Geen aanleiding gevonden" bestaat niet meer als groep: die pagina's krijgen
+  // hieronder een echt oordeel. De andere twee redenen blijven, want daar is de
+  // reden zelf het antwoord.
+  const perReden = (["advertentie", "plaats-verweesd"] as WeglaatReden[])
     .map((reden) => ({ reden, paginas: weggelaten.filter((p) => p.reden === reden) }))
     .filter((x) => x.paginas.length > 0);
 
@@ -124,6 +130,40 @@ export default function WegBlok({ weggelaten, afgerond, domein, open, onToggle }
           ))}
         </Vouw>
       )}
+
+      {rest.map(({ oordeel, regels }) => (
+        <Vouw
+          key={oordeel}
+          titel={REST_LABEL[oordeel]}
+          telling={`${regels.length} pagina's`}
+          uitleg={REST_WAT_NU[oordeel]}
+          open={open[`rest-${oordeel}`]}
+          onToggle={(v) => onToggle(`rest-${oordeel}`, v)}
+        >
+          <table className="opr-tabel">
+            <thead>
+              <tr>
+                <th>Pagina</th>
+                <th>Klikken</th>
+                <th>Vertoningen</th>
+                <th>Plek</th>
+                <th>Waarom dit oordeel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {regels.map((r) => (
+                <tr key={r.pad}>
+                  <td><Slug url={r.pad} domein={domein} /></td>
+                  <td>{r.klikken || "—"}</td>
+                  <td>{r.vertoningen ? r.vertoningen.toLocaleString("nl-NL") : "—"}</td>
+                  <td>{r.positie != null ? String(Math.round(r.positie * 10) / 10).replace(".", ",") : "—"}</td>
+                  <td className="wp-clus-sub">{r.onderbouwing}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Vouw>
+      ))}
 
       {perReden.map(({ reden, paginas }) => (
         <Vouw

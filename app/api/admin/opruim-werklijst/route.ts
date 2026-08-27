@@ -9,6 +9,7 @@ import { getAdsPaginas, getOpruimRegels, teBredeAdsPaden, zonderTeBrede } from "
 import { beoordeelTaalvarianten, merkWoordenVan } from "../../../../lib/taalvarianten";
 import { getGscQueryPagePairs } from "../../../../lib/google";
 import { bepaalWeggelaten } from "../../../../lib/opruim-weggelaten";
+import { duidRest, type PaginaCijfers } from "../../../../lib/rest-duiding";
 import { getClientUrls } from "../../../../lib/site-urls";
 
 export const runtime = "nodejs";
@@ -80,7 +81,25 @@ export async function GET(req: NextRequest) {
       // onzichtbaar. De proef dekt de functie, niet deze aanroep; vandaar dit.
       plaatsen?.vormen || [],
     );
-    return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), weggelaten, adsTeBreed, taalBomen: taal.bomen, lijstDatum: st.result?.generatedAt || null });
+    // De rest is geen restbak maar een oordeel. Elke pagina die nergens in het plan
+    // staat krijgt er een, met de cijfers uit Search Console erbij: niemand vindt
+    // hem, of er is juist vraag die we laten liggen. Een lijst URL's zonder cijfers
+    // is niet te plannen.
+    const cijfers = new Map<string, PaginaCijfers>();
+    for (const r of gsc) {
+      const k = (r.page || "").replace(/^https?:\/\/[^/]+/, "").replace(/\/$/, "").toLowerCase();
+      if (!k) continue;
+      const e = cijfers.get(k) || { klikken: 0, vertoningen: 0, positie: null };
+      e.klikken += r.clicks;
+      e.vertoningen += r.impressions;
+      if (e.positie == null || r.position < e.positie) e.positie = r.position;
+      cijfers.set(k, e);
+    }
+    const rest = duidRest(
+      weggelaten.paginas.filter((p) => p.reden === "geen-aanleiding").map((p) => p.pad),
+      cijfers,
+    );
+    return NextResponse.json({ ok: true, regels, tellingen: tellingen(regels), weggelaten, rest, adsTeBreed, taalBomen: taal.bomen, lijstDatum: st.result?.generatedAt || null });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Lijst bouwen mislukt." }, { status: 500 });
   }
