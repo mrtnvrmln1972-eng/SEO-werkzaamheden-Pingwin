@@ -192,7 +192,7 @@ if (/adsVoorKlant\s*\(/.test(motor)) {
 } else {
   faal("adsVoorKlant komt niet voor in de analysemotor");
 }
-const regels = readFileSync(new URL("../lib/opruim-regels.ts", import.meta.url), "utf8");
+const regels = readFileSync(new URL("../lib/ads-lijst.ts", import.meta.url), "utf8");
 if (/export async function adsVoorKlant/.test(regels) && /zonderTeBrede\(/.test(regels.slice(regels.indexOf("adsVoorKlant")))) {
   goed("adsVoorKlant haalt de te brede regels er zelf af");
 } else {

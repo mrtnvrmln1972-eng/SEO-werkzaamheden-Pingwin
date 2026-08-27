@@ -222,23 +222,6 @@ export function teBredeAdsPaden(ads: AdsPaginas, livePaden: string[]): { pad: st
     .sort((a, b) => b.paginas - a.paginas);
 }
 
-/**
- * De ads-lijst van een klant, met de te brede regels er al af. Gebruik ALTIJD deze
- * en niet `getAdsPaginas` als je wilt weten of een pagina een advertentiepagina is.
- *
- * Waarom dit één functie is en geen losse stap per plek: op 27-08-2026 is de
- * breedte-regel wél in het plaatsadvies en de werklijst toegepast, maar niet in de
- * analysemotor zelf. Die draaide daarna alsnog zonder de 313 Engelse pagina's,
- * terwijl het scherm zei dat ze meededen. Eén bron, en de rest leest daaruit.
- */
-export async function adsVoorKlant(slug: string): Promise<AdsPaginas> {
-  const ads = await getAdsPaginas(slug).catch(() => ({ paden: [], geen: false, ingevuld: false }));
-  if (!ads.paden.length) return ads;
-  const { getClientUrls } = await import("./site-urls");
-  const urls = await getClientUrls(slug).catch(() => []);
-  return zonderTeBrede(ads, urls.map((u) => u.url));
-}
-
 /** De ads-lijst zonder de regels die een hele sectie beslaan. */
 export function zonderTeBrede(ads: AdsPaginas, livePaden: string[]): AdsPaginas {
   const weg = new Set(teBredeAdsPaden(ads, livePaden).map((x) => x.pad));
