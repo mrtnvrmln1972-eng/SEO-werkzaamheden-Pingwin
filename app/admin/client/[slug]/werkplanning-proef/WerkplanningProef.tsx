@@ -567,6 +567,13 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
           <span className="wp-akol-titel">{c.titel}</span>
           {c.subtitel && <span className="wp-clus-sub">{c.subtitel}</span>}
         </span>
+        {enkel && (item.bewijs || c.paginas[0]) && (
+          <span className="wp-akol-link">
+            {item.bewijs
+              ? <a className="uk-pad" href={item.bewijs} target="_blank" rel="noreferrer">open de mail</a>
+              : <Slug url={c.paginas[0]} domein={domein} />}
+          </span>
+        )}
         <span className="deelkop-meta">{c.items.length}</span>
       </>
     );
@@ -582,16 +589,7 @@ export default function WerkplanningProef({ slug, klantNaam, domein }: { slug: s
         )}
         {/* Bij een enkele regel staat de link meteen op de regel zelf, want er valt
             niets open te klappen. Bij een groep staan ze binnen de uitklap. */}
-        {enkel && (item.bewijs || c.paginas[0]) && (
-          <div className="wp-arij">
-            <span className="wp-akol-datum" />
-            <span className="wp-grow">
-              {item.bewijs
-                ? <a className="uk-pad" href={item.bewijs} target="_blank" rel="noreferrer">open de mail</a>
-                : <Slug url={c.paginas[0]} domein={domein} />}
-            </span>
-          </div>
-        )}
+
         {!enkel && open && (
           <div className="wp-taak-diep wp-proza">
             {c.items.map((a) => (

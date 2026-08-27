@@ -56,6 +56,11 @@ export default function Draaiboek({ cluster, slug, domein, opVerandering }: {
   const [fout, setFout] = useState("");
   const [melding, setMelding] = useState("");
   const [openResultaat, setOpenResultaat] = useState<Record<string, boolean>>({});
+  // Standaard dicht. Het zijn elke keer dezelfde dertien stappen, dus als lijst
+  // voegt het niets toe; wat je wilt weten (hoever staat het, wat is de volgende
+  // stap) staat op de kop. Maartens woorden: "ik zou niet weten waarom ik dat nu
+  // elke keer uitgeklapt zou willen zien."
+  const [openLijst, setOpenLijst] = useState(false);
 
   const samen = heeftSamenvoeging(cluster);
 
@@ -112,20 +117,35 @@ export default function Draaiboek({ cluster, slug, domein, opVerandering }: {
   if (laden && !d) return <p className="muted">Draaiboek laden…</p>;
   if (!d) return <p className="muted">{fout || "Geen draaiboek."}</p>;
 
+  // De eerstvolgende stap staat op de kop, zodat je hem ziet zonder open te klappen.
+  const volgendeStap = d.stappen.find((s) => !s.nvt && s.sleutel === d.volgende);
+
   return (
     <div className="wp-draaiboek">
       <div className="kpi-sub-head wp-clus-kop">
-        <span className="wp-veldnaam">Draaiboek: {d.klaar} van de {d.totaal} stappen klaar</span>
-        <button type="button" className="btn btn-quiet btn-klein wp-linkstijl"
-          onClick={() => stuur("inventaris", "opnieuw")}>
-          opnieuw beginnen
+        <button type="button" className="deelkop" aria-expanded={openLijst}
+          onClick={() => setOpenLijst((v) => !v)}>
+          <span className="wp-clus-tekst">
+            <span>Draaiboek: {d.klaar} van de {d.totaal} stappen klaar</span>
+            <span className="wp-clus-sub">
+              {volgendeStap
+                ? `volgende stap: ${volgendeStap.nummer}. ${volgendeStap.naam} (${WIE_LABEL[volgendeStap.wie]})`
+                : "alle stappen zijn afgerond"}
+            </span>
+          </span>
         </button>
+        {openLijst && (
+          <button type="button" className="btn btn-quiet btn-klein wp-linkstijl"
+            onClick={() => stuur("inventaris", "opnieuw")}>
+            opnieuw beginnen
+          </button>
+        )}
       </div>
 
       {fout && <Chips><Chip toon="let-op">{fout}</Chip></Chips>}
       {melding && <Chips><Chip toon="goed">{melding}</Chip></Chips>}
 
-      {d.stappen.filter((s) => !s.nvt).map((s) => {
+      {openLijst && d.stappen.filter((s) => !s.nvt).map((s) => {
         const werkt = bezig === s.sleutel;
         const resOpen = !!openResultaat[s.sleutel];
         return (

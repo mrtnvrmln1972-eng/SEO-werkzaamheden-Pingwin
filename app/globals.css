@@ -2518,6 +2518,9 @@ button.ck-collapse-head {
 .wp-akol-datum { flex: 0 0 11ch; font-size: var(--type-label); line-height: var(--regel-label); color: var(--kleur-tekst-stil); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .wp-akol-titel { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); font-weight: 700; color: var(--kleur-kop); }
 .wp-arij { display: flex; align-items: baseline; gap: var(--ruimte-naast); padding: var(--ruimte-krap) 0; }
+/* De link staat als laatste kolom ín de regel, niet op een tweede regel eronder;
+   dat laatste brak het grid en zette "open de mail" boven de titel. */
+.wp-akol-link { flex: 0 0 auto; font-size: var(--type-label); line-height: var(--regel-label); white-space: nowrap; }
 .wp-arij .wp-grow { font-size: var(--type-bijschrift); line-height: var(--regel-bijschrift); }
 /* De uitklap begint precies onder de tekstkolom van de regel erboven, niet onder
    het pijltje; anders staat de inhoud van een groep verschoven ten opzichte van
@@ -3229,7 +3232,12 @@ tbody tr.row-done:hover { background: var(--kleur-goed-vlak); }
    driehoekje en zonder muisaanwijzer. Zo staan "Bezig" en "Gepland" naast het
    inklapbare "Gedaan" zonder dat het drie verschillende koppen worden. */
 .deelkop-vast { cursor: default; }
-.deelkop-vast::before { display: none; }
+/* `visibility: hidden` en NIET `display: none`: de ruimte van het driehoekje moet
+   blijven staan. Stond hier eerst display:none, en dan begint een regel zonder
+   uitklap een driehoekje-breedte verder naar links dan een regel mét. Zet je die
+   twee soorten regels onder elkaar (zoals in "Wat er al gedaan is"), dan lijnt
+   niets meer uit en zie je precies waar Maarten op 27-08-2026 over viel. */
+.deelkop-vast::before { visibility: hidden; }
 /* Staan er knoppen naast de kop, dan hoort het lijntje onder de hele rij; anders
    stopt hij halverwege, precies waar de knoppen beginnen. */
 .kpi-sub-head { border-bottom: 1px solid var(--kleur-rand); }
