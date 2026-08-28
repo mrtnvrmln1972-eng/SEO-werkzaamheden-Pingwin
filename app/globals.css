@@ -356,6 +356,10 @@
   padding: var(--ruimte-naast) var(--s-4); border-radius: var(--ronding-knop);
   border: 1px solid var(--kleur-rand); background: var(--kleur-kaart); color: var(--kleur-tekst-stil);
   cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+  /* Een knop is een knop, ook als hij een link is. Zonder deze regel onderstreept
+     de browser het label van elke <a class="btn">, en dan ziet dezelfde bouwsteen
+     er anders uit dan de <button> ernaast. */
+  text-decoration: none;
 }
 .btn:hover { border-color: var(--kleur-accent); color: var(--kleur-accent-diep); }
 .btn:disabled { opacity: 0.6; cursor: default; }
