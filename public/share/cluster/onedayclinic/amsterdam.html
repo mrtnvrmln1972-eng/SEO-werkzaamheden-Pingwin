@@ -179,6 +179,38 @@ details.grp:not([open]) .tog-dicht{display:none}
 .kv dt{font-weight:500}
 .pglet{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;color:var(--ink);font-size:14px;margin:0}
 </style>
+
+<style>
+/* uitgelijnde kerncijfers */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.stat{background:var(--surface);padding:20px 22px;display:grid;grid-template-rows:auto auto auto;row-gap:8px;align-content:start}
+.stat .k{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700;line-height:1.5;margin:0;min-height:2.2em;display:flex;align-items:flex-start}
+.stat .v{font-size:34px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;margin:0;display:block}
+.stat .s{font-size:12.5px;color:var(--muted);line-height:1.45;margin:0;min-height:2.9em;display:block}
+@supports (grid-template-rows:subgrid){
+  .stats{grid-template-rows:auto}
+  .stat{grid-row:span 3;grid-template-rows:subgrid}
+  .stat .k,.stat .s{min-height:0}
+}
+/* inklapbare panelen met pijl links */
+details.pan{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden}
+details.pan.flat{box-shadow:none;background:var(--surface-2)}
+details.pan>summary{cursor:pointer;list-style:none;padding:0}
+details.pan>summary::-webkit-details-marker{display:none}
+.panhead{display:grid;grid-template-columns:20px 1fr auto;gap:14px;align-items:center;padding:20px 26px}
+.panhead b{font-size:19px;font-weight:700;letter-spacing:.2px}
+.panhead .tog{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+details.pan[open] .panhead{border-bottom:1px solid var(--line)}
+details.pan[open] .tog-open{display:none}
+details.pan:not([open]) .tog-dicht{display:none}
+.panbody{padding:22px 26px 26px}
+.panbody h2{display:none}
+.pijl{color:var(--accent);font-size:12px;line-height:1;transition:transform .15s ease;justify-self:center}
+details[open]>summary .pijl{transform:rotate(90deg)}
+/* pijl links bij de contexttoggle en de groepen */
+.ctxhead{display:grid;grid-template-columns:20px 1fr auto;gap:14px;align-items:center}
+.grphead{grid-template-columns:20px 1fr auto auto;gap:14px}
+</style>
 </head>
 <body>
 
@@ -247,15 +279,15 @@ h+='<p class="lede">Vijftig pagina&#39;s horen bij dit cluster. E&eacute;n wordt
 h+='<div class="meta">'+''+'<span>Versie '+D.versie+'</span><span>Pingwin, 28 augustus 2026</span><span>Search Console 01-05 t/m 27-08-2026</span></div></header>';
 
 h+='<section class="stats">';
-h+='<div class="stat hot"><span class="k">Eigen pagina&#39;s die meedingen op de Amsterdamse zoekopdrachten</span><span class="v">99</span><span class="s">meer dan 50 vertoningen in vier maanden</span></div>';
-h+='<div class="stat"><span class="k">Pagina&#39;s die in dit cluster worden aangepakt</span><span class="v">50</span><span class="s">de rest hoort bij een ander cluster of hoeft niets</span></div>';
-h+='<div class="stat"><span class="k">Daarvan doorsturen</span><span class="v">40</span><span class="s">16 Nederlands, 24 Engels</span></div>';
-h+='<div class="stat"><span class="k">Positie op soa test amsterdam</span><span class="v">3,7</span><span class="s">doel is de top 3</span></div>';
+    h+='<div class="stat hot"><span class="k">Meedingende pagina&#39;s</span><span class="v">99</span><span class="s">meer dan 50 vertoningen in vier maanden</span></div>';
+    h+='<div class="stat"><span class="k">Aangepakt in dit cluster</span><span class="v">50</span><span class="s">de rest hoort elders of hoeft niets</span></div>';
+    h+='<div class="stat"><span class="k">Daarvan doorsturen</span><span class="v">40</span><span class="s">16 Nederlands, 24 Engels</span></div>';
+    h+='<div class="stat"><span class="k">Positie op de kernterm</span><span class="v">3,7</span><span class="s">soa test amsterdam, doel is de top 3</span></div>';
 h+='</section>';
 
 
 
-h+='<details class="ctx"><summary><div class="ctxhead"><b>Context: wat er aan de hand is, hoe we het bepaald hebben en waarom er zoveel locatiepagina&#39;s zijn</b><span class="open-l">Openklappen</span><span class="close-l">Dichtklappen</span></div></summary><div class="cards">';
+h+='<details class="ctx"><summary><div class="ctxhead"><span class="pijl">&#9654;</span><b>Context: wat er aan de hand is, hoe we het bepaald hebben en waarom er zoveel locatiepagina&#39;s zijn</b><span class="open-l">Openklappen</span><span class="close-l">Dichtklappen</span></div></summary><div class="cards">';
 
 h+='<div class="card"><h3>Dit is er aan de hand</h3>';
 h+='<p>Op de zoekopdrachten met Amsterdam erin laat Google <strong>99 verschillende eigen pagina&#39;s</strong> zien naast de kliniekpagina. Dat zijn pagina&#39;s met meer dan vijftig vertoningen in vier maanden, dus geen toevallige uitschieters.</p>';
@@ -279,16 +311,16 @@ h+='<p style="margin-top:14px">Twee regels sluiten de discussie af. <strong>Dun 
 
 h+='<div class="card"><h3>Wat daarmee moet</h3>';
 h+='<p>Voor de hele site komt dat uit op 25 locatiepagina&#39;s in plaats van circa 190: 6 vestigingssteden, 9 testpunten, 8 keuzehulpen en 2 overzichtspagina&#39;s.</p>';
-h+='<p>Van het Nederlandse locatieverkeer blijft <strong>92 procent</strong> staan op de pagina&#39;s die we houden. Wat verdwijnt is ongeveer 750 klikken over vier maanden, verdeeld over tientallen pagina&#39;s die nu vooral elkaar in de weg zitten.</p></div>';
 h+='</div></details>';
+h+='</div></section>';
 
 h+='<section><h2 style="margin-bottom:6px">Wat er per pagina moet gebeuren</h2>';
 h+='<p style="margin-bottom:18px;color:var(--muted)">Zes groepen, allemaal dicht. Klap een groep open en daarna een pagina, dan zie je per pagina wat er aan de hand is, de cijfers eronder, wat er moet gebeuren en waarom, en de instructie voor de sitebouwer.</p>';
 h+='<div style="display:flex;flex-direction:column;gap:10px">';
 D.groepen.forEach(function(g){h+=groepHTML(g);});
-h+='</div></section>';
+h+='</div></div></details>';
 
-h+='<section class="panel"><h2>Instructie voor de sitebouwer</h2>';
+h+='<details class="pan"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Instructie voor de sitebouwer</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody">';
 h+='<p>Voer uit in deze volgorde. De sitemap staat bewust als laatste.</p><div class="devstap">';
 
 h+='<div class="dev1"><h3>Stap 1. De redirects</h3><ol>';
@@ -325,9 +357,9 @@ h+='<div class="dev1"><h3>Stap 5. Losse technische punten</h3><ol>';
 h+='<li>De Nijmegen-pagina bestaat onder drie adressen: <span class="mono">http://www.onedayclinic.nl/soa-klinieken/soa-test-nijmegen/</span>, de https-versie en <span class="mono">/soa-klinieken-nijmegen/</span>. Samen 457 klikken die Google niet optelt. Voeg ze samen tot &eacute;&eacute;n adres.</li>';
 h+='<li>Leg vast welke schrijfwijze de juiste is, met of zonder schuine streep aan het eind, en laat de andere daar automatisch naartoe verwijzen.</li>';
 h+='<li>Ruim de sitebrede keten van http naar www op: nu twee stappen, dat moet er &eacute;&eacute;n zijn.</li></ol></div>';
-h+='</div></section>';
+h+='</div></div></details>';
 
-h+='<section class="panel"><h2>De redirectmap</h2><p>Alles 301, &eacute;&eacute;n stap, geen ketens. De Engelse kopie van elke pagina hieronder gaat mee naar hetzelfde doel.</p>';
+h+='<details class="pan"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>De redirectmap</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody"><p>Alles 301, &eacute;&eacute;n stap, geen ketens. De Engelse kopie van elke pagina hieronder gaat mee naar hetzelfde doel.</p>';
 h+='<div class="scroll"><table><thead><tr><th>Van</th><th>Naar</th></tr></thead><tbody>';
 [['/soa-poli-amsterdam/','/soa-klinieken/soa-test-amsterdam/'],
  ['/de-voordelen-van-een-soa-test-in-amsterdam/','/soa-klinieken/soa-test-amsterdam/'],
@@ -350,9 +382,9 @@ h+='<div class="scroll"><table><thead><tr><th>Van</th><th>Naar</th></tr></thead>
  ['/en/soa-klinieken/soa-test-amsterdam/','/en/sti-clinics/std-test-amsterdam/ (alleen bij akkoord op vraag 1)']].forEach(function(r){
   h+='<tr><td class="mono">'+r[0]+'</td><td class="mono">'+r[1]+'</td></tr>';});
 h+='</tbody></table></div>';
-h+='<p style="margin-top:14px" class="note">Voor elke Nederlandse regel hierboven geldt: de Engelse kopie krijgt dezelfde doorverwijzing, naar dezelfde Nederlandse pagina. Dat zijn 24 extra regels.</p></section>';
+h+='<p style="margin-top:14px" class="note">Voor elke Nederlandse regel hierboven geldt: de Engelse kopie krijgt dezelfde doorverwijzing, naar dezelfde Nederlandse pagina. Dat zijn 24 extra regels.</p></div></details>';
 
-h+='<section class="panel flat"><h2>En de andere clusters dan?</h2>';
+h+='<details class="pan flat"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>En de andere clusters dan?</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody">';
 h+='<p>Dit is wat er nog aankomt. De kolom <strong>meedingende pagina&#39;s</strong> is alleen ingevuld waar wij het echt hebben doorgemeten. Bij de rest staat nog niet gemeten, want een getal dat op een andere manier is geteld zegt niets.</p>';
 h+='<p>De kolom <strong>locatiepagina&#39;s in de regio</strong> is wel overal geteld: dat is het aantal bestaande pagina&#39;s voor plaatsen zonder vestiging rond die stad, Nederlands en Engels bij elkaar. Dat geeft een beeld van de hoeveelheid opruimwerk.</p>';
 h+='<div class="scroll"><table><thead><tr><th>&nbsp;</th><th>Cluster</th><th class="num">Meedingende pagina&#39;s</th><th class="num">Locatiepagina&#39;s in de regio</th><th>Wat er speelt</th></tr></thead><tbody>';
@@ -368,9 +400,9 @@ h+='<div class="scroll"><table><thead><tr><th>&nbsp;</th><th>Cluster</th><th cla
      ['10','Bloedonderzoek per stad','nog niet gemeten','&mdash;','Eigen dienstencluster met dezelfde stadsopzet']].forEach(function(r){
   h+='<tr><td class="st">'+r[0]+'</td><td>'+r[1]+'</td><td class="num">'+r[2]+'</td><td class="num">'+r[3]+'</td><td>'+r[4]+'</td></tr>';});
 h+='</tbody></table></div>';
-h+='<p style="margin-top:16px">Bij elkaar gaat het om ruim honderdvijftig locatiepagina&#39;s voor plaatsen waar geen kliniek en geen testpunt zit. Dat is het echte opruimwerk, en het is de reden dat de zes stadspagina&#39;s nu niet in de top drie staan.</p></section>';
+h+='<p style="margin-top:16px">Bij elkaar gaat het om ruim honderdvijftig locatiepagina&#39;s voor plaatsen waar geen kliniek en geen testpunt zit. Dat is het echte opruimwerk, en het is de reden dat de zes stadspagina&#39;s nu niet in de top drie staan.</p></div></details>';
 
-h+='<section class="panel"><h2>Van hoeveel pagina&#39;s naar hoeveel</h2>';
+h+='<details class="pan"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Van hoeveel pagina&#39;s naar hoeveel</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody">';
     h+='<p>De site heeft nu vijf verschillende URL-vormen voor dezelfde plaatsen, plus stadsblogs en een Engelse kopie van alles. Straks is er nog &eacute;&eacute;n vorm.</p>';
     h+='<div class="scroll"><table><thead><tr><th>URL-vorm</th><th class="num">Nu</th><th class="num">Straks</th></tr></thead><tbody>';
     [['<span class="mono">/soa-klinieken/soa-test-{plaats}/</span>','circa 36','15'],
@@ -383,9 +415,9 @@ h+='<section class="panel"><h2>Van hoeveel pagina&#39;s naar hoeveel</h2>';
      ['<strong>Totaal</strong>','<strong>circa 190</strong>','<strong>26</strong>']].forEach(function(r){
       h+='<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num">'+r[2]+'</td></tr>';});
     h+='</tbody></table></div>';
-    h+='<p style="margin-top:16px">Van circa 190 locatie-URL&#39;s naar 26, voor zestien echte punten: zeven klinieken en negen testpunten. Van het Nederlandse locatieverkeer blijft 92 procent staan.</p></section>';
+    h+='<p style="margin-top:16px">Van circa 190 locatie-URL&#39;s naar 26, voor zestien echte punten: zeven klinieken en negen testpunten. Van het Nederlandse locatieverkeer blijft 92 procent staan.</p></div></details>';
 
-    h+='<section class="panel flat"><h2>Tijdpad</h2>';
+    h+='<details class="pan flat"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Tijdpad</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody">';
     h+='<p>Uitgangspunt is drie uur per week aan dit project. Eerst de zes steden waar de klinieken zitten, want daar zit het verkeer. Daarna de rest. Tussen elke cluster zit meettijd, want anders weet je niet wat een ingreep heeft gedaan.</p>';
     h+='<div class="scroll"><table><thead><tr><th class="num">Week</th><th>Wat</th><th>Waarom in deze volgorde</th></tr></thead><tbody>';
     [['1','Techniek en herstel','Stopt actief verkeerslek en kan meteen naar de sitebouwer'],
@@ -403,17 +435,17 @@ h+='<section class="panel"><h2>Van hoeveel pagina&#39;s naar hoeveel</h2>';
      ['23','Eindmeting','Vergelijking met de nulmeting van 27 augustus']].forEach(function(r){
       h+='<tr><td class="num">'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>';});
     h+='</tbody></table></div>';
-    h+='<p style="margin-top:16px">Twee weken per cluster is inclusief de analyse, de instructie en het wachten op de sitebouwer. Gaat het sneller, dan schuift alles op. De volgorde staat vast, de weken zijn een planning.</p></section>';
+    h+='<p style="margin-top:16px">Twee weken per cluster is inclusief de analyse, de instructie en het wachten op de sitebouwer. Gaat het sneller, dan schuift alles op. De volgorde staat vast, de weken zijn een planning.</p></div></details>';
 
-    h+='<section class="panel flat"><h2>Nulmeting</h2><p>Leg dit vast voordat er iets live gaat.</p><div class="scroll"><table><thead><tr><th>Meetpunt</th><th class="num">Stand 27-08-2026</th></tr></thead><tbody>';
+    h+='<details class="pan flat"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Nulmeting</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody"><p>Leg dit vast voordat er iets live gaat.</p><div class="scroll"><table><thead><tr><th>Meetpunt</th><th class="num">Stand 27-08-2026</th></tr></thead><tbody>';
 [['Klikken op de winnende pagina','1.571'],['Vertoningen op de Amsterdamse zoekopdrachten','16.538'],['Gemiddelde positie op soa test amsterdam','3,67'],['Eigen pagina&#39;s met meer dan 50 vertoningen','99'],['Klikken van het blogartikel','48']].forEach(function(r){h+='<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td></tr>';});
 h+='</tbody></table></div>';
-h+='<p style="margin-top:16px"><strong>Binnen twee weken</strong> zakt het aantal eigen pagina&#39;s op de Amsterdamse zoekopdrachten.<br><strong>Binnen vier tot acht weken</strong> stopt het springen tussen pagina&#39;s.<br><strong>Binnen acht tot twaalf weken</strong> is de top 3 haalbaar.</p></section>';
+h+='<p style="margin-top:16px"><strong>Binnen twee weken</strong> zakt het aantal eigen pagina&#39;s op de Amsterdamse zoekopdrachten.<br><strong>Binnen vier tot acht weken</strong> stopt het springen tussen pagina&#39;s.<br><strong>Binnen acht tot twaalf weken</strong> is de top 3 haalbaar.</p></div></details>';
 
-h+='<section class="panel" id="form"><h2>Wat we van jullie nodig hebben</h2><p>Alle andere keuzes hebben wij zelf gemaakt en onderbouwd. Bij elke vraag staat ons advies.</p>';
+h+='<details class="pan" id="form"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Wat we van jullie nodig hebben</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody"><p>Alle andere keuzes hebben wij zelf gemaakt en onderbouwd. Bij elke vraag staat ons advies.</p>';
 D.vragen.forEach(function(q){h+=vraagHTML(q);});
 h+='<div class="saverow"><button class="btn primary" id="copyans">Kopieer antwoorden</button><span class="savemsg">Kopieer je antwoorden en mail ze naar Pingwin.</span></div>';
-h+='</section>';
+h+='</div></details>';
 
 h+='<footer><hr class="sep" style="margin-bottom:18px"><p>Pingwin &middot; Maarten Vermeulen &middot; versie '+D.versie+', 28 augustus 2026. Alle klikken, vertoningen en posities komen rechtstreeks uit Google Search Console, domeinproperty onedayclinic.nl, over 1 mei tot en met 27 augustus 2026 (118 dagen). Zoekvolumes komen uit Ahrefs Keywords Explorer, Nederland, 28 augustus 2026.</p></footer>';
 
