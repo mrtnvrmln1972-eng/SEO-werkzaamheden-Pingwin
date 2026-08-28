@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Cluster Amsterdam | One Day Clinic | Pingwin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap">
+<style>
+:root{
+  --bg:#F5F6FA; --surface:#FFFFFF; --surface-2:#FBF8F5;
+  --ink:#2F2A2A; --muted:#6E6663; --line:#F0E7DF; --line-strong:#DCD2CA;
+  --accent:#F15829; --accent-warm:#E7773F; --accent-soft:#FDEEE7;
+  --blue:#0E7E9A; --blue-soft:#E4F1F5;
+  --ok:#1E6B3C; --ok-bg:#E6F1E9;
+  --warn:#8A5711; --warn-bg:#F8EFE0;
+  --stop:#A22F3B; --stop-bg:#F8E8EA;
+  --idle:#84796B; --idle-bg:#F2EEE9;
+  --grad:linear-gradient(228deg,#C7E2EB 38%,#F8DABC 80%);
+  --shadow:0 1px 2px rgba(47,42,42,.05),0 10px 30px -18px rgba(47,42,42,.28);
+}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Montserrat,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1020px;margin:0 auto;padding:40px 22px 110px;display:flex;flex-direction:column;gap:34px}
+.eyebrow{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 12px}
+h1{font-weight:800;font-size:clamp(31px,5vw,44px);line-height:1.08;margin:0 0 14px;letter-spacing:.2px;text-wrap:balance}
+h2{font-weight:700;font-size:26px;line-height:1.22;margin:0 0 10px;letter-spacing:.2px;text-wrap:balance}
+h3{font-weight:700;font-size:14px;margin:0 0 7px;letter-spacing:.2px}
+p{margin:0 0 12px;max-width:68ch}p:last-child{margin-bottom:0}
+.lede{font-size:17.5px;color:var(--muted);max-width:66ch;font-weight:500}
+a{color:var(--accent)}
+a.u{word-break:break-all}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88em}
+header.top{background:var(--grad);border-radius:30px;padding:38px 34px 32px;border:1px solid rgba(255,255,255,.6)}
+header.top .lede{color:#3C4A4E}
+header .meta{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:20px;font-size:12px;color:#4C5A5E;font-weight:500}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.stat{background:var(--surface);padding:18px 20px}
+.stat .k{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:7px;font-weight:600;line-height:1.4}
+.stat .v{font-size:31px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;display:block}
+.stat .s{font-size:12.5px;color:var(--muted);display:block;margin-top:6px}
+.stat.hot .v{color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:24px 26px;box-shadow:var(--shadow)}
+.panel.flat{box-shadow:none;background:var(--surface-2)}
+.badge{display:inline-flex;align-items:center;flex:none;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:5px 12px;border-radius:30px;font-weight:700;white-space:nowrap}
+.b-win{background:var(--ok-bg);color:var(--ok)}
+.b-fix{background:var(--warn-bg);color:var(--warn)}
+.b-301{background:var(--stop-bg);color:var(--stop)}
+.b-none{background:var(--idle-bg);color:var(--idle)}
+.b-ask{background:var(--accent-soft);color:var(--accent)}
+
+/* context toggle */
+details.ctx{border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:var(--shadow);overflow:hidden}
+details.ctx>summary{cursor:pointer;list-style:none;padding:0}
+details.ctx>summary::-webkit-details-marker{display:none}
+.ctxhead{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:20px 26px}
+.ctxhead b{font-size:17px;font-weight:700}
+.ctxhead span{font-size:13px;color:var(--muted);font-weight:600;white-space:nowrap}
+details.ctx[open] .ctxhead{border-bottom:1px solid var(--line)}
+details.ctx[open] .ctxhead .open-l{display:none}
+details.ctx:not([open]) .ctxhead .close-l{display:none}
+.cards{display:flex;flex-direction:column;gap:26px;padding:26px}
+.card{border-bottom:1px solid var(--line);padding-bottom:24px}
+.card:last-child{border-bottom:0;padding-bottom:0}
+.card h3{color:var(--accent);font-size:17px;margin-bottom:10px}
+.card p{font-size:14.5px;color:var(--muted);max-width:78ch}
+.card p strong{color:var(--ink)}
+
+/* rows */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.filters .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-right:4px;font-weight:600}
+.chip{font:inherit;font-weight:600;font-size:13px;cursor:pointer;padding:6px 15px;border-radius:30px;border:1px solid var(--line-strong);background:transparent;color:var(--muted)}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip:focus-visible,summary:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rows{display:flex;flex-direction:column;gap:9px}
+details.row{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+details.row[open]{border-color:var(--line-strong);box-shadow:var(--shadow)}
+details.row>summary{cursor:pointer;list-style:none;padding:0}
+details.row>summary::-webkit-details-marker{display:none}
+.rowhead{display:grid;grid-template-columns:30px 20px 1fr auto;gap:12px;align-items:center;padding:15px 20px}
+.rownum{font-weight:800;font-size:16px;color:var(--accent);font-variant-numeric:tabular-nums;text-align:right}
+.caret{color:var(--muted);transition:transform .15s ease;font-size:11px;line-height:1;justify-self:center}
+details.row[open] .caret{transform:rotate(90deg)}
+.rowmain{min-width:0}
+.rowurl{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;word-break:break-all;display:block;font-weight:500}
+.rowsub{font-size:12.5px;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+@media (max-width:640px){.rowhead{grid-template-columns:26px 1fr;gap:10px}.caret{display:none}.rowright{grid-column:2;margin-top:4px}}
+.body{padding:2px 22px 22px 62px;border-top:1px solid var(--line)}
+@media (max-width:640px){.body{padding-left:20px}}
+.block{padding-top:17px}
+.block h3{color:var(--accent)}
+.block.q h3{color:var(--warn)}
+.block.dev{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:15px 17px;margin-top:17px}
+.block.dev h3{color:var(--ink)}
+ul.tight,ol.tight{margin:0;padding-left:19px}
+ul.tight li,ol.tight li{margin-bottom:7px;max-width:66ch}
+ul.tight li:last-child,ol.tight li:last-child{margin-bottom:0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:5px 18px;font-size:13.5px;font-variant-numeric:tabular-nums;margin:0}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:9px 14px 9px 0;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:nowrap}
+td.num{text-align:right;padding-right:20px;white-space:nowrap}
+td.st{font-weight:800;color:var(--accent)}
+.note{border-left:3px solid var(--accent);padding:3px 0 3px 15px;color:var(--muted);font-size:14.5px}
+.src{font-size:11.5px;color:var(--muted);margin-top:14px}
+.btn{font:inherit;font-weight:600;font-size:13px;cursor:pointer;padding:8px 16px;border-radius:30px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-warm);border-color:var(--accent-warm);color:#fff}
+.prompt{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;line-height:1.55;white-space:pre-wrap;margin-top:9px}
+.q-item{border-top:1px solid var(--line);padding:18px 0}
+.q-item:first-of-type{border-top:0;padding-top:4px}
+.q-item .qq{font-weight:700;margin-bottom:5px}
+.q-item .qc{color:var(--muted);font-size:14px;margin-bottom:11px;max-width:66ch}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:9px}
+.opt{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-strong);border-radius:30px;padding:6px 15px;font-size:13.5px;cursor:pointer}
+.opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:600}
+.opt input{margin:0;accent-color:var(--accent)}
+textarea{width:100%;font:inherit;font-size:14px;padding:10px 12px;border-radius:14px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);resize:vertical;min-height:46px}
+.saverow{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:20px}
+.savemsg{font-size:13px;color:var(--muted)}
+hr.sep{border:0;border-top:1px solid var(--line);margin:0}
+footer{color:var(--muted);font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<style>
+details.grp{border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:var(--shadow);overflow:hidden;border-left:5px solid var(--gc)}
+details.grp>summary{cursor:pointer;list-style:none;padding:0}
+details.grp>summary::-webkit-details-marker{display:none}
+.grphead{display:grid;grid-template-columns:1fr auto auto;gap:16px;align-items:center;padding:18px 24px}
+.grphead b{font-size:17px;font-weight:700}
+.grphead .cnt{font-size:13px;font-weight:700;color:var(--gc);white-space:nowrap}
+.grphead .tog{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap}
+details.grp[open] .grphead{border-bottom:1px solid var(--line)}
+details.grp[open] .tog-open{display:none}
+details.grp:not([open]) .tog-dicht{display:none}
+.grpbody{padding:20px 24px 24px}
+.grpintro{font-size:14.5px;color:var(--muted);margin-bottom:18px;max-width:78ch}
+.pg{border-top:1px solid var(--line);padding:16px 0}
+.pg:first-of-type{border-top:0;padding-top:0}
+.pgtop{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;margin-bottom:6px}
+.pgurl{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13.5px;font-weight:600;word-break:break-all}
+.pgact{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 11px;border-radius:30px;background:var(--gcs);color:var(--gc);white-space:nowrap}
+.pgcijf{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;margin-bottom:9px}
+.pgdoen{margin:0;padding-left:19px;font-size:14px}
+.pgdoen li{margin-bottom:5px;max-width:74ch}
+.pglet{font-size:13.5px;color:var(--muted);margin-top:9px;border-left:3px solid var(--line-strong);padding-left:12px;max-width:74ch}
+.win{--gc:var(--ok);--gcs:var(--ok-bg)}
+.fix{--gc:var(--warn);--gcs:var(--warn-bg)}
+.g301{--gc:var(--stop);--gcs:var(--stop-bg)}
+.ask{--gc:var(--accent);--gcs:var(--accent-soft)}
+.none{--gc:var(--idle);--gcs:var(--idle-bg)}
+.alarm{background:var(--stop-bg);border:1px solid var(--stop);border-left:5px solid var(--stop);border-radius:20px;padding:22px 26px}
+.alarm h2{color:var(--stop);margin-bottom:8px}
+.alarm p,.alarm li{color:#5C2027}
+.devstap{counter-reset:ds;display:flex;flex-direction:column;gap:18px;margin-top:6px}
+.dev1{border:1px solid var(--line);border-radius:16px;padding:18px 20px;background:var(--surface-2)}
+.dev1 h3{font-size:15px;color:var(--accent);margin-bottom:8px}
+.dev1 ol,.dev1 ul{margin:0;padding-left:19px;font-size:14px}
+.dev1 li{margin-bottom:6px;max-width:76ch}
+.codeblok{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;background:#FFF;border:1px solid var(--line);border-radius:12px;padding:12px 14px;white-space:pre-wrap;margin-top:10px;line-height:1.5;overflow-x:auto}
+</style>
+
+<style>
+.grpbody .rows{display:flex;flex-direction:column;gap:8px}
+.grpbody details.row{border-radius:14px;background:var(--surface-2);border-color:var(--line)}
+.grpbody details.row[open]{background:var(--surface)}
+.grpbody .rowhead{grid-template-columns:26px 18px 1fr auto;padding:13px 16px}
+.grpbody .rownum{color:var(--gc);font-size:15px}
+.grpbody .body{padding:2px 18px 20px 58px}
+@media (max-width:640px){.grpbody .rowhead{grid-template-columns:24px 1fr}.grpbody .body{padding-left:16px}}
+.block h3{color:var(--accent);font-size:13.5px;letter-spacing:.04em;text-transform:uppercase}
+.block.dev h3{color:var(--ink)}
+.block p{font-size:14.5px;color:var(--muted);max-width:72ch}
+.kv dt{font-weight:500}
+.pglet{border-left:3px solid var(--accent);background:var(--accent-soft);padding:10px 14px;border-radius:0 10px 10px 0;color:var(--ink);font-size:14px;margin:0}
+</style>
+</head>
+<body>
+
+<script>var INTERN=false;</script>
+<script type="application/json" id="cluster-data">{"versie": "4.1", "groepen": [{"id": "g1", "titel": "De winnende pagina", "sub": "1 pagina", "kleur": "win", "intro": "Hier komen alle Amsterdamse zoekopdrachten op uit. Deze pagina is in 2026 opnieuw geschreven en live gezet. De tekst blijft zoals hij is; alleen de titel, de volgorde van twee blokken en de interne links veranderen.", "pages": [{"url": "/soa-klinieken/soa-test-amsterdam/", "actie": "Winnaar", "sub": "1.571 klikken totaal &middot; op soa test amsterdam 5.299 vertoningen, 293 klikken, positie 3,67", "hand": "Dit wordt de pagina waar alle Amsterdamse zoekopdrachten op uitkomen. Hij is veruit de sterkste van het cluster en volgt een eigen contentontwerp uit april. Wat hem tegenhoudt zijn de 99 andere eigen pagina&#39;s die op dezelfde zoekopdrachten meedoen, plus drie kleine dingen op de pagina zelf.", "onder": [["Klikken over alle zoekopdrachten", "1.571"], ["Op de zoekterm soa test amsterdam", "5.299 vertoningen, 293 klikken, positie 3,67"], ["Op alle Amsterdamse zoekopdrachten", "16.538 vertoningen, 571 klikken"], ["Beide vestigingen op de pagina", "ja, Spuistraat 239 en Waalstraat 43, met openingstijden"], ["Interne links", "292, vrijwel allemaal uit menu en footer"]], "onderNa": "Positie 3,67 is niet slecht, maar er staat geen sterkere partij tussen. Wat ertussen staat zijn eigen pagina&#39;s.", "doen": [["De titel begint niet met de zoekterm", "Er staat nu <span class=\"mono\">SOA test in Amsterdam | Volledig anoniem en uitslag al na 30 min</span>. Het woordje in staat tussen de twee woorden waarop mensen zoeken, en de merknaam is weggevallen. Het contentontwerp schreef voor: <span class=\"mono\">SOA test Amsterdam | 100% anoniem, uitslag na 30 min | OneDayClinic</span>."], ["Het blok Wanneer moet je je laten testen staat te laag", "Dat is de meest gestelde vraag rond soa testen en Google beloont pagina&#39;s die hem vooraan beantwoorden met een uitgelicht antwoord. Nu staat het blok op plek 13 van de 17. Verplaats het naar plek 2, direct onder de introductie."], ["Amsterdam Zuid moet hier sterker", "Mensen zoeken op One Day Clinic Amsterdam Zuid en komen nu op de homepage uit, terwijl het adres van Zuid op deze pagina staat. Geef Zuid een eigen tussenkop met adres Waalstraat 43 en openingstijden."], ["De linktekst vanaf de andere pagina&#39;s klopt niet", "Die luidt nu SOA kliniek Amsterdam. Daar wordt 100 keer per maand op gezocht. Op SOA test Amsterdam wordt 1.700 keer per maand gezocht. Verander de linktekst in het locatieblok op alle pagina&#39;s."], ["Vijf inhoudelijke links erbij", "De 292 interne links komen bijna allemaal uit menu en footer. Links midden in een lopende tekst wegen zwaarder. Kies vijf drukbezochte informatieve pagina&#39;s, zoals die over chlamydia, keelsoa en CRP-waarden."]], "bouwer": ["Pas de paginatitel aan naar: SOA test Amsterdam | 100% anoniem, uitslag na 30 min | OneDayClinic", "Pas de H1 aan naar: SOA test Amsterdam: anoniem, zonder wachttijd, vandaag nog duidelijkheid", "Verplaats het blok Wanneer moet je je laten testen op een soa naar direct onder de introductie", "Voeg een tussenkop Amsterdam Zuid toe met adres Waalstraat 43 en de openingstijden", "Verander in het locatieblok op alle pagina&#39;s de linktekst SOA kliniek Amsterdam in SOA test Amsterdam"], "let": "De tekst van deze pagina wordt niet herschreven. Alleen de vijf punten hierboven.", "naartoe": "E&eacute;n pagina die alle Amsterdam-vraag opvangt: beide vestigingen, spoed, sneltest, prijzen en de vergelijking met de GGD. Doel is een stabiele plek in de top 3 binnen acht tot twaalf weken.", "bron": "Search Console 01-05 t/m 27-08-2026, domeinproperty &middot; contentontwerp 08-04-2026 &middot; live controle 28-08-2026"}]}, {"id": "g2", "titel": "Amsterdamse pagina's die weg of om moeten", "sub": "8 pagina's", "kleur": "fix", "intro": "Dit zijn de pagina's die echt over Amsterdam gaan en die de winnende pagina in de weg zitten.", "pages": [{"url": "/testen-in-amsterdam-welke-opties-heb-je/", "actie": "Van doel veranderen", "sub": "8.680 vertoningen en 48 klikken op de Amsterdamse zoekopdrachten &middot; positie 9,1 &middot; 2.590 woorden", "hand": "Dit blogartikel krijgt bijna evenveel vertoningen op soa test amsterdam als de kliniekpagina zelf, met acht keer minder klikken. Het is de grootste concurrent van pagina 1. Tegelijk wint het iets waardevols wat de kliniekpagina niet pakt: alle zoekopdrachten waarin mensen de GGD noemen.", "onder": [["Vertoningen op soa test amsterdam", "4.533, tegenover 5.299 van de kliniekpagina"], ["Klikken op die term", "37, tegenover 293 van de kliniekpagina"], ["ggd soa test amsterdam", "wint hij, 450 zoekopdrachten per maand"], ["soa test amsterdam ggd", "wint hij, 100 per maand"], ["Omvang", "2.590 woorden echte vergelijking tussen GGD en priv&eacute;kliniek"]], "onderNa": "Op 28 juli nam deze pagina de plek van de kliniekpagina over, waarna de positie zakte van 2 naar 8. De GGD bezet zelf ook vijf van de tien plekken in de zoekresultaten. Dit artikel vangt precies de bezoeker af die eigenlijk naar de GGD zocht, en dat is waardevol, zolang het niet ook op de hoofdterm mikt.", "doen": [["De pagina blijft bestaan, maar mikt op een andere zoekvraag", "Niet doorsturen. Deze pagina wint iets wat de kliniekpagina niet kan winnen: het GGD-cluster, ongeveer 1.200 zoekopdrachten per maand."], ["Title en H1 richten op de GGD-vergelijking", "Nu staat soa test amsterdam vooraan, dezelfde term als de kliniekpagina. Vervang die door de vergelijking, bijvoorbeeld: Soa test bij de GGD Amsterdam of bij een priv&eacute;kliniek, wat is het verschil?"], ["Twee tussenkoppen verhuizen naar de kliniekpagina", "De blokken <span class=\"mono\">Welke test past bij jouw situatie</span> en <span class=\"mono\">Welke soa&#39;s worden meestal getest</span> staan hier &eacute;n op de kliniekpagina. Haal ze hier weg. Staat er inhoud in die de kliniekpagina niet heeft, zet die dan daar bij het bestaande blok, en verwijder hem hier."], ["Bovenaan een link naar de kliniekpagina", "Direct onder de eerste alinea, met de linktekst soa test Amsterdam, zodat wie wil testen meteen doorklikt in plaats van verder te lezen."], ["De prijzen eruit", "Prijsinformatie hoort op de kliniekpagina, waar de afspraak wordt gemaakt. Hier leidt het af van de vergelijking."]], "bouwer": ["Wijzig de paginatitel en de H1 naar de GGD-variant die de copywriter aanlevert", "Zet direct onder de eerste alinea een link naar /soa-klinieken/soa-test-amsterdam/ met de linktekst soa test Amsterdam", "Verwijder de tussenkop Welke test past bij jouw situatie met de bijbehorende tekst", "Verwijder de tussenkop Welke soa&#39;s worden meestal getest met de bijbehorende tekst", "Laat de vergelijking met de GGD en de tabel met wachttijden ongemoeid"], "let": "", "naartoe": "Het artikel dat de vergelijking met de GGD wint en die bezoeker doorstuurt naar de kliniekpagina. Doel: top 3 op ggd soa test amsterdam en geen vertoningen meer op soa test amsterdam.", "bron": "Search Console 01-05 t/m 27-08-2026 &middot; rank tracker 28-07-2026"}, {"url": "/ (de homepage)", "actie": "Tekst schonen", "sub": "7.983 vertoningen en 236 klikken op de Amsterdamse zoekopdrachten", "hand": "De homepage wint alle zoekopdrachten waarin de merknaam en Amsterdam samen voorkomen. Voor de meeste daarvan is dat precies goed. Alleen komt iemand die specifiek op Amsterdam Zuid zoekt nu ook op de homepage uit, terwijl het adres van Zuid op de kliniekpagina staat.", "onder": [["Vertoningen op Amsterdamse zoekopdrachten", "7.983"], ["Klikken", "236"], ["one day clinic amsterdam zuid", "wint de homepage, positie 1,0"], ["onedayclinic amsterdam", "wint de homepage, positie 1,2"]], "onderNa": "Er wordt ook gezocht op de letterlijke oude paginatitel van een Amsterdam Zuid-pagina. Mensen kennen die pagina nog en zoeken er gericht naar.", "doen": [["Op merktermen verandert er niets", "Bij een merknaam wijst Google bijna altijd de homepage aan, op elke website. De bezoeker komt gewoon binnen. Daar blijven we vanaf."], ["Alleen de Zuid-vraag verschuiven", "Wie op Amsterdam Zuid zoekt wil een adres. Die hoort op de kliniekpagina. Dat bereik je door de kliniekpagina sterker te maken op Zuid en de homepage juist minder over Zuid te laten zeggen."]], "bouwer": ["Haal de vermeldingen van Amsterdam Zuid uit de tekst, de paginatitel en de meta description van de homepage", "Zet er een link naar /soa-klinieken/soa-test-amsterdam/ voor in de plaats", "Voeg geen extra vestigingsinformatie toe aan de homepage"], "let": "", "naartoe": "De homepage blijft de merkpagina en wint de merkzoekopdrachten. Wie naar een vestiging zoekt, komt op de kliniekpagina met adres en openingstijden.", "bron": "Search Console 01-05 t/m 27-08-2026, zoektermen met amsterdam"}, {"url": "/wat-kost-een-soa-test-in-amsterdam/", "actie": "Tekst schonen of doorsturen", "sub": "326 vertoningen en 0 klikken &middot; positie 25,0", "hand": "Een prijsartikel met Amsterdam in de titel dat op stadstermen meedingt zonder ooit een klik te halen.", "onder": [["Vertoningen", "326"], ["Klikken", "0 in bijna vier maanden"], ["Positie", "25,0"], ["Engelse kopie", "528 vertoningen, 1 klik"]], "onderNa": "De vraag achter de pagina bestaat wel, maar die is landelijk. Er wordt gezocht op wat kost een soa test, niet op wat kost een soa test in amsterdam.", "doen": [["Amsterdam uit title en H1", "De pagina hoort bij het kostencluster en niet bij dit cluster."], ["Of samenvoegen met de landelijke kostenpagina", "Staat daar al een sterkere pagina, dan 301 hierheen en de bruikbare inhoud daar toevoegen."]], "bouwer": ["Wijzig paginatitel en H1 en haal Amsterdam eruit", "Doe hetzelfde met de Engelse kopie, of stuur die door naar de Nederlandse"], "let": "", "naartoe": "E&eacute;n landelijke kostenpagina in plaats van een kostenpagina per stad.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/de-voordelen-van-een-soa-test-in-amsterdam/", "actie": "301 naar de winnaar", "sub": "510 vertoningen en 0 klikken", "hand": "Een blogartikel zonder inhoudelijke tussenkoppen. De inhoud, de voordelen van anoniem testen in Amsterdam, staat volledig op de kliniekpagina.", "onder": [["Vertoningen", "510"], ["Klikken", "0"], ["Status", "openstaande actie sinds juli 2026"]], "onderNa": "", "doen": [["Doorsturen naar de kliniekpagina", "Er gaat geen verkeer verloren en de inhoud staat er al."], ["Eerst controleren op unieke argumenten", "Staat er een argument op dat de kliniekpagina niet heeft, lever dat dan apart aan als toevoeging. De kliniekpagina wordt niet herschreven."]], "bouwer": ["301 van /de-voordelen-van-een-soa-test-in-amsterdam/ naar /soa-klinieken/soa-test-amsterdam/", "301 van de Engelse kopie naar dezelfde Nederlandse pagina", "Verwijder de interne links naar deze pagina&#39;s"], "let": "", "naartoe": "Weg. De verkoopargumenten staan op de pagina waar de bezoeker een afspraak maakt.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/spoed-soa-test-amsterdam-na-30-minuten-uitslag/", "actie": "301 naar de winnaar", "sub": "143 vertoningen en 0 klikken", "hand": "Een losse pagina over de spoedtest in Amsterdam. Dat onderwerp staat al als vast onderdeel op de kliniekpagina. De titel bevat bovendien een belofte die wij niet kunnen controleren.", "onder": [["Vertoningen", "143"], ["Klikken", "0"], ["Engelse kopie", "282 vertoningen, 0 klikken"], ["spoed soa test amsterdam", "de kliniekpagina staat daar al hoger"]], "onderNa": "", "doen": [["Doorsturen, maar pas na antwoord op vraag 2", "Klopt de belofte van uitslag binnen 30 minuten, dan verhuist die naar de kliniekpagina en naar de spoedpagina van het sneltestcluster. Klopt hij niet meer, dan halen we hem overal weg."]], "bouwer": ["Wacht op het antwoord op vraag 2 onderaan dit stuk", "Daarna: 301 naar /soa-klinieken/soa-test-amsterdam/, en de Engelse kopie naar dezelfde pagina", "Verwijder de interne links"], "let": "", "naartoe": "Weg. De spoedbelofte staat op &eacute;&eacute;n plek en klopt.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/snelle-soa-test-amsterdam/", "actie": "Niets in deze ronde", "sub": "244 vertoningen en 0 klikken &middot; positie 56,6", "hand": "De naam bevat Amsterdam, maar de inhoud gaat over vijf steden tegelijk: Amsterdam, Rotterdam, Den Haag, Utrecht en Eindhoven.", "onder": [["Vertoningen", "244"], ["Klikken", "0"], ["Positie", "56,6"], ["Andere pagina&#39;s over hetzelfde", "/uitslag/ en /spoed-soa-test/ staan daar al op positie 1 tot 5"]], "onderNa": "Doorsturen naar de Amsterdam-pagina zou bezoekers uit de vier andere steden naar de verkeerde stad sturen.", "doen": [["In deze ronde niets", "Deze pagina hoort bij het sneltest- en spoedcluster, samen met vier andere pagina&#39;s die daar ook over gaan."]], "bouwer": ["Niets"], "let": "", "naartoe": "Waarschijnlijk samenvoegen tot &eacute;&eacute;n landelijke sneltestpagina, in cluster 8.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/soa-poli-amsterdam/", "actie": "301 naar de winnaar", "sub": "geen bezoekers, geen interne links, staat wel in de sitemap", "hand": "Deze pagina staat in de sitemap die aan Google wordt aangeboden, maar er loopt geen enkele link vanuit de site naartoe en hij levert geen bezoekers op.", "onder": [["Interne links", "0"], ["Klikken", "0"], ["Vertoningen", "0"], ["In de sitemap", "ja"]], "onderNa": "Op soa poli amsterdam wordt wel 100 keer per maand gezocht. Die vraag hoort bij de kliniekpagina.", "doen": [["Doorsturen naar de kliniekpagina", "Zo komt de zoekvraag soa poli Amsterdam op de juiste pagina terecht."]], "bouwer": ["301 van /soa-poli-amsterdam/ naar /soa-klinieken/soa-test-amsterdam/", "Haal de URL uit de sitemap, maar pas nadat de doorverwijzing werkt"], "let": "", "naartoe": "Weg.", "bron": "page-sitemap.xml 28-08-2026 &middot; Search Console 01-05 t/m 27-08-2026"}, {"url": "/soa-polis-moeten-mensen-weigeren/", "actie": "Tekst schonen", "sub": "300 vertoningen en 0 klikken", "hand": "Een blogartikel dat Amsterdam noemt en daardoor op stadstermen meedingt zonder ooit een klik te halen.", "onder": [["Vertoningen", "300"], ["Klikken", "0"], ["Positie", "73,4"]], "onderNa": "Als nieuwsartikel heeft de pagina bestaansrecht, als stadspagina niet.", "doen": [["Amsterdam uit title en H1 halen", "In de lopende tekst mag de plaatsnaam blijven staan. Zo blijft het artikel bestaan zonder mee te dingen op de stadsterm."]], "bouwer": ["Wijzig paginatitel en H1 en haal de plaatsnaam eruit", "Laat de tekst zelf ongemoeid"], "let": "", "naartoe": "Een blog die op zijn onderwerp rankt en niet op een plaatsnaam.", "bron": "Search Console 01-05 t/m 27-08-2026"}]}, {"id": "g3", "titel": "Plaatsen rond Amsterdam zonder vestiging", "sub": "16 pagina's", "kleur": "301", "intro": "Deze plaatsen hebben geen kliniek en geen testpunt. Ze krijgen nooit een eigen ronde, dus ze worden hier opgeruimd. Alles gaat naar de kliniekpagina van Amsterdam, behalve Haarlem: dat blijft als keuzehulp met 127 klikken.", "pages": [{"url": "/soa-klinieken/soa-test-diemen/", "actie": "301 naar de winnaar", "sub": "384 vertoningen, 4 klikken, geen zoekvolume op soa test diemen", "hand": "Deze pagina heeft geen eigen bestaansreden. Er wordt niet gezocht op soa test diemen, er is geen vestiging, en de zoekopdrachten waarop hij verschijnt zijn Amsterdams.", "onder": [["Zoekvolume soa test diemen", "0 per maand"], ["Vestiging in Diemen", "nee"], ["Vertoningen", "384"], ["Klikken", "4"], ["Engelse kopie", "87 vertoningen"]], "onderNa": "Zonder adres en zonder eigen vraag bestaat deze pagina alleen om Amsterdamse zoekers op te vangen en door te sturen. Dat is precies wat Google een doorstuurpagina noemt.", "doen": [["Doorsturen naar de kliniekpagina", "Diemen ligt tegen Amsterdam aan, dus wie hier belandt is met de Amsterdam-pagina het beste geholpen."]], "bouwer": ["301 naar /soa-klinieken/soa-test-amsterdam/", "301 van de Engelse kopie naar dezelfde pagina", "Interne links verwijderen en uit de sitemap halen"], "let": "", "naartoe": "Weg.", "bron": "Search Console 01-05 t/m 27-08-2026 &middot; zoekvolume Ahrefs 28-08-2026"}, {"url": "De vier Amstelveen-pagina's", "actie": "301 naar de winnaar", "sub": "samen 1.393 vertoningen en 17 klikken", "hand": "Amstelveen heeft vier Nederlandse pagina&#39;s over hetzelfde onderwerp en geen vestiging. Ze verschijnen bovendien vooral op one day clinic amsterdam zuid, dus ze concurreren met de homepage en met de kliniekpagina op jullie eigen merknaam.", "onder": [["/soa-klinieken/soa-amstelveen/", "697 vertoningen, 1 klik"], ["/soa-kliniek-amstelveen/", "256 vertoningen, 2 klikken"], ["/soa-test-locaties/soa-test-amstelveen/", "242 vertoningen, 13 klikken"], ["/soa-poli-amstelveen/", "198 vertoningen, 1 klik"], ["Zoekvolume soa test amstelveen", "40 per maand"], ["Vestiging in Amstelveen", "nee"]], "onderNa": "Veertig zoekopdrachten per maand is te weinig voor een eigen pagina zonder adres. Amstelveen ligt bovendien tegen Amsterdam aan, dus de bezoeker is met de Amsterdam-pagina beter geholpen.", "doen": [["Alle vier doorsturen naar de kliniekpagina", "E&eacute;n van de vier behouden zou het probleem niet oplossen: dan blijft er een pagina zonder adres meedingen op Amsterdamse merktermen."]], "bouwer": ["301 van alle vier de Nederlandse Amstelveen-pagina&#39;s naar /soa-klinieken/soa-test-amsterdam/", "301 van hun Engelse kopie&euml;n naar dezelfde pagina", "Interne links verwijderen"], "let": "Hierdoor vervalt cluster 9 uit de planning: Amstelveen wordt hier afgehandeld.", "naartoe": "Weg. De Amstelveense zoekvraag komt op de Amsterdam-pagina terecht.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "De drie Hoofddorp-pagina's", "actie": "301 naar de winnaar", "sub": "samen circa 220 vertoningen en 51 klikken", "hand": "Hoofddorp heeft drie varianten en geen vestiging. Er komt nooit een cluster Hoofddorp, dus als we ze nu niet opruimen blijven ze staan.", "onder": [["/soa-poli-hoofddorp/", "147 vertoningen"], ["/soa-test-locaties/soa-test-hoofddorp/", "51 klikken over alle zoekopdrachten"], ["/soa-kliniek-hoofddorp/", "18 vertoningen"], ["Vestiging in Hoofddorp", "nee"]], "onderNa": "", "doen": [["Alle drie doorsturen naar de kliniekpagina", "Hoofddorp ligt op twintig minuten van Amsterdam."]], "bouwer": ["301 van alle drie de pagina&#39;s naar /soa-klinieken/soa-test-amsterdam/", "301 van hun Engelse kopie&euml;n naar dezelfde pagina"], "let": "", "naartoe": "Weg.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "Zaandam, Purmerend, Uithoorn en Abcoude", "actie": "301 naar de winnaar", "sub": "samen circa 250 vertoningen en 72 klikken", "hand": "Zeven pagina&#39;s voor vier plaatsen zonder vestiging, allemaal in de regio Amsterdam.", "onder": [["/soa-poli-zaandam/", "96 vertoningen"], ["/soa-klinieken/soa-test-zaandam/", "46 klikken"], ["/soa-test-locaties/soa-test-purmerend/", "24 klikken"], ["/soa-test-locaties/soa-test-uithoorn/", "2 klikken"], ["/soa-poli-abcoude/", "34 vertoningen"], ["/soa-klinieken/soa-test-abcoude/", "53 vertoningen"]], "onderNa": "", "doen": [["Allemaal doorsturen naar de kliniekpagina", "Geen van deze plaatsen heeft een adres of genoeg eigen vraag."]], "bouwer": ["301 van alle zes de pagina&#39;s naar /soa-klinieken/soa-test-amsterdam/", "301 van hun Engelse kopie&euml;n naar dezelfde pagina"], "let": "", "naartoe": "Weg.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/soa-poli-haarlem/", "actie": "Blijft, wordt keuzehulp", "sub": "101 klikken, samen met de andere Haarlem-pagina 127", "hand": "Haarlem heeft geen vestiging, maar wel echte vraag en een kliniek op twintig minuten. Daarmee is dit een van de acht keuzehulpen in het portfolio.", "onder": [["Klikken /soa-poli-haarlem/", "101"], ["Klikken /soa-klinieken/soa-test-haarlem/", "26"], ["Zoekvolume soa test haarlem", "100 per maand"], ["Vestiging in Haarlem", "nee"], ["Dichtstbijzijnde kliniek", "Amsterdam, circa 20 minuten"]], "onderNa": "Een keuzehulp is geen locatiepagina. Hij zegt eerlijk dat er geen vestiging is, en helpt de zoeker verder.", "doen": [["Herschrijven als keuzehulp", "Geen kliniekpagina met Haarlem in de titel, maar een pagina die zegt: wij zitten niet in Haarlem, dit zijn je opties, dit kost het, en zo lang doe je erover naar Amsterdam."], ["De tweede Haarlem-pagina doorsturen", "/soa-klinieken/soa-test-haarlem/ gaat naar deze pagina."]], "bouwer": ["301 van /soa-klinieken/soa-test-haarlem/ naar /soa-poli-haarlem/", "301 van de Engelse Haarlem-kopie&euml;n naar /soa-poli-haarlem/", "Nieuwe title en H1 aanleveren door de copywriter"], "let": "", "naartoe": "E&eacute;n eerlijke Haarlem-pagina die de zoeker helpt kiezen en doorstuurt naar Amsterdam.", "bron": "Search Console 01-05 t/m 27-08-2026 &middot; zoekvolume Ahrefs 28-08-2026"}]}, {"id": "g4", "titel": "Engelse kopieën", "sub": "25 pagina's", "kleur": "ask", "intro": "Elke Engelse pagina volgt zijn Nederlandse origineel naar hetzelfde cluster, maar krijgt een eigen besluit op Engelse zoekdata. Eén blijft en wordt echt vertaald, de rest gaat naar de Nederlandse versie.", "pages": [{"url": "/en/soa-klinieken/soa-test-amsterdam/", "actie": "Blijft, echt vertalen", "sub": "2.586 vertoningen en 36 klikken op Amsterdamse zoekopdrachten", "hand": "Dit is de Engelse versie van de kliniekpagina. De titel is Engels, maar de tekst en de URL zijn Nederlands. Volgens Google is een anderstalige pagina met onvertaalde hoofdtekst een duplicaat van het origineel, en daarom duikt hij nu op bij Nederlandse zoekopdrachten.", "onder": [["Klikken op Amsterdamse zoekopdrachten", "36, de best presterende Engelse locatiepagina van de site"], ["std test amsterdam", "250 zoekopdrachten per maand"], ["Taal van de pagina", "Engelse URL-map, Nederlandse tekst"], ["In de sitemap", "nee, geen enkele Engelse pagina staat erin"]], "onderNa": "Amsterdam heeft een grote Engelstalige doelgroep: expats, studenten en toeristen. Een pagina die met Nederlandse tekst al bezoekers trekt, kan met echte Engelse tekst aanzienlijk hoger komen.", "doen": [["Echt vertalen, niet half", "Title, H1, meta description, tussenkoppen, lopende tekst, knopteksten en formulierlabels. Een Engelse titel boven Nederlandse tekst blijft een duplicaat."], ["Eigen Engelse URL", "Bijvoorbeeld /en/sti-clinics/std-test-amsterdam/, met een 301 vanaf de oude URL."], ["Hreflang en canonical goed zetten", "Zie de instructie voor de sitebouwer verderop. Dit is de plek waar het meestal misgaat."], ["Pas daarna in de sitemap", "Niet eerder, en zeker niet de hele Engelse sectie."]], "bouwer": ["Zie stap 2 in de instructie voor de sitebouwer, met het codevoorbeeld", "Pas uitvoeren nadat de klant vraag 1 heeft beantwoord"], "let": "De keuze om deze pagina te behouden ligt bij de klant, zie vraag 1 onderaan.", "naartoe": "E&eacute;n echte Engelse pagina voor Amsterdam die op Engelse zoekopdrachten rankt en de Nederlandse versie niet in de weg zit.", "bron": "Search Console 01-05 t/m 27-08-2026 &middot; sitemapcontrole 28-08-2026"}, {"url": "De 24 andere Engelse kopieën", "actie": "301 naar de Nederlandse versie", "sub": "samen circa 5.000 vertoningen op Amsterdamse zoekopdrachten", "hand": "Dit zijn Engelse kopie&euml;n met Nederlandse tekst en een Nederlandse URL. Ze hebben geen eigen Engelse vraag en zijn voor Google duplicaten van hun Nederlandse origineel.", "onder": [["Kopie&euml;n van", "testen-in-amsterdam, wat-kost-een-soa-test, de-voordelen, spoed-soa-test, snelle-soa-test, soa-polis-moeten-mensen-weigeren"], ["Plus", "Diemen, de vier Amstelveen-varianten, de drie Hoofddorp-varianten, de twee Zaandam-varianten, Purmerend, Uithoorn, de twee Abcoude-varianten, de drie Haarlem-varianten"], ["Plus", "/en/soa-klinieken/landings-pagina-newest/, een testpagina"], ["Eigen Engelse zoekvraag", "geen meetbare"]], "onderNa": "Ze gaan naar dezelfde Nederlandse pagina als hun origineel. De Engelse Diemen-pagina gaat dus naar de Nederlandse Amsterdam-pagina.", "doen": [["Elke kopie 301 naar het doel van zijn origineel", "Zo krijgt elke kopie hetzelfde besluit als de pagina waar hij een kopie van is."], ["Niet in de sitemap opnemen", "Ze bestaan straks niet meer."]], "bouwer": ["Zie stap 3 in de instructie voor de sitebouwer", "Geen hreflang naar deze pagina&#39;s laten wijzen"], "let": "", "naartoe": "Weg. Er blijft &eacute;&eacute;n Engelse locatiepagina over, voor Amsterdam.", "bron": "Search Console 01-05 t/m 27-08-2026"}]}, {"id": "g5", "titel": "Blijven staan, geen actie", "sub": "6 regels", "kleur": "none", "intro": "Deze pagina's duiken op bij Amsterdamse zoekopdrachten, maar dat hoort zo of ze horen bij een ander onderwerp.", "pages": [{"url": "/afspraak-maken/ en /contact/ en /over-ons/", "actie": "Niets", "sub": "samen 3.564 vertoningen op Amsterdamse zoekopdrachten", "hand": "Functionele pagina&#39;s die vertoningen krijgen op stadstermen omdat ze alle vestigingen noemen.", "onder": [["/afspraak-maken/", "2.352 vertoningen"], ["/contact/", "1.375 vertoningen"], ["/over-ons/", "456 vertoningen"], ["Klikken daaruit", "weinig"]], "onderNa": "Op merk- en afspraaktermen presteren deze pagina&#39;s juist goed. Dit is normaal gedrag voor dit type pagina.", "doen": [["Laten staan", "Dit lost zichzelf op zodra de kliniekpagina duidelijk de sterkste is."]], "bouwer": ["Niets"], "let": "", "naartoe": "Ongewijzigd.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/bloedonderzoek-amsterdam/", "actie": "Alleen interne links", "sub": "444 vertoningen, 23 klikken, geen enkele interne link", "hand": "Deze pagina haalt bezoekers terwijl er vanuit de site geen enkele link naartoe loopt.", "onder": [["Vertoningen", "444"], ["Klikken", "23"], ["Interne links", "0"], ["Onderwerp", "bloedonderzoek, niet soa"]], "onderNa": "Hoort bij cluster 10, bloedonderzoek per stad. Wel meteen meenemen, want dit is winst zonder extra werk.", "doen": [["Opnemen in de sitestructuur", "Een pagina die zonder enige link al bezoekers haalt, doet meer zodra hij in het menu en op de bloedtestenpagina staat."]], "bouwer": ["Zet een link naar /bloedonderzoek-amsterdam/ op /bloedtesten/ en in het bloedtestenmenu"], "let": "", "naartoe": "De Amsterdam-pagina van het bloedonderzoekcluster.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/allergie-test-amsterdam/", "actie": "Niets", "sub": "155 vertoningen, 1 klik", "hand": "Heeft Amsterdam in de naam maar gaat over allergietesten.", "onder": [["Vertoningen", "155"], ["Klikken", "1"]], "onderNa": "", "doen": [["Laten staan", "Hoort bij het allergiecluster."]], "bouwer": ["Niets"], "let": "", "naartoe": "Ongewijzigd.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/soa-test-locaties/soa-test-badhoevedorp/", "actie": "Blijft, wordt kort", "sub": "19 klikken", "hand": "Hier zit een echt testpunt met een adres, Zeemanlaan 20B. Een pagina met een fysiek adres blijft altijd staan, ongeacht zoekvolume.", "onder": [["Adres", "Zeemanlaan 20B"], ["Klikken", "19"], ["Zoekvolume soa test badhoevedorp", "0 per maand"]], "onderNa": "Het Google Bedrijfsprofiel van dit testpunt heeft een eigen landingspagina nodig. Daarom blijft deze pagina bestaan, ook zonder zoekvolume.", "doen": [["Inkorten tot het feitelijke", "Adres, route, openingstijden en wat je er wel en niet kunt doen. 200 tot 400 woorden. Geen SEO-tekst."]], "bouwer": ["Pagina inkorten volgens de nieuwe tekst", "Link naar de dichtstbijzijnde kliniek toevoegen"], "let": "Deze pagina hoort bij cluster 7, de negen testpunten.", "naartoe": "Korte feitelijke testpuntpagina.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/uitslag/ en /onze-tarieven/", "actie": "Niets", "sub": "samen 235 vertoningen", "hand": "Functionele pagina&#39;s die af en toe opduiken bij Amsterdamse zoekopdrachten.", "onder": [["Vertoningen", "235"]], "onderNa": "", "doen": [["Laten staan", "Zitten niemand in de weg."]], "bouwer": ["Niets"], "let": "", "naartoe": "Ongewijzigd.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/soa-klinieken/", "actie": "Niets", "sub": "781 vertoningen", "hand": "De hub van de locatiepagina&#39;s.", "onder": [["Vertoningen", "781"], ["Klikken", "2"]], "onderNa": "Een hub moet linkwaarde doorgeven, niet zelf op stadstermen ranken.", "doen": [["Laten staan", "Zodra de losse locatiepagina&#39;s zijn opgeruimd, wordt de hub vanzelf duidelijker."]], "bouwer": ["Niets"], "let": "", "naartoe": "Overzichtspagina van de zes vestigingssteden.", "bron": "Search Console 01-05 t/m 27-08-2026"}]}, {"id": "g6", "titel": "Wordt in een ander cluster besloten", "sub": "4 pagina's", "kleur": "none", "intro": "Deze pagina's duiken op bij Amsterdam, maar horen ergens anders thuis. Ze staan hier zodat ze niet vergeten worden.", "pages": [{"url": "/soa-klinieken/soa-test-rotterdam/", "actie": "Cluster Rotterdam", "sub": "304 vertoningen op Amsterdamse zoekopdrachten", "hand": "De Rotterdam-pagina verschijnt op Amsterdamse zoekopdrachten. Dat is geen fout in de pagina zelf maar een gevolg van de rommel eromheen.", "onder": [["Vertoningen op Amsterdam", "304"], ["Klikken daaruit", "1"], ["Eigen klikken", "1.538, de sterkste locatiepagina van de site"]], "onderNa": "", "doen": [["Niets in deze ronde", "Dit symptoom verdwijnt zodra de Amsterdamse pagina&#39;s zijn opgeruimd."]], "bouwer": ["Niets"], "let": "", "naartoe": "Elke stadspagina verschijnt alleen nog op zijn eigen stad.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/soa-klinieken/soa-test-utrecht/", "actie": "Cluster Utrecht", "sub": "200 vertoningen op Amsterdamse zoekopdrachten", "hand": "Zelfde verhaal als Rotterdam.", "onder": [["Vertoningen op Amsterdam", "200"], ["Eigen klikken", "883"]], "onderNa": "", "doen": [["Niets in deze ronde", "Wordt in cluster 5 behandeld."]], "bouwer": ["Niets"], "let": "", "naartoe": "Ongewijzigd tot cluster 5.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/soa-klinieken/soa-test-den-haag/", "actie": "Cluster Den Haag", "sub": "66 vertoningen op Amsterdamse zoekopdrachten", "hand": "Zelfde verhaal.", "onder": [["Vertoningen op Amsterdam", "66"], ["Eigen klikken", "1.065"]], "onderNa": "", "doen": [["Niets in deze ronde", "Wordt in cluster 3 behandeld."]], "bouwer": ["Niets"], "let": "", "naartoe": "Ongewijzigd tot cluster 3.", "bron": "Search Console 01-05 t/m 27-08-2026"}, {"url": "/soa-kliniek-monster/", "actie": "Cluster Den Haag", "sub": "53 vertoningen op Amsterdam, 729 op Den Haag", "hand": "Monster heeft geen vestiging en duikt bij twee clusters op. De pagina hoort bij Den Haag, want daar haalt hij veertien keer zoveel vertoningen.", "onder": [["Vertoningen op Amsterdamse zoekopdrachten", "53"], ["Vertoningen op Den Haag-zoekopdrachten", "729"], ["Vestiging in Monster", "nee"]], "onderNa": "Als we deze pagina hier zouden doorsturen, komt iemand uit Monster in Amsterdam uit in plaats van in Den Haag, twintig minuten verderop.", "doen": [["Niets in deze ronde", "Wordt in cluster 3 opgeruimd, samen met Naaldwijk, Schipluiden en Westland."]], "bouwer": ["Niets"], "let": "", "naartoe": "Wordt in cluster Den Haag doorgestuurd naar de Haagse kliniekpagina.", "bron": "Search Console 01-05 t/m 27-08-2026"}]}], "vragen": [{"id": "q1", "vraag": "De Engelstalige Amsterdam-pagina: behouden en echt vertalen, of laten vervallen?", "link": "https://onedayclinic.nl/en/soa-klinieken/soa-test-amsterdam/", "context": "Deze pagina haalt 36 klikken op Amsterdamse zoekopdrachten en is de best presterende Engelse locatiepagina van de site. De titel is Engels, maar de tekst en de URL zijn Nederlands. Volgens Google is een anderstalige pagina met onvertaalde tekst een duplicaat van het origineel, en dat is precies waarom hij nu bij Nederlandse zoekopdrachten opduikt.", "advies": "Ons advies: behouden en echt vertalen, met een Engelse URL en wederkerige hreflang. Amsterdam heeft een grote groep expats, studenten en toeristen die in het Engels zoekt. Op std test amsterdam wordt 250 keer per maand gezocht.", "opties": ["Behouden en echt vertalen, zoals geadviseerd", "Laten vervallen en 301 naar de Nederlandse pagina", "Graag eerst overleg"]}, {"id": "q2", "vraag": "Klopt de belofte van uitslag in 30 minuten nog, en geldt die alleen in Amsterdam Zuid?", "link": "https://onedayclinic.nl/soa-klinieken/soa-test-amsterdam/", "context": "Die belofte staat in de titel van de kliniekpagina en in de URL van de spoedpagina. Volgens onze gegevens uit april kan die spoedtest alleen in Amsterdam Zuid en kost hij 270 euro, naast de sneltest van 225 euro met uitslag binnen 90 minuten en de standaardtest van 115 euro.", "advies": "Ons advies: de belofte behouden en er direct bij zetten dat de 30 minuten voor Amsterdam Zuid geldt. Dat is het sterkste verschil met de GGD en het is eerlijker naar de bezoeker. Zolang dit niet bevestigd is, raken we de spoedpagina niet aan.", "opties": ["Klopt, met vermelding erbij dat het Amsterdam Zuid betreft", "Klopt niet meer, wij geven de juiste gegevens door", "Graag eerst overleg"]}, {"id": "q3", "vraag": "Akkoord met het opruimen van de plaatsen rond Amsterdam zonder vestiging?", "link": null, "context": "Het gaat om Diemen, Amstelveen, Hoofddorp, Zaandam, Purmerend, Uithoorn en Abcoude. Daar zit geen kliniek en geen testpunt. Samen zijn dat zestien Nederlandse pagina&#39;s plus hun Engelse kopie&euml;n, goed voor ongeveer 90 klikken in vier maanden.", "advies": "Ons advies: allemaal doorsturen naar de Amsterdam-pagina. Deze plaatsen krijgen nooit een eigen ronde, dus als we ze nu niet opruimen blijven ze staan en blijven ze de Amsterdam-pagina in de weg zitten. Haarlem blijft wel, als eerlijke keuzehulp, want die haalt 127 klikken.", "opties": ["Akkoord, allemaal doorsturen", "Wij willen een of meer van deze plaatsen behouden", "Graag eerst overleg"]}]}</script>
+<script type="application/json" id="answers-state">{"answers":{},"notes":{},"savedAt":null}</script>
+<div class="wrap" id="app"></div>
+<script>
+(function(){
+var D=JSON.parse(document.getElementById('cluster-data').textContent);
+var STATE=JSON.parse(document.getElementById('answers-state').textContent);
+var app=document.getElementById('app');
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function kl(k){return k==='301'?'g301':k;}
+
+function groepHTML(g){
+  var h='<details class="grp '+kl(g.kleur)+'"><summary><div class="grphead"><b>'+g.titel+'</b><span class="cnt">'+g.sub+'</span><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="grpbody">';
+  h+='<p class="grpintro">'+g.intro+'</p><div class="rows">';
+  g.pages.forEach(function(p,i){h+=pageHTML(g,p,i+1);});
+  h+='</div></div></details>';
+  return h;
+}
+
+function pageHTML(g,p,n){
+  var h='<details class="row"><summary><div class="rowhead"><span class="rownum">'+n+'</span><span class="caret">&#9654;</span>';
+  h+='<span class="rowmain"><span class="rowurl">'+p.url+'</span><span class="rowsub">'+p.sub+'</span></span>';
+  h+='<span class="rowright"><span class="pgact">'+p.actie+'</span></span></div></summary><div class="body">';
+  h+='<div class="block"><h3>Wat er aan de hand is</h3><p>'+p.hand+'</p></div>';
+  if(p.onder&&p.onder.length){
+    h+='<div class="block"><h3>De onderbouwing</h3><dl class="kv">';
+    p.onder.forEach(function(r){h+='<dt>'+r[0]+'</dt><dd>'+r[1]+'</dd>';});
+    h+='</dl>';
+    if(p.onderNa){h+='<p style="margin-top:13px">'+p.onderNa+'</p>';}
+    h+='</div>';
+  }
+  if(p.doen&&p.doen.length){
+    h+='<div class="block"><h3>Wat er moet gebeuren, en waarom</h3><ul class="tight">';
+    p.doen.forEach(function(d){h+='<li><strong>'+d[0]+'.</strong> '+d[1]+'</li>';});
+    h+='</ul></div>';
+  }
+  if(p.let){h+='<div class="block"><p class="pglet">'+p.let+'</p></div>';}
+  if(p.bouwer&&p.bouwer.length){
+    h+='<div class="block dev"><h3>Voor de sitebouwer</h3><ol class="tight">';
+    p.bouwer.forEach(function(b){h+='<li>'+b+'</li>';});
+    h+='</ol></div>';
+  }
+  h+='<div class="block"><h3>Waar we met deze pagina naartoe willen</h3><p>'+p.naartoe+'</p></div>';
+  h+='<p class="src">Bron: '+p.bron+'</p></div></details>';
+  return h;
+}
+
+function vraagHTML(q){
+  var a=STATE.answers[q.id]||'',n=STATE.notes[q.id]||'';
+  var h='<div class="q-item"><div class="qq">'+esc(q.vraag)+'</div>';
+  if(q.link){h+='<p style="margin:0 0 9px"><a class="u" href="'+q.link+'" target="_blank" rel="noopener">Bekijk de pagina '+esc(q.link.replace('https://onedayclinic.nl',''))+'</a></p>';}
+  h+='<div class="qc">'+q.context+'</div><div class="note" style="margin-bottom:13px">'+q.advies+'</div><div class="opts">';
+  q.opties.forEach(function(o){h+='<label class="opt"><input type="radio" name="'+q.id+'" value="'+esc(o)+'"'+(a===o?' checked':'')+'><span>'+esc(o)+'</span></label>';});
+  h+='</div><textarea data-note="'+q.id+'" placeholder="Toelichting, optioneel">'+esc(n)+'</textarea></div>';
+  return h;
+}
+
+function render(){
+var h='';
+h+='<header class="top"><p class="eyebrow">One Day Clinic &middot; cluster 1 van 10</p><h1>Cluster Amsterdam</h1>';
+h+='<p class="lede">Vijftig pagina&#39;s horen bij dit cluster. E&eacute;n wordt de pagina waar alles op uitkomt, veertig verwijzen voortaan door, drie worden aangepast en zes blijven zoals ze zijn. Klap een groep open om te zien wat er per pagina moet gebeuren.</p>';
+h+='<div class="meta">'+''+'<span>Versie '+D.versie+'</span><span>Pingwin, 28 augustus 2026</span><span>Search Console 01-05 t/m 27-08-2026</span></div></header>';
+
+h+='<section class="stats">';
+h+='<div class="stat hot"><span class="k">Eigen pagina&#39;s die meedingen op de Amsterdamse zoekopdrachten</span><span class="v">99</span><span class="s">meer dan 50 vertoningen in vier maanden</span></div>';
+h+='<div class="stat"><span class="k">Pagina&#39;s die in dit cluster worden aangepakt</span><span class="v">50</span><span class="s">de rest hoort bij een ander cluster of hoeft niets</span></div>';
+h+='<div class="stat"><span class="k">Daarvan doorsturen</span><span class="v">40</span><span class="s">16 Nederlands, 24 Engels</span></div>';
+h+='<div class="stat"><span class="k">Positie op soa test amsterdam</span><span class="v">3,7</span><span class="s">doel is de top 3</span></div>';
+h+='</section>';
+
+
+
+h+='<details class="ctx"><summary><div class="ctxhead"><b>Context: wat er aan de hand is, hoe we het bepaald hebben en waarom er zoveel locatiepagina&#39;s zijn</b><span class="open-l">Openklappen</span><span class="close-l">Dichtklappen</span></div></summary><div class="cards">';
+
+h+='<div class="card"><h3>Dit is er aan de hand</h3>';
+h+='<p>Op de zoekopdrachten met Amsterdam erin laat Google <strong>99 verschillende eigen pagina&#39;s</strong> zien naast de kliniekpagina. Dat zijn pagina&#39;s met meer dan vijftig vertoningen in vier maanden, dus geen toevallige uitschieters.</p>';
+h+='<p>Google moet dus bij elke zoekopdracht opnieuw kiezen welke van jullie pagina&#39;s hij toont. De kliniekpagina staat daardoor gemiddeld op positie 3,7 in plaats van in de top drie, en op 28 juli nam een blogartikel de plek over waarna de positie zakte van 2 naar 8.</p>';
+h+='<p>Dat is niet te verklaren uit autoriteit. Op elk linkgetal is One Day Clinic sterker dan Stadskliniek, dat wel hoger staat. Het verschil is versnippering.</p>';
+h+='<div class="scroll"><table><thead><tr><th>&nbsp;</th><th class="num">One Day Clinic</th><th class="num">Stadskliniek</th></tr></thead><tbody><tr><td>Domain Rating</td><td class="num">43</td><td class="num">39</td></tr><tr><td>URL Rating van de pagina</td><td class="num">14</td><td class="num">7</td></tr><tr><td>Verwijzende domeinen</td><td class="num">97</td><td class="num">44</td></tr></tbody></table></div></div>';
+
+h+='<div class="card"><h3>Hoe we dit cluster hebben bepaald</h3>';
+h+='<p>Niet op wat er in het webadres staat. We hebben in Search Console alle zoekopdrachten opgehaald met Amsterdam, Amstelveen of Diemen erin, en per zoekopdracht gekeken welke pagina&#39;s vertoningen krijgen. Zo komen ook pagina&#39;s bovendrijven die je op naam nooit zou vinden.</p>';
+h+='<p>Daarbij horen twee regels die bepalen welke pagina in welk cluster wordt behandeld.</p>';
+h+='<p><strong>Een plaats zonder vestiging hoort bij het cluster van de dichtstbijzijnde kliniek.</strong> Hoofddorp, Zaandam en Diemen worden dus hier opgeruimd. Zonder die regel wachten ze op een eigen ronde die er nooit komt, want er komt geen cluster Hoofddorp.</p>';
+h+='<p><strong>Een Engelse kopie wordt in hetzelfde cluster behandeld als zijn Nederlandse origineel</strong>, maar krijgt wel een eigen besluit op Engelse zoekdata.</p></div>';
+
+h+='<div class="card"><h3>Waarom er zoveel locatiepagina&#39;s zijn</h3>';
+h+='<p>De site kent drie parallelle URL-vormen voor dezelfde plaatsen, plus losse stadsblogs en een Engelse kopie van alles. Samen circa 190 locatie-URL&#39;s voor zestien echte punten.</p>';
+h+='<p>Wij toetsen elke locatiepagina op &eacute;&eacute;n vraag vooraf: <strong>is er een fysiek adres?</strong> Zo ja, dan blijft de pagina, ongeacht zoekvolume. Zo nee, dan moet de pagina zichzelf bewijzen.</p>';
+h+='<div class="scroll"><table><thead><tr><th>Situatie</th><th>Wat de pagina wordt</th></tr></thead><tbody>';
+[['Fysiek adres en serieuze vraag','volwaardige landingpage'],['Fysiek adres, weinig of geen vraag','korte feitelijke pagina van 200 tot 400 woorden'],['Geen adres, wel vraag, kliniek in de buurt','eerlijke keuzehulp die zegt dat er geen vestiging is'],['Geen adres en geen eigen antwoord','301 naar de dichtstbijzijnde kliniek']].forEach(function(r){h+='<tr><td>'+r[0]+'</td><td>'+r[1]+'</td></tr>';});
+h+='</tbody></table></div>';
+h+='<p style="margin-top:14px">Twee regels sluiten de discussie af. <strong>Dun is geen probleem, dubbel wel.</strong> En <strong>&eacute;&eacute;n pagina per zoekvraag, niet per pand.</strong></p></div>';
+
+h+='<div class="card"><h3>Wat daarmee moet</h3>';
+h+='<p>Voor de hele site komt dat uit op 25 locatiepagina&#39;s in plaats van circa 190: 6 vestigingssteden, 9 testpunten, 8 keuzehulpen en 2 overzichtspagina&#39;s.</p>';
+h+='<p>Van het Nederlandse locatieverkeer blijft <strong>92 procent</strong> staan op de pagina&#39;s die we houden. Wat verdwijnt is ongeveer 750 klikken over vier maanden, verdeeld over tientallen pagina&#39;s die nu vooral elkaar in de weg zitten.</p></div>';
+h+='</div></details>';
+
+h+='<section><h2 style="margin-bottom:6px">Wat er per pagina moet gebeuren</h2>';
+h+='<p style="margin-bottom:18px;color:var(--muted)">Zes groepen, allemaal dicht. Klap een groep open en daarna een pagina, dan zie je per pagina wat er aan de hand is, de cijfers eronder, wat er moet gebeuren en waarom, en de instructie voor de sitebouwer.</p>';
+h+='<div style="display:flex;flex-direction:column;gap:10px">';
+D.groepen.forEach(function(g){h+=groepHTML(g);});
+h+='</div></section>';
+
+h+='<section class="panel"><h2>Instructie voor de sitebouwer</h2>';
+h+='<p>Voer uit in deze volgorde. De sitemap staat bewust als laatste.</p><div class="devstap">';
+
+h+='<div class="dev1"><h3>Stap 1. De redirects</h3><ol>';
+h+='<li>Alle doorverwijzingen zijn <strong>301</strong>, permanent. Geen 302 en geen ketens: elke oude URL wijst in &eacute;&eacute;n stap naar de eindbestemming.</li>';
+h+='<li>Wijst een oude URL nu al door naar een pagina die op zijn beurt doorwijst, maak daar dan &eacute;&eacute;n stap van.</li>';
+h+='<li>De volledige lijst staat in de redirectmap hieronder.</li>';
+h+='<li>Verwijder daarna de interne links naar de doorgestuurde pagina&#39;s, ook in menu en footer.</li></ol></div>';
+
+h+='<div class="dev1"><h3>Stap 2. De Engelse pagina die blijft</h3>';
+h+='<p style="font-size:14px;margin-bottom:8px">Geldt voor <span class="mono">/en/soa-klinieken/soa-test-amsterdam/</span>, en alleen nadat de klant vraag 1 heeft beantwoord.</p><ol>';
+h+='<li>Maak een nieuwe Engelse URL, bijvoorbeeld <span class="mono">/en/sti-clinics/std-test-amsterdam/</span>, en zet een 301 vanaf de oude URL.</li>';
+h+='<li>Vertaal <strong>alles</strong>: title, H1, meta description, tussenkoppen, lopende tekst, knopteksten en formulierlabels. Een Engelse titel boven Nederlandse tekst blijft voor Google een duplicaat van de Nederlandse pagina.</li>';
+h+='<li>Zet hreflang in de <span class="mono">&lt;head&gt;</span> van <strong>beide</strong> pagina&#39;s. Wederkerig en inclusief een verwijzing naar zichzelf. Ontbreekt de verwijzing terug, dan negeert Google het hele blok.</li>';
+h+='<li>Voeg <span class="mono">x-default</span> toe en laat die naar de Nederlandse pagina wijzen.</li>';
+h+='<li>Hreflang verwijst alleen naar URL&#39;s die 200 geven. <strong>Nooit naar een URL die doorstuurt.</strong></li>';
+h+='<li>Zet hreflang &oacute;f in de paginabron &oacute;f in de sitemap, niet op beide plekken.</li>';
+h+='<li><strong>De canonical van elke taalversie wijst naar zichzelf.</strong> Dus de Engelse pagina heeft een canonical naar de Engelse pagina, niet naar de Nederlandse. Een canonical naar de andere taal haalt de pagina uit de index.</li></ol>';
+h+='<div class="codeblok">Op de Nederlandse pagina:\n&lt;link rel="canonical" href="https://onedayclinic.nl/soa-klinieken/soa-test-amsterdam/"&gt;\n&lt;link rel="alternate" hreflang="nl" href="https://onedayclinic.nl/soa-klinieken/soa-test-amsterdam/"&gt;\n&lt;link rel="alternate" hreflang="en" href="https://onedayclinic.nl/en/sti-clinics/std-test-amsterdam/"&gt;\n&lt;link rel="alternate" hreflang="x-default" href="https://onedayclinic.nl/soa-klinieken/soa-test-amsterdam/"&gt;\n\nOp de Engelse pagina:\n&lt;link rel="canonical" href="https://onedayclinic.nl/en/sti-clinics/std-test-amsterdam/"&gt;\n&lt;link rel="alternate" hreflang="nl" href="https://onedayclinic.nl/soa-klinieken/soa-test-amsterdam/"&gt;\n&lt;link rel="alternate" hreflang="en" href="https://onedayclinic.nl/en/sti-clinics/std-test-amsterdam/"&gt;\n&lt;link rel="alternate" hreflang="x-default" href="https://onedayclinic.nl/soa-klinieken/soa-test-amsterdam/"&gt;</div></div>';
+
+h+='<div class="dev1"><h3>Stap 3. De 24 andere Engelse pagina&#39;s</h3><ol>';
+h+='<li>301 naar de Nederlandse pagina waar hun origineel naartoe gaat. De Engelse Diemen-pagina gaat dus naar de Nederlandse Amsterdam-pagina.</li>';
+h+='<li>Interne links naar deze pagina&#39;s verwijderen.</li>';
+h+='<li>Geen hreflang naar deze pagina&#39;s laten wijzen, want ze bestaan straks niet meer.</li></ol></div>';
+
+h+='<div class="dev1"><h3>Stap 4. De sitemap, als allerlaatste</h3>';
+h+='<p style="font-size:14px;margin-bottom:8px">Een sitemap is een lijst van URL&#39;s waarvan je wilt dat Google ze indexeert. Zet er dus nooit URL&#39;s in die je op het punt staat op te ruimen.</p><ol>';
+h+='<li>Wacht tot alle redirects uit stap 1 tot en met 3 live staan.</li>';
+h+='<li>Haal de doorgestuurde URL&#39;s uit de sitemap. Stonden ze er nog niet in, laat ze er dan uit.</li>';
+h+='<li>Voeg daarna pas de pagina&#39;s toe die blijven en die nog niet in de sitemap stonden.</li>';
+h+='<li><strong>Meld de Engelse sectie nu nog niet aan.</strong> Alleen de ene Engelse pagina die blijft, en pas nadat hij vertaald is.</li>';
+h+='<li>Optioneel en tijdelijk: een aparte sitemap met alleen de doorgestuurde URL&#39;s, zodat Google de redirects sneller oppikt. Die haal je na vier tot zes weken weg.</li></ol></div>';
+
+h+='<div class="dev1"><h3>Stap 5. Losse technische punten</h3><ol>';
+h+='<li>De Nijmegen-pagina bestaat onder drie adressen: <span class="mono">http://www.onedayclinic.nl/soa-klinieken/soa-test-nijmegen/</span>, de https-versie en <span class="mono">/soa-klinieken-nijmegen/</span>. Samen 457 klikken die Google niet optelt. Voeg ze samen tot &eacute;&eacute;n adres.</li>';
+h+='<li>Leg vast welke schrijfwijze de juiste is, met of zonder schuine streep aan het eind, en laat de andere daar automatisch naartoe verwijzen.</li>';
+h+='<li>Ruim de sitebrede keten van http naar www op: nu twee stappen, dat moet er &eacute;&eacute;n zijn.</li></ol></div>';
+h+='</div></section>';
+
+h+='<section class="panel"><h2>De redirectmap</h2><p>Alles 301, &eacute;&eacute;n stap, geen ketens. De Engelse kopie van elke pagina hieronder gaat mee naar hetzelfde doel.</p>';
+h+='<div class="scroll"><table><thead><tr><th>Van</th><th>Naar</th></tr></thead><tbody>';
+[['/soa-poli-amsterdam/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/de-voordelen-van-een-soa-test-in-amsterdam/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/spoed-soa-test-amsterdam-na-30-minuten-uitslag/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-klinieken/soa-test-diemen/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-klinieken/soa-amstelveen/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-kliniek-amstelveen/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-poli-amstelveen/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-test-locaties/soa-test-amstelveen/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-poli-hoofddorp/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-test-locaties/soa-test-hoofddorp/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-kliniek-hoofddorp/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-poli-zaandam/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-klinieken/soa-test-zaandam/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-test-locaties/soa-test-purmerend/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-test-locaties/soa-test-uithoorn/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-poli-abcoude/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-klinieken/soa-test-abcoude/','/soa-klinieken/soa-test-amsterdam/'],
+ ['/soa-klinieken/soa-test-haarlem/','/soa-poli-haarlem/'],
+ ['/en/soa-klinieken/soa-test-amsterdam/','/en/sti-clinics/std-test-amsterdam/ (alleen bij akkoord op vraag 1)']].forEach(function(r){
+  h+='<tr><td class="mono">'+r[0]+'</td><td class="mono">'+r[1]+'</td></tr>';});
+h+='</tbody></table></div>';
+h+='<p style="margin-top:14px" class="note">Voor elke Nederlandse regel hierboven geldt: de Engelse kopie krijgt dezelfde doorverwijzing, naar dezelfde Nederlandse pagina. Dat zijn 24 extra regels.</p></section>';
+
+h+='<section class="panel flat"><h2>En de andere clusters dan?</h2>';
+h+='<p>Dit is wat er nog aankomt. De kolom <strong>meedingende pagina&#39;s</strong> is alleen ingevuld waar wij het echt hebben doorgemeten. Bij de rest staat nog niet gemeten, want een getal dat op een andere manier is geteld zegt niets.</p>';
+h+='<p>De kolom <strong>locatiepagina&#39;s in de regio</strong> is wel overal geteld: dat is het aantal bestaande pagina&#39;s voor plaatsen zonder vestiging rond die stad, Nederlands en Engels bij elkaar. Dat geeft een beeld van de hoeveelheid opruimwerk.</p>';
+h+='<div class="scroll"><table><thead><tr><th>&nbsp;</th><th>Cluster</th><th class="num">Meedingende pagina&#39;s</th><th class="num">Locatiepagina&#39;s in de regio</th><th>Wat er speelt</th></tr></thead><tbody>';
+[['1','Amsterdam','41','circa 40','Diemen, Amstelveen, Hoofddorp, Zaandam, Purmerend, Uithoorn, Abcoude'],
+     ['2','Rotterdam','27','circa 24','Schiedam, Monster, Spijkenisse, Barendrecht, Ridderkerk, Dordrecht, Gouda, Waddinxveen'],
+     ['3','Den Haag','9','circa 22','Monster, Naaldwijk, Schipluiden, Nootdorp, Wassenaar, Westland'],
+     ['4','Eindhoven','11','circa 14','Nuenen, Brandevoort, Mierlo, Helmond, Veldhoven'],
+     ['5','Utrecht','11','circa 30','Houten, Nieuwegein, Bunnik, Zeist, Vianen, Mijdrecht, IJsselstein, Harmelen, Woerden, Maarsseveen, Baarn'],
+     ['6','Nijmegen','5','circa 22','Beuningen, Bemmel, Cuijk, Wijchen, Ewijk, Malden, Grave, Groesbeek'],
+     ['7','De negen testpunten','niet van toepassing','&mdash;','Geen keuze tussen pagina&#39;s, wel inkorten tot adres en openingstijden'],
+     ['8','Sneltest en spoed','nog niet gemeten','&mdash;','Vijf pagina&#39;s over hetzelfde onderwerp'],
+     ['9','Amstelveen','vervalt','&mdash;','Gaat mee in cluster 1, want Amstelveen heeft geen vestiging'],
+     ['10','Bloedonderzoek per stad','nog niet gemeten','&mdash;','Eigen dienstencluster met dezelfde stadsopzet']].forEach(function(r){
+  h+='<tr><td class="st">'+r[0]+'</td><td>'+r[1]+'</td><td class="num">'+r[2]+'</td><td class="num">'+r[3]+'</td><td>'+r[4]+'</td></tr>';});
+h+='</tbody></table></div>';
+h+='<p style="margin-top:16px">Bij elkaar gaat het om ruim honderdvijftig locatiepagina&#39;s voor plaatsen waar geen kliniek en geen testpunt zit. Dat is het echte opruimwerk, en het is de reden dat de zes stadspagina&#39;s nu niet in de top drie staan.</p></section>';
+
+h+='<section class="panel"><h2>Van hoeveel pagina&#39;s naar hoeveel</h2>';
+    h+='<p>De site heeft nu vijf verschillende URL-vormen voor dezelfde plaatsen, plus stadsblogs en een Engelse kopie van alles. Straks is er nog &eacute;&eacute;n vorm.</p>';
+    h+='<div class="scroll"><table><thead><tr><th>URL-vorm</th><th class="num">Nu</th><th class="num">Straks</th></tr></thead><tbody>';
+    [['<span class="mono">/soa-klinieken/soa-test-{plaats}/</span>','circa 36','15'],
+     ['<span class="mono">/soa-test-locaties/soa-test-{plaats}/</span>','circa 30','0'],
+     ['<span class="mono">/soa-poli-{plaats}/</span>','circa 22','0'],
+     ['<span class="mono">/soa-kliniek-{plaats}/</span>','circa 10','0'],
+     ['Stadsblogs en losse varianten','circa 15','8, als keuzehulp'],
+     ['Engelse kopie&euml;n van dit alles','circa 77','1'],
+     ['Overzichtspagina&#39;s','1','2'],
+     ['<strong>Totaal</strong>','<strong>circa 190</strong>','<strong>26</strong>']].forEach(function(r){
+      h+='<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td><td class="num">'+r[2]+'</td></tr>';});
+    h+='</tbody></table></div>';
+    h+='<p style="margin-top:16px">Van circa 190 locatie-URL&#39;s naar 26, voor zestien echte punten: zeven klinieken en negen testpunten. Van het Nederlandse locatieverkeer blijft 92 procent staan.</p></section>';
+
+    h+='<section class="panel flat"><h2>Tijdpad</h2>';
+    h+='<p>Uitgangspunt is drie uur per week aan dit project. Eerst de zes steden waar de klinieken zitten, want daar zit het verkeer. Daarna de rest. Tussen elke cluster zit meettijd, want anders weet je niet wat een ingreep heeft gedaan.</p>';
+    h+='<div class="scroll"><table><thead><tr><th class="num">Week</th><th>Wat</th><th>Waarom in deze volgorde</th></tr></thead><tbody>';
+    [['1','Techniek en herstel','Stopt actief verkeerslek en kan meteen naar de sitebouwer'],
+     ['2 en 3','Cluster Amsterdam uitvoeren','Grootste cluster, 41 meedingende pagina&#39;s'],
+     ['4 en 5','Cluster Rotterdam','27 meedingende pagina&#39;s, sterkste locatiepagina van de site'],
+     ['6 en 7','Cluster Den Haag','Winnaar staat op positie 9,5, veel te laag'],
+     ['8 en 9','Cluster Eindhoven','Nuenen, Brandevoort, Helmond en een losse hiv-testpagina'],
+     ['10 en 11','Cluster Utrecht','Twee oude stadsblogs plus Nieuwegein en Houten'],
+     ['12 en 13','Cluster Nijmegen','Pas na het samenvoegen van de drie adressen'],
+     ['14','Meten en rapporteren','Eerste tussenstand over de zes steden samen'],
+     ['15 en 16','De negen testpunten','Inkorten tot adres en openingstijden, geen keuze tussen pagina&#39;s'],
+     ['17 en 18','De Engelse sectie','Grootste bron van dubbeling: circa 77 pagina&#39;s naar 1'],
+     ['19 en 20','Sneltest en spoed','Vijf pagina&#39;s over hetzelfde onderwerp'],
+     ['21 en 22','Bloedonderzoek per stad','Eigen dienstencluster met dezelfde opzet'],
+     ['23','Eindmeting','Vergelijking met de nulmeting van 27 augustus']].forEach(function(r){
+      h+='<tr><td class="num">'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>';});
+    h+='</tbody></table></div>';
+    h+='<p style="margin-top:16px">Twee weken per cluster is inclusief de analyse, de instructie en het wachten op de sitebouwer. Gaat het sneller, dan schuift alles op. De volgorde staat vast, de weken zijn een planning.</p></section>';
+
+    h+='<section class="panel flat"><h2>Nulmeting</h2><p>Leg dit vast voordat er iets live gaat.</p><div class="scroll"><table><thead><tr><th>Meetpunt</th><th class="num">Stand 27-08-2026</th></tr></thead><tbody>';
+[['Klikken op de winnende pagina','1.571'],['Vertoningen op de Amsterdamse zoekopdrachten','16.538'],['Gemiddelde positie op soa test amsterdam','3,67'],['Eigen pagina&#39;s met meer dan 50 vertoningen','99'],['Klikken van het blogartikel','48']].forEach(function(r){h+='<tr><td>'+r[0]+'</td><td class="num">'+r[1]+'</td></tr>';});
+h+='</tbody></table></div>';
+h+='<p style="margin-top:16px"><strong>Binnen twee weken</strong> zakt het aantal eigen pagina&#39;s op de Amsterdamse zoekopdrachten.<br><strong>Binnen vier tot acht weken</strong> stopt het springen tussen pagina&#39;s.<br><strong>Binnen acht tot twaalf weken</strong> is de top 3 haalbaar.</p></section>';
+
+h+='<section class="panel" id="form"><h2>Wat we van jullie nodig hebben</h2><p>Alle andere keuzes hebben wij zelf gemaakt en onderbouwd. Bij elke vraag staat ons advies.</p>';
+D.vragen.forEach(function(q){h+=vraagHTML(q);});
+h+='<div class="saverow"><button class="btn primary" id="copyans">Kopieer antwoorden</button><span class="savemsg">Kopieer je antwoorden en mail ze naar Pingwin.</span></div>';
+h+='</section>';
+
+h+='<footer><hr class="sep" style="margin-bottom:18px"><p>Pingwin &middot; Maarten Vermeulen &middot; versie '+D.versie+', 28 augustus 2026. Alle klikken, vertoningen en posities komen rechtstreeks uit Google Search Console, domeinproperty onedayclinic.nl, over 1 mei tot en met 27 augustus 2026 (118 dagen). Zoekvolumes komen uit Ahrefs Keywords Explorer, Nederland, 28 augustus 2026.</p></footer>';
+
+app.innerHTML=h; wire();
+}
+
+function wire(){
+ app.querySelectorAll('input[type=radio]').forEach(function(r){r.addEventListener('change',function(){STATE.answers[r.name]=r.value;});});
+ app.querySelectorAll('[data-note]').forEach(function(t){t.addEventListener('input',function(){STATE.notes[t.dataset.note]=t.value;});});
+ var c=document.getElementById('copyans');
+ if(c){c.addEventListener('click',function(){navigator.clipboard.writeText(answersText()).then(function(){var o=c.textContent;c.textContent='Gekopieerd';setTimeout(function(){c.textContent=o;},1600);});});}
+ app.querySelectorAll('[data-copy]').forEach(function(b){b.addEventListener('click',function(){
+   var t=document.getElementById(b.dataset.copy).textContent;
+   navigator.clipboard.writeText(t).then(function(){var o=b.textContent;b.textContent='Gekopieerd';setTimeout(function(){b.textContent=o;},1600);});});});
+}
+function answersText(){
+ var l=['Antwoorden cluster Amsterdam, One Day Clinic, versie '+D.versie,''];
+ D.vragen.forEach(function(q){l.push(q.vraag);l.push('  Antwoord: '+(STATE.answers[q.id]||'nog niet ingevuld'));if(STATE.notes[q.id]){l.push('  Toelichting: '+STATE.notes[q.id]);}l.push('');});
+ return l.join('\n');
+}
+render();
+})();
+</script>
+</body>
+</html>

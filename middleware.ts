@@ -6,8 +6,52 @@ import { vensterKlant, magVensterPad, vensterStartPad } from "./lib/klantvenster
 // échte handtekening-controle gebeurt in Node (de pagina's zelf verifiëren
 // en sturen een vervalste cookie alsnog weg). Geen crypto hier, want de
 // Edge-runtime ondersteunt Node's crypto niet.
+// De interne map onder een gedeelde clusterpagina. Alles eronder zit achter
+// een wachtwoord; de openbare versie ernaast blijft vrij.
+const INTERN_PAD = "/share/cluster/onedayclinic/intern-9f3a2b";
+const INTERN_GEBRUIKER = "pingwin";
+
+// Vergelijken zonder dat de duur van de vergelijking iets verraadt.
+function gelijk(a: string, b: string) {
+  if (a.length !== b.length) return false;
+  let verschil = 0;
+  for (let i = 0; i < a.length; i++) verschil |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return verschil === 0;
+}
+
+function internToegang(req: NextRequest): NextResponse {
+  const wachtwoord = process.env.INTERN_WACHTWOORD;
+
+  // Geen wachtwoord ingesteld = de map bestaat niet. Nooit omdraaien naar
+  // "standaard open"; dezelfde regel als bij /admin/enter.
+  if (!wachtwoord) return new NextResponse("Niet gevonden", { status: 404 });
+
+  const kop = req.headers.get("authorization") || "";
+  if (kop.startsWith("Basic ")) {
+    try {
+      const [gebruiker, ...rest] = atob(kop.slice(6)).split(":");
+      if (gelijk(gebruiker, INTERN_GEBRUIKER) && gelijk(rest.join(":"), wachtwoord)) {
+        return NextResponse.next();
+      }
+    } catch {
+      // Onleesbare kop telt als niet ingelogd.
+    }
+  }
+
+  return new NextResponse("Inloggen vereist", {
+    status: 401,
+    headers: { "WWW-Authenticate": 'Basic realm="Pingwin intern", charset="UTF-8"' },
+  });
+}
+
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
+
+  // ── Interne clusterpagina's: wachtwoord vóór alles ──
+  // Staat bovenaan, zodat geen enkele andere regel eronderuit kan komen.
+  if (path === INTERN_PAD || path.startsWith(INTERN_PAD + "/")) {
+    return internToegang(req);
+  }
 
   // ── Klantvenster: deze omgeving toont maar één klant ──
   // Alleen actief als WERELD_KLANT ingesteld is (zie lib/klantvenster.ts).
@@ -69,5 +113,13 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/dashboard/:path*", "/admin", "/admin/:path*", "/api/cron/:path*"],
+  matcher: [
+    "/login",
+    "/dashboard/:path*",
+    "/admin",
+    "/admin/:path*",
+    "/api/cron/:path*",
+    "/share/cluster/onedayclinic/intern-9f3a2b",
+    "/share/cluster/onedayclinic/intern-9f3a2b/:path*",
+  ],
 };
