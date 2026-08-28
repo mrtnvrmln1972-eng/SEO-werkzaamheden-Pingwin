@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9635,
-    "stijlregels": 4650,
-    "classnamen": 3185
+    "regels": 9649,
+    "stijlregels": 4657,
+    "classnamen": 3192
   },
   "kleuren": {
     "verschillend": 40,
@@ -300,13 +300,14 @@
     },
     {
       "naam": "Kaarten en panelen",
-      "aantal": 77,
+      "aantal": 78,
       "namen": [
         "act-card",
         "ag-datumknop-panel",
         "at-paneel",
         "cannibal-panel",
         "card",
+        "cl-kaart",
         "client-frame-card",
         "cockpit-card",
         "cw-kaart",
@@ -1930,7 +1931,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8949,
-    "schaalGebruik": 1507
+    "gebruik": 8961,
+    "schaalGebruik": 1510
   }
 }
