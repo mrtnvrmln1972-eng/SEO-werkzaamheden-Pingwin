@@ -23,7 +23,7 @@ export const BLOKKEN: Uitklapper[] = [
       "HTML, dat moet je zien.\n" +
       "2. **De kennisbank.** Waartegen we een pagina houden, te zien op `/admin/pagina-lab`.\n" +
       "3. **Gedrag.** Wat bezoekers er werkelijk deden, uit Analytics en Clarity.\n" +
-      "4. **Het oordeel.** Sinds 20 augustus 2026 beoordeelt het lab één pagina zelf, met die drie lagen " +
+      "4. **Het oordeel.** Sinds 28 augustus 2026 beoordeelt het lab één pagina zelf, met die drie lagen " +
       "naast elkaar. Zie de uitklapper hieronder.\n\n" +
       "**Wat er nog niet is:** er komt geen taak uit voort en er wordt niets bewaard. Elke beoordeling is " +
       "een nieuwe, en het lab schrijft nergens iets weg zolang het naast het SEO-werk staat.",
