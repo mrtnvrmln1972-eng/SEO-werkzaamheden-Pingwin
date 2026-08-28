@@ -214,6 +214,23 @@ details[open]>summary .pijl{transform:rotate(90deg)}
 .ctxhead{grid-template-columns:20px minmax(0,1fr) auto;align-items:center}
 .panhead{grid-template-columns:20px minmax(0,1fr) auto;align-items:center}
 </style>
+
+<style>
+details.verder{background:var(--surface-2);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+details.verder>summary{cursor:pointer;list-style:none;padding:0}
+details.verder>summary::-webkit-details-marker{display:none}
+details.verder[open]>summary .panhead{border-bottom:1px solid var(--line)}
+details.verder[open] .tog-open{display:none}
+details.verder:not([open]) .tog-dicht{display:none}
+.verderbody{padding:20px;display:flex;flex-direction:column;gap:12px;background:var(--bg)}
+.verderbody details.pan{border-radius:16px}
+.verderbody details.pan .panhead{padding:16px 20px}
+.verderbody details.pan .panhead b{font-size:16px}
+/* lucht tussen de blokken */
+.wrap>section,.wrap>details{margin:0}
+.rows{gap:10px}
+details.grp{margin:0}
+</style>
 </head>
 <body>
 
@@ -323,7 +340,8 @@ h+='<div style="display:flex;flex-direction:column;gap:10px">';
 D.groepen.forEach(function(g){h+=groepHTML(g);});
 h+='</div></div></details>';
 
-h+='<details class="pan"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Instructie voor de sitebouwer</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody">';
+h+='<details class="verder"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Verder kijken: uitvoering, planning en cijfers</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="verderbody">';
+    h+='<details class="pan"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Instructie voor de sitebouwer</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody">';
 h+='<p>Voer uit in deze volgorde. De sitemap staat bewust als laatste.</p><div class="devstap">';
 
 h+='<div class="dev1"><h3>Stap 1. De redirects</h3><ol>';
@@ -445,7 +463,9 @@ h+='<details class="pan"><summary><div class="panhead"><span class="pijl">&#9654
 h+='</tbody></table></div>';
 h+='<p style="margin-top:16px"><strong>Binnen twee weken</strong> zakt het aantal eigen pagina&#39;s op de Amsterdamse zoekopdrachten.<br><strong>Binnen vier tot acht weken</strong> stopt het springen tussen pagina&#39;s.<br><strong>Binnen acht tot twaalf weken</strong> is de top 3 haalbaar.</p></div></details>';
 
-h+='<details class="pan" id="form"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Wat we van jullie nodig hebben</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody"><p>Alle andere keuzes hebben wij zelf gemaakt en onderbouwd. Bij elke vraag staat ons advies.</p>';
+h+='</div></details>';
+
+    h+='<details class="pan" id="form"><summary><div class="panhead"><span class="pijl">&#9654;</span><b>Wat we van jullie nodig hebben</b><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="panbody"><p>Alle andere keuzes hebben wij zelf gemaakt en onderbouwd. Bij elke vraag staat ons advies.</p>';
 D.vragen.forEach(function(q){h+=vraagHTML(q);});
 h+='<div class="saverow"><button class="btn primary" id="copyans">Kopieer antwoorden</button><span class="savemsg">Kopieer je antwoorden en mail ze naar Pingwin.</span></div>';
 h+='</div></details>';
