@@ -209,7 +209,10 @@ details.pan:not([open]) .tog-dicht{display:none}
 details[open]>summary .pijl{transform:rotate(90deg)}
 /* pijl links bij de contexttoggle en de groepen */
 .ctxhead{display:grid;grid-template-columns:20px 1fr auto;gap:14px;align-items:center}
-.grphead{grid-template-columns:20px 1fr auto auto;gap:14px}
+.grphead{grid-template-columns:20px minmax(0,1fr) auto auto;gap:14px;align-items:center}
+.grphead b{min-width:0}
+.ctxhead{grid-template-columns:20px minmax(0,1fr) auto;align-items:center}
+.panhead{grid-template-columns:20px minmax(0,1fr) auto;align-items:center}
 </style>
 </head>
 <body>
@@ -227,7 +230,7 @@ function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function kl(k){return k==='301'?'g301':k;}
 
 function groepHTML(g){
-  var h='<details class="grp '+kl(g.kleur)+'"><summary><div class="grphead"><b>'+g.titel+'</b><span class="cnt">'+g.sub+'</span><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="grpbody">';
+  var h='<details class="grp '+kl(g.kleur)+'"><summary><div class="grphead"><span class="pijl">&#9654;</span><b>'+g.titel+'</b><span class="cnt">'+g.sub+'</span><span class="tog"><span class="tog-open">Openklappen</span><span class="tog-dicht">Dichtklappen</span></span></div></summary><div class="grpbody">';
   h+='<p class="grpintro">'+g.intro+'</p><div class="rows">';
   g.pages.forEach(function(p,i){h+=pageHTML(g,p,i+1);});
   h+='</div></div></details>';
