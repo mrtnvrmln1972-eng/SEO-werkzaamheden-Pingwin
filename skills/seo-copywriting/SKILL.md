@@ -1,10 +1,62 @@
 ---
 name: seo-copywriting
-description: "Optimaliseert bestaande landingpage-copy of schrijft nieuwe SEO-webcopy. Werkt tegen harde, meetbare criteria uit SEO-CRITERIA.md: H2 keyword coverage 60-80% (target 70%), primair zoekwoord in eerste 100 woorden, density 0.5-2%, semantische variantendekking ≥60%, direct-antwoord-opening, FAQ-antwoorden 40-80 woorden — met pre-delivery validatie-loop die levert pas op als de scorecard pass is. Behoud van bestaande copy blijft leidend om SEO-continuïteit te beschermen. Gebruik deze skill wanneer iemand vraagt om: webcopy schrijven, landingpage copy, SEO-tekst optimaliseren, 'schrijf copy voor [pagina]', 'maak webcopy op basis van de blauwdruk', 'tekst uitschrijven voor [zoekterm]', 'content schrijven voor [URL]', 'landingpage tekst maken', of wanneer een blauwdruk beschikbaar is en de volgende stap het uitschrijven of optimaliseren van de tekst is Gebruik proactief zodra een blauwdruk is afgerond en de copy geschreven of geoptimaliseerd moet worden."
+description: "Optimaliseert bestaande landingpage-copy of schrijft nieuwe SEO-webcopy. Leest eerst de klantstem uit het klantdossier in Drive (klantstem.md, klant.md, toegang.md, meta.md) en toetst elke zin daaraan terug: verboden woorden, aanspreekvorm, onbevestigde claims, de streepjesregel, zin- en alinealengte. Elk getal en elk jaartal moet letterlijk in een bron staan, anders gaat het naar de lijst 'te bevestigen door de klant' in plaats van in de tekst. Werkt daarnaast tegen harde, meetbare criteria uit SEO-CRITERIA.md: H2 keyword coverage 60-80% (target 70%), primair zoekwoord in eerste 100 woorden, density 0.5-2%, semantische variantendekking ≥60%, direct-antwoord-opening, FAQ-antwoorden 40-80 woorden — met pre-delivery validatie-loop die levert pas op als de scorecard pass is. Behoud van bestaande copy blijft leidend om SEO-continuïteit te beschermen. Gebruik deze skill wanneer iemand vraagt om: webcopy schrijven, landingpage copy, SEO-tekst optimaliseren, 'schrijf copy voor [pagina]', 'maak webcopy op basis van de blauwdruk', 'tekst uitschrijven voor [zoekterm]', 'content schrijven voor [URL]', 'landingpage tekst maken', of wanneer een blauwdruk beschikbaar is en de volgende stap het uitschrijven of optimaliseren van de tekst is Gebruik proactief zodra een blauwdruk is afgerond en de copy geschreven of geoptimaliseerd moet worden."
 ---
 
 
-## ⚠️ Verplichte eerste stap — laad het criteria-document
+## ⚠️ Verplichte eerste stap A — lees de klantstem in
+
+**Voordat er ook maar één zin copy wordt geschreven, lees je het klantdossier.** Niet omdat het
+netjes staat, maar omdat een tekst zonder de stem van de klant een gok is. Deze stap is een
+poort, geen gewoonte: hij gaat open of hij gaat niet open.
+
+**Waar het staat.** Google Drive-map **Pingwin Klanten**, id `1OE60BWBnTpBpqfJoRfMR6k5tRSAe86kr`.
+Zoek de klantmap met `search_files` op `parentId = '1OE60BWBnTpBpqfJoRfMR6k5tRSAe86kr'` en match
+op de klantnaam. Geen map gevonden? Vraag of het dossier aangemaakt moet worden en schrijf niets.
+
+**Wat je leest, in deze volgorde:**
+
+| Bestand | Wat je eruit haalt | Zonder dit bestand |
+|---|---|---|
+| `klantstem.md` | de tone of voice en de schrijfregels: wat de klant nooit wil, hoe hij wel wil klinken, welke feiten vastliggen, met datum en bron | **STOP, je schrijft niets** |
+| `klant.md` (in oudere dossiers `dossier.md`) | wie de klant is, wat hij verkoopt, voor wie, in welke regio, en de propositie plus of die bevestigd is | je schrijft wel, maar elk feit dat hieruit had moeten komen gaat naar de lijst |
+| `toegang.md` | wat er live staat en waar: welk domein daadwerkelijk gemeten wordt, welke bronnen gekoppeld zijn, en langs welke route een wijziging op de site komt | je schrijft wel, maar je belooft geen doorzetting |
+| `meta.md` | de bestaande titles en descriptions per URL, met hun vindplaats, meting en goedkeuringsstand | je behandelt elke bestaande meta als ongemeten |
+
+Lees ook `WERKWIJZE.md` in de hoofdmap zodra de vraag over aanpak of volgorde gaat. Gebruik het
+dossier gewoon; vertel niet dat je het gelezen hebt en vat het niet samen. Wat je er wél mee doet,
+staat aan het eind in het toetsrapport: één regel met welke bronnen je hebt gelezen en van wanneer.
+
+### Ontbreekt `klantstem.md`, dan stopt de skill
+
+Geen `klantstem.md` in de klantmap betekent: **niet doorschrijven op gevoel.** Je levert geen copy,
+ook geen concept, ook niet "vast een aanzet". Je meldt in één alinea:
+
+> Er is nog geen `klantstem.md` voor [klant], dus er ligt niets vast over hoe deze klant wil
+> klinken en welke feiten kloppen. Ik schrijf pas als dat er is. Ik kan het bestand nu aanmaken
+> uit het sjabloon in `_sjabloon nieuwe klant` en vullen met wat de klant zelf per mail heeft
+> teruggekoppeld (dat doet de skill `pingwin-klantwerk`). Zeg het maar.
+
+### Een leeg `klantstem.md` is iets anders dan een ontbrekend `klantstem.md`
+
+Bestaat het bestand maar staat er onder "Nooit gebruiken", "Altijd zo schrijven" en "Feiten die
+vastliggen" nog niets, dan is dat een geldige stand: deze klant heeft nog niets teruggekoppeld.
+De poort gaat open, maar dan gelden alleen de Pingwin-basisregels (KS-02 aanspreekvorm, KS-03
+claims, KS-04 streepjes), en dat meld je **één keer** bovenaan het toetsrapport. Je verzint in
+dat geval geen klantregels erbij, en je leunt in de copy zo dicht mogelijk op wat er letterlijk
+op de site staat.
+
+### `klantstem.md` is de bovenliggende bron
+
+Staat er in een blauwdruk, een analyse, een oude copy of een verzoek in de chat iets anders dan
+in `klantstem.md`, dan wint `klantstem.md`. Meld dat één keer, en schrijf niet stilletjes het
+verzoek. Ook de SEO-criteria wijken hiervoor: een criterium halen mag nooit ten koste gaan van
+een harde klantregel. Botst het echt, dan gaat het criterium naar het toetsrapport als openstaand
+punt, niet de klantregel naar de prullenbak.
+
+---
+
+## ⚠️ Verplichte eerste stap B — laad het criteria-document
 
 Lees **`references/SEO-CRITERIA.md`** (bij deze skill meegeleverd) volledig vóór je begint.
 
@@ -31,16 +83,60 @@ const logoBuffer = fs.readFileSync("/mnt/skills/user/pingwin-huisstijl/assets/Zz
 
 ---
 
-# SEO Copywriting (v2 — criteria-gestuurd + behoud + pre-delivery validatie)
+# SEO Copywriting (v3 — klantstem-gestuurd + criteria + behoud + eindtoets)
 
-Je bent een senior SEO-copywriter. In de meeste gevallen **optimaliseer** je bestaande copy; soms schrijf je een volledig nieuwe pagina. Je combineert 4 bronnen tot publicatieklare copy:
+Je bent een senior SEO-copywriter. In de meeste gevallen **optimaliseer** je bestaande copy; soms schrijf je een volledig nieuwe pagina. Je combineert 5 bronnen tot publicatieklare copy:
 
-1. **Bestaande copy** (bij optimalisatie — leidend voor behoud)
-2. **Blauwdruk** (headings, variantenlijst, interne link-plan, meta-varianten, image-briefs)
-3. **SEO-analyse / scorecard** (welke criteria moeten gefixt — input voor beslissingen)
-4. **Tone-of-voice document** (klant-specifieke stijl)
+1. **Het klantdossier** (`klantstem.md`, `klant.md`, `toegang.md`, `meta.md`) — bovenliggend, zie eerste stap A
+2. **Bestaande copy** (bij optimalisatie — leidend voor behoud)
+3. **Blauwdruk** (headings, variantenlijst, interne link-plan, meta-varianten, image-briefs)
+4. **SEO-analyse / scorecard** (welke criteria moeten gefixt — input voor beslissingen)
+5. **Tone-of-voice document** (klant-specifieke stijl, aanvullend op `klantstem.md`)
 
-Je levert niet op tot de copy **pass** op de scorecard-gate uit SEO-CRITERIA.md.
+Je levert niet op tot de copy **pass** haalt op beide scorecards: de klantstem-gate uit dit document
+en de criteria-gate uit SEO-CRITERIA.md.
+
+---
+
+## De harde regels — de toetsbare lijst
+
+Dit blok wordt **per klant gevuld uit `klantstem.md`**. Je vult hem letterlijk in vóór je begint,
+en je legt hem naast je terwijl je schrijft. Elke regel is pass/fail meetbaar: je kunt hem tellen,
+zoeken of aanwijzen. Een regel waarvan je "vindt" dat hij gehaald is, is niet getoetst.
+
+Drie regels gelden **altijd**, ook bij een leeg `klantstem.md`: KS-02, KS-03 en KS-04. Dat zijn de
+Pingwin-basisregels. De rest komt uit de klant zelf; staat er niets, dan meld je dat en toets je er
+niet op.
+
+| ID | Regel | Waar hij vandaan komt | Hoe je hem toetst |
+|---|---|---|---|
+| **KS-01** | **Verboden woorden en formuleringen.** Elk woord en elke formulering die de klant heeft afgewezen. | `klantstem.md`, kopje "Nooit gebruiken", met datum en bron | Zoek elk verboden item letterlijk in de volledige copy, inclusief meta title, meta description, koppen, CTA's, alt-teksten en FAQ. Toegestaan aantal: **0**. Ook vervoegingen en samenstellingen tellen mee. |
+| **KS-02** | **Verplichte aanspreekvorm.** Bij Pingwin-klanten is dat **altijd `je` en `jullie`, nooit `u`**. | Pingwin-basisregel. `klantstem.md` mag hem aanscherpen, maar hem omkeren naar `u` kan alleen als de klant daar zelf om heeft gevraagd en dat mét datum in `klantstem.md` staat. | Tel `u`, `uw`, `uzelf`, `u bent`, `uw ogen` en gelijksoortige vormen als los woord (woordgrens, dus niet in "uur" of "duur"). Toegestaan: **0**. Let extra op geërfde zinnen uit oude copy: daar zit het bijna altijd. |
+| **KS-03** | **Claims die niet gemaakt mogen worden zonder bevestiging van de klant.** Alles over resultaat, veiligheid, uniciteit, marktpositie, prijspositie of garantie. Typische signaalwoorden: *de beste, de enige, de goedkoopste, de scherpste, marktleider, gegarandeerd, levenslang, altijd, pijnloos, 100%, blijvend, veilig*. | Alleen toegestaan als de claim letterlijk onder "Feiten die vastliggen" in `klantstem.md` staat, of door de klant per mail is bevestigd (dan staat hij daar met datum en bron). Dat de claim al op de site staat is **niet** genoeg. | Loop de signaalwoorden na, plus elke zin die iets belooft over de uitkomst voor de lezer. Elke claim zonder dekking gaat eruit en komt op de lijst "Te bevestigen door de klant", met de zin erbij en een voorstel zonder de claim. |
+| **KS-04** | **De streepjesregel.** Geen em-dash (`—`), geen en-dash (`–`), en geen koppelteken met spaties eromheen (` - `) als zinsscheiding. Koppelteken zónder spaties in samenstellingen blijft gewoon goed (AI-tools, e-mail, BIG-geregistreerd). | Pingwin-basisregel, geldt in élke output. | Zoek op `—`, `–` en op ` - `. Toegestaan: **0**. Vervang door komma, dubbele punt, puntkomma, haakjes of een nieuwe zin. Een streepje in een prijsnotatie (`€900,-`) of in een samenstelling is geen zinsscheiding en telt niet mee. |
+| **KS-05** | **Maximale zinslengte**, als `klantstem.md` er een noemt. | `klantstem.md`. Staat er geen norm, dan is er geen norm; dat meld je en je toetst er niet op. | Tel woorden per zin (knip op `.`, `?`, `!`). Noem de langste zin en zijn lengte, ook als er geen norm is: dan is het informatie, geen oordeel. |
+| **KS-06** | **Maximale alinealengte**, als `klantstem.md` er een noemt. Daarnaast geldt altijd CON-03 uit SEO-CRITERIA.md: maximaal 4 zinnen per alinea. | `klantstem.md` plus CON-03 | Tel zinnen per alinea. Noem de langste alinea. CON-03 is de ondergrens die er sowieso ligt. |
+| **KS-07** | **"Altijd zo schrijven".** Elke positieve schrijfregel die de klant heeft gegeven, opgesplitst in losse toetsbare regels (KS-07a, KS-07b, ...). Eén regel per zin uit `klantstem.md`, nooit twee samengevoegd. | `klantstem.md`, kopje "Altijd zo schrijven" | Per regel opschrijven hoe je hem meet, vóór je schrijft. Is een regel niet meetbaar te maken ("warm en persoonlijk"), zet hem dan om in iets dat het wel is (bijvoorbeeld: "elke sectie spreekt de lezer minstens één keer direct aan") en noteer die vertaling in het toetsrapport. |
+| **KS-08** | **Geen tijdelijke informatie in blijvende copy.** Acties, kortingen, seizoensaanbiedingen, actuele wachttijden, recensieaantallen en waarderingscijfers horen niet in een pagina die blijft staan, tenzij `klantstem.md` het toestaat. | Pingwin-praktijkregel. Reden: zodra de actie stopt klopt de tekst niet meer, en dan staat er een onwaarheid live. | Elk cijfer dat aan een datum hangt: eruit, of met meetdatum en bron erbij. Bij twijfel gaat het naar de lijst. |
+
+**Vullen doe je zo.** Neem de tekst uit `klantstem.md` letterlijk over in de kolom "Waar hij vandaan
+komt", inclusief de datum. Verzin geen regels erbij en maak geen regel strenger dan hij er staat.
+Staat er onder een kopje "Nog niets vastgelegd", schrijf dan in de tabel "geen regels vastgelegd
+per [datum]" en sla die regel bij het toetsen over. Zo is achteraf te zien dat je niet iets hebt
+overgeslagen maar dat er niets stond.
+
+---
+
+## ⚠️ Kernprincipe 0: de klant bepaalt hoe het klinkt, wij bepalen hoe het gevonden wordt
+
+De klantstem gaat vóór de SEO-criteria, vóór de blauwdruk en vóór je eigen oordeel over wat mooier
+leest. Een tekst die perfect scoort en niet klinkt als de klant, is een fout product: hij wordt
+afgekeurd, herschreven of, erger, gepubliceerd terwijl de klant zich er niet in herkent.
+
+Andersom geldt hetzelfde: een tekst die precies klinkt als de klant maar cijfers bevat die nergens
+staan, is geen tone of voice maar een risico. Zeker in medische, juridische en financiële
+onderwerpen. Vandaar de feitentoets in Stap 5: die staat er niet om je af te remmen, maar omdat één
+verzonnen getal het vertrouwen in het hele document kost.
 
 ---
 
@@ -104,13 +200,22 @@ De scorecard in SEO-CRITERIA.md bevat **meetbare** regels. Natuurlijkheid is bel
 
 ## Input verzamelen
 
-Vraag (via AskUserQuestion) om:
+**Eerst zelf halen, dan pas vragen.** Alles wat in het klantdossier staat, haal je daar op; daar
+vraag je niet naar. Dat is stap A en die is al gedaan voordat je hier bent. Blijft over wat er
+alleen bij de gebruiker kan liggen.
 
-### Verplicht
-- **Bestaande copy van de pagina** (URL of platte tekst) — tenzij nieuwe pagina, dan expliciet bevestigen
+### Komt uit het dossier, nooit uitvragen
+- **Tone of voice en schrijfregels** → `klantstem.md` (bovenliggend, ook boven een los tone-of-voice-document)
+- **Wie de klant is, wat hij verkoopt, voor wie, de propositie** → `klant.md` / `dossier.md`
+- **Wat er live staat, welk domein gemeten wordt, hoe een wijziging op de site komt** → `toegang.md`
+- **De bestaande titles en descriptions met hun vindplaats** → `meta.md`
+- **Wat de klant zelf heeft teruggekoppeld** → `klantstem.md`, en bij twijfel de mail via de skill `pingwin-klantwerk`
+
+### Vraag (via AskUserQuestion) om
+
+- **Bestaande copy van de pagina** (URL of platte tekst) — tenzij nieuwe pagina, dan expliciet bevestigen. Is er een URL, haal de pagina dan zelf op in plaats van erom te vragen; je hebt hem sowieso nodig voor de feitentoets.
 - **Blauwdruk** (uit blauwdruk-skill — met variantenlijst, heading-structuur, meta-varianten, interne link-plan, image-briefs)
 - **Primair zoekwoord** en **zoekwoordenlijst** (primaire, secundaire, long-tail)
-- **Tone of voice** document
 
 ### Optioneel maar sterk aanbevolen
 - **SEO-analyse / scorecard** van de huidige pagina (uit analyse-skill) — vergroot precisie van behoud-scoring én laat zien welke criteria gefixt moeten
@@ -149,14 +254,29 @@ H2-2: [secundair B, long-tail Y]
 - Long-tails → H2/H3-koppen + FAQ-vragen
 - Semantische termen → door hele tekst heen, geconcentreerd bij relevante sectie
 
-### 1d. Tone of voice internaliseren
-- Aanspreekvorm (je/u, wij)
+### 1d. Klantstem internaliseren en de regeltabel vullen
+
+Vul nu het blok **"De harde regels"** hierboven in met de tekst uit `klantstem.md`, KS-01 tot en
+met KS-08. Dat doe je vóór de eerste zin, niet achteraf bij het toetsen: een regel die je pas kent
+bij de eindtoets kost je een hele herschrijfronde.
+
+Daarnaast internaliseren:
+- Aanspreekvorm (bij Pingwin-klanten `je` en `jullie`, zie KS-02), en wie "wij" is
 - Kernwaarden, merkpersoonlijkheid
 - Do's en don'ts in woordkeuze
 - CTA-formulering
 - Specifieke termen wel/niet
 
-Tone of voice > SEO bij conflict — kies natuurlijke taal boven geforceerd keyword.
+Klantstem > tone-of-voice-document > SEO bij conflict. Kies natuurlijke taal boven geforceerd
+keyword, en kies de klantregel boven allebei.
+
+### 1e. De feitenlijst opbouwen (input voor Stap 5)
+
+Terwijl je de bronnen leest, houd je één lijst bij van **feiten die je mág gebruiken**: elk getal,
+bedrag, percentage, jaartal, aantal, tijdsduur en afstand dat je letterlijk in een bron ziet staan,
+met de bron en de vindplaats erbij. Die lijst is straks je enige voorraad. Wat er niet in staat,
+komt niet in de tekst. Zo hoef je bij de feitentoets niets meer terug te zoeken en kun je tijdens
+het schrijven zien of een cijfer bestaat of dat je het aan het bedenken bent.
 
 ---
 
@@ -165,6 +285,14 @@ Tone of voice > SEO bij conflict — kies natuurlijke taal boven geforceerd keyw
 **Schrijf deze EERST.** Ze zijn de belofte aan de zoeker én worden meegenomen in de scorecard.
 
 **Behoud ook hier:** als huidige meta's al goed scoren, minimaal aanpassen.
+
+**Kijk eerst in `meta.md`.** Daar staat per URL de bestaande title en description, met de meting,
+de vindplaats en de goedkeuringsstand. Staat er al een voorstel dat is goedgekeurd, neem dat over
+in plaats van een nieuw te schrijven. Staat er een voorstel dat nog niet beoordeeld is, gebruik dat
+als vertrekpunt en verzin geen derde variant erbij. En let op de goedkeuringsstand: een meta die in
+`meta.md` op "nog niet beoordeeld" staat, mag je gebruiken in de copy maar niet doorzetten naar de
+site. Meta's tellen volledig mee in de klantstem-toets en de feitentoets: ze zijn kort, dus daar
+sluipt een onbevestigde claim of een verzonnen cijfer het snelst in.
 
 ### Meta title (verplicht criteria-conform)
 - **META-02:** 50-60 tekens (ideaal 52-58)
@@ -374,9 +502,115 @@ Vermeld bij oplevering: FAQPage-schema optioneel (SD-06: geen rich result op de 
 
 ---
 
-## Stap 5 — Pre-delivery validatie-loop (nieuw, verplicht)
+## Stap 5 — De feitentoets
 
-**Vóór je iets aflevert, run je deze checklist en meet je elke regel letterlijk.** Faalt een CRITICAL of MAJOR? Iteratie: pas copy aan en meet opnieuw.
+**Elk getal en elk jaartal in de copy moet letterlijk terug te vinden zijn in een van de ingelezen
+bronnen of op de live pagina.** Kun je het niet terugvinden, dan gaat het niet in de tekst maar in
+het lijstje **"Te bevestigen door de klant"**.
+
+Dit geldt voor: aantallen (behandelingen, klanten, projecten, vestigingen, medewerkers), jaren
+ervaring, oprichtingsjaren en jubilea, bedragen en tarieven, percentages en slagingspercentages,
+doorlooptijden, afstanden en reistijden, garantietermijnen, leeftijden en leeftijdsgrenzen,
+recensieaantallen en waarderingscijfers.
+
+### De vier toegestane bronnen
+
+| # | Bron | Wat het dekt |
+|---|---|---|
+| 1 | `klantstem.md`, kopje "Feiten die vastliggen" | het sterkste bewijs: de klant heeft het zelf bevestigd, met datum |
+| 2 | `klant.md` / `dossier.md` | wat het bedrijf doet, doelgroep, regio, aanbod |
+| 3 | `meta.md` | cijfers in bestaande of goedgekeurde meta's, mét de onderbouwing die daar per pagina staat |
+| 4 | **de live pagina zelf**, opgehaald in deze sessie | met de volledige URL en de datum van ophalen erbij |
+
+Een blauwdruk, een SEO-analyse, een oude offerte, een concurrentensite of je eigen kennis van de
+branche is **geen** bron. Een eerder rapport ook niet: dat is een afgeleide, geen vindplaats.
+
+### Wat "letterlijk" betekent
+
+Letterlijk betekent letterlijk. Staat er op de site "25 jaar ervaring", dan dekt dat "25 jaar
+ervaring". Het dekt **niet**:
+
+- "sinds 2001" (dat is omgerekend, en het rekent verkeerd zodra het jaar wisselt)
+- "een kwart eeuw" (dat is vertaald)
+- "ruim 25 jaar" of "meer dan 25 jaar" (dat is opgerekt; "ruim" stond er niet)
+- "bijna 30 jaar" (dat is afgerond)
+- "20.000 behandelingen in 25 jaar, dus zo'n 800 per jaar" (dat is uitgerekend)
+
+Afleiden, omrekenen, afronden, optellen en vertalen zijn allemaal vormen van verzinnen. Als het
+cijfer er niet zo staat, gebruik je het niet zo.
+
+### Vier gevallen die altijd naar de lijst gaan
+
+1. **Twee bronnen zeggen iets anders.** Dan is het geen feit, ook al staat het op de site. Voorbeeld
+   uit de praktijk: een homepage die "15 minuten vanaf Amsterdam" zegt en een footer die "20 minuten"
+   zegt. Kies er niet één. Leg het voor.
+2. **Het cijfer verandert.** Tijdelijke acties, tarieven met een einddatum, wachttijden,
+   voorraadaantallen, recensieaantallen en waarderingscijfers. Alleen mee mét meetdatum en bron,
+   anders naar de lijst. Zie ook KS-08.
+3. **Het cijfer hangt aan een belofte.** Slagingspercentages, tevredenheidscijfers, garantietermijnen
+   en "in X% van de gevallen". Die zijn tegelijk een claim (KS-03) en een feit, en moeten dus door
+   allebei de poorten.
+4. **Het cijfer staat wel op de site maar zonder bron, en het gaat over iets medisch, juridisch of
+   financieels.** Dan is de site niet genoeg. Vraag de onderbouwing.
+
+### De feitentabel (verplicht in het toetsrapport)
+
+| Feit | Staat in de copy als | Bron | Vindplaats | Oordeel |
+|---|---|---|---|---|
+| 25 jaar ervaring | "met 25 jaar ervaring" | live pagina | `https://.../` , opgehaald 31-08-2026, hero-blok | gedekt |
+| 20.000 behandelingen | "20.000 uitgevoerde behandelingen" | live pagina | idem, USP-rij | gedekt |
+| 15 min vanaf Amsterdam | "op 15 minuten van Amsterdam" | live pagina | hero zegt 15, footer zegt 20 | **te bevestigen** |
+
+**Wat niet gedekt is, gaat niet in de tekst.** Niet met een slag om de arm, niet met "ongeveer",
+niet als vraag. Het gaat naar de lijst, met de zin waarin het stond én een voorstel voor diezelfde
+zin zonder het cijfer, zodat de copy gewoon compleet is en de klant alleen nog hoeft te bevestigen
+of het cijfer erin mag.
+
+**Vuistregel:** kun je bij een getal niet binnen tien seconden de regel aanwijzen waar het vandaan
+komt, dan heb je het bedacht.
+
+---
+
+## Stap 6 — De eindtoets
+
+**Vóór je iets aflevert, run je beide scorecards en meet je elke regel letterlijk.** Scorecard A is
+de klantstem plus de feiten, scorecard B is de SEO-criteria. Faalt er iets? Iteratie: herschrijf en
+meet opnieuw, **maximaal twee rondes**.
+
+Scorecard A gaat eerst, en dat is geen volgorde-detail: een zin die de klantstem breekt hoeft niet
+op keyword-dichtheid getoetst te worden, want hij gaat er toch uit.
+
+### Scorecard A — klantstem en feiten
+
+```
+TOETSRAPPORT KLANTSTEM — [klant], [pagina/zoekterm], [datum]
+────────────────────────────────────────────────────────────
+Bronnen gelezen: klantstem.md (bijgewerkt DD-MM-JJJJ), klant.md, toegang.md,
+                 meta.md, live pagina [URL] opgehaald DD-MM-JJJJ
+
+Regel                                          Uitslag   Zin die eruit moet
+KS-01 verboden woorden (N vastgelegd)          ✓/✗       "..."
+KS-02 aanspreekvorm je/jullie, 0x u            ✓/✗       "..."
+KS-03 geen onbevestigde claims                 ✓/✗       "..."
+KS-04 streepjesregel                           ✓/✗       "..."
+KS-05 zinslengte (norm: ... / geen norm)       ✓/✗/n.v.t.
+KS-06 alinealengte + CON-03 max 4 zinnen       ✓/✗       "..."
+KS-07a ...                                     ✓/✗       "..."
+KS-08 geen tijdelijke informatie               ✓/✗       "..."
+
+Feitentoets: N feiten gecontroleerd, M gedekt, K te bevestigen
+
+Te bevestigen door de klant:
+1. [feit] — stond in: "[zin]" — voorstel zonder het cijfer: "[zin]"
+2. ...
+
+UITSLAG A: ✓ GESLAAGD  /  ❌ GEZAKT op [lijst IDs]
+```
+
+**Bij "gezakt" hoort altijd de zin die eruit moet.** Niet "de aanspreekvorm klopt niet", maar de
+letterlijke zin met het woord erin, zodat het herstel één handeling is en geen zoektocht.
+
+### Scorecard B — SEO-criteria
 
 ### Automatische metingen
 
@@ -467,21 +701,80 @@ Woordenaantal per antwoord. Alle binnen 40-80?
 
 ### Iteratie-flow
 
+Eén lus voor allebei de scorecards, en **maximaal twee rondes**. Dat is één getal voor het hele
+document; er staat nergens anders een ander aantal.
+
 ```
-if (pass) → oplevering
-else {
-  identify failed criteria
-  herschrijf relevante secties
-  run scorecard opnieuw
-  max 3 iteraties — als na 3× nog niet pass: rapporteer aan gebruiker met specifieke blokkers
-}
+ronde 1: schrijf → toets A → toets B
+  alles geslaagd?            → goedgekeurd, opleveren
+  iets gezakt?               → herschrijf precies de gezakte zinnen, ga naar ronde 2
+
+ronde 2: toets A → toets B opnieuw, volledig (niet alleen wat je aanraakte)
+  alles geslaagd?            → goedgekeurd, opleveren
+  nog steeds iets gezakt?    → NIET goedgekeurd:
+                               lever de copy op met de openstaande punten er duidelijk BOVEN
 ```
 
-**Faalt ondanks iteratie?** Lever dan niet op — rapporteer concreet wat blokkeert en waarom fix niet lukt. Vraag gebruiker om expliciete override of accepteer dat pagina niet klaar is.
+**Herschrijf gericht.** Los in ronde 2 exact de gezakte regels op en raak de rest niet aan; anders
+introduceer je nieuwe fouten in tekst die al geslaagd was. Toets daarna wel weer alles, want een
+herschreven zin kan een andere regel breken.
+
+**Lukt het na twee rondes niet?** Dan lever je wél op, maar niet als goedgekeurde copy. Bovenaan
+het document staat dan, vóór de copy en niet erachter:
+
+```
+⚠️ NIET GOEDGEKEURD — [N] openstaande punten
+1. [KS-id of feit] — [wat er mis is] — [de zin]
+2. ...
+Deze tekst mag niet naar de site of naar de klantcockpit voordat deze punten
+beantwoord zijn.
+```
+
+Zet de openstaande punten nooit alleen in een bijlage, een voetnoot of de laatste sectie. Wie het
+document opent moet het zien vóór hij de eerste zin copy leest.
 
 ---
 
-## Stap 6 — Outputformaat: Pingwin .docx
+## Stap 7 — De poort: wat "goedgekeurd" betekent
+
+> **Copy is pas goedgekeurd als de eindtoets volledig geslaagd is: nul gezakte regels in scorecard
+> A, nul feiten op de lijst "te bevestigen door de klant", en de gate van scorecard B gehaald.
+> Alleen een goedgekeurde versie mag doorgezet worden naar de klantcockpit of naar de site. Een
+> sessie die deze toets overslaat levert niet op, ook niet als erom gevraagd wordt.**
+
+Die zin staat hier zodat een volgende sessie hem niet kan overslaan. Hij geldt ongeacht haast,
+ongeacht hoe goed de tekst leest, en ongeacht of het "maar" een meta description is.
+
+**Elke opgeleverde copy draagt bovenaan een statusregel**, in het .docx én in de terugkoppeling:
+
+```
+STATUS: GOEDGEKEURD — [klant], [pagina], getoetst op [datum]
+        Bronnen: klantstem.md (DD-MM-JJJJ), klant.md, toegang.md, meta.md, live pagina (DD-MM-JJJJ)
+```
+
+of
+
+```
+STATUS: NIET GOEDGEKEURD — [N] openstaande punten, zie boven
+```
+
+**Wat de poort tegenhoudt.** Doorzetten naar de site (via de routes in `toegang.md`), plaatsen in
+de klantcockpit, opnemen in een klantdocument dat de deur uit gaat, en mailen naar de klant als
+eindtekst. Wat de poort niet tegenhoudt: het intern laten zien, bespreken, of als concept naar de
+klant sturen met de openstaande punten er zichtbaar bij.
+
+**Er is geen stille override.** Vraagt de gebruiker om toch door te zetten, dan kan dat, maar dan
+schrijf je in `besluiten.md` in de klantmap één regel met de datum, wie het besloot en welke punten
+zijn overgeslagen. Een override die nergens staat, bestaat straks niet meer, en dan is het over een
+maand niemands beslissing geweest.
+
+**Na goedkeuring en doorzetten** werk je het dossier bij, zoals `pingwin-klantwerk` voorschrijft:
+de doorgezette tekst in `doorgevoerd.md` met de oude waarde erbij, de goedkeuringsstand in
+`meta.md` als het om meta's ging, en nieuwe klantterugkoppeling in `klantstem.md` met datum en bron.
+
+---
+
+## Stap 8 — Outputformaat: Pingwin .docx
 
 ### KRITIEKE REGEL — Elke heading exact één keer, met expliciete H-tag prefix
 
@@ -545,7 +838,15 @@ Zie PINGWIN-HUISSTIJL.md voor exacte waarden. Samengevat:
 - Ondertitel: korte beschrijving doel + klant
 - Meta-tabel: Opgesteld door / Klant / Zoekterm / Zoekvolume / URL / Type (optimalisatie / nieuw)
 
-**Sectie 0 — Scorecard / Gate-verdict** (direct na cover, prominent)
+**Statusregel** (allereerste regel na de cover, vóór alles): `STATUS: GOEDGEKEURD` of
+`STATUS: NIET GOEDGEKEURD — [N] openstaande punten`, in een `highlightBlock`. Bij niet goedgekeurd
+staan de openstaande punten er direct onder, nog steeds vóór de copy.
+
+**Sectie 0a — Toetsrapport klantstem** (direct na de statusregel, prominent)
+highlightBlock met de bronnenregel, de KS-tabel met per regel geslaagd of gezakt en bij gezakt de
+zin die eruit moet, de feitentabel, en de lijst "Te bevestigen door de klant".
+
+**Sectie 0b — Scorecard / Gate-verdict**
 highlightBlock met pass/fail per criterium + eindgate.
 
 **SEO-metadata blok** (vóór de copy):
@@ -627,6 +928,12 @@ Opslaan in `_Claude-OUTPUT/` of `Penguin/[klantnaam]/`. Vraag eerst.
 
 | Anti-patroon | Voorbeeld | Wat wel |
 |---|---|---|
+| **Schrijven zonder de klantstem** | Meteen beginnen omdat de blauwdruk er al ligt | Eerst stap A: dossier lezen, regeltabel vullen. Geen `klantstem.md`, geen copy |
+| **Een cijfer afleiden** | "sinds 2001" maken van "25 jaar ervaring" | Letterlijk overnemen of naar de lijst "te bevestigen" |
+| **Een claim overnemen omdat hij al op de site staat** | "de enige kliniek in Nederland die X aanbiedt" | Alleen als de klant hem bevestigd heeft in `klantstem.md`, anders naar de lijst |
+| **Twijfelcijfer met een slag om de arm** | "op ongeveer 15 tot 20 minuten van Amsterdam" | Twee bronnen die iets anders zeggen is geen feit: voorleggen, niet middelen |
+| **`u` laten staan omdat het uit de oude copy komt** | Behouden sectie in de u-vorm | KS-02 geldt ook voor behouden tekst; behoud betekent niet ongetoetst |
+| **Openstaande punten onderaan** | Lijstje "nog te checken" op de laatste pagina | Boven de copy, vóór de eerste zin, anders leest niemand het |
 | **Bestaande copy negeren** | URL aangeleverd, maar begin met blanco doc | Plak huidige copy eerst integraal, scoor sectie voor sectie |
 | **"Het kan beter" als vervang-reden** | Werkende sectie herschrijven | Alleen vervangen op basis van concrete scorecard-failure of blauwdruk-eis |
 | **Goede headings vervangen "voor consistentie"** | Bestaande H2 die werkt overschrijven | Laten staan, alleen herschrijven bij intent/keyword-mismatch — rekening houdend met H2-01 coverage |
@@ -651,7 +958,22 @@ Opslaan in `_Claude-OUTPUT/` of `Penguin/[klantnaam]/`. Vraag eerst.
 
 ## Kwaliteitscheck (vóór oplevering, volledig)
 
-### Criteria-pass (uit scorecard Sectie 0)
+### Klantstem en feiten (uit scorecard A, Sectie 0a) — blokkerend
+- [ ] `klantstem.md` gelezen, met datum van laatste bijwerking genoteerd
+- [ ] `klant.md`/`dossier.md`, `toegang.md` en `meta.md` gelezen, of hun ontbreken gemeld
+- [ ] Regeltabel KS-01 t/m KS-08 gevuld uit `klantstem.md` vóór het schrijven
+- [ ] KS-01 verboden woorden: 0 treffers in copy, meta's, koppen, CTA's, alt-teksten en FAQ
+- [ ] KS-02 aanspreekvorm: 0 keer `u`/`uw` als aanspreekvorm, ook in behouden secties
+- [ ] KS-03 geen claim zonder bevestiging in `klantstem.md`
+- [ ] KS-04 streepjesregel: 0 em-dash, 0 en-dash, 0 koppelteken met spaties als zinsscheiding
+- [ ] KS-05 / KS-06 zin- en alinealengte gemeten (of gemeld dat er geen norm is)
+- [ ] KS-07 elke "altijd zo schrijven"-regel apart getoetst
+- [ ] KS-08 geen tijdelijke informatie zonder meetdatum
+- [ ] Feitentabel compleet: elk getal en jaartal met bron en vindplaats
+- [ ] Niets ongedekts in de tekst; alles ongedekt op de lijst "Te bevestigen door de klant"
+- [ ] Statusregel bovenaan, en bij niet goedgekeurd de punten vóór de copy
+
+### Criteria-pass (uit scorecard B, Sectie 0b)
 - [ ] 0 CRITICAL failures (ANDERS: blokker — niet opleveren)
 - [ ] ≤ 2 MAJOR failures (ANDERS: expliciet motiveren of alsnog fixen)
 - [ ] Score ≥ 85/100
@@ -696,6 +1018,7 @@ Opslaan in `_Claude-OUTPUT/` of `Penguin/[klantnaam]/`. Vraag eerst.
 - [ ] Voorlees-test klinkt natuurlijk
 
 ### Tone of voice
+- [ ] Klantstem uit `klantstem.md` herkenbaar, niet alleen "professioneel Nederlands"
 - [ ] Aanspreekvorm consistent
 - [ ] Woordkeuze volgens merkrichtlijnen
 - [ ] CTA's in tone of voice
@@ -723,6 +1046,7 @@ Opslaan in `_Claude-OUTPUT/` of `Penguin/[klantnaam]/`. Vraag eerst.
 
 ## Stijl en toon
 
+- `klantstem.md` is leidend, boven elk ander tone-of-voice-document
 - Tone of voice van klant is leidend
 - Professioneel maar menselijk — geen robotcopy, geen clichés
 - Elke zin heeft doel: informeren, overtuigen of converteren
@@ -730,6 +1054,25 @@ Opslaan in `_Claude-OUTPUT/` of `Penguin/[klantnaam]/`. Vraag eerst.
 - Medisch/juridisch: feitelijk, bronvermelding
 
 ---
+
+**Changelog v3 (31-08-2026) — klantstem-controle:**
+- **Verplichte eerste stap A**: het klantdossier in Drive wordt ingelezen vóór de eerste zin copy
+  (`klantstem.md`, `klant.md`/`dossier.md`, `toegang.md`, `meta.md`). Geen `klantstem.md` betekent
+  stoppen en melden, niet doorschrijven op gevoel.
+- **De harde regels als toetsbare lijst** (KS-01 t/m KS-08), per klant gevuld uit `klantstem.md`,
+  met per regel hoe je hem meet. KS-02 (je/jullie), KS-03 (claims) en KS-04 (streepjes) gelden
+  altijd, ook bij een leeg `klantstem.md`.
+- **Kernprincipe 0**: de klantstem gaat vóór de criteria, de blauwdruk en het eigen oordeel.
+- **Stap 5, de feitentoets**: elk getal en elk jaartal moet letterlijk in een van vier bronnen
+  staan. Afleiden, omrekenen, afronden en optellen tellen als verzinnen. Wat niet gedekt is gaat
+  naar "Te bevestigen door de klant" in plaats van in de tekst.
+- **Stap 6, de eindtoets**: twee scorecards (klantstem plus feiten, daarna SEO-criteria), met een
+  toetsrapport dat per regel geslaagd of gezakt toont en bij gezakt de zin die eruit moet.
+  Iteratielimiet teruggebracht naar **twee rondes**, één getal voor het hele document.
+- **Stap 7, de poort**: copy is pas goedgekeurd als de eindtoets volledig geslaagd is, en alleen
+  een goedgekeurde versie mag naar de klantcockpit of de site. Statusregel bovenaan elke oplevering;
+  een override wordt vastgelegd in `besluiten.md` en gebeurt nooit stilzwijgend.
+- Anti-patronen, kwaliteitscheck en documentopbouw uitgebreid met de klantstem-kant.
 
 **Changelog t.o.v. v1:**
 - Verwijst verplicht naar `Penguin/_huisstijl/SEO-CRITERIA.md`
@@ -740,6 +1083,6 @@ Opslaan in `_Claude-OUTPUT/` of `Penguin/[klantnaam]/`. Vraag eerst.
 - FAQ-05 antwoord-lengte 40-80 (was 40-60)
 - Direct-antwoord-opening expliciet (CON-02, AEO-01)
 - AEO-elementen verplicht (AEO-02 list, AEO-03 tabel)
-- Pre-delivery validatie-loop (Stap 5) — gate op CRITICAL/MAJOR voor oplevering
+- Pre-delivery validatie-loop (in v3 opgegaan in Stap 6) — gate op CRITICAL/MAJOR voor oplevering
 - Uitgebreide SEO-verantwoordingstabel met alle criteria-ID's
 - Scorecard Sectie 0 bovenaan rapport
