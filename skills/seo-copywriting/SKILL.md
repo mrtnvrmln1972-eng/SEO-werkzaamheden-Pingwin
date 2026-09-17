@@ -1,6 +1,6 @@
 ---
 name: seo-copywriting
-description: "Optimaliseert bestaande landingpage-copy of schrijft nieuwe SEO-webcopy. Leest eerst de klantstem uit het klantdossier in Drive (klantstem.md, klant.md, toegang.md, meta.md) en toetst elke zin daaraan terug: verboden woorden, aanspreekvorm, onbevestigde claims, de streepjesregel, zin- en alinealengte. Elk getal en elk jaartal moet letterlijk in een bron staan, anders gaat het naar de lijst 'te bevestigen door de klant' in plaats van in de tekst. Werkt daarnaast tegen harde, meetbare criteria uit SEO-CRITERIA.md: H2 keyword coverage 60-80% (target 70%), primair zoekwoord in eerste 100 woorden, density 0.5-2%, semantische variantendekking ≥60%, direct-antwoord-opening, FAQ-antwoorden 40-80 woorden — met pre-delivery validatie-loop die levert pas op als de scorecard pass is. Behoud van bestaande copy blijft leidend om SEO-continuïteit te beschermen. Gebruik deze skill wanneer iemand vraagt om: webcopy schrijven, landingpage copy, SEO-tekst optimaliseren, 'schrijf copy voor [pagina]', 'maak webcopy op basis van de blauwdruk', 'tekst uitschrijven voor [zoekterm]', 'content schrijven voor [URL]', 'landingpage tekst maken', of wanneer een blauwdruk beschikbaar is en de volgende stap het uitschrijven of optimaliseren van de tekst is Gebruik proactief zodra een blauwdruk is afgerond en de copy geschreven of geoptimaliseerd moet worden."
+description: "Optimaliseert bestaande landingpage-copy of schrijft nieuwe SEO-webcopy. Leest eerst de klantstem uit het klantdossier in de repo klantdossiers (klantstem.md, klant.md, toegang.md, meta.md) en toetst elke zin daaraan terug: verboden woorden, aanspreekvorm, onbevestigde claims, de streepjesregel, zin- en alinealengte. Elk getal en elk jaartal moet letterlijk in een bron staan, anders gaat het naar de lijst 'te bevestigen door de klant' in plaats van in de tekst. Werkt daarnaast tegen harde, meetbare criteria uit SEO-CRITERIA.md: H2 keyword coverage 60-80% (target 70%), primair zoekwoord in eerste 100 woorden, density 0.5-2%, semantische variantendekking ≥60%, direct-antwoord-opening, FAQ-antwoorden 40-80 woorden — met pre-delivery validatie-loop die levert pas op als de scorecard pass is. Behoud van bestaande copy blijft leidend om SEO-continuïteit te beschermen. Gebruik deze skill wanneer iemand vraagt om: webcopy schrijven, landingpage copy, SEO-tekst optimaliseren, 'schrijf copy voor [pagina]', 'maak webcopy op basis van de blauwdruk', 'tekst uitschrijven voor [zoekterm]', 'content schrijven voor [URL]', 'landingpage tekst maken', of wanneer een blauwdruk beschikbaar is en de volgende stap het uitschrijven of optimaliseren van de tekst is Gebruik proactief zodra een blauwdruk is afgerond en de copy geschreven of geoptimaliseerd moet worden."
 ---
 
 
@@ -10,9 +10,15 @@ description: "Optimaliseert bestaande landingpage-copy of schrijft nieuwe SEO-we
 netjes staat, maar omdat een tekst zonder de stem van de klant een gok is. Deze stap is een
 poort, geen gewoonte: hij gaat open of hij gaat niet open.
 
-**Waar het staat.** Google Drive-map **Pingwin Klanten**, id `1OE60BWBnTpBpqfJoRfMR6k5tRSAe86kr`.
-Zoek de klantmap met `search_files` op `parentId = '1OE60BWBnTpBpqfJoRfMR6k5tRSAe86kr'` en match
-op de klantnaam. Geen map gevonden? Vraag of het dossier aangemaakt moet worden en schrijf niets.
+**Waar het staat.** De privé GitHub-repo **`mrtnvrmln1972-eng/klantdossiers`**, tak `main`, met
+per klant een map. Daar lees je, en nergens anders. Google Drive is sinds 16-09-2026 alleen nog
+een kopie: die kan achterlopen en kan gaten hebben, dus een tekst toetsen aan de Drive-versie
+toetst hem mogelijk aan een verouderde klantstem. Dat is erger dan geen toets, want het ziet
+eruit alsof het goed is.
+
+**Lees `brein/15-klantdossiers-lezen-en-schrijven.md` in `pingwin-brein` voordat je iets ophaalt.**
+Daar staat de hele route: paden, hoe je de juiste klantmapnaam vindt, en wat je doet als je er
+niet bij kunt. Geen map gevonden? Vraag of het dossier aangemaakt moet worden en schrijf niets.
 
 **Wat je leest, in deze volgorde:**
 
@@ -1056,7 +1062,7 @@ Opslaan in `_Claude-OUTPUT/` of `Penguin/[klantnaam]/`. Vraag eerst.
 ---
 
 **Changelog v3 (31-08-2026) — klantstem-controle:**
-- **Verplichte eerste stap A**: het klantdossier in Drive wordt ingelezen vóór de eerste zin copy
+- **Verplichte eerste stap A**: het klantdossier in de repo wordt ingelezen vóór de eerste zin copy
   (`klantstem.md`, `klant.md`/`dossier.md`, `toegang.md`, `meta.md`). Geen `klantstem.md` betekent
   stoppen en melden, niet doorschrijven op gevoel.
 - **De harde regels als toetsbare lijst** (KS-01 t/m KS-08), per klant gevuld uit `klantstem.md`,
