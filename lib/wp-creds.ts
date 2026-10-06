@@ -1,7 +1,7 @@
 import { sql, ensureSchema } from "./db";
 import { eenmalig } from "./schema-stand";
 import { decryptSecret, encryptSecret } from "./wp-geheim";
-import { testWordpressAuth } from "./wordpress";
+import { fetchWordpressRollen, testWordpressAuth } from "./wordpress";
 import type { WpAuth } from "./wordpress";
 
 // ═══════════════════════════════════════════════════════════
@@ -36,7 +36,7 @@ import type { WpAuth } from "./wordpress";
 // De tabellen worden één keer gebouwd per database, niet bij elke koude
 // server opnieuw. Zie lib/schema-stand.ts. Verander je iets aan doEnsure(),
 // hoog dan het cijfer in de versie hieronder op; anders komt het er nooit in.
-const SCHEMA_VERSIE = "wp-creds-e5010cbd";
+const SCHEMA_VERSIE = "wp-creds-13b2225d";
 
 async function ensureTable(): Promise<void> {
   return eenmalig("wp-creds", SCHEMA_VERSIE, doEnsure);
@@ -51,6 +51,13 @@ async function doEnsure(): Promise<void> {
       wp_app_password TEXT NOT NULL,
       updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
     )`;
+  // De uitkomst van de laatste test, voor het koppelscherm (/admin/wordpress).
+  // Geen tweede opslag van het wachtwoord: alleen wanneer er getest is, wat de
+  // site antwoordde en welke rol de gebruiker daar heeft.
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_getest_op TIMESTAMPTZ`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_test_ok BOOLEAN`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_test_fout TEXT`;
+  await sql`ALTER TABLE clients ADD COLUMN IF NOT EXISTS wp_rol TEXT`;
 }
 
 /**
@@ -109,6 +116,73 @@ export async function wpKoppelingStand(slug: string): Promise<{ connected: boole
   return { connected: !!creds, username: creds?.user || null };
 }
 
+// WordPress-rollen in de woorden van de Nederlandse beheeromgeving.
+const ROL_NAAM: Record<string, string> = {
+  administrator: "Beheerder",
+  editor: "Redacteur",
+  author: "Auteur",
+  contributor: "Schrijver",
+  subscriber: "Abonnee",
+  shop_manager: "Winkelmanager",
+  wpseo_manager: "SEO-manager",
+  wpseo_editor: "SEO-redacteur",
+};
+
+/** De rollen van een gebruiker als één leesbare regel, bijvoorbeeld "Beheerder". */
+export function rolNaam(rollen: string[]): string {
+  return rollen.map((r) => ROL_NAAM[r] || r).join(", ");
+}
+
+/** Wat het koppelscherm per klant toont. Nooit het wachtwoord, ook niet een stukje. */
+export type WpKoppelDetail = {
+  gekoppeld: boolean;
+  gebruiker: string;
+  getestOp: string | null;
+  testOk: boolean | null;
+  fout: string;
+  rol: string;
+};
+
+export async function wpKoppelDetail(slug: string): Promise<WpKoppelDetail> {
+  const creds = await getWpCreds(slug);
+  const { rows } = await sql`SELECT wp_getest_op, wp_test_ok, wp_test_fout, wp_rol FROM clients WHERE slug = ${slug} LIMIT 1`;
+  const r = rows[0] || {};
+  return {
+    gekoppeld: !!creds,
+    gebruiker: creds?.user || "",
+    getestOp: r.wp_getest_op ? new Date(r.wp_getest_op as string).toISOString() : null,
+    testOk: typeof r.wp_test_ok === "boolean" ? r.wp_test_ok : null,
+    fout: String(r.wp_test_fout || ""),
+    rol: String(r.wp_rol || ""),
+  };
+}
+
+async function legTestVast(slug: string, ok: boolean, fout: string, rol: string | null): Promise<void> {
+  if (rol === null) {
+    await sql`UPDATE clients SET wp_getest_op = now(), wp_test_ok = ${ok}, wp_test_fout = ${fout || null} WHERE slug = ${slug}`;
+  } else {
+    await sql`UPDATE clients SET wp_getest_op = now(), wp_test_ok = ${ok}, wp_test_fout = ${fout || null}, wp_rol = ${rol || null} WHERE slug = ${slug}`;
+  }
+}
+
+/**
+ * De opgeslagen koppeling opnieuw bij de site testen, zonder het wachtwoord
+ * opnieuw te vragen. De uitkomst wordt vastgelegd, ook als hij mislukt: dan zie
+ * je dat een koppeling die eerst werkte nu geweigerd wordt.
+ */
+export async function hertestKoppeling(slug: string, domain: string): Promise<{ ok: boolean; error?: string }> {
+  const creds = await getWpCreds(slug);
+  if (!creds) return { ok: false, error: "Er is voor deze klant geen koppeling opgeslagen." };
+  if (!domain) return { ok: false, error: "Deze klant heeft nog geen domein ingevuld." };
+  const test = await testWordpressAuth(domain, creds, slug);
+  if (!test.ok) {
+    await legTestVast(slug, false, test.error || "Inloggegevens werken niet.", null);
+    return { ok: false, error: test.error || "Inloggegevens werken niet." };
+  }
+  await legTestVast(slug, true, "", rolNaam(await fetchWordpressRollen(domain, creds)));
+  return { ok: true };
+}
+
 /**
  * Bewaren gaat altijd langs de test.
  *
@@ -129,6 +203,8 @@ export async function bewaarKoppeling(
   const test = await testWordpressAuth(domain, { user: naam, appPassword: wachtwoord }, slug);
   if (!test.ok) return { ok: false, error: test.error || "Inloggegevens werken niet." };
   await saveWpCreds(slug, naam, wachtwoord);
+  const rollen = await fetchWordpressRollen(domain, { user: naam, appPassword: wachtwoord });
+  await legTestVast(slug, true, "", rolNaam(rollen));
   return { ok: true };
 }
 
@@ -144,6 +220,14 @@ export async function saveWpCreds(slug: string, user: string, appPassword: strin
 export async function deleteWpCreds(slug: string): Promise<void> {
   await ensureSchema();
   await ensureTable();
-  await sql`UPDATE clients SET wp_user = NULL, wp_app_pass_enc = NULL WHERE slug = ${slug}`;
+  await sql`UPDATE clients SET wp_user = NULL, wp_app_pass_enc = NULL, wp_getest_op = NULL, wp_test_ok = NULL, wp_test_fout = NULL, wp_rol = NULL WHERE slug = ${slug}`;
   await sql`DELETE FROM client_wp_creds WHERE client_slug = ${slug}`;
+}
+
+/** De klanten waarvoor nu een koppeling opgeslagen staat. */
+export async function slugsMetKoppeling(): Promise<string[]> {
+  await ensureSchema();
+  await ensureTable();
+  const { rows } = await sql`SELECT slug FROM clients WHERE wp_app_pass_enc IS NOT NULL`;
+  return rows.map((r) => String(r.slug));
 }

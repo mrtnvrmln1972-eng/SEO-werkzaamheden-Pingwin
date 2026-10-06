@@ -98,6 +98,12 @@ export const HOOFDSTUK: Hoofdstuk = {
         "twee verschillende wachtwoorden. Nu is het er één, hij wordt vóór het opslaan altijd echt bij de site " +
         "getest, en het invulvenster verschijnt vanzelf op het scherm waar iets misgaat in plaats van achter " +
         "een knop die als statusmelding leest.\n\n" +
+        "**Alle koppelingen op één scherm (6 oktober 2026).** Op /admin/wordpress staat per klant één regel: " +
+        "gebruikersnaam, applicatiewachtwoord en de knop Koppelen en testen. Na de test staat er groen " +
+        "Gekoppeld met het tijdstip en de rol van die gebruiker op de site (Beheerder, Redacteur), of rood " +
+        "Mislukt met wat de site antwoordde. Opnieuw testen gebruikt het opgeslagen wachtwoord, dat nooit meer " +
+        "getoond wordt. Het scherm gebruikt dezelfde testende opslag als de rest van het dashboard, er is dus " +
+        "geen tweede plek waar een wachtwoord kan staan.\n\n" +
         "**Als de site de wijziging wel accepteert maar niet bewaart.** Rank Math (en Yoast) leggen de " +
         "paginatitel en de meta-omschrijving bij de pagina neer, maar melden die velden niet aan bij de " +
         "WordPress-API. De site antwoordt dan \"gelukt\" en gooit de waarde daarna weg. Het dashboard leest het " +

@@ -72,6 +72,7 @@ export const SCHERMEN: { pad: string; naam: string; waarvoor: string; groep: Gro
   { pad: "/admin/stijl", naam: "Stijl", waarvoor: "Wat de bedoeling is naast wat er werkelijk staat: hoeveel kleuren, maten en soorten knop het dashboard heeft, en hoeveel er zouden moeten zijn.", groep: "Ontwikkeling van het dashboard" },
   { pad: "/admin/tweaks", naam: "Tweaks", waarvoor: "De stapel kleine aanpassingen die je onderweg meldt, klaar om in één ronde door te voeren.", groep: "Ontwikkeling van het dashboard" },
   { pad: "/admin/grote-punten", naam: "Grote punten", waarvoor: "Wat te groot is voor een tweak: eerst samen een plan, jij keurt goed, en 's nachts wordt het één voor één gebouwd.", groep: "Ontwikkeling van het dashboard" },
+  { pad: "/admin/wordpress", naam: "WordPress-koppelingen", waarvoor: "Per klant de WordPress-gebruikersnaam en het applicatiewachtwoord koppelen en testen, met de rol op die site.", groep: "Beheer en controle" },
   { pad: "/admin/bronnen-gezondheid", naam: "Bronnen-gezondheid", waarvoor: "Per koppeling (Ahrefs, Google, Microsoft, Moneybird, WordPress): werkt hij, en sinds wanneer niet meer.", groep: "Beheer en controle" },
   { pad: "/admin/agenda", naam: "Agenda", waarvoor: "Maartens eigen weekagenda: tijdblokken en taken, los van klantwerk.", groep: "Dagelijks werk" },
   { pad: "/admin/schermafbeeldingen", naam: "Schermafbeeldingen", waarvoor: "De beelden die /uitleg gebruikt: het dashboard fotografeert zichzelf, anoniem.", groep: "Beheer en controle" },
