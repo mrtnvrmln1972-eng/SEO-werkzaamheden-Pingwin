@@ -1,8 +1,8 @@
 {
   "css": {
-    "regels": 9674,
-    "stijlregels": 4676,
-    "classnamen": 3208
+    "regels": 9653,
+    "stijlregels": 4657,
+    "classnamen": 3192
   },
   "kleuren": {
     "verschillend": 40,
@@ -300,7 +300,7 @@
     },
     {
       "naam": "Kaarten en panelen",
-      "aantal": 79,
+      "aantal": 78,
       "namen": [
         "act-card",
         "ag-datumknop-panel",
@@ -378,14 +378,13 @@
         "wp-panel",
         "wp-rail-card",
         "wp-vouwpaneel",
-        "wpk-kaart",
         "wz-detail-card",
         "zp-paneel"
       ]
     },
     {
       "naam": "Tabellen",
-      "aantal": 22,
+      "aantal": 21,
       "namen": [
         "chat-table",
         "dev-afgerond-tabel",
@@ -407,7 +406,6 @@
         "task-table",
         "uk-tabel",
         "wp-kentabel",
-        "wpk-tabel",
         "wz-kw-table"
       ]
     },
@@ -424,7 +422,7 @@
     },
     {
       "naam": "Labels en badges",
-      "aantal": 115,
+      "aantal": 114,
       "namen": [
         "act-edit-label",
         "ag-hour-label",
@@ -537,7 +535,6 @@
         "wp-mail-onderwerp-label",
         "wp-sectie-label",
         "wp-stuur-label",
-        "wpk-label",
         "wz-kpi-label",
         "wz-line-label",
         "wz-marker-label"
@@ -1934,7 +1931,7 @@
       }
     ],
     "eigenWaarde": [],
-    "gebruik": 8998,
+    "gebruik": 8961,
     "schaalGebruik": 1510
   }
 }

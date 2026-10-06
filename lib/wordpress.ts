@@ -208,23 +208,6 @@ export async function testWordpressAuth(domain: string, auth: WpAuth, clientSlug
   } finally { clearTimeout(t); }
 }
 
-// De rollen van de gekoppelde gebruiker op die site (administrator, editor, …).
-// WordPress geeft rollen alleen in de bewerk-context; een gebruiker mag dat van
-// zichzelf altijd opvragen. Lukt het niet, dan een lege lijst: de rol is extra
-// informatie, nooit de reden dat een koppeling als mislukt telt.
-export async function fetchWordpressRollen(domain: string, auth: WpAuth): Promise<string[]> {
-  const base = baseFromDomain(domain);
-  if (!base || !auth) return [];
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const res = await fetch(`${base}/wp-json/wp/v2/users/me?context=edit&_fields=roles`, { signal: ctrl.signal, headers: authHeaders(auth) });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { roles?: unknown };
-    return Array.isArray(data?.roles) ? data.roles.filter((r): r is string => typeof r === "string") : [];
-  } catch { return []; } finally { clearTimeout(t); }
-}
-
 // Licht verschil tussen twee revisie-versies (voor "wat veranderde").
 export function revisionDiffSummary(prev: WpRevision | null, cur: WpRevision): string {
   if (!prev) return "Eerste vastgelegde versie";
